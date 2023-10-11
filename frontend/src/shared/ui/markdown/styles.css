@@ -1,0 +1,42 @@
+.markdown {
+  padding: 8px;
+  overflow: auto;
+}
+
+.markdown img {
+  width: 100%;
+}
+
+.markdown tr {
+  border-top: 1px solid #f0f0f0;
+  background: #fff;
+}
+
+.markdown th,
+.markdown td {
+  padding: 6px 13px;
+  border: 1px solid #f0f0f0;
+}
+
+.markdown table tr:nth-child(2n) {
+  background: #f6f6f6;
+}
+
+.markdown ul {
+  padding-left: 0;
+  padding: 8px;
+}
+
+.markdown blockquote {
+  color: #666;
+  margin: 0;
+  padding-left: 14px;
+  border-left: 0.5em #eee solid;
+  background-color: rgba(240, 240, 240, 0.4);
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+.markdown blockquote p {
+  margin-bottom: 0;
+}

@@ -1,0 +1,5 @@
+export { BracesIcon } from "./braces"
+export { BriefcaseIcon } from "./briefcase"
+export { CheckedIcon } from "./checked"
+export { FontsIcon } from "./fonts"
+export { ListIcon } from "./list"

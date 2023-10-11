@@ -1,0 +1,29 @@
+{
+  "trailingComma": "es5",
+  "tabWidth": 2,
+  "printWidth": 100,
+  "semi": false,
+  "singleQuote": false,
+  "jsxSingleQuote": false,
+  "importOrder": [
+    "^app/(.*)$",
+    "^entities/attachment/(.*)$",
+    "^entities/auth/(.*)$",
+    "^entities/label/(.*)$",
+    "^entities/parameter/(.*)$",
+    "^entities/project/(.*)$",
+    "^entities/result/(.*)$",
+    "^entities/suite/(.*)$",
+    "^entities/test/(.*)$",
+    "^entities/test-case/(.*)$",
+    "^entities/test-plan/(.*)$",
+    "^entities/user/(.*)$",
+    "^pages/(.*)$",
+    "^shared/(.*)$",
+    "^shared/ui/(.*)$",
+    "^widgets/(.*)$",
+    "^[./]"
+  ],
+  "importOrderSeparation": true,
+  "importOrderSortSpecifiers": true
+}

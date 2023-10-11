@@ -1,0 +1,10 @@
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.edited {
+  color: rgb(153, 153, 153);
+}

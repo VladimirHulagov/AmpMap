@@ -1,0 +1,255 @@
+# TestY TMS - Test Management System
+# Copyright (C) 2023 KNS Group LLC (YADRO)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Also add information on how to contact you by electronic and paper mail.
+#
+# If your software can interact with users remotely through a computer
+# network, you should also make sure that it provides a way for users to
+# get its source.  For example, if your program is a web application, its
+# interface could display a "Source" link that leads users to an archive
+# of the code.  There are many ways you could offer source, and different
+# solutions will be better for different programs; see section 13 for the
+# specific requirements.
+#
+# You should also get your employer (if you work as a programmer) or school,
+# if any, to sign a "copyright disclaimer" for the program, if necessary.
+# For more information on this, and how to apply and follow the GNU AGPL, see
+# <http://www.gnu.org/licenses/>.
+
+import logging
+import re
+from copy import deepcopy
+from typing import Any, Dict, List, Tuple
+
+from django.db import models, transaction
+from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
+from mptt.managers import TreeManager
+from mptt.models import MPTTModel
+from mptt.querysets import TreeQuerySet
+
+from testy.types import DjangoModelType
+
+logger = logging.getLogger(__name__)
+
+
+class ServiceModelMixin(models.Model):
+    class Meta:
+        abstract = True
+
+    @classmethod
+    def model_create(cls, fields: List[str], data: Dict[str, Any], commit: bool = True) -> DjangoModelType:
+        actually_fields = {key: data[key] for key in fields if key in data}
+        instance = cls(**actually_fields)
+
+        if commit:
+            instance.full_clean()
+            instance.save()
+
+        return instance
+
+    def model_update(
+            self, fields: List[str], data: Dict[str, Any], commit: bool = True, force: bool = False
+    ) -> Tuple[DjangoModelType, bool]:
+        has_updated = False
+
+        for field in fields:
+            if field not in data:
+                continue
+
+            if getattr(self, field) != data[field]:
+                has_updated = True
+                setattr(self, field, data[field])
+
+        if (has_updated and commit) or force:
+            self.full_clean()
+            self.save(update_fields=fields)
+        if not has_updated:
+            logger.error('Model was not updated.')
+        return self, has_updated
+
+    @transaction.atomic
+    def model_clone(
+            self,
+            related_managers: List[str] = None,
+            attrs_to_change: Dict[str, Any] = None,
+            attachment_references_fields: List[str] = None,
+            common_attrs_to_change: Dict[str, Any] = None
+    ) -> DjangoModelType:
+        self_copy = deepcopy(self)
+        mptt_fields = ['lft', 'rght', 'tree_id']
+        if isinstance(self, MPTTModel):
+            for field in mptt_fields:
+                setattr(self_copy, field, 0)
+        attrs = {'pk': None, 'id': None}
+        cloned_related_objects = {}
+        attachments_mapping = {}
+
+        if not related_managers:
+            related_managers = []
+
+        if not attachment_references_fields:
+            attachment_references_fields = []
+
+        if attrs_to_change:
+            attrs.update(attrs_to_change)
+
+        if common_attrs_to_change:
+            attrs.update(common_attrs_to_change)
+
+        for related_manager_name in related_managers:
+            related_manager = getattr(self_copy, related_manager_name, None)
+            if not related_manager:
+                logger.warning(f'No manager {related_manager_name} on model {type(self_copy)}')
+                continue
+            cloned_related_objects[related_manager_name] = [
+                rel_instance.model_clone(common_attrs_to_change=common_attrs_to_change)
+                for rel_instance in related_manager.all()
+            ]
+            if related_manager_name != 'attachments':
+                continue
+            attachments_mapping = self._map_old_attach_id_to_new(
+                related_manager,
+                cloned_related_objects[related_manager_name]
+            )
+
+        for attr_name, attr_value in attrs.items():
+            setattr(self_copy, attr_name, attr_value)
+
+        for field_name in attachment_references_fields:
+            for old_id, new_id in attachments_mapping.items():
+                formatted_text = self._change_attachments_reference(getattr(self_copy, field_name), old_id, new_id)
+                setattr(self_copy, field_name, formatted_text)
+
+        self_copy._state.adding = True
+        self_copy.save()
+        type(self).objects.filter(pk=self_copy.id).update(
+            created_at=self.created_at,
+            updated_at=self.updated_at
+        )
+        for related_manager_name, instances in cloned_related_objects.items():
+            getattr(self_copy, related_manager_name).set(instances)
+        return self_copy
+
+    @staticmethod
+    def _change_attachments_reference(src_text, old_id, new_id):
+        return re.sub(f'attachments/{old_id}/', f'attachments/{new_id}/', src_text)
+
+    @staticmethod
+    def _map_old_attach_id_to_new(related_manager, cloned_objects):
+        mapping = {}
+        for src_attach, cloned_attach in zip(related_manager.all(), cloned_objects):
+            mapping[src_attach.id] = cloned_attach.id
+        return mapping
+
+
+class SoftDeleteQuerySet(models.query.QuerySet):
+    def delete(self, cascade=None):
+        return self.update(is_deleted=True, deleted_at=timezone.now())
+
+    def hard_delete(self):
+        return super().delete()
+
+
+class SoftDeleteManager(models.Manager):
+    def get_queryset(self):
+        return SoftDeleteQuerySet(self.model, using=self._db).filter(is_deleted=False)
+
+
+class SoftDeleteTreeQuerySet(TreeQuerySet):
+    def delete(self, cascade=None):
+        return self.update(is_deleted=True, deleted_at=timezone.now())
+
+    def hard_delete(self):
+        return super().delete()
+
+
+class SoftDeleteTreeManager(TreeManager):
+    def get_queryset(self):
+        return SoftDeleteTreeQuerySet(self.model, using=self._db).filter(is_deleted=False)
+
+
+class DeletedTreeQuerySet(TreeQuerySet):
+    def restore(self, *args, **kwargs):
+        qs = self.filter(*args, **kwargs)
+        qs.update(is_deleted=False, deleted_at=None)
+
+    def get_descendants(self, *args, **kwargs):
+        return self.model.deleted_objects.get_queryset_descendants(self, *args, **kwargs)
+
+    def hard_delete(self):
+        return super().delete()
+
+
+class DeletedTreeManager(TreeManager):
+    def get_queryset(self):
+        return DeletedTreeQuerySet(self.model, using=self._db).filter(is_deleted=True)
+
+
+class DeletedQuerySet(models.query.QuerySet):
+    def restore(self, *args, **kwargs):
+        qs = self.filter(*args, **kwargs)
+        qs.update(is_deleted=False, deleted_at=None)
+
+    def hard_delete(self):
+        return super().delete()
+
+
+class DeletedManager(models.Manager):
+    def get_queryset(self):
+        return DeletedQuerySet(self.model, using=self._db).filter(is_deleted=True)
+
+
+class SoftDeleteMixin(models.Model):
+    is_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        abstract = True
+
+    def delete(self, *args, **kwargs):
+        self.is_deleted = True
+        self.deleted_at = timezone.now()
+        self.save()
+
+    def restore(self):
+        self.is_deleted = False
+        self.deleted_at = None
+        self.save()
+
+    def hard_delete(self, *args, **kwargs):
+        super().delete(*args, **kwargs)
+
+
+class BaseModel(ServiceModelMixin, SoftDeleteMixin, models.Model):
+    created_at = models.DateTimeField(_('created at'), auto_now_add=True)
+    updated_at = models.DateTimeField(_('updated at'), auto_now=True)
+    objects = SoftDeleteManager()
+    deleted_objects = DeletedManager()
+
+    class Meta:
+        abstract = True
+
+    class ModelHierarchyWeightMeta:
+        weight = 0
+
+
+class MPTTBaseModel(MPTTModel, BaseModel):
+    objects = SoftDeleteTreeManager()
+    deleted_objects = DeletedTreeManager()
+
+    class Meta:
+        abstract = True

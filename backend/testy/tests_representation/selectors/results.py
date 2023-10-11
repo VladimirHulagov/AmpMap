@@ -1,0 +1,76 @@
+# TestY TMS - Test Management System
+# Copyright (C) 2023 KNS Group LLC (YADRO)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Also add information on how to contact you by electronic and paper mail.
+#
+# If your software can interact with users remotely through a computer
+# network, you should also make sure that it provides a way for users to
+# get its source.  For example, if your program is a web application, its
+# interface could display a "Source" link that leads users to an archive
+# of the code.  There are many ways you could offer source, and different
+# solutions will be better for different programs; see section 13 for the
+# specific requirements.
+#
+# You should also get your employer (if you work as a programmer) or school,
+# if any, to sign a "copyright disclaimer" for the program, if necessary.
+# For more information on this, and how to apply and follow the GNU AGPL, see
+# <http://www.gnu.org/licenses/>.
+from django.db.models import OuterRef, QuerySet, Subquery
+from django.db.models.functions import Trunc
+from tests_representation.models import Test, TestPlan, TestResult
+
+
+class TestResultSelector:
+    def result_list(self) -> QuerySet[TestResult]:
+        return TestResult.objects.all().order_by('-created_at').prefetch_related('user', 'steps_results', 'attachments')
+
+    def result_list_by_test_id(self, test_id) -> QuerySet[TestResult]:
+        return TestResult.objects.select_related('test').filter(test_id=test_id).order_by('-created_at')
+
+    def last_result_by_test_id(self, test_id) -> TestResult:
+        return TestResult.objects.select_related('test').filter(test_id=test_id).order_by('-created_at').first()
+
+    def result_by_test_plan_ids(self, test_plan_ids, filters=None):
+        if not filters:
+            filters = {}
+        return TestResult.objects.select_related('test').filter(
+            test__plan_id__in=test_plan_ids,
+            **filters
+        )
+
+    @staticmethod
+    def result_cascade_history_list_by_test_plan(instance: TestPlan):
+        instances = instance.get_descendants(include_self=True).values_list('id', flat=True)
+        tests = Test.objects.filter(plan__in=instances).values_list('id', flat=True)
+        return (
+            TestResult.history
+            .filter(test__in=tests)
+            .order_by('-history_date')
+            .prefetch_related('test', 'test__case', 'test__plan', 'project', 'history_user')
+            .annotate(
+                action_day=Trunc('history_date', 'day'),
+            )
+        )
+
+    @staticmethod
+    def get_last_status_subquery(filters=None, outer_ref_key: str = 'id'):
+        if not filters:
+            filters = []
+        return Subquery(
+            TestResult.objects.filter(
+                *filters, test_id=OuterRef(outer_ref_key),
+            ).order_by('-created_at').values('status')[:1]
+        )

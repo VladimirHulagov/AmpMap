@@ -1,0 +1,105 @@
+# TestY TMS - Test Management System
+# Copyright (C) 2023 KNS Group LLC (YADRO)
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Also add information on how to contact you by electronic and paper mail.
+#
+# If your software can interact with users remotely through a computer
+# network, you should also make sure that it provides a way for users to
+# get its source.  For example, if your program is a web application, its
+# interface could display a "Source" link that leads users to an archive
+# of the code.  There are many ways you could offer source, and different
+# solutions will be better for different programs; see section 13 for the
+# specific requirements.
+#
+# You should also get your employer (if you work as a programmer) or school,
+# if any, to sign a "copyright disclaimer" for the program, if necessary.
+# For more information on this, and how to apply and follow the GNU AGPL, see
+# <http://www.gnu.org/licenses/>.
+from http import HTTPStatus
+
+from django.contrib.auth import get_user_model
+from rest_framework import status
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework.viewsets import ModelViewSet
+from users.api.v1.serializers import GroupSerializer, UserAvatarSerializer, UserSerializer
+from users.selectors.groups import GroupSelector
+from users.selectors.users import UserSelector
+from users.services.groups import GroupService
+from users.services.users import UserService
+
+UserModel = get_user_model()
+
+
+class GroupViewSet(ModelViewSet):
+    queryset = GroupSelector().group_list()
+    serializer_class = GroupSerializer
+
+    def perform_create(self, serializer: GroupSerializer):
+        serializer.instance = GroupService().group_create(serializer.validated_data)
+
+    def perform_update(self, serializer: UserSerializer):
+        serializer.instance = GroupService().group_update(serializer.instance, serializer.validated_data)
+
+
+class UserViewSet(ModelViewSet):
+    queryset = UserSelector().user_list()
+    serializer_class = UserSerializer
+
+    def perform_create(self, serializer: UserSerializer):
+        serializer.instance = UserService().user_create(serializer.validated_data)
+
+    def perform_update(self, serializer: UserSerializer):
+        serializer.instance = UserService().user_update(serializer.instance, serializer.validated_data)
+
+    def destroy(self, request, *args, **kwargs):
+        if request.user == self.get_object():
+            return Response({'errors': ['User cannot delete itself']}, status=status.HTTP_400_BAD_REQUEST)
+        return super().destroy(request, *args, **kwargs)
+
+    @action(methods=['get', 'patch', 'put'], url_path='me', url_name='me', detail=False)
+    def me(self, request):
+        if request.method == 'GET':
+            return Response(self.get_serializer(request.user).data)
+        serializer = self.get_serializer(request.user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.instance = UserService().user_update(serializer.instance, serializer.validated_data)
+        return Response(serializer.data)
+
+    @action(methods=['get', 'patch'], url_path='me/config', url_name='config', detail=False)
+    def config(self, request):
+        if request.method == 'GET':
+            return Response(request.user.config)
+        if request.method == 'PATCH':
+            return Response(UserService().config_update(request.user, request.data))
+        return Response(request.user.config)
+
+    @action(methods=['post', 'delete'], url_path='me/avatar', url_name='avatar', detail=False)
+    def avatar(self, request):
+        serializer = UserAvatarSerializer(request.user, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        if request.method == 'POST':
+            if 'avatar' not in serializer.validated_data:
+                return Response(data={'errors': ['No avatar was provided in request']}, status=HTTPStatus.BAD_REQUEST)
+            try:
+                serializer.instance = UserService().update_avatar(serializer.instance, serializer.validated_data)
+            except OSError:
+                return Response(data={'errors': ['Invalid image was provided']}, status=HTTPStatus.BAD_REQUEST)
+            return Response(data={'detail': 'Avatar was updated successfully'}, status=HTTPStatus.OK)
+        elif request.method == 'DELETE':
+            serializer.instance = UserService().update_avatar(serializer.instance, {'avatar': None})
+            return Response(data={'detail': 'Avatar was deleted successfully'}, status=HTTPStatus.OK)
+        return Response(status=HTTPStatus.METHOD_NOT_ALLOWED)

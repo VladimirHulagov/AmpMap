@@ -1,0 +1,33 @@
+.assignBlock {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+
+.assignRow {
+  display: flex;
+  flex-direction: row;
+  position: relative;
+  gap: 12px;
+  align-items: center;
+}
+
+.assignToMe {
+  color: #425cd7;
+  background-color: transparent;
+  outline: none;
+  border: none;
+  padding: 0;
+  width: 87px;
+  cursor: pointer;
+}
+
+.assignToMeModal {
+  color: #425cd7;
+  background-color: transparent;
+  outline: none;
+  border: none;
+  cursor: pointer;
+  margin-top: 8px;
+}

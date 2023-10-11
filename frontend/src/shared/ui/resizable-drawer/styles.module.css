@@ -1,0 +1,39 @@
+.resizerBlock {
+  position: absolute;
+  left: -7px;
+  top: 0;
+  width: 16px;
+  height: 100%;
+  cursor: ew-resize;
+  z-index: 2;
+}
+
+.resizerLine {
+  position: absolute;
+  left: 8px;
+  top: 0;
+  background-color: rgba(203, 208, 226, 0.2);
+  z-index: 2;
+  width: 4px;
+  height: 100%;
+  display: none;
+}
+
+.resizerBlock:hover .resizerLine {
+  display: block;
+}
+
+.resizerBtn {
+  position: absolute;
+  left: 0;
+  top: calc(50% - 28px);
+  background-color: white;
+  border: 1px solid #cbd0e2;
+  z-index: 4;
+  width: 100%;
+  height: 28px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
