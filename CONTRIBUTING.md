@@ -24,7 +24,7 @@ Run in terminal:
 
 * Run `python testy/manage.py runserver`
 
-Run in PyCharm Professional:
+Run in PyCharm:
 
 * Edit configurations -> Add New Configuration -> Django Server
   -> Add `DJANGO_SETTINGS_MODULE=testy.settings.local`to Environment variables
