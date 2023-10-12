@@ -52,7 +52,7 @@ class TestPlanService:
         return test_plan
 
     @transaction.atomic
-    def testplan_bulk_create(self, data=Dict[str, Any]) -> List[TestPlan]:
+    def testplan_bulk_create(self, data: Dict[str, Any]) -> List[TestPlan]:
         parameters = data.get('parameters')
         test_plans: List[TestPlan] = []
         for combine_parameter in combination_parameters(parameters):
