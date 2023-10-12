@@ -7,7 +7,7 @@ import { showEditModal } from "entities/test-case/model"
 
 import { EditTestCaseModal } from "./edit-test-case-modal"
 
-export const EditTestCase = ({ testCase }: { testCase: ITestCase }) => {
+export const EditTestCase = ({ testCase }: { testCase: TestCase }) => {
   const dispatch = useAppDispatch()
 
   const handleEdit = () => {

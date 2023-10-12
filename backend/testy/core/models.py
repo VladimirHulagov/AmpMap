@@ -63,6 +63,12 @@ class Project(BaseModel):
     name = models.CharField('name', max_length=settings.CHAR_FIELD_MAX_LEN)
     description = models.TextField('description', blank=True)
     is_archive = models.BooleanField(default=False)
+    icon = models.ImageField(
+        null=True,
+        blank=True,
+        max_length=150,
+        upload_to=partial(get_media_file_path, media_name='icons')
+    )
 
     class Meta:
         ordering = ('name',)

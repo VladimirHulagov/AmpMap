@@ -7,8 +7,8 @@ import { useUserConfig } from "entities/user/model"
 
 import { colors } from "shared/config"
 import { ContainerLoader } from "shared/ui"
-import { BriefcaseIcon } from "shared/ui/icons"
 
+import { ProjectIcon } from "../project-icon"
 import { FavoriteBtn } from "./favorite-btn"
 import styles from "./styles.module.css"
 
@@ -46,11 +46,20 @@ export const ProjectCards = () => {
           <Card
             headStyle={{ padding: 0 }}
             title={
-              <Row>
+              <Row style={{ height: 32, display: "flex", alignItems: "center" }}>
                 <Card.Meta
-                  style={{ marginLeft: 20, maxWidth: item.is_archive ? "75%" : "100%" }}
-                  avatar={<BriefcaseIcon style={{ fontSize: 24 }} />}
-                  title={item.name}
+                  style={{
+                    marginLeft: 20,
+                    maxWidth: item.is_archive ? "75%" : "100%",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                  avatar={<ProjectIcon icon={item.icon} name={item.name} size={32} />}
+                  title={
+                    <Link to={`/projects/${item.id}`} className={styles.projectTitle}>
+                      {item.name}
+                    </Link>
+                  }
                 />
                 {item.is_archive ? (
                   <Tag style={{ marginLeft: "auto", maxWidth: "25%" }} color={colors.error}>

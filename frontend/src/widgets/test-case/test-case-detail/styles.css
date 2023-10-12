@@ -1,0 +1,9 @@
+.testCaseDetailDrawer .ant-drawer-extra {
+  display: flex;
+  flex: inherit;
+  margin-left: auto;
+}
+
+.testCaseDetailDrawer .ant-drawer-header-title {
+  flex: auto;
+}

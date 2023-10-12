@@ -28,20 +28,25 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
+from pathlib import Path
+
 import permissions
 from core.api.v1.serializers import (
     AttachmentSerializer,
     LabelSerializer,
+    ProjectRetrieveSerializer,
     ProjectSerializer,
     ProjectStatisticsSerializer,
     SystemMessageSerializer,
 )
-from core.models import SystemMessage
+from core.mixins import MediaViewMixin
+from core.models import Project, SystemMessage
 from core.selectors.attachments import AttachmentSelector
 from core.selectors.labels import LabelSelector
 from core.selectors.projects import ProjectSelector
 from core.services.attachments import AttachmentService
 from core.services.projects import ProjectService
+from django.shortcuts import get_object_or_404
 from filters import AttachmentFilter, LabelFilter, ProjectArchiveFilter, TestyFilterBackend
 from rest_framework import mixins, status
 from rest_framework.decorators import action
@@ -72,6 +77,11 @@ class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin):
             return ProjectSelector().project_deleted_list()
         return ProjectSelector.project_list()
 
+    def get_serializer_class(self):
+        if self.action == 'retrieve':
+            return ProjectRetrieveSerializer
+        return ProjectSerializer
+
     @action(detail=False)
     def testplans_by_project(self, request, pk):
         qs = TestPlanSelector().testplan_project_root_list(project_id=pk)
@@ -97,11 +107,32 @@ class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin):
         serializer = ProjectStatisticsSerializer(queryset, many=True, context={'request': request})
         return Response(serializer.data)
 
-    def perform_create(self, serializer: ProjectSerializer):
-        serializer.instance = ProjectService().project_create(serializer.validated_data)
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = ProjectService().project_create(serializer.validated_data)
+        return Response(
+            ProjectRetrieveSerializer(instance, context={'request': request}).data,
+            status=status.HTTP_201_CREATED
+        )
 
-    def perform_update(self, serializer: ProjectSerializer):
-        serializer.instance = ProjectService().project_update(serializer.instance, serializer.validated_data)
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.get('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        new_instance = ProjectService().project_update(instance, serializer.validated_data)
+        return Response(ProjectRetrieveSerializer(new_instance, context={'request': request}).data)
+
+    def partial_update(self, request, *args, **kwargs):
+        kwargs['partial'] = True
+        return self.update(request, *args, **kwargs)
+
+    def destroy(self, request, pk, *args, **kwargs):
+        instance = self.get_object()
+        if instance.icon:
+            ProjectService().remove_media(Path(instance.icon.path))
+        return super().destroy(request, pk, *args, **kwargs)
 
 
 class AttachmentViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, mixins.CreateModelMixin,
@@ -132,3 +163,13 @@ class SystemMessagesViewSet(mixins.ListModelMixin, GenericViewSet):
 
     def get_queryset(self):
         return SystemMessage.objects.filter(is_active=True).order_by('-updated_at')
+
+
+class ProjectIconView(mixins.RetrieveModelMixin, GenericViewSet, MediaViewMixin):
+    permission_classes = [IsAuthenticated, ]
+
+    def retrieve(self, request, pk, *args, **kwargs):
+        project = get_object_or_404(Project, pk=pk)
+        if not project.icon or not project.icon.storage.exists(project.icon.path):
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        return self.retrieve_filepath(project.icon, request, generate_thumbnail=False)

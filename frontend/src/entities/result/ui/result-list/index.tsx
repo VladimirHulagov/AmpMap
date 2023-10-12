@@ -22,7 +22,7 @@ import styles from "./styles.module.css"
 
 interface ResultListProps {
   testId: number
-  testCase: ITestCase
+  testCase: TestCase
   isProjectArchive: boolean
 }
 

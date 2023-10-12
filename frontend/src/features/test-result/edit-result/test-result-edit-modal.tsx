@@ -13,7 +13,7 @@ interface TestResultEditModalProps {
   isShow: boolean
   setIsShow: React.Dispatch<React.SetStateAction<boolean>>
   testResult: IResult
-  testCase: ITestCase
+  testCase: TestCase
 }
 
 export const TestResultEditModal = ({

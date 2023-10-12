@@ -17,7 +17,7 @@ interface ISuite {
 }
 
 interface ISuiteWithCases extends ISuite {
-  test_cases: ITestCase[]
+  test_cases: TestCase[]
   children: ISuiteWithCases[]
 }
 
@@ -58,6 +58,11 @@ interface SuiteParents {
 }
 
 interface SuiteCopyBody {
-  suite_ids: string[]
+  suites: SuiteCopyItem[]
   dst_project_id: string
+}
+
+interface SuiteCopyItem {
+  id: string
+  new_name: string
 }

@@ -5,7 +5,7 @@ import { statuses } from "shared/config"
 import styles from "./styles.module.css"
 
 interface StepResultProps {
-  testCase: ITestCase
+  testCase: TestCase
   steps: {
     [stepId: string]: string
   }

@@ -37,7 +37,7 @@ export const useTestCasesTable = () => {
     page_size: paginationParams.pageSize,
   })
 
-  const handleChange: TableProps<ITestCase>["onChange"] = (
+  const handleChange: TableProps<TestCase>["onChange"] = (
     pagination: TablePaginationConfig,
     filters: Record<string, FilterValue | null>,
     sorter
@@ -60,7 +60,7 @@ export const useTestCasesTable = () => {
     setTestCaseId(null)
   }
 
-  const handleRowClick = ({ id }: ITestCase) => {
+  const handleRowClick = ({ id }: TestCase) => {
     const testCase = searchParams.get("test_case")
     if (!testCase) {
       setSearchParams({ test_case: String(id) })

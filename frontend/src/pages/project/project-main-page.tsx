@@ -2,6 +2,7 @@ import { Breadcrumb, Layout, PageHeader, Tag } from "antd"
 import { Outlet } from "react-router-dom"
 
 import { useProjectMain } from "entities/project/model/use-project-main"
+import { ProjectIcon } from "entities/project/ui"
 
 import { ProjectActiveTabContext } from "pages/project/project-main"
 
@@ -36,7 +37,12 @@ export const ProjectMainPage = () => {
       >
         <PageHeader
           breadcrumbRender={() => <Breadcrumb>{breadCrumbs}</Breadcrumb>}
-          title={project.name}
+          title={
+            <div style={{ display: "flex", alignItems: "center" }}>
+              <ProjectIcon icon={project.icon} name={project.name} />
+              {project.name}
+            </div>
+          }
           footer={<ProjectTabs projectId={projectId} />}
           extra={project.is_archive ? <Tag color={colors.error}>Archived</Tag> : null}
         ></PageHeader>

@@ -14,7 +14,7 @@ import { useTestCaseEditModal } from "./use-test-case-edit-modal"
 const { Dragger } = Upload
 
 interface Props {
-  testCase: ITestCase
+  testCase: TestCase
 }
 
 export const EditTestCaseModal = ({ testCase }: Props) => {

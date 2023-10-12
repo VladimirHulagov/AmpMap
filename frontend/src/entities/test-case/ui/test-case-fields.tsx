@@ -3,7 +3,7 @@ import { LabelField } from "entities/label/ui"
 import { Attachment, Field, Steps } from "shared/ui"
 
 interface TestCaseFieldsProps {
-  testCase: ITestCase
+  testCase: TestCase
 }
 
 export const TestCaseFields = ({ testCase }: TestCaseFieldsProps) => {

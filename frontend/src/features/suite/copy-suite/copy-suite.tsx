@@ -1,11 +1,20 @@
 import { CopyOutlined } from "@ant-design/icons"
-import { Button, Modal, Select } from "antd"
+import { Button, Input, Modal, Select } from "antd"
 
 import { useSuiteCopyModal } from "./use-suite-copy-modal"
 
 export const CopySuite = ({ suite }: { suite: ISuite }) => {
-  const { isShow, isLoading, projects, handleSave, handleCancel, handleShow, handleChange } =
-    useSuiteCopyModal(suite)
+  const {
+    isShow,
+    isLoading,
+    projects,
+    newName,
+    handleSave,
+    handleCancel,
+    handleShow,
+    handleChange,
+    handleChangeName,
+  } = useSuiteCopyModal(suite)
 
   return (
     <>
@@ -34,6 +43,13 @@ export const CopySuite = ({ suite }: { suite: ISuite }) => {
           </Button>,
         ]}
       >
+        <Input
+          placeholder="Please enter a name"
+          onChange={handleChangeName}
+          value={newName}
+          autoFocus={true}
+          style={{ marginBottom: "16px" }}
+        />
         <Select
           showSearch
           placeholder="Please select project"

@@ -9,18 +9,18 @@ export const projectApi = createApi({
   tagTypes: ["Project"],
   baseQuery: baseQueryWithLogout,
   endpoints: (builder) => ({
-    getProjects: builder.query<IProject[], boolean>({
+    getProjects: builder.query<Project[], boolean>({
       query: (showArchive) => ({
         url: rootPath,
         params: { is_archive: showArchive },
       }),
       providesTags: () => [{ type: "Project", id: "LIST" }],
     }),
-    getProject: builder.query<IProject, number>({
+    getProject: builder.query<Project, number>({
       query: (projectId) => `${rootPath}/${projectId}/`,
       providesTags: (result, error, id) => [{ type: "Project", id }],
     }),
-    createProject: builder.mutation<IProject, IProjectUpdate>({
+    createProject: builder.mutation<Project, FormData>({
       query: (body) => ({
         url: `${rootPath}/`,
         method: "POST",
@@ -28,7 +28,7 @@ export const projectApi = createApi({
       }),
       invalidatesTags: [{ type: "Project", id: "LIST" }],
     }),
-    updateProject: builder.mutation<IProject, { id: Id; body: IProjectUpdate }>({
+    updateProject: builder.mutation<Project, { id: Id; body: FormData }>({
       query: ({ id, body }) => ({
         url: `${rootPath}/${id}/`,
         method: "PATCH",

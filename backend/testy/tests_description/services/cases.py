@@ -145,11 +145,13 @@ class TestCaseService:
 
     @staticmethod
     def cases_copy(data):
-        cases = TestCase.objects.filter(pk__in=data['case_ids'])
         copied_cases = []
-        attrs_to_change = {}
-        if suite_id := data.get('dst_suite_id'):
-            attrs_to_change['suite_id'] = suite_id
-        for case in cases:
+        for case_data in data.get('cases'):
+            attrs_to_change = {}
+            if suite_id := data.get('dst_suite_id'):
+                attrs_to_change['suite_id'] = suite_id
+            if new_name := case_data.get('new_name'):
+                attrs_to_change['name'] = new_name
+            case = TestCase.objects.get(pk=case_data.get('id'))
             copied_cases.append(case.model_clone(attrs_to_change=attrs_to_change))
         return copied_cases

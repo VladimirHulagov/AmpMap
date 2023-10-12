@@ -9,7 +9,7 @@ export const AddResult = ({
   testCase,
 }: {
   isDisabled: boolean
-  testCase: ITestCase
+  testCase: TestCase
 }) => {
   const [isShow, setIsShow] = useState(false)
 

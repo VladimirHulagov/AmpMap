@@ -58,8 +58,8 @@ class CopyService:
             project_data = {'project_id': project.id}
         if suite := data.get('dst_suite_id'):
             dst_suite_id = suite.id
-
-        root_suites = TestSuiteSelector.suites_by_ids_list(data.get('suite_ids', []), 'pk')
+        suite_ids = [suite.get('id') for suite in data.get('suites', [])]
+        root_suites = TestSuiteSelector.suites_by_ids_list(suite_ids, 'pk')
         root_suite_mappings, tree_id_mapping, copied_root_suites = cls._copy_suites(
             root_suites,
             parent_id=dst_suite_id,
@@ -113,7 +113,12 @@ class CopyService:
         cls._copy_labels_and_items(labeled_cases, case_mappings, project_data.get('project_id'))
         for suite in copied_root_suites:
             TestSuite.objects.partial_rebuild(suite.tree_id)
-        return copied_root_suites
+        for suite_dict in data.get('suites', []):
+            if suite_dict.get('new_name') is None:
+                continue
+            copied_suite_id = root_suite_mappings.get(suite_dict.get('id'))
+            TestSuite.objects.filter(pk=copied_suite_id).update(name=suite_dict.get('new_name'))
+        return copied_root_suites.all()
 
     @classmethod
     def _copy_suites(

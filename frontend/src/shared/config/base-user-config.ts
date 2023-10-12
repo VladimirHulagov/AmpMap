@@ -1,4 +1,4 @@
-export const userConfig: IUserConfig = {
+export const userConfig: UserConfig = {
   ui: {
     is_open_sidebar: true,
     drawer_size_test_case_details: 500,
@@ -6,6 +6,7 @@ export const userConfig: IUserConfig = {
     graph_base_type: "pie",
     graph_base_bar_type: "by_time",
     graph_base_bar_attribute_input: "",
+    test_plan: {},
   },
   projects: {
     is_only_favorite: false,

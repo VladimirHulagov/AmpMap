@@ -13,7 +13,7 @@ export const usersApi = createApi({
   tagTypes: ["User", "Profile", "Config"],
   baseQuery: baseQueryWithLogout,
   endpoints: (builder) => ({
-    getConfig: builder.query<IUserConfig, void>({
+    getConfig: builder.query<UserConfig, void>({
       query: () => `${rootPath}/me/config/`,
       providesTags: () => ["Config"],
       async onQueryStarted(_, { dispatch, queryFulfilled }) {
@@ -25,7 +25,7 @@ export const usersApi = createApi({
         }
       },
     }),
-    updateConfig: builder.mutation<void, IUserConfig>({
+    updateConfig: builder.mutation<void, UserConfig>({
       query: (body) => ({
         url: `${rootPath}/me/config/`,
         method: "PATCH",
@@ -33,11 +33,11 @@ export const usersApi = createApi({
       }),
       invalidatesTags: ["Config"],
     }),
-    getUsers: builder.query<IUser[], void>({
+    getUsers: builder.query<User[], void>({
       query: () => rootPath,
       providesTags: () => [{ type: "User", id: "LIST" }],
     }),
-    getMe: builder.query<IUser, void>({
+    getMe: builder.query<User, void>({
       query: () => `${rootPath}/me/`,
       providesTags: () => [{ type: "Profile" }],
       async onQueryStarted(_, { dispatch, queryFulfilled }) {
@@ -49,7 +49,7 @@ export const usersApi = createApi({
         }
       },
     }),
-    updateMe: builder.mutation<void, IUserUpdate>({
+    updateMe: builder.mutation<void, UserUpdate>({
       query: (body) => ({
         url: `${rootPath}/me/`,
         method: "PATCH",
@@ -57,7 +57,7 @@ export const usersApi = createApi({
       }),
       invalidatesTags: [{ type: "Profile" }],
     }),
-    createUser: builder.mutation<IUser, IUserCreate>({
+    createUser: builder.mutation<User, UserCreate>({
       query: (body) => ({
         url: `${rootPath}/`,
         method: "POST",
@@ -65,7 +65,7 @@ export const usersApi = createApi({
       }),
       invalidatesTags: [{ type: "User", id: "LIST" }],
     }),
-    updateUser: builder.mutation<IUser, { id: Id; body: IUserUpdate }>({
+    updateUser: builder.mutation<User, { id: Id; body: UserUpdate }>({
       query: ({ id, body }) => ({
         url: `${rootPath}/${id}/`,
         method: "PATCH",

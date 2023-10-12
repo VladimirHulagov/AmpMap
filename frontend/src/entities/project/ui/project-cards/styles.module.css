@@ -14,3 +14,14 @@
   line-height: 30px;
   font-size: 30px;
 }
+
+.projectTitle {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  color: #555;
+}
+
+.projectTitle:hover {
+  color: #425cd7;
+}

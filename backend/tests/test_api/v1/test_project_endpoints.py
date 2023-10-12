@@ -29,12 +29,13 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 import json
+import os
 from http import HTTPStatus
 from operator import itemgetter
 from unittest import mock
 
 import pytest
-from core.api.v1.serializers import ProjectSerializer
+from core.api.v1.serializers import ProjectRetrieveSerializer
 from core.models import Project
 from django.utils import timezone
 from tests_description.models import TestCase
@@ -52,11 +53,12 @@ class TestProjectEndpoints:
     view_name_detail = 'api:v1:project-detail'
     view_name_progress = 'api:v1:project-progress'
 
-    def test_list(self, api_client, authorized_superuser, project_factory):
+    @pytest.mark.parametrize('extension', ['.png', '.jpeg'], ids=['png', 'jpeg'])
+    def test_list(self, api_client, authorized_superuser, project_factory, create_file, extension):
         expected_instances = []
         additional_info_fields = {'cases_count': 0, 'plans_count': 0, 'suites_count': 0, 'tests_count': 0}
         for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
-            model_dict = model_to_dict_via_serializer(project_factory(), ProjectSerializer)
+            model_dict = model_to_dict_via_serializer(project_factory(), ProjectRetrieveSerializer)
             model_dict.update(additional_info_fields)
             expected_instances.append(model_dict)
 
@@ -65,42 +67,70 @@ class TestProjectEndpoints:
             assert instance in expected_instances
 
     def test_retrieve(self, api_client, authorized_superuser, project):
-        expected_dict = model_to_dict_via_serializer(project, ProjectSerializer)
+        expected_dict = model_to_dict_via_serializer(project, ProjectRetrieveSerializer)
         response = api_client.send_request(self.view_name_detail, reverse_kwargs={'pk': project.pk})
         actual_dict = json.loads(response.content)
         assert actual_dict == expected_dict
 
-    def test_creation(self, api_client, authorized_superuser):
+    @pytest.mark.parametrize('extension', ['.png', '.jpeg'], ids=['png', 'jpeg'])
+    def test_creation(self, api_client, authorized_superuser, create_file, extension):
         expected_number_of_parameters = 1
         project_dict = {
             'name': constants.PROJECT_NAME,
-            'description': constants.DESCRIPTION
+            'description': constants.DESCRIPTION,
+            'icon': create_file,
         }
-        api_client.send_request(self.view_name_list, project_dict, HTTPStatus.CREATED, RequestType.POST)
+        api_client.send_request(
+            self.view_name_list,
+            project_dict,
+            HTTPStatus.CREATED,
+            RequestType.POST,
+            format='multipart'
+        )
         assert Project.objects.count() == expected_number_of_parameters, f'Expected number of projects is ' \
                                                                          f'"{expected_number_of_parameters}"' \
                                                                          f'actual: "{Parameter.objects.count()}"'
+        assert os.path.isfile(Project.objects.first().icon.path)
 
-    def test_partial_update(self, api_client, authorized_superuser, project):
+    @pytest.mark.parametrize('extension', ['.png', '.jpeg'], ids=['png', 'jpeg'])
+    def test_partial_update(self, api_client, authorized_superuser, project, create_file, extension):
         new_name = 'new_name'
+        assert not project.icon
         project_dict = {
             'id': project.id,
             'name': new_name,
+            'icon': create_file
         }
         api_client.send_request(
             self.view_name_detail,
             reverse_kwargs={'pk': project.pk},
             request_type=RequestType.PATCH,
-            data=project_dict
+            data=project_dict,
+            format='multipart'
         )
-        actual_name = Project.objects.get(pk=project.id).name
+        instance = Project.objects.get(pk=project.id)
+        actual_name = instance.name
+        icon_path = instance.icon.path
+        assert os.path.isfile(icon_path)
         assert actual_name == new_name, f'New name does not match. Expected name "{new_name}", actual: "{actual_name}"'
+        api_client.send_request(
+            self.view_name_detail,
+            reverse_kwargs={'pk': project.pk},
+            request_type=RequestType.PATCH,
+            data={'icon': ''},
+            format='multipart'
+        )
+        assert not os.path.isfile(icon_path)
 
-    @pytest.mark.parametrize('expected_status', [HTTPStatus.OK, HTTPStatus.BAD_REQUEST])
-    def test_update(self, api_client, authorized_superuser, project, expected_status):
+    @pytest.mark.parametrize(
+        'expected_status, extension',
+        [(HTTPStatus.OK, '.jpeg'), (HTTPStatus.BAD_REQUEST, '.jpeg')]
+    )
+    def test_update(self, api_client, authorized_superuser, project, expected_status, create_file, extension):
         new_name = 'new_name'
         project_dict = {
             'id': project.id,
+            'icon': create_file
         }
         if expected_status == HTTPStatus.OK:
             project_dict['name'] = new_name
@@ -109,17 +139,24 @@ class TestProjectEndpoints:
             reverse_kwargs={'pk': project.pk},
             request_type=RequestType.PUT,
             expected_status=expected_status,
-            data=project_dict
+            data=project_dict,
+            format='multipart'
         )
         if expected_status == HTTPStatus.OK:
-            actual_name = Project.objects.get(pk=project.id).name
+            instance = Project.objects.get(pk=project.id)
+            actual_name = instance.name
+            icon_path = instance.icon.path
+            assert os.path.isfile(icon_path)
             assert actual_name == new_name, f'Project name do not match. Expected name "{actual_name}", ' \
                                             f'actual: "{new_name}"'
         else:
             assert json.loads(response.content)['name'][0] == REQUIRED_FIELD_MSG
 
-    def test_delete(self, api_client, authorized_superuser, project):
+    @pytest.mark.parametrize('extension', ['.png', '.jpeg'], ids=['png', 'jpeg'])
+    def test_delete(self, api_client, authorized_superuser, project_factory, create_file, extension):
+        project = project_factory(icon=create_file)
         assert Project.objects.count() == 1, 'Project was not created'
+        icon_path = project.icon.path
         api_client.send_request(
             self.view_name_detail,
             expected_status=HTTPStatus.NO_CONTENT,
@@ -127,6 +164,7 @@ class TestProjectEndpoints:
             reverse_kwargs={'pk': project.pk}
         )
         assert not Project.objects.count(), f'Project with id "{project.id}" was not deleted.'
+        assert not os.path.isfile(icon_path), 'Icon was not deleted'
 
     def test_valid_project_assignation(self, api_client, authorized_superuser, user, test):
         result_dict = {

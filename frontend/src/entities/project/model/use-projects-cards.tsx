@@ -8,13 +8,13 @@ interface UseProjectsCardsReturn {
   onFavoriteClick: (projectId: number) => Promise<void>
   onIsOnlyFavoriteClick: () => Promise<void>
   onShowArchived: () => Promise<void>
-  projects: IProject[]
+  projects: Project[]
   isLoading: boolean
 }
 
 export const useProjectsCards = (): UseProjectsCardsReturn => {
   const { userConfig, updateConfig } = useUserConfig()
-  const [visibleProjects, setVisibleProjects] = useState<IProject[]>([])
+  const [visibleProjects, setVisibleProjects] = useState<Project[]>([])
 
   const [getProjects, { data: projects, isLoading }] = useLazyGetProjectsQuery()
 

@@ -51,7 +51,7 @@ _Iterable = TypeVar('_Iterable', bound=Union[List[Any], QuerySet[Any]])
 _DMT = TypeVar('_DMT', bound=models.Model)
 
 
-@pytest.mark.django_db
+@pytest.mark.django_db(reset_sequences=True)
 class TestSuiteEndpoints:
     view_name_list = 'api:v1:testsuite-list'
     view_name_detail = 'api:v1:testsuite-detail'
@@ -146,8 +146,8 @@ class TestSuiteEndpoints:
             expected_status=HTTPStatus.BAD_REQUEST
         )
 
-    @pytest.mark.django_db(reset_sequences=True)
     @pytest.mark.parametrize('is_project_specified', [False, True], ids=['Project not specified', 'Project specified'])
+    @pytest.mark.parametrize('is_name_specified', [False, True], ids=['New name not specified', 'New name specified'])
     @pytest.mark.parametrize('is_suite_specified', [False, True], ids=['Suite not specified', 'Suite is specified'])
     def test_suites_copy(
         self,
@@ -160,9 +160,11 @@ class TestSuiteEndpoints:
         attachment_factory,
         labeled_item_factory,
         is_suite_specified,
-        is_project_specified
+        is_project_specified,
+        is_name_specified
     ):
         attach_reference = 'Some useful text about cats ![](https://possible-host.com/attachments/{attachment_id}/)'
+        replacement_name = 'Suite replacement name'
         source_project = project_factory()
         dst_project = project_factory()
         root_suite = test_suite_factory(project=source_project)
@@ -193,7 +195,7 @@ class TestSuiteEndpoints:
                 attachments_steps_section_2.append(attachment)
 
         data = {
-            'suite_ids': [root_suite.id],
+            'suites': [{'id': root_suite.id}],
         }
         if is_suite_specified:
             dst_suite = test_suite_factory(project=dst_project)
@@ -201,6 +203,10 @@ class TestSuiteEndpoints:
 
         if is_project_specified:
             data['dst_project_id'] = dst_project.id
+
+        if is_name_specified:
+            data['suites'][0]['new_name'] = replacement_name
+
         if is_suite_specified and not is_project_specified:
             api_client.send_request(
                 self.view_name_copy,
@@ -327,6 +333,19 @@ class TestSuiteEndpoints:
 
         copied_suites = TestSuite.objects.all().exclude(pk__in=self.get_ids_from_list(source_suites)).order_by('id')
 
+        if is_name_specified:
+            if is_suite_specified:
+                copied_suites = copied_suites.exclude(id=dst_suite.id)
+            self._validate_copied_objects(
+                source_suites[:1],
+                copied_suites[:1],
+                changed_attr_names=['id', 'name', 'parent', 'tree_id', 'level'],
+                copied_attr_names=['description'],
+                project_id_changed=is_project_specified
+            )
+            source_suites = source_suites[1:]
+            copied_suites = copied_suites.exclude(id=copied_suites.first().id)
+
         if is_suite_specified:
             assert len(copied_suites) == len(copied_suites.filter(tree_id=copied_suites[0].tree_id)), \
                 'Tree was not rebuild properly'
@@ -440,6 +459,7 @@ class TestSuiteEndpointsQueryParams:
                 'Actual and expected dict are different.'
             assert actual_dict != incorrect_dict, 'SuiteSerializer is used to output suites with treeview param.'
 
+    @pytest.mark.django_db(reset_sequences=True)
     def test_search(self, api_client, authorized_superuser, test_suite_factory, project):
         root_suite = test_suite_factory(project=project)
         inner_suite = test_suite_factory(project=project, parent=root_suite)

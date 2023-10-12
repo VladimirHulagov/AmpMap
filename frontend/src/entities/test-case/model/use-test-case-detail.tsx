@@ -25,7 +25,7 @@ export const useTestCaseDetail = ({ testCaseId }: UseTestCaseDetailProps) => {
   const { setTestCaseId } = useContext(TestCaseIdContext) as TestCaseIdContextType
   const [showVersion, setShowVersion] = useState<number | null>(null)
   const { control } = useForm()
-  const [showTestCase, setShowTestCase] = useState<ITestCase | null>(null)
+  const [showTestCase, setShowTestCase] = useState<TestCase | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
 
   useEffect(() => {

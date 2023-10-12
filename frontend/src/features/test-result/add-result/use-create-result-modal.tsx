@@ -19,7 +19,7 @@ import { showModalCloseConfirm } from "shared/libs"
 export type CreateResultModalProps = {
   isShow: boolean
   setIsShow: React.Dispatch<React.SetStateAction<boolean>>
-  testCase: ITestCase
+  testCase: TestCase
 }
 
 type ErrorData = {

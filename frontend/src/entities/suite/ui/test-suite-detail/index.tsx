@@ -6,10 +6,11 @@ import React from "react"
 import { useTestSuiteDetails } from "entities/suite/model"
 import { TestCaseIdContext } from "entities/suite/ui/test-suite-detail/test-case-context"
 
-import { TestCaseDetail } from "entities/test-case/ui/test-case-detail"
 import { TestCasesTable } from "entities/test-case/ui/test-cases-table"
 
 import { ContainerLoader, Markdown } from "shared/ui"
+
+import { TestCaseDetail } from "widgets/test-case/test-case-detail/test-case-detail"
 
 import { TestSuiteTableWrapper } from "../test-suite-table-wrapper"
 import styles from "./styles.module.css"

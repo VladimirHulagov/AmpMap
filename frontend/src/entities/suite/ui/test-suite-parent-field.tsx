@@ -9,12 +9,14 @@ interface Props {
   handleSelectParent: (value?: { label: string; value: number }) => void
   selectedParent: { label: string; value: number } | null
   handleClearParent: () => void
+  placeholder?: string
 }
 
 export const TestSuiteParentField = ({
   selectedParent,
   handleClearParent,
   handleSelectParent,
+  placeholder,
 }: Props) => {
   const { projectId } = useParams<ParamProjectId>()
   const [search, setSearch] = useState<string>("")
@@ -97,7 +99,7 @@ export const TestSuiteParentField = ({
       value={selectedParent}
       showSearch
       labelInValue
-      placeholder="Search a parent suite"
+      placeholder={placeholder ? placeholder : "Search a parent suite"}
       defaultActiveFirstOption={false}
       showArrow
       filterOption={false}
@@ -105,6 +107,7 @@ export const TestSuiteParentField = ({
       onChange={handleChange}
       notFoundContent="No matches"
       allowClear
+      style={{ width: "100%" }}
     >
       {dataTestSuites.map((plan) => (
         <Select.Option key={plan.id} value={plan.id}>

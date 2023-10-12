@@ -13,7 +13,7 @@ import styles from "./styles.module.css"
 
 const { Content } = Layout
 
-export const ProfileFields = ({ profile }: { profile: IUser }) => {
+export const ProfileFields = ({ profile }: { profile: User }) => {
   return (
     <>
       <Field title="Username" value={profile.username} />

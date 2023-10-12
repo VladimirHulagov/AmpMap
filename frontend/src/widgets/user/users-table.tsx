@@ -9,14 +9,15 @@ import { useAppDispatch, useAppSelector } from "app/hooks"
 
 import { selectUser } from "entities/auth/model"
 
+import { useDeleteUserMutation, useGetUsersQuery } from "entities/user/api"
+import { setUser, showEditUserModal } from "entities/user/model"
+import { UserAvatar } from "entities/user/ui/user-avatar/user-avatar"
+
 import { useTableSearch } from "shared/hooks"
 import { ContainerLoader } from "shared/ui"
 import { CheckedIcon } from "shared/ui/icons"
 
-import { useDeleteUserMutation, useGetUsersQuery } from "../api"
-import { setUser, showEditUserModal } from "../model"
-
-export const UsersTable: React.FC = () => {
+export const UsersTable = () => {
   const user = useAppSelector(selectUser)
   const dispatch = useAppDispatch()
   const [deleteUser] = useDeleteUserMutation()
@@ -26,7 +27,7 @@ export const UsersTable: React.FC = () => {
   const [filteredInfo, setFilteredInfo] = useState<Record<string, FilterValue | null>>({})
   const { setSearchText, getColumnSearch } = useTableSearch()
 
-  const handleChange: TableProps<IUser>["onChange"] = (
+  const handleChange: TableProps<User>["onChange"] = (
     pagination: TablePaginationConfig,
     filters: Record<string, FilterValue | null>
   ) => {
@@ -38,12 +39,12 @@ export const UsersTable: React.FC = () => {
     setSearchText("")
   }
 
-  const showUserDetails = (user: IUser) => {
+  const showUserDetails = (user: User) => {
     dispatch(setUser(user))
     dispatch(showEditUserModal())
   }
 
-  const onOk = async (user: IUser) => {
+  const onOk = async (user: User) => {
     try {
       await deleteUser(user.id).unwrap()
       notification.success({
@@ -61,7 +62,7 @@ export const UsersTable: React.FC = () => {
     }
   }
 
-  const handleShowModalDelete = (user: IUser) => {
+  const handleShowModalDelete = (user: User) => {
     Modal.confirm({
       title: "Do you want to delete these User?",
       okText: "Delete",
@@ -70,7 +71,13 @@ export const UsersTable: React.FC = () => {
     })
   }
 
-  const columns: ColumnsType<IUser> = [
+  const columns: ColumnsType<User> = [
+    {
+      key: "avatar",
+      width: "32px",
+      align: "right",
+      render: (_, record) => <UserAvatar avatar_link={record.avatar_link} size={32} />,
+    },
     {
       title: "Username",
       dataIndex: "username",

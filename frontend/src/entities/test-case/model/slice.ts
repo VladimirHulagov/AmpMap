@@ -14,7 +14,7 @@ export const testCaseSlice = createSlice({
   name: "testCase",
   initialState,
   reducers: {
-    setTestCase: (state, action: PayloadAction<ITestCase>) => {
+    setTestCase: (state, action: PayloadAction<TestCase>) => {
       state.testCase = action.payload
     },
     clearTestCase: (state) => {

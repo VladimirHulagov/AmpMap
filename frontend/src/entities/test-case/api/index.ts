@@ -18,7 +18,7 @@ export const testCaseApi = createApi({
   baseQuery: baseQueryWithLogout,
   tagTypes: ["TestCase"],
   endpoints: (builder) => ({
-    getTestCases: builder.query<PaginationResponse<ITestCase[]>, GetTestCasesQuery>({
+    getTestCases: builder.query<PaginationResponse<TestCase[]>, GetTestCasesQuery>({
       query: (params) => ({
         url: rootPath,
         params,
@@ -34,7 +34,7 @@ export const testCaseApi = createApi({
             ]
           : [{ type: "TestCase", id: "LIST" }],
     }),
-    createTestCase: builder.mutation<ITestCase, ITestCaseCreate>({
+    createTestCase: builder.mutation<TestCase, TestCaseCreate>({
       query: (body) => ({
         url: `${rootPath}/`,
         method: "POST",
@@ -61,7 +61,7 @@ export const testCaseApi = createApi({
       },
       invalidatesTags: [{ type: "TestCase", id: "LIST" }],
     }),
-    updateTestCase: builder.mutation<ITestCase, ITestCaseUpdate>({
+    updateTestCase: builder.mutation<TestCase, TestCaseUpdate>({
       query: (body) => ({
         url: `${rootPath}/${body.id}/`,
         method: "PUT",
@@ -85,13 +85,13 @@ export const testCaseApi = createApi({
             ]
           : [{ type: "TestCase", id: "LIST" }],
     }),
-    getTestCaseById: builder.query<ITestCase, number>({
+    getTestCaseById: builder.query<TestCase, number>({
       query: (testCaseId) => ({
         url: `${rootPath}/${testCaseId}/`,
       }),
       providesTags: (_, __, id) => [{ type: "TestCase", id }],
     }),
-    getTestCaseByVersion: builder.query<ITestCase, { testCaseId: number; version: string }>({
+    getTestCaseByVersion: builder.query<TestCase, { testCaseId: number; version: string }>({
       query: ({ testCaseId, version }) => ({
         url: `${rootPath}/${testCaseId}?version=${version}`,
       }),
@@ -101,6 +101,20 @@ export const testCaseApi = createApi({
       query: (id) => ({
         url: `${rootPath}/${id}/delete/preview`,
       }),
+    }),
+    copyTestCase: builder.mutation<void, TestCaseCopyBody>({
+      query: (body) => ({
+        url: `${rootPath}/copy/`,
+        method: "POST",
+        body,
+      }),
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        await queryFulfilled
+        dispatch(labelInvalidate)
+        dispatch(testPlanInvalidate)
+        dispatch(suiteInvalidate)
+      },
+      invalidatesTags: [{ type: "TestCase", id: "LIST" }],
     }),
   }),
 })
@@ -114,4 +128,5 @@ export const {
   useGetTestCaseByVersionQuery,
   useLazyGetTestCaseByVersionQuery,
   useGetTestCaseDeletePreviewQuery,
+  useCopyTestCaseMutation,
 } = testCaseApi

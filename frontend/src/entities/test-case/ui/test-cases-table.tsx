@@ -23,7 +23,7 @@ export const TestCasesTable = () => {
     showTestCaseDetail,
   } = useTestCasesTable()
 
-  const columns: ColumnsType<ITestCase> = [
+  const columns: ColumnsType<TestCase> = [
     {
       title: "Id",
       dataIndex: "id",

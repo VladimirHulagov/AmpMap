@@ -70,10 +70,22 @@ class ProjectSerializer(ModelSerializer):
 
     class Meta:
         model = Project
-        fields = ('id', 'url', 'name', 'description', 'is_archive')
+        fields = ('id', 'url', 'name', 'description', 'is_archive', 'icon')
 
 
-class ProjectStatisticsSerializer(ModelSerializer):
+class ProjectRetrieveSerializer(ProjectSerializer):
+    url = HyperlinkedIdentityField(view_name='api:v1:project-detail')
+    icon = SerializerMethodField(read_only=True)
+
+    def get_icon(self, instance):
+        if not instance.icon:
+            return ''
+        return self.context['request'].build_absolute_uri(
+            reverse('api:v1:icon-path', kwargs={'pk': instance.id})
+        )
+
+
+class ProjectStatisticsSerializer(ProjectRetrieveSerializer):
     url = HyperlinkedIdentityField(view_name='api:v1:project-detail')
     cases_count = IntegerField()
     suites_count = IntegerField()
@@ -82,9 +94,8 @@ class ProjectStatisticsSerializer(ModelSerializer):
 
     class Meta:
         model = Project
-        fields = (
-            'id', 'url', 'name', 'description', 'is_archive', 'cases_count', 'suites_count', 'plans_count',
-            'tests_count'
+        fields = ProjectRetrieveSerializer.Meta.fields + (
+            'cases_count', 'suites_count', 'plans_count', 'tests_count',
         )
 
 
