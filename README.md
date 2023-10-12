@@ -4,7 +4,7 @@ TestY is an open source project developed by KNS Group LLC (YADRO) as an alterna
 Project is lightweight and uses django-rest-framework as core for its backend.
 ### Docker deployment
 1. Create .env file, you can find example with comments in repository *.env.template*
-2. docker-compose -f docker-compose-dev.yml up: starts dev version of TestY
+2. docker-compose up: starts dev version of TestY
    1. DB runs on port 5435
    2. TestY backend runs on port 8001
    3. TestY frontend runs on port 3007
