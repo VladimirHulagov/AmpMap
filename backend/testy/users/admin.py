@@ -52,13 +52,13 @@ class GroupAdmin(admin.ModelAdmin):
 @admin.register(User)
 class UserAdmin(UserAdmin):
     list_display = [
-        'username', 'email', 'first_name', 'last_name', 'is_superuser', 'is_staff', 'is_active'
+        'username', 'email', 'first_name', 'last_name', 'is_superuser', 'is_staff', 'is_active', 'avatar'
     ]
     fieldsets = (
         (None, {'fields': ('username', 'password', 'first_name', 'last_name', 'email')}),
         ('Groups', {'fields': ('groups',)}),
         ('Status', {
-            'fields': ('is_active', 'is_staff', 'is_superuser'),
+            'fields': ('is_active', 'is_staff', 'is_superuser', 'avatar'),
         }),
         ('Important dates', {'fields': ('last_login', 'date_joined')}),
     )

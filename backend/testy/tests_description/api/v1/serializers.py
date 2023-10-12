@@ -255,13 +255,23 @@ class TestSuiteTreeCasesSerializer(TestSuiteTreeSerializer):
         fields = TestSuiteTreeSerializer.Meta.fields + ('test_cases',)
 
 
+class TestSuiteCopyDetailSerializer(serializers.Serializer):
+    id = serializers.IntegerField(required=True)
+    new_name = serializers.CharField(required=False)
+
+
 class TestCaseCopySerializer(serializers.Serializer):
-    case_ids = serializers.ListSerializer(child=serializers.IntegerField(), required=True)
+    cases = TestSuiteCopyDetailSerializer(many=True, required=True)
     dst_suite_id = serializers.IntegerField(required=False)
 
 
+class TestSuiteCopyDetailSerializer(serializers.Serializer):
+    id = serializers.IntegerField(required=True)
+    new_name = serializers.CharField(required=False)
+
+
 class TestSuiteCopySerializer(serializers.Serializer):
-    suite_ids = serializers.ListSerializer(child=serializers.IntegerField(), required=True)
+    suites = TestSuiteCopyDetailSerializer(many=True, required=True)
     dst_project_id = serializers.PrimaryKeyRelatedField(
         required=False,
         allow_null=True,

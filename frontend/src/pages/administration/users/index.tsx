@@ -5,9 +5,9 @@ import { useDispatch } from "react-redux"
 
 import { showCreateUserModal } from "entities/user/model"
 import { CreateEditUserModal } from "entities/user/ui/create-edit-user-modal"
-import UsersTable from "entities/user/ui/users-table"
 
 import { MenuContext, MenuContextType } from "widgets/[ui]/main"
+import UsersTable from "widgets/user/users-table"
 
 const { Content } = Layout
 

@@ -4,7 +4,7 @@ import { useState } from "react"
 
 import { DeleteTestCaseModal } from "./delete-test-case-modal"
 
-export const DeleteTestCase = ({ testCase }: { testCase: ITestCase }) => {
+export const DeleteTestCase = ({ testCase }: { testCase: TestCase }) => {
   const [isShowTestCaseDeleteModal, setIsShowTestCaseDeleteModal] = useState(false)
 
   const handleDelete = async () => {

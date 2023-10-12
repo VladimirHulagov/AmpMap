@@ -1,8 +1,7 @@
 import { FetchBaseQueryError } from "@reduxjs/toolkit/dist/query"
 import { notification } from "antd"
-import { useNavigate } from "react-router-dom"
 
-import { useDeleteProjectMutation, useGetProjectDeletePreviewQuery } from "entities/project/api"
+import { useArchiveProjectMutation, useGetProjectArchivePreviewQuery } from "entities/project/api"
 
 import { AlertSuccessChange } from "shared/ui/alert-success-change"
 
@@ -11,13 +10,12 @@ import { ModalConfirmDeleteArchive } from "widgets/[ui]/modal-confirm-delete-arc
 interface Props {
   isShow: boolean
   setIsShow: (isShow: boolean) => void
-  project: IProject
+  project: Project
 }
 
-export const ProjectDeleteModal = ({ isShow, setIsShow, project }: Props) => {
-  const navigate = useNavigate()
-  const [deleteProject, { isLoading: isLoadingDelete }] = useDeleteProjectMutation()
-  const { data, isLoading } = useGetProjectDeletePreviewQuery(String(project.id), {
+export const ArchiveProjectModal = ({ isShow, setIsShow, project }: Props) => {
+  const [archiveProject, { isLoading: isLoadingArchive }] = useArchiveProjectMutation()
+  const { data, isLoading } = useGetProjectArchivePreviewQuery(String(project.id), {
     skip: !isShow,
   })
 
@@ -27,11 +25,11 @@ export const ProjectDeleteModal = ({ isShow, setIsShow, project }: Props) => {
 
   const handleDelete = async () => {
     try {
-      await deleteProject(Number(project.id)).unwrap()
+      await archiveProject(Number(project.id))
       notification.success({
         message: "Success",
         description: (
-          <AlertSuccessChange id={String(project.id)} action="deleted" title="Project" />
+          <AlertSuccessChange id={String(project.id)} action="archived" title="Project" />
         ),
       })
     } catch (err: unknown) {
@@ -44,7 +42,6 @@ export const ProjectDeleteModal = ({ isShow, setIsShow, project }: Props) => {
       })
     }
 
-    navigate("/administration/projects")
     handleClose()
   }
 
@@ -52,14 +49,14 @@ export const ProjectDeleteModal = ({ isShow, setIsShow, project }: Props) => {
     <ModalConfirmDeleteArchive
       isShow={isShow}
       isLoading={isLoading}
-      isLoadingButton={isLoadingDelete}
+      isLoadingButton={isLoadingArchive}
       name={project.name}
       typeTitle="Project"
       type="project"
       data={data || []}
       handleClose={handleClose}
       handleDelete={handleDelete}
-      action="delete"
+      action="archive"
     />
   )
 }

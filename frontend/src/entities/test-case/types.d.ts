@@ -1,12 +1,12 @@
 interface TestCaseState {
-  testCase: ITestCase | null
+  testCase: TestCase | null
   modal: {
     isShow: boolean
     isEditMode: boolean
   }
 }
 
-interface ITestCase {
+interface TestCase {
   id: Id
   name: string
   project: number
@@ -28,7 +28,7 @@ interface ITestCase {
   labels: LabelInForm[]
 }
 
-interface ITestCaseCreate {
+interface TestCaseCreate {
   name: string
   project: number
   suite: number
@@ -43,7 +43,7 @@ interface ITestCaseCreate {
   attachments?: number[]
 }
 
-interface ITestCaseUpdate extends ITestCase {
+interface TestCaseUpdate extends TestCase {
   attachments?: number[]
   steps: StepUpload[] | StepAttachNumber[]
 }
@@ -97,4 +97,14 @@ interface TestCaseFormData {
   steps?: Step[]
   is_steps?: boolean
   labels?: LabelInForm[]
+}
+
+interface TestCaseCopyBody {
+  cases: TestCaseCopyItem[]
+  dst_suite_id: string
+}
+
+interface TestCaseCopyItem {
+  id: string
+  new_name: string
 }

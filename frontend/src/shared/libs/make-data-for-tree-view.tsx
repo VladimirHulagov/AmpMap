@@ -1,9 +1,6 @@
 import { FileDoneOutlined, FolderOpenOutlined } from "@ant-design/icons"
 
-export const makeTestSuitesForTreeView = (
-  items: ISuiteWithCases[],
-  testCases: ITestCase[] = []
-) => {
+export const makeTestSuitesForTreeView = (items: ISuiteWithCases[], testCases: TestCase[] = []) => {
   const testSuitesTreeView: ISuiteWithCases[] = items.map((item) => {
     return {
       ...item,

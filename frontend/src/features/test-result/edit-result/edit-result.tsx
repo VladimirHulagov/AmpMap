@@ -8,7 +8,7 @@ export const EditResult = ({
   testResult,
   isDisabled,
 }: {
-  testCase: ITestCase
+  testCase: TestCase
   testResult: IResult
   isDisabled: boolean
 }) => {

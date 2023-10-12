@@ -1,6 +1,6 @@
 interface UserState {
-  user: IUser | null
-  userConfig: IUserConfig
+  user: User | null
+  userConfig: UserConfig
   modal: {
     isShow: boolean
     isEditMode: boolean
@@ -10,7 +10,7 @@ interface UserState {
   }
 }
 
-interface IUser {
+interface User {
   id: Id
   url: string
   username: string
@@ -24,20 +24,20 @@ interface IUser {
   avatar_link: string
 }
 
-interface IUserCreate {
+interface UserCreate {
   email: string
   password: string
   first_name: string
   last_name: string
 }
 
-interface IUserUpdate {
+interface UserUpdate {
   email: string
   first_name: string
   last_name: string
 }
 
-interface IUserConfig {
+interface UserConfig {
   ui: {
     is_open_sidebar: boolean
     drawer_size_test_case_details: number
@@ -45,6 +45,7 @@ interface IUserConfig {
     graph_base_type: "pie" | "bar"
     graph_base_bar_type: "by_time" | "by_attr"
     graph_base_bar_attribute_input: string
+    test_plan: Record<string, { start_date: string; end_date: string }>
   }
   projects: {
     is_only_favorite: boolean

@@ -1,18 +1,13 @@
 interface ProjectState {
-  projectId: Id | null
-  project: IProject | null
-  modal: {
-    isShow: boolean
-    isEditMode: boolean
-  }
   showArchived: boolean
   isOnlyFavorites: boolean
 }
 
-interface IProject {
+interface Project {
   id: Id
   url: string
   name: string
+  icon?: string | null
   description: string
   is_archive: boolean
   cases_count: number
@@ -21,10 +16,11 @@ interface IProject {
   tests_count: number
 }
 
-interface IProjectUpdate {
+interface ProjectUpdate {
   name: string
   description: string
   is_archive: boolean
+  icon?: RcFile
 }
 
 interface ProjectsProgress {

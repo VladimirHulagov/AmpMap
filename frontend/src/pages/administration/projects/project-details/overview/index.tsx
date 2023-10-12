@@ -1,14 +1,10 @@
-import { DeleteOutlined, EditOutlined } from "@ant-design/icons"
-import { Button, Dropdown, MenuProps, Space } from "antd"
-import { useContext, useEffect, useState } from "react"
-import { useDispatch } from "react-redux"
+import { Space } from "antd"
+import { ArchiveProject, DeleteProject, EditProject } from "features/project"
+import { useContext, useEffect } from "react"
 import { useParams } from "react-router-dom"
 
 import { useGetProjectQuery } from "entities/project/api"
-import { setProject, showEditProjectModal } from "entities/project/model"
-import { CreateEditProjectModal } from "entities/project/ui/modals/create-edit-project-modal"
-import { ProjectArchiveModal } from "entities/project/ui/modals/project-archive-modal"
-import { ProjectDeleteModal } from "entities/project/ui/modals/project-delete-modal"
+import { ProjectIcon } from "entities/project/ui"
 
 import {
   ProjectDetailsActiveTabContext,
@@ -17,9 +13,10 @@ import {
 
 import { ContainerLoader, Field, TagBoolean } from "shared/ui"
 
-export const ProjectFields = ({ project }: { project: IProject }) => {
+export const ProjectFields = ({ project }: { project: Project }) => {
   return (
     <>
+      <ProjectIcon icon={project.icon} name={project.name} />
       <Field title="Name" value={project?.name} />
       <Field title="Description" value={project?.description} />
       <Field
@@ -31,49 +28,15 @@ export const ProjectFields = ({ project }: { project: IProject }) => {
 }
 
 export const ProjectDetailsOverviewPage = () => {
-  const dispatch = useDispatch()
   const { setProjectDetailsActiveTab } = useContext(
     ProjectDetailsActiveTabContext
   ) as ProjectDetailsActiveTabContextType
   const { projectId } = useParams<ParamProjectId>()
-  const { data, isLoading, isFetching, isSuccess } = useGetProjectQuery(Number(projectId))
-  const [isShowProjectDeleteModal, setIsShowProjectDeleteModal] = useState(false)
-  const [isShowProjectArchiveModal, setIsShowProjectArchiveModal] = useState(false)
+  const { data, isLoading } = useGetProjectQuery(Number(projectId))
 
   useEffect(() => {
     setProjectDetailsActiveTab("overview")
   })
-
-  useEffect(() => {
-    if (isSuccess) {
-      dispatch(setProject(data))
-    }
-  }, [isFetching])
-
-  const showProjectDetails = () => {
-    dispatch(showEditProjectModal())
-  }
-
-  const handleButtonDeleteClick = () => {
-    setIsShowProjectDeleteModal(true)
-  }
-
-  const handleButtonArchiveClick = () => {
-    setIsShowProjectArchiveModal(true)
-  }
-
-  const ButtonDelete = () => (
-    <Button id="delete-project" icon={<DeleteOutlined />} danger onClick={handleButtonDeleteClick}>
-      Delete
-    </Button>
-  )
-
-  const items: MenuProps["items"] = [
-    {
-      key: "1",
-      label: <ButtonDelete />,
-    },
-  ]
 
   if (isLoading || !data) {
     return <ContainerLoader />
@@ -83,35 +46,10 @@ export const ProjectDetailsOverviewPage = () => {
     <>
       <div className="site-layout-background" style={{ padding: 24, minHeight: 360 }}>
         <Space style={{ marginBottom: "16px", float: "right" }}>
-          <Button
-            id="edit-project"
-            icon={<EditOutlined />}
-            onClick={() => {
-              showProjectDetails()
-            }}
-          >
-            Edit
-          </Button>
-          {data.is_archive ? (
-            <ButtonDelete />
-          ) : (
-            <Dropdown.Button menu={{ items }} danger onClick={handleButtonArchiveClick}>
-              Archive
-            </Dropdown.Button>
-          )}
-          <CreateEditProjectModal />
+          <EditProject project={data} />
+          {data.is_archive ? <DeleteProject project={data} /> : <ArchiveProject project={data} />}
         </Space>
         <ProjectFields project={data} />
-        <ProjectDeleteModal
-          isShow={isShowProjectDeleteModal}
-          setIsShow={setIsShowProjectDeleteModal}
-          project={data}
-        />
-        <ProjectArchiveModal
-          isShow={isShowProjectArchiveModal}
-          setIsShow={setIsShowProjectArchiveModal}
-          project={data}
-        />
       </div>
     </>
   )

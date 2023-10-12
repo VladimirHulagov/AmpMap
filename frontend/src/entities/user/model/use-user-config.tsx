@@ -6,7 +6,7 @@ import { selectUserConfig, setUserConfig } from "."
 import { useLazyGetConfigQuery, useUpdateConfigMutation } from "../api"
 
 interface UseUserConfigReturn {
-  userConfig: IUserConfig
+  userConfig: UserConfig
   updateConfig: (data: object) => Promise<void>
 }
 

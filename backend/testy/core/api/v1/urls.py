@@ -77,6 +77,7 @@ urlpatterns = [
          name='project-archive-restore'),
     path('projects/<int:pk>/progress/', views.ProjectViewSet.as_view({'get': 'project_progress'}),
          name='project-progress'),
+    path('projects/<int:pk>/icon/', views.ProjectIconView.as_view({'get': 'retrieve'}), name='icon-path'),
     path('system/messages/', messages_view, name='system-messages'),
 ]
 

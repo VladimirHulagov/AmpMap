@@ -3,7 +3,7 @@ import { MenuContext } from "widgets"
 
 import { DashboardPageView } from "pages/dashboard/dashboard"
 
-import { MenuContextType } from "widgets/[ui]/main"
+import { MenuContextType } from "widgets/[ui]"
 
 export const DashboardPage = () => {
   const { setActiveMenu } = useContext(MenuContext) as MenuContextType

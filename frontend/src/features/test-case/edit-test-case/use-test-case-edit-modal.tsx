@@ -43,7 +43,7 @@ type ErrorData = {
 }
 
 interface Props {
-  testCase: ITestCase
+  testCase: TestCase
 }
 
 export const useTestCaseEditModal = ({ testCase }: Props) => {

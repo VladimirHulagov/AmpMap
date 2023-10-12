@@ -195,7 +195,7 @@ class TestCaseEndpoints:
         api_client.send_request(
             self.view_name_copy,
             data={
-                'case_ids': [case1.id, case2.id],
+                'cases': [{'id': case1.id}, {'id': case2.id}],
                 'dst_suite_id': test_suite.id
             },
             request_type=RequestType.POST
@@ -216,6 +216,7 @@ class TestCaseEndpoints:
         fields = ['setup', 'scenario', 'expected', 'description', 'teardown']
         case_factory = request.getfixturevalue(factory_name)
         attachments_reference_to_change = '/attachments/{0}/ Some cute cat description /attachments/4444/'
+        replacement_case_name = 'Replacement case name'
         case1 = case_factory(project=project)
         case2 = case_factory(project=project)
         src_instances = [case1, case2]
@@ -265,7 +266,7 @@ class TestCaseEndpoints:
             api_client.send_request(
                 self.view_name_copy,
                 data={
-                    'case_ids': [case1.id, case2.id],
+                    'cases': [{'id': case1.id, 'new_name': replacement_case_name}, {'id': case2.id}],
                     'dst_suite_id': test_suite.id
                 },
                 request_type=RequestType.POST
@@ -278,11 +279,10 @@ class TestCaseEndpoints:
             assert TestCaseStep.objects.count() == constants.NUMBER_OF_OBJECTS_TO_CREATE * expected_number_of_cases
         assert LabeledItem.objects.count() == expected_number_of_cases
         assert Label.objects.count() == 2
-        # src_cases.sort(key=itemgetter('id'))
-        # copied_cases.sort(key=itemgetter('id'))
+        assert copied_cases[0]['name'] == replacement_case_name
+        assert copied_cases[1]['name'] == src_cases[1]['name']
         for expected_case, actual_case in zip(src_cases, copied_cases):
             # validate copied contents that should not change
-            assert expected_case['name'] == actual_case['name']
             assert expected_case['labels'] == actual_case['labels']
             assert expected_case['estimate'] == actual_case['estimate']
             # validate copied fields that should be created from start

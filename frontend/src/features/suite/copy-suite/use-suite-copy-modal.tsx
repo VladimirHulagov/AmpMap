@@ -1,6 +1,6 @@
 import { FetchBaseQueryError } from "@reduxjs/toolkit/dist/query"
 import { notification } from "antd"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import { useGetProjectsQuery } from "entities/project/api"
 
@@ -12,6 +12,7 @@ export const useSuiteCopyModal = (suite: ISuite) => {
   const [isShow, setIsShow] = useState(false)
   const [copySuite, { isLoading }] = useCopySuiteMutation()
   const { data, isLoading: isLoadingProjects } = useGetProjectsQuery(false)
+  const [newName, setNewName] = useState("")
   const [selectedProject, setSelectedProject] = useState("")
 
   const handleCancel = () => {
@@ -25,7 +26,10 @@ export const useSuiteCopyModal = (suite: ISuite) => {
 
   const handleSave = async () => {
     try {
-      await copySuite({ suite_ids: [String(suite.id)], dst_project_id: selectedProject })
+      await copySuite({
+        suites: [{ id: String(suite.id), new_name: newName }],
+        dst_project_id: selectedProject,
+      })
       notification.success({
         message: "Success",
         description: <AlertSuccessChange id={String(suite.id)} action="copied" title="Suite" />,
@@ -46,6 +50,15 @@ export const useSuiteCopyModal = (suite: ISuite) => {
     setSelectedProject(value.value)
   }
 
+  const handleChangeName = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewName(e.target.value)
+  }
+
+  useEffect(() => {
+    if (!isShow) return
+    setNewName(`${suite.name}(Copy)`)
+  }, [suite, isShow])
+
   const projects = useMemo(() => {
     if (!data) return []
 
@@ -60,9 +73,11 @@ export const useSuiteCopyModal = (suite: ISuite) => {
     handleShow,
     handleSave,
     handleChange,
+    handleChangeName,
     isShow,
     isLoading,
     isLoadingProjects,
     projects,
+    newName,
   }
 }

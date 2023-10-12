@@ -1,5 +1,10 @@
-import { BarChartOutlined, ClockCircleOutlined, PieChartOutlined } from "@ant-design/icons"
-import { DatePicker, Input, Row, Segmented } from "antd"
+import {
+  BarChartOutlined,
+  ClockCircleOutlined,
+  PieChartOutlined,
+  UndoOutlined,
+} from "@ant-design/icons"
+import { Button, DatePicker, Input, Row, Segmented } from "antd"
 import { SegmentedValue } from "antd/lib/segmented"
 import moment from "moment"
 import { RangeValue } from "rc-picker/lib/interface"
@@ -29,8 +34,12 @@ export const TestPlanStatistics = ({ testPlanId }: TestPlanStatisticsProps) => {
     userConfig.ui?.graph_base_bar_type || "by_time"
   )
   const [dateHistogram, setDateHistogram] = useState({
-    start: moment().subtract(6, "days"),
-    end: moment(),
+    start: userConfig.ui?.test_plan?.[testPlanId]?.start_date
+      ? moment(userConfig.ui?.test_plan?.[testPlanId]?.start_date)
+      : moment().subtract(6, "days"),
+    end: userConfig.ui?.test_plan?.[testPlanId]?.end_date
+      ? moment(userConfig.ui?.test_plan?.[testPlanId]?.end_date)
+      : moment(),
   })
   const [attribute, setAttribute] = useState(userConfig.ui.graph_base_bar_attribute_input || "")
   const [attributeValue, setAttributeValue] = useState(
@@ -70,11 +79,45 @@ export const TestPlanStatistics = ({ testPlanId }: TestPlanStatisticsProps) => {
     })
   }
 
+  const updateUserDateConfig = async (start: string, end: string) => {
+    await updateConfig({
+      ...userConfig,
+      ui: {
+        ...userConfig.ui,
+        test_plan: {
+          ...userConfig.ui.test_plan,
+          [testPlanId]: {
+            start_date: start,
+            end_date: end,
+          },
+        },
+      },
+    })
+  }
+
+  const handleResetUserDateConfig = async () => {
+    setDateHistogram({
+      start: moment().subtract(6, "days"),
+      end: moment(),
+    })
+    await updateConfig({
+      ...userConfig,
+      ui: {
+        ...userConfig.ui,
+        test_plan: {
+          ...userConfig.ui.test_plan,
+          [testPlanId]: undefined,
+        },
+      },
+    })
+  }
+
   const handleDatePickerChange = async (values: RangeValue<moment.Moment>) => {
     if (!values) return
     const [start, end] = values
     if (!start || !end) return
     setDateHistogram({ start, end })
+    updateUserDateConfig(start.format("YYYY-MM-DD"), end.format("YYYY-MM-DD"))
   }
 
   const handleAttributeChange = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -105,6 +148,8 @@ export const TestPlanStatistics = ({ testPlanId }: TestPlanStatisticsProps) => {
     })
   }
 
+  const hasUserDataConfig = !!userConfig.ui?.test_plan?.[testPlanId]
+
   return (
     <div style={{ marginBottom: 16 }}>
       <Row style={{ marginBottom: 16, maxWidth: 800, paddingRight: 40 }}>
@@ -134,12 +179,38 @@ export const TestPlanStatistics = ({ testPlanId }: TestPlanStatisticsProps) => {
               gap: 16,
             }}
           >
-            <DatePicker.RangePicker
-              defaultValue={[dateHistogram.start, dateHistogram.end]}
-              onChange={handleDatePickerChange}
-              size="middle"
-              style={{ width: 240 }}
-            />
+            <div>
+              <DatePicker.RangePicker
+                onChange={handleDatePickerChange}
+                size="middle"
+                style={
+                  hasUserDataConfig
+                    ? {
+                        width: 240,
+                        height: "40px",
+                        borderTopRightRadius: 0,
+                        borderBottomRightRadius: 0,
+                      }
+                    : { width: 240, height: "40px" }
+                }
+                value={[dateHistogram.start, dateHistogram.end]}
+              />
+              {hasUserDataConfig && (
+                <Button
+                  style={{
+                    borderLeft: "none",
+                    height: "40px",
+                    borderTopLeftRadius: 0,
+                    borderBottomLeftRadius: 0,
+                  }}
+                  onClick={handleResetUserDateConfig}
+                  id="reset-date-user-config"
+                >
+                  <UndoOutlined />
+                </Button>
+              )}
+            </div>
+
             {barType === "by_attr" && (
               <div style={{ display: "flex", flexDirection: "column", position: "relative" }}>
                 <Input.Search

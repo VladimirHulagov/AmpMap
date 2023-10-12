@@ -1,7 +1,7 @@
 interface CommentType {
   id: number
   content: string
-  user: IUser
+  user: User
   attachments: IAttachment[]
   created_at: string
   updated_at: string

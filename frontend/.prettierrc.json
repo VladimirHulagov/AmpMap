@@ -14,6 +14,7 @@
     "^entities/project/(.*)$",
     "^entities/result/(.*)$",
     "^entities/suite/(.*)$",
+    "^entities/system/(.*)$",
     "^entities/test/(.*)$",
     "^entities/test-case/(.*)$",
     "^entities/test-plan/(.*)$",

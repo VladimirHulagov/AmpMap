@@ -19,7 +19,7 @@ export interface UseFormLabelsProps {
 
 interface UseTestCaseFormLabelsParams {
   setValue: UseFormSetValue<TestCaseFormData>
-  testCase: ITestCase | null
+  testCase: TestCase | null
   isShow: boolean
   isEditMode: boolean
 }

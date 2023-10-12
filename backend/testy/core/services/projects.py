@@ -32,20 +32,27 @@
 from typing import Any, Dict
 
 from core.models import Project
+from core.services.media import MediaService
 
 
-class ProjectService:
-    non_side_effect_fields = ['name', 'description', 'is_archive']
+class ProjectService(MediaService):
+    non_side_effect_fields = ['name', 'description', 'is_archive', 'icon']
 
     def project_create(self, data: Dict[str, Any]) -> Project:
-        return Project.model_create(
+        project = Project.model_create(
             fields=self.non_side_effect_fields,
             data=data,
         )
+        self.populate_image_thumbnails(project.icon)
+        project.save()
+        return project
 
     def project_update(self, project: Project, data: Dict[str, Any]) -> Project:
+        old_icon = project.icon
         project, _ = project.model_update(
             fields=self.non_side_effect_fields,
             data=data,
         )
+        self.populate_image_thumbnails(project.icon, old_icon)
+        project.save()
         return project

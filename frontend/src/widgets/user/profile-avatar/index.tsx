@@ -7,7 +7,7 @@ import { Crop, PercentCrop, ReactCrop } from "react-image-crop"
 import { useDeleteAvatarMutation, useGetMeQuery, useUploadAvatarMutation } from "entities/user/api"
 import { UserAvatar } from "entities/user/ui/user-avatar/user-avatar"
 
-import { getNumberToFixed } from "shared/libs"
+import { fileReader, getNumberToFixed } from "shared/libs"
 import { ContainerLoader } from "shared/ui"
 
 import styles from "./styles.module.css"
@@ -42,14 +42,11 @@ export const ProfileAvatar = () => {
 
   const onChange = async (info: UploadChangeParam<UploadFile<unknown>>) => {
     if (!info.file.originFileObj) return
-    const imgUrl: string = await new Promise((resolve) => {
-      const reader = new FileReader()
-      reader.readAsDataURL(info.file.originFileObj as Blob)
-      reader.onload = () => resolve(String(reader.result))
-    })
+    const file = await fileReader(info.file)
+
     setImage({
-      url: imgUrl || "",
-      file: info.file.originFileObj,
+      url: file.url || "",
+      file: file.file || null,
     })
     setIsEdit(true)
   }

@@ -1,18 +1,15 @@
-import { PlusOutlined } from "@ant-design/icons"
-import { Breadcrumb, Button, Layout, PageHeader, Space } from "antd"
-import React, { useContext, useEffect } from "react"
-import { useDispatch } from "react-redux"
+import { Breadcrumb, Layout, PageHeader, Space } from "antd"
+import { CreateProject } from "features/project"
+import { useContext, useEffect } from "react"
 import { MenuContext } from "widgets"
 
-import { showCreateProjectModal } from "entities/project/model"
-import { CreateEditProjectModal, ProjectsTable } from "entities/project/ui"
+import { ProjectsTable } from "entities/project/ui"
 
 import { MenuContextType } from "widgets/[ui]/main"
 
 const { Content } = Layout
 
 export const ProjectsMain = () => {
-  const dispatch = useDispatch()
   const { setActiveMenu, setOpenSubMenu } = useContext(MenuContext) as MenuContextType
 
   useEffect(() => {
@@ -25,10 +22,6 @@ export const ProjectsMain = () => {
     <Breadcrumb.Item key="projects">Projects</Breadcrumb.Item>,
   ]
 
-  const handleClick = () => {
-    dispatch(showCreateProjectModal())
-  }
-
   return (
     <>
       <PageHeader
@@ -38,15 +31,7 @@ export const ProjectsMain = () => {
       <Content style={{ margin: "24px" }}>
         <div className="site-layout-background" style={{ padding: 24, minHeight: 360 }}>
           <Space style={{ marginBottom: "16px", display: "flex", justifyContent: "right" }}>
-            <Button
-              id="create-project"
-              icon={<PlusOutlined />}
-              type="primary"
-              onClick={handleClick}
-            >
-              Create Project
-            </Button>
-            <CreateEditProjectModal />
+            <CreateProject />
           </Space>
           <ProjectsTable />
         </div>

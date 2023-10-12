@@ -5,19 +5,16 @@ import { FilterValue } from "antd/lib/table/interface"
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
-import { useAppDispatch } from "app/hooks"
-
 import { useTableSearch } from "shared/hooks"
 import { HighLighterTesty } from "shared/ui"
 import { CheckedIcon } from "shared/ui/icons"
 
 import { useGetProjectsQuery } from "../api"
-import { setProjectId } from "./slice"
+import { ProjectIcon } from "../ui"
 
 const { Link } = Typography
 
 export const useProjectsTable = () => {
-  const dispatch = useAppDispatch()
   const navigate = useNavigate()
   const { data: projects, isLoading } = useGetProjectsQuery(true)
 
@@ -25,11 +22,10 @@ export const useProjectsTable = () => {
   const { setSearchText, getColumnSearch, searchText } = useTableSearch()
 
   const showProjectDetail = (projectId: Id) => {
-    dispatch(setProjectId(projectId))
     return navigate(`/administration/projects/${projectId}/overview`)
   }
 
-  const handleChange: TableProps<IProject>["onChange"] = (
+  const handleChange: TableProps<Project>["onChange"] = (
     pagination: TablePaginationConfig,
     filters: Record<string, FilterValue | null>
   ) => {
@@ -45,7 +41,14 @@ export const useProjectsTable = () => {
     navigate(`/administration/projects/${id}/overview`)
   }
 
-  const columns: ColumnsType<IProject> = [
+  const columns: ColumnsType<Project> = [
+    {
+      title: "Icon",
+      dataIndex: "icon",
+      key: "icon",
+      width: 50,
+      render: (text, record) => <ProjectIcon icon={record.icon} name={record.name} />,
+    },
     {
       title: "Name",
       dataIndex: "name",

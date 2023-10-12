@@ -1,3 +1,3 @@
 interface AuthState {
-  user: IUser | null
+  user: User | null
 }
