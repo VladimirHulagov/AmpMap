@@ -13,7 +13,7 @@
     "lint": "npm run lint:prettier && npm run lint:eslint",
     "lint:eslint": "eslint src",
     "lint:prettier": "prettier --check src",
-    "prepare": "husky install"
+    "prepare": "cd .. && husky install ./frontend/.husky"
   },
   "husky": {
     "hooks": {
