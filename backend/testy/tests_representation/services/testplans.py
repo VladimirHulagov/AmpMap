@@ -43,7 +43,7 @@ class TestPlanService:
     )
 
     @transaction.atomic
-    def testplan_create(self, data=Dict[str, Any]) -> List[TestPlan]:
+    def testplan_create(self, data: Dict[str, Any]) -> List[TestPlan]:
         test_plan = TestPlan.model_create(fields=self.non_side_effect_fields, data=data)
         if test_cases := data.get('test_cases', []):
             TestService().bulk_test_create([test_plan], test_cases)
