@@ -1,5 +1,4 @@
 -r requirements.in
--r ci-requirements.in
 
 pip-tools==6.8.0
 django-extensions==3.2.1

@@ -22,3 +22,6 @@ django-redis==5.2.0
 pytimeparse==1.1.8
 pytest-factoryboy==2.5.0
 Pillow==9.5.0
+git+https://gitlab-pub.yadro.com/testy/allure_uploader.git@release/0.1.0
+git+https://gitlab-pub.yadro.com/testy/plugin-example.git@release/0.1.0
+git+https://gitlab-pub.yadro.com/testy/testrail_migrator.git@release/0.1.0

@@ -96,9 +96,9 @@ INSTALLED_APPS = [
 ]
 
 TESTY_PLUGINS = [
-    # 'testrail_migrator',
-    # 'allure_uploader',
-    # 'spreadsheet_migrator'
+    'testrail_migrator',
+    'allure_uploader',
+    'plugin_example',
 ]
 # Defines if response should be served as nginx redirection
 TESTY_ALLOW_FILE_RESPONSE = parse_bool_from_str(os.getenv('TESTY_ALLOW_FILE_RESPONSE', 'True'))
