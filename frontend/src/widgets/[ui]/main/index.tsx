@@ -2,7 +2,7 @@ import React from "react"
 
 export { Main } from "./main"
 
-export type MenuContextType = {
+export interface MenuContextType {
   activeMenu: string[]
   setActiveMenu: React.Dispatch<React.SetStateAction<string[]>>
   openSubMenu: string[]

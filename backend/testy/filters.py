@@ -30,13 +30,15 @@
 # <http://www.gnu.org/licenses/>.
 import operator
 from functools import reduce
-from typing import Callable
+from typing import Callable, List
 
-from core.models import Attachment, Label
+from core.models import Attachment, Label, Project
+from core.selectors.projects import ProjectSelector
+from django.contrib.auth import get_user_model
 from django.contrib.postgres.aggregates import StringAgg
 from django.db import models
-from django.db.models import Count, F, OuterRef, Prefetch, Q, Subquery, Value
-from django.db.models.functions import Concat, Floor
+from django.db.models import F, OuterRef, Prefetch, Q, Subquery, Value
+from django.db.models.functions import Concat
 from django_filters import rest_framework as filters
 from rest_framework.compat import distinct
 from rest_framework.exceptions import NotFound
@@ -45,9 +47,12 @@ from tests_description.models import TestCase, TestSuite
 from tests_description.selectors.suites import TestSuiteSelector
 from tests_representation.models import Parameter, Test, TestPlan, TestResult
 from tests_representation.selectors.testplan import TestPlanSelector
-from utilities.request import get_boolean
+from tests_representation.services.statistics import StatisticProcessor
+from utilities.request import get_boolean, get_user_favorites
+from utilities.string import parse_bool_from_str
+from utilities.tree import form_tree_prefetch_lookups
 
-from utils import form_tree_prefetch_lookups, parse_bool_from_str
+UserModel = get_user_model()
 
 
 class TestyFilterBackend(filters.DjangoFilterBackend):
@@ -94,10 +99,47 @@ class ProjectArchiveFilter(filters.FilterSet):
         return super().filter_queryset(queryset)
 
 
+class ProjectOrderingFilter(OrderingFilter):
+
+    def filter_queryset(self, request, queryset, view):
+        ordering = self.get_ordering(request, queryset, view)
+        favorite_conditions = Q(**{'pk__in': get_user_favorites(request)})
+        if ordering:
+            queryset = queryset.annotate(priority=ProjectSelector.favorites_annotation(favorite_conditions))
+            return queryset.order_by('priority', *ordering)
+
+        return queryset
+
+
+class ProjectFilter(ProjectArchiveFilter):
+    name = filters.CharFilter(lookup_expr='icontains')
+    favorites = filters.BooleanFilter('pk', method='display_favorites')
+
+    class Meta:
+        model = Project
+        fields = ('name', 'favorites')
+
+    def display_favorites(self, queryset, field_name, only_favorites):
+        favorite_conditions = Q(**{f'{field_name}__in': get_user_favorites(self.request)})
+
+        if only_favorites:
+            return queryset.filter(favorite_conditions).order_by('name')
+
+        return (
+            queryset
+            .annotate(
+                priority=ProjectSelector.favorites_annotation(favorite_conditions),
+            )
+            .order_by('priority', 'name')
+        )
+
+
 class TestCaseFilter(BaseProjectFilter):
+    name = filters.CharFilter(lookup_expr='icontains')
+
     class Meta:
         model = TestCase
-        fields = ('project', 'suite')
+        fields = ('id', 'project', 'suite', 'name')
 
 
 class ParameterFilter(BaseProjectFilter):
@@ -131,26 +173,20 @@ class TestPlanFilter(ArchiveFilter):
 
 
 class TestFilter(ArchiveFilter):
+    assignee = filters.NumberFilter()
+    unassigned = filters.BooleanFilter(field_name='assignee', lookup_expr='isnull')
+
     def filter_queryset(self, queryset):
+        filter_condition = {}
+        for key in ('labels', 'not_labels'):
+            labels = self.data.get(key)
+            filter_condition[key] = tuple(labels.split(',')) if labels else None
 
-        labels = self.data.get('labels')
-        if labels:
-            labels = labels.split(',')
+        filter_condition['labels_condition'] = self.data.get('labels_condition')
 
-            labels_condition = self.data.get('labels_condition')
-
-            if labels_condition == 'and':
-                queryset = queryset.filter(
-                    Q(case__labeled_items__label__in=labels) & Q(case__labeled_items__is_deleted=False)
-                ).alias(
-                    nlabels=Count('case__labeled_items')
-                ).filter(
-                    nlabels__gte=len(labels)
-                )
-            else:
-                queryset = queryset.filter(
-                    Q(case__labeled_items__label__in=labels) & Q(case__labeled_items__is_deleted=False)
-                ).distinct()
+        statistic_processor = StatisticProcessor(filter_condition)
+        if statistic_processor.labels or statistic_processor.not_labels:
+            queryset = statistic_processor.process_labels(queryset)
 
         last_status = self.data.get('last_status')
         if last_status:
@@ -167,8 +203,6 @@ class TestFilter(ArchiveFilter):
             ).filter(q_lookup)
         if suites := self.data.get('suite'):
             queryset = queryset.filter(case__suite__id__in=suites.split(','))
-        if assignee := self.data.get('assignee'):
-            queryset = queryset.filter(assignee__username__icontains=assignee)
         return super().filter_queryset(queryset)
 
     class Meta:
@@ -274,9 +308,17 @@ class TestSuiteSearchFilter(TreeSearchBaseFilter):
     model_class = TestSuite
 
     def get_ancestors(self, valid_options):
-        return super().get_ancestors(valid_options).annotate(
-            cases_count=Count('test_cases'),
-            descendant_count=Floor((F('rght') - F('lft') - 1) / 2)
+        return super().get_ancestors(valid_options).annotate(**TestSuiteSelector.cases_count_annotation())
+
+    def custom_filter(self, queryset, filter_conditions, request):
+        valid_options = self.get_valid_options(filter_conditions, request)
+        if get_boolean(request, 'is_flat'):
+            return valid_options
+        max_level = self.max_level_method()
+        ancestors = self.get_ancestors(valid_options)
+        return ancestors.filter(parent_id=request.query_params.get('parent')).prefetch_related(
+            *TestSuiteSelector.suites_tree_prefetch_children(max_level),
+            *TestSuiteSelector.suites_tree_prefetch_cases(max_level),
         )
 
 
@@ -335,7 +377,7 @@ class ActivitySearchFilter(SearchFilter):
         return queryset
 
 
-class ActivityOrderingFilter(OrderingFilter):
+class CustomOrderingFilter(OrderingFilter):
 
     def filter_queryset(self, request, queryset):
         ordering = request.query_params.get('ordering')
@@ -345,12 +387,21 @@ class ActivityOrderingFilter(OrderingFilter):
         return queryset.order_by(*ordering)
 
 
-class ActivityFilter(filters.FilterSet):
-    def filter_queryset(self, request, queryset):
-        filter_kwargs = {}
-        for query_param_name in ['history_user', 'status', 'history_type', 'test']:
+class CustomSearchFilter(SearchFilter):
+    def filter_queryset(self, request, queryset, allowed_search_params: List[str]):
+        filter_lookup = {}
+        for query_param_name in allowed_search_params:
             if value := request.query_params.get(query_param_name):
-                filter_kwargs[f'{query_param_name}__in'] = list(map(str.strip, value.split(',')))
-        if not filter_kwargs:
-            return queryset
-        return queryset.filter(**filter_kwargs)
+                filter_lookup[f'{query_param_name}__in'] = list(map(str.strip, value.split(',')))
+        return queryset.filter(**filter_lookup)
+
+
+class UserFilter(filters.FilterSet):
+    username = filters.CharFilter(lookup_expr='icontains')
+    email = filters.CharFilter(lookup_expr='icontains')
+    first_name = filters.CharFilter(lookup_expr='icontains')
+    last_name = filters.CharFilter(lookup_expr='icontains')
+
+    class Meta:
+        model = UserModel
+        fields = ('username', 'email', 'first_name', 'last_name', 'is_active', 'is_staff')

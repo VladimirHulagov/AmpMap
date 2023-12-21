@@ -2,14 +2,16 @@ import { createApi } from "@reduxjs/toolkit/dist/query/react"
 
 import { baseQueryWithLogout } from "app/apiSlice"
 
+import { systemStatsInvalidate } from "entities/system/api"
+
 const rootPath = "v1/suites"
 
 export const suiteApi = createApi({
   reducerPath: "suiteApi",
   baseQuery: baseQueryWithLogout,
-  tagTypes: ["TestSuite"],
+  tagTypes: ["TestSuite", "TestSuiteDeletePreview"],
   endpoints: (builder) => ({
-    getTestSuites: builder.query<PaginationResponse<ISuite[]>, IGetTestSuitesTreeViewQuery>({
+    getTestSuites: builder.query<PaginationResponse<Suite[]>, GetTestSuitesTreeViewQuery>({
       query: ({ project, parent, search, ...params }) => ({
         url: rootPath,
         params: { project, parent, search, ...params },
@@ -25,27 +27,25 @@ export const suiteApi = createApi({
             ]
           : [{ type: "TestSuite", id: "LIST" }],
     }),
-    getTestSuitesTreeView: builder.query<PaginationResponse<ISuite[]>, IGetTestSuitesTreeViewQuery>(
-      {
-        query: ({ project, treeview = true, parent, search, ...params }) => ({
-          url: rootPath,
-          params: { project, treeview, parent, search, ...params },
-        }),
-        providesTags: (result) =>
-          result
-            ? [
-                ...result.results.map(({ id }) => ({
-                  type: "TestSuite" as const,
-                  id,
-                })),
-                { type: "TestSuite", id: "LIST" },
-              ]
-            : [{ type: "TestSuite", id: "LIST" }],
-      }
-    ),
+    getTestSuitesTreeView: builder.query<PaginationResponse<Suite[]>, GetTestSuitesTreeViewQuery>({
+      query: ({ project, treeview = true, parent, search, ...params }) => ({
+        url: rootPath,
+        params: { project, treeview, parent, search, ...params },
+      }),
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.results.map(({ id }) => ({
+                type: "TestSuite" as const,
+                id,
+              })),
+              { type: "TestSuite", id: "LIST" },
+            ]
+          : [{ type: "TestSuite", id: "LIST" }],
+    }),
     getTestSuitesTreeViewWithCases: builder.query<
-      PaginationResponse<ISuiteWithCases[]>,
-      IGetTestSuitesTreeViewQuery
+      PaginationResponse<SuiteWithCases[]>,
+      GetTestSuitesTreeViewQuery
     >({
       query: ({ project, treeview = true, show_cases = true, parent, ...params }) => ({
         url: rootPath,
@@ -62,15 +62,28 @@ export const suiteApi = createApi({
             ]
           : [{ type: "TestSuite", id: "LIST" }],
     }),
-    createSuite: builder.mutation<ISuite, ISuiteCreate>({
+    createSuite: builder.mutation<Suite, SuiteCreate>({
       query: (body) => ({
         url: `${rootPath}/`,
         method: "POST",
         body,
       }),
-      invalidatesTags: [{ type: "TestSuite", id: "LIST" }],
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        await queryFulfilled
+        dispatch(systemStatsInvalidate)
+      },
+      invalidatesTags: (result) =>
+        result?.parent
+          ? [
+              { type: "TestSuite", id: "LIST" },
+              { type: "TestSuiteDeletePreview", id: result?.parent.id },
+            ]
+          : [
+              { type: "TestSuite", id: "LIST" },
+              { type: "TestSuiteDeletePreview", id: "LIST" },
+            ],
     }),
-    updateTestSuite: builder.mutation<ISuite, { id: Id; body: ISuiteUpdate }>({
+    updateTestSuite: builder.mutation<Suite, { id: Id; body: SuiteUpdate }>({
       query: ({ id, body }) => ({
         url: `${rootPath}/${id}/`,
         method: "PATCH",
@@ -89,6 +102,10 @@ export const suiteApi = createApi({
         url: `${rootPath}/${testSuiteId}/`,
         method: "DELETE",
       }),
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        await queryFulfilled
+        dispatch(systemStatsInvalidate)
+      },
       invalidatesTags: (result, error, id) =>
         result
           ? [
@@ -97,7 +114,7 @@ export const suiteApi = createApi({
             ]
           : [{ type: "TestSuite", id: "LIST" }],
     }),
-    getSuite: builder.query<ISuite, IGetTestSuiteQuery>({
+    getSuite: builder.query<Suite, GetTestSuiteQuery>({
       query: ({ suiteId, treeview = false }) => ({
         url: `${rootPath}/${suiteId}/`,
         method: "GET",
@@ -113,6 +130,10 @@ export const suiteApi = createApi({
       query: (id) => ({
         url: `${rootPath}/${id}/delete/preview`,
       }),
+      providesTags: (result, error, id) => [
+        { type: "TestSuiteDeletePreview", id },
+        { type: "TestSuiteDeletePreview", id: "LIST" },
+      ],
     }),
     copySuite: builder.mutation<void, SuiteCopyBody>({
       query: (body) => ({
@@ -123,6 +144,11 @@ export const suiteApi = createApi({
     }),
   }),
 })
+
+export const suiteInvalidate = suiteApi.util.invalidateTags([
+  { type: "TestSuite", id: "LIST" },
+  { type: "TestSuiteDeletePreview", id: "LIST" },
+])
 
 export const {
   useGetTestSuitesQuery,
@@ -135,8 +161,6 @@ export const {
   useUpdateTestSuiteMutation,
   useLazyGetSuiteQuery,
   useGetSuiteParentsQuery,
-  useLazyGetSuiteParentsQuery,
-  useGetTestSuitesTreeViewWithCasesQuery,
   useLazyGetTestSuitesTreeViewWithCasesQuery,
   useGetSuiteDeletePreviewQuery,
   useCopySuiteMutation,

@@ -2,10 +2,10 @@ import { useContext, useEffect } from "react"
 
 import { ProjectOverview } from "entities/project/ui"
 
-import { ProjectActiveTabContext, ProjectActiveTabContextType } from "pages/project/project-main"
+import { ProjectActiveTabContext } from "pages/project/project-main"
 
 export const ProjectOverviewTab = () => {
-  const { setProjectActiveTab } = useContext(ProjectActiveTabContext) as ProjectActiveTabContextType
+  const { setProjectActiveTab } = useContext(ProjectActiveTabContext)!
   useEffect(() => {
     setProjectActiveTab("overview")
   })

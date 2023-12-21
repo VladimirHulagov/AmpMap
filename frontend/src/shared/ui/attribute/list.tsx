@@ -23,10 +23,10 @@ export const AttributeList = ({
 
   return (
     <>
-      {attributes.map((attribut, index) => {
+      {attributes.map((attribut) => {
         return (
           <AttributForm
-            key={index}
+            key={attribut.id}
             fieldProps={fieldProps}
             attribut={attribut}
             handleAttributeRemove={handleAttributeRemove}

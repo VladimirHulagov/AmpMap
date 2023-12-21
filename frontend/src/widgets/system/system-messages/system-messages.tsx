@@ -29,12 +29,12 @@ export const SystemMessages = () => {
     return messages.filter((item) => !hiddenMessages.includes(item.id))
   }, [messages])
 
-  if (isLoading || !messages || !messages.length) return null
+  if (isLoading || !messages?.length) return null
 
   return (
     <div className="wrapper-system-messages">
-      {messagesClear.map((item, index) => (
-        <div key={index} className="system-message">
+      {messagesClear.map((item) => (
+        <div key={item.id} className="system-message">
           <Alert
             message={item.content}
             type={formatType[item.level]}

@@ -1,8 +1,8 @@
 import { UserAddOutlined } from "@ant-design/icons"
-import { Button, Divider, Form, Modal, Select, Typography } from "antd"
-import { Controller } from "react-hook-form"
+import { Button, Divider, Form, Modal, Typography } from "antd"
 
 import { UserAvatar } from "entities/user/ui/user-avatar/user-avatar"
+import { UserSearchInput } from "entities/user/ui/user-search-input"
 
 import styles from "./styles.module.css"
 import { useAssignTo } from "./use-assign-to"
@@ -12,11 +12,10 @@ export const AssignTo = () => {
     activeTest,
     isOpenModal,
     errors,
-    control,
     isDirty,
-    selectUsers,
     isLoadingUpdateTest,
     me,
+    selectedUser,
     handleClose,
     handleOpenAssignModal,
     handleSubmitForm,
@@ -35,7 +34,7 @@ export const AssignTo = () => {
       <div style={{ padding: 8, marginBottom: 8 }}>
         <Typography id="test-case-assign-to">
           <div className={styles.assignBlock}>
-            <UserAvatar size={32} avatar_link={activeTest?.avatar_link || null} />
+            <UserAvatar size={32} avatar_link={activeTest?.avatar_link ?? null} />
             <Typography.Text id="test-case-assign-to-user">
               {activeTest?.assignee_username ? activeTest?.assignee_username : "Nobody"}
             </Typography.Text>
@@ -83,32 +82,12 @@ export const AssignTo = () => {
           <Form.Item
             label="Name"
             validateStatus={errors?.assignUserId ? "error" : ""}
-            help={errors?.assignUserId || ""}
+            help={errors?.assignUserId ?? ""}
           >
-            <Controller
-              name="assignUserId"
-              control={control}
-              render={({ field }) => (
-                <Select
-                  {...field}
-                  allowClear
-                  autoFocus
-                  showSearch
-                  placeholder="Select a user"
-                  optionFilterProp="children"
-                  filterOption={(input, option) =>
-                    (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
-                  }
-                  filterSort={(optionA, optionB) =>
-                    (optionA?.label ?? "")
-                      .toLowerCase()
-                      .localeCompare((optionB?.label ?? "").toLowerCase())
-                  }
-                  options={selectUsers}
-                  onChange={handleAssignUserChange}
-                  onClear={handleAssignUserClear}
-                />
-              )}
+            <UserSearchInput
+              selectedUser={selectedUser}
+              handleChange={handleAssignUserChange}
+              handleClear={handleAssignUserClear}
             />
             {!isAssignetMe && (
               <button className={styles.assignToMeModal} onClick={handleAssignToMe} type="button">

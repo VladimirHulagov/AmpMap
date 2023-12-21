@@ -28,15 +28,8 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-import datetime
-import json
-import logging
-from http import HTTPStatus
-
-import requests
 from celery import shared_task
 from django.contrib.auth import get_user_model
-from django.core.files.base import ContentFile
 from django.db import transaction
 from django.utils import timezone
 

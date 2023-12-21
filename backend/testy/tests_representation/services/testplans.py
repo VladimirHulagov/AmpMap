@@ -28,13 +28,14 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from typing import Any, Dict, List
+from itertools import product
+from typing import Any, Dict, List, Tuple
 
 from django.db import transaction
-from tests_representation.models import TestPlan
+from tests_representation.models import Parameter, TestPlan
 from tests_representation.selectors.parameters import ParameterSelector
 from tests_representation.services.tests import TestService
-from tests_representation.utils import combination_parameters
+from utilities.sql import lock_table
 
 
 class TestPlanService:
@@ -43,42 +44,46 @@ class TestPlanService:
     )
 
     @transaction.atomic
-    def testplan_create(self, data: Dict[str, Any]) -> List[TestPlan]:
-        test_plan = TestPlan.model_create(fields=self.non_side_effect_fields, data=data)
+    def testplan_create(self, data=Dict[str, Any]) -> List[TestPlan]:
+        with lock_table(TestPlan):
+            test_plan = TestPlan.model_create(fields=self.non_side_effect_fields, data=data)
+            parent = data.get('parent') if data.get('parent') else test_plan
+            TestPlan.objects.partial_rebuild(parent.tree_id)
         if test_cases := data.get('test_cases', []):
             TestService().bulk_test_create([test_plan], test_cases)
-        parent = data.get('parent') if data.get('parent') else test_plan
-        TestPlan.objects.partial_rebuild(parent.tree_id)
         return test_plan
 
     @transaction.atomic
-    def testplan_bulk_create(self, data: Dict[str, Any]) -> List[TestPlan]:
+    def testplan_bulk_create(self, data=Dict[str, Any]) -> List[TestPlan]:
         parameters = data.get('parameters')
         test_plans: List[TestPlan] = []
-        for combine_parameter in combination_parameters(parameters):
-            test_plan_object: TestPlan = TestPlan.model_create(
-                fields=self.non_side_effect_fields, data=data, commit=False
-            )
-            test_plan_object.save()
-            test_plan_object.parameters.set(ParameterSelector().parameter_list_by_ids(combine_parameter))
-            test_plans.append(test_plan_object)
+        with lock_table(TestPlan):
+            for combine_parameter in self._parameter_combinations(parameters):
+                test_plan_object: TestPlan = TestPlan.model_create(
+                    fields=self.non_side_effect_fields, data=data, commit=False
+                )
+                test_plan_object.save()
+                test_plan_object.parameters.set(ParameterSelector().parameter_list_by_ids(combine_parameter))
+                test_plans.append(test_plan_object)
+
+            if parent := data.get('parent'):
+                TestPlan.objects.partial_rebuild(parent.tree_id)
+            else:
+                for test_plan in test_plans:
+                    TestPlan.objects.partial_rebuild(test_plan.tree_id)
 
         if test_cases := data.get('test_cases', []):
             TestService().bulk_test_create(test_plans, test_cases)
-
-        if parent := data.get('parent'):
-            TestPlan.objects.partial_rebuild(parent.tree_id)
-        else:
-            for test_plan in test_plans:
-                TestPlan.objects.partial_rebuild(test_plan.tree_id)
         return test_plans
 
     @transaction.atomic
     def testplan_update(self, *, test_plan: TestPlan, data: dict[str, Any]) -> TestPlan:
-        test_plan, _ = test_plan.model_update(
-            fields=self.non_side_effect_fields,
-            data=data,
-        )
+        with lock_table(TestPlan):
+            test_plan, _ = test_plan.model_update(
+                fields=self.non_side_effect_fields,
+                data=data,
+            )
+            TestPlan.objects.partial_rebuild(test_plan.tree_id)
 
         if (test_cases := data.get('test_cases')) is not None:  # test_cases may be empty list
             old_test_case_ids = set(TestService().get_testcase_ids_by_testplan(test_plan))
@@ -92,8 +97,25 @@ class TestPlanService:
             if create_test_case_ids := new_test_case_ids - old_test_case_ids:
                 cases = [tc for tc in data['test_cases'] if tc.id in create_test_case_ids]
                 TestService().bulk_test_create((test_plan,), cases)
-        TestPlan.objects.partial_rebuild(test_plan.tree_id)
         return test_plan
 
     def testplan_delete(self, *, test_plan) -> None:
         test_plan.delete()
+
+    @classmethod
+    def _parameter_combinations(cls, parameters: List[Parameter]) -> List[Tuple[int, ...]]:
+        """
+        Return all possible combinations of parameters by group name.
+
+        Args:
+            parameters: List of Parameter objects.
+
+        Returns:
+             List of tuple of every possible combination of parameters.
+        """
+        group_parameters = {}
+
+        for parameter in parameters:
+            group_parameters.setdefault(parameter.group_name, []).append(parameter.id)
+
+        return list(product(*group_parameters.values()))

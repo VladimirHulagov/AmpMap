@@ -22,7 +22,9 @@ export const antdSorterToTestySort = <T>(
 
   if (fieldType && Object.keys(fieldsFormats[fieldType]).length) {
     // @ts-ignore
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const newField = fieldsFormats[fieldType][fieldTitle]
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     fieldTitle = newField || fieldTitle
   }
 

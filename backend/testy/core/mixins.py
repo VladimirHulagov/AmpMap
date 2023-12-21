@@ -82,7 +82,7 @@ class MediaViewMixin:
                 content_type,
                 source_filename
             )
-        except (FileNotFoundError, IOError):
+        except IOError:
             return Response(status=status.HTTP_404_NOT_FOUND)
 
     @staticmethod

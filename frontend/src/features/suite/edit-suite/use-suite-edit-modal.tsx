@@ -3,32 +3,46 @@ import { useEffect, useState } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
 import { useParams } from "react-router"
 
-import { useAppDispatch, useAppSelector } from "app/hooks"
+import { useAppDispatch } from "app/hooks"
 
-import { useLazyGetTestSuitesTreeViewQuery, useUpdateTestSuiteMutation } from "entities/suite/api"
-import { selectTestSuite, setTestSuite } from "entities/suite/model"
+import { useUpdateTestSuiteMutation } from "entities/suite/api"
+import { useTestSuiteSearch } from "entities/suite/model"
+import { setTestSuite } from "entities/suite/model/slice"
 
 import { useErrors } from "shared/hooks"
 import { showModalCloseConfirm } from "shared/libs"
 import { AlertSuccessChange } from "shared/ui/alert-success-change"
 
-type ErrorData = {
+import { useSearchField } from "widgets/search-field"
+
+interface ErrorData {
   name?: string
   parent?: string
   description?: string
 }
 
-export const useSuiteEditModal = () => {
+export const useSuiteEditModal = (suite?: Suite) => {
   const [isShow, setIsShow] = useState(false)
 
   const dispatch = useAppDispatch()
-  const testSuite = useAppSelector(selectTestSuite)
-  const { projectId } = useParams<ParamProjectId & ParamTestSuiteId>()
-  const [selectedParent, setSelectedParent] = useState<number | null>(null)
-  const [getTestSuites, { data: treeSuites, isLoading: isLoadingTreeSuites }] =
-    useLazyGetTestSuitesTreeViewQuery()
+  const { projectId, testSuiteId } = useParams<ParamProjectId & ParamTestSuiteId>()
+  const [selectedParent, setSelectedParent] = useState<SelectData | null>(null)
   const [updateSuite, { isLoading: isLoadingUpdating, isSuccess: isSuccessUpdate }] =
     useUpdateTestSuiteMutation()
+
+  const {
+    search,
+    paginationParams,
+    handleSearch: handleSearchField,
+    handleLoadNextPageData,
+  } = useSearchField()
+
+  const {
+    isLoading: isLoadingTestSuites,
+    data: dataTestSuites,
+    isLastPage,
+    searchSuite,
+  } = useTestSuiteSearch()
 
   const [errors, setErrors] = useState<ErrorData | null>(null)
   const { onHandleError } = useErrors<ErrorData>(setErrors)
@@ -38,7 +52,7 @@ export const useSuiteEditModal = () => {
     control,
     setValue,
     formState: { isDirty },
-  } = useForm<ISuiteUpdate>({
+  } = useForm<SuiteUpdate>({
     defaultValues: {
       name: "",
       description: "",
@@ -47,34 +61,26 @@ export const useSuiteEditModal = () => {
   })
 
   useEffect(() => {
-    if (!isShow || !projectId) return
-    handleFetchTreeSuites(projectId)
-  }, [isShow, projectId])
+    if (!isShow || !suite) return
 
-  // use effect for edit modal
-  useEffect(() => {
-    if (!isShow || !testSuite || !testSuite.parent) return
+    setValue("name", suite.name)
+    setValue("description", suite.description)
 
-    setSelectedParent(Number(testSuite.parent))
-    setValue("parent", testSuite.parent)
-  }, [isShow, testSuite])
-
-  useEffect(() => {
-    if (!isShow || !testSuite) return
-
-    setValue("name", testSuite.name)
-    setValue("parent", testSuite.parent)
-    setValue("description", testSuite.description)
-  }, [isShow, testSuite])
+    if (suite.parent) {
+      setSelectedParent({ value: Number(suite.parent.id), label: suite.parent.name })
+      setValue("parent", String(suite.parent.id))
+    }
+  }, [isShow, suite])
 
   useEffect(() => {
-    if (isShow) return
-    setSelectedParent(null)
-  }, [isShow])
-
-  const handleFetchTreeSuites = (projectId: string) => {
-    getTestSuites({ project: projectId })
-  }
+    if (!projectId || search === undefined) return
+    searchSuite({
+      search,
+      project: projectId,
+      page: paginationParams.page,
+      page_size: paginationParams.page_size,
+    })
+  }, [paginationParams, search, projectId])
 
   const onCloseModal = () => {
     setIsShow(false)
@@ -99,20 +105,19 @@ export const useSuiteEditModal = () => {
     setIsShow(true)
   }
 
-  const onSubmit: SubmitHandler<ISuiteUpdate> = async (data) => {
+  const onSubmit: SubmitHandler<SuiteUpdate> = async (data) => {
     setErrors(null)
 
-    if (Number(data.parent) === Number(testSuite?.id)) {
+    if (!suite) return
+    if (Number(data.parent) === Number(suite.id)) {
       setErrors({ parent: "Элемент не может быть потомком самому себе." })
       return
     }
 
-    if (!testSuite) return
-
     try {
       const newSuite = await updateSuite({
-        id: testSuite.id,
-        body: { ...data, parent: data.parent || "" },
+        id: suite.id,
+        body: { ...data, parent: data.parent ?? "" },
       }).unwrap()
 
       notification.success({
@@ -134,35 +139,43 @@ export const useSuiteEditModal = () => {
     }
   }
 
-  const handleSelectParent = (value: number | null) => {
-    setErrors(null)
-    setSelectedParent(value)
-    setValue("parent", value ? String(value) : null)
+  const handleSelectParent = (value?: { label: string; value: number }) => {
+    setErrors({ parent: "" })
+    if (Number(value?.value) === Number(testSuiteId)) {
+      setErrors({ parent: "Test Suite не может быть родителем для самого себя." })
+      return
+    }
+
+    if (value) {
+      setValue("parent", String(value.value), { shouldDirty: true })
+      setSelectedParent({ value: value.value, label: value.label })
+    }
   }
 
   const handleClearParent = () => {
     setSelectedParent(null)
-    setValue("parent", null)
+    setValue("parent", null, { shouldDirty: true })
   }
 
   return {
+    isShow,
+    isLoadingUpdating,
+    isSuccessUpdate,
+    isDirty,
+    selectedParent,
+    control,
+    errors,
+    dataTestSuites,
+    isLoadingTestSuites,
+    isLastPage,
     handleShowEdit,
     handleClearParent,
     handleSelectParent,
     handleCancel,
     onSubmit,
     handleSubmitForm: handleSubmit(onSubmit),
-    handleFetchTreeSuites,
-    isShow,
-    isLoadingUpdating,
-    isLoadingTreeSuites,
-    isSuccessUpdate,
-    isDirty,
-    selectedParent,
-    testSuite,
-    treeSuites,
-    control,
-    errors,
     setValue,
+    handleSearch: handleSearchField,
+    handleLoadNextPageData,
   }
 }

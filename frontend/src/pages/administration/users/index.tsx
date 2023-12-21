@@ -4,15 +4,14 @@ import { useContext, useEffect } from "react"
 import { useDispatch } from "react-redux"
 
 import { showCreateUserModal } from "entities/user/model"
-import { CreateEditUserModal } from "entities/user/ui/create-edit-user-modal"
 
-import { MenuContext, MenuContextType } from "widgets/[ui]/main"
-import UsersTable from "widgets/user/users-table"
+import { MenuContext } from "widgets/[ui]/main"
+import { CreateEditUserModal, UsersTable } from "widgets/user"
 
 const { Content } = Layout
 
 export const UsersPage = () => {
-  const { setActiveMenu, setOpenSubMenu } = useContext(MenuContext) as MenuContextType
+  const { setActiveMenu, setOpenSubMenu } = useContext(MenuContext)!
   const dispatch = useDispatch()
   useEffect(() => {
     setOpenSubMenu(["administration"])

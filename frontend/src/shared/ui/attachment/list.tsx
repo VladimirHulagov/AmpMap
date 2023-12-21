@@ -17,7 +17,7 @@ export const AttachmentList = ({
     <>
       {attachments.map((attachment, index) => (
         <AttachmentItem
-          key={index}
+          key={`${attachment.id}-${index}`}
           handleAttachmentRemove={handleAttachmentRemove}
           attachment={attachment}
         />

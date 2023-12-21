@@ -1,45 +1,52 @@
 interface SuiteState {
-  testSuite: ISuite | null
+  testSuite: Suite | null
 }
 
-interface ISuite {
+interface Suite {
   id: Id
   name: string
   title: string
-  parent: string
+  parent: SuiteParent | null
   project: number
-  key: string
   url: string
   cases_count: number
+  total_cases_count: number
   descendant_count: number
   description: string
-  children: ISuite[]
+  children: Suite[]
+  estimates: string | null
+  total_estimates: string | null
 }
 
-interface ISuiteWithCases extends ISuite {
+interface SuiteParent {
+  id: number
+  name: string
+}
+
+interface SuiteWithCases extends Suite {
   test_cases: TestCase[]
-  children: ISuiteWithCases[]
+  children: SuiteWithCases[]
 }
 
-interface ISuiteUpdate {
+interface SuiteUpdate {
   name: string
   description: string
   parent: string | null
 }
 
-interface ISuiteCreate {
+interface SuiteCreate {
   name: string
   project: number
   parent?: string | null
   description?: string
 }
 
-interface IGetTestSuiteQuery {
+interface GetTestSuiteQuery {
   suiteId: string
   treeview?: boolean
 }
 
-interface IGetTestSuitesTreeViewQuery {
+interface GetTestSuitesTreeViewQuery {
   project?: string
   parent?: string
   treeview?: boolean

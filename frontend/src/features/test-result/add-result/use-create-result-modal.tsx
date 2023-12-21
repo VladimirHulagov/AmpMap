@@ -15,14 +15,15 @@ import { selectTest } from "entities/test/model"
 
 import { useErrors } from "shared/hooks"
 import { showModalCloseConfirm } from "shared/libs"
+import { AlertSuccessChange } from "shared/ui"
 
-export type CreateResultModalProps = {
+export interface CreateResultModalProps {
   isShow: boolean
   setIsShow: React.Dispatch<React.SetStateAction<boolean>>
   testCase: TestCase
 }
 
-type ErrorData = {
+interface ErrorData {
   status?: string
   comment?: string
   attributes?: string | null
@@ -70,7 +71,7 @@ export const useCreateResultModal = ({ setIsShow, testCase }: CreateResultModalP
     setAttributes,
   } = useAttributes({ setValue })
 
-  const [steps, setSteps] = useState<{ [stepId: string]: string }>({})
+  const [steps, setSteps] = useState<Record<string, string>>({})
   const { onHandleError } = useErrors<ErrorData>(setErrors)
 
   const onCloseModal = () => {
@@ -124,14 +125,22 @@ export const useCreateResultModal = ({ setIsShow, testCase }: CreateResultModalP
         test: test.id,
         steps_results: stepsResult,
       }
-      await createResult({
+      const newResult = await createResult({
         testPlanId: Number(testPlanId),
         body: dataReq,
       }).unwrap()
       onCloseModal()
+
       notification.success({
         message: "Success",
-        description: "Result created successfully",
+        description: (
+          <AlertSuccessChange
+            action="created"
+            title="Result"
+            link={`/projects/${projectId}/plans/${testPlanId}/?test=${newResult.test}#result-${newResult.id}`}
+            id={String(newResult.id)}
+          />
+        ),
       })
     } catch (err: unknown) {
       onHandleError(err)

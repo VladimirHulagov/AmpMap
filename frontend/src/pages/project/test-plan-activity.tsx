@@ -1,6 +1,6 @@
 import { Content } from "antd/lib/layout/layout"
 
-import { TestPlanActivityWrapper } from "entities/test-plan/ui/test-plan-activity"
+import { TestPlanActivityWrapper } from "entities/test-plan/ui"
 
 export const TestPlanActivityPage = () => {
   return (

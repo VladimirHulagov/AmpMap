@@ -1,10 +1,10 @@
+import { QueryStatus } from "@reduxjs/toolkit/dist/query"
 import { Button, Modal, Table, Typography } from "antd"
 import { ColumnsType } from "antd/lib/table"
 import { useMemo } from "react"
 
-import { ContainerLoader } from "shared/ui"
-
 interface Props<T> {
+  status: QueryStatus
   isShow: boolean
   isLoading: boolean
   isLoadingButton: boolean
@@ -25,6 +25,7 @@ interface DataType {
 
 // eslint-disable-next-line comma-spacing
 export const ModalConfirmDeleteArchive = <T extends DataType>({
+  status,
   isShow,
   name,
   handleClose,
@@ -83,16 +84,14 @@ export const ModalConfirmDeleteArchive = <T extends DataType>({
         Attention: {action === "archive" ? "Archiving" : "Deleting"} the selected data in this table
         will remove it from view
       </Typography.Paragraph>
-      {(isLoading || !data) && <ContainerLoader />}
-      {!isLoading && dataClear.length && (
-        <Table
-          rowKey="id"
-          columns={columns}
-          dataSource={dataClear}
-          size="small"
-          pagination={false}
-        />
-      )}
+      <Table
+        rowKey="id"
+        columns={columns}
+        dataSource={dataClear}
+        size="small"
+        pagination={false}
+        loading={status === "pending"}
+      />
     </Modal>
   )
 }

@@ -26,15 +26,17 @@ const getColorByStatus = (status: string) => {
 }
 
 interface UsePieProps {
-  data: ITestPlanStatistics[]
+  data: TestPlanStatistics[]
   tableParams: TestTableParams
   setTableParams: (params: TestTableParams) => void
+  type: "value" | "estimates"
+  period?: EstimatePeriod
 }
 
-export const usePie = ({ data, tableParams, setTableParams }: UsePieProps) => {
+export const usePie = ({ data, tableParams, setTableParams, type, period }: UsePieProps) => {
   const getNewLastStatuses = (label: string) => {
     const status = getStatusNumberByTextAndUndefinedNull(label)
-    const oldStatuses = tableParams.filters?.last_status || []
+    const oldStatuses = tableParams.filters?.last_status ?? []
     const isIncluded = oldStatuses.includes(status)
     const isOne = oldStatuses.length === 1
 
@@ -46,30 +48,35 @@ export const usePie = ({ data, tableParams, setTableParams }: UsePieProps) => {
   }
 
   const isAllZero = useMemo(() => {
-    return !data.some((item) => item.value > 0)
+    return !data.some((item) => item[type] > 0)
   }, [data])
 
   const total = useMemo(() => {
     if (isAllZero) return 0
-    return data.reduce((acc, cur) => acc + cur.value, 0)
+    return data.reduce((acc, cur) => acc + cur[type], 0)
   }, [data, isAllZero])
 
   const formatData = useMemo(() => {
     return data.map((item) => ({
       ...item,
       fill: getColorByStatus(item.label),
-      value: isAllZero ? 1 : item.value,
+      [type]: isAllZero ? 1 : item[type],
     }))
   }, [data, isAllZero])
 
+  // TODO need refactoring
   const legendFormatter = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (value: any, entry: any) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const label = String(entry.payload.label)
-      const payloadValue = entry.payload?.value
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+      const payloadValue = entry.payload[type]
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
       const percent = entry.payload?.percent
       const lastStatuses = getNewLastStatuses(label)
       const isActive = checkActive(label)
+      const estimateValue = type === "estimates" ? period?.slice(0, 1) ?? "m" : ""
 
       const handleClick = () => {
         setTableParams({
@@ -88,7 +95,7 @@ export const usePie = ({ data, tableParams, setTableParams }: UsePieProps) => {
             }}
             onClick={handleClick}
           >
-            {label} [0] (0%)
+            {label} [0{estimateValue}] (0%)
           </span>
         )
       }
@@ -102,7 +109,8 @@ export const usePie = ({ data, tableParams, setTableParams }: UsePieProps) => {
             }}
             onClick={handleClick}
           >
-            {label} [{payloadValue || 0}] (0%)
+            {label} [{payloadValue ?? 0}
+            {estimateValue}] (0%)
           </span>
         )
       }
@@ -112,11 +120,12 @@ export const usePie = ({ data, tableParams, setTableParams }: UsePieProps) => {
           style={{ cursor: "pointer", borderBottom: isActive ? `1px solid ${colors.accent}` : "0" }}
           onClick={handleClick}
         >
-          {value} [{payloadValue || 0}] ({(percent * 100).toFixed(2)}%)
+          {value} [{payloadValue ?? 0}
+          {estimateValue}] ({(percent * 100).toFixed(2)}%)
         </span>
       )
     },
-    [isAllZero, tableParams]
+    [isAllZero, tableParams, period]
   )
 
   const tooltipFormatter = useCallback(
@@ -138,7 +147,7 @@ export const usePie = ({ data, tableParams, setTableParams }: UsePieProps) => {
 
   const checkActive = (label: string) => {
     const status = getStatusNumberByTextAndUndefinedNull(label)
-    return tableParams.filters?.last_status?.some((i) => String(i) === status) || false
+    return tableParams.filters?.last_status?.some((i) => String(i) === status) ?? false
   }
 
   return {

@@ -30,18 +30,10 @@
 # <http://www.gnu.org/licenses/>.
 
 from comments.api.v1 import views
-from django.urls import path
 from rest_framework import routers
 
 router = routers.SimpleRouter()
 
-urlpatterns = [
-    path('comments/', views.CommentsViewSet.as_view(
-        {'get': 'list', 'post': 'create'}
-    ), name='comments-list'),
-    path('comments/<int:pk>/', views.CommentsViewSet.as_view(
-        {'get': 'retrieve', 'put': 'update', 'delete': 'destroy'}
-    ), name='comments-detail'),
-]
+router.register('comments', views.CommentsViewSet)
 
-urlpatterns += router.urls
+urlpatterns = router.urls

@@ -4,24 +4,24 @@ import { useEffect, useState } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
 import { useParams } from "react-router-dom"
 
-import { useLazyGetTestSuitesTreeViewWithCasesQuery } from "entities/suite/api"
-
 import { useTestsTableParams } from "entities/test/model"
 
-import { getTestCaseChangeResult } from "entities/test-plan/lib"
-
-import { useDatepicker, useErrors } from "shared/hooks"
-import { makeTestSuitesForTreeView, showModalCloseConfirm } from "shared/libs"
-import { AlertSuccessChange } from "shared/ui/alert-success-change"
+import { useTestCasesSearch } from "entities/test-case/model"
 
 import {
   useGetTestPlanCasesQuery,
-  useLazyGetTestPlanQuery,
+  useLazyGetTestPlansQuery,
   useUpdateTestPlanMutation,
-} from "../../../entities/test-plan/api"
-import { useTestPlanSearch } from "../../../entities/test-plan/model/use-test-plan-search"
+} from "entities/test-plan/api"
+import { getTestCaseChangeResult } from "entities/test-plan/lib"
 
-type ErrorData = {
+import { useDatepicker, useErrors } from "shared/hooks"
+import { showModalCloseConfirm } from "shared/libs"
+import { AlertSuccessChange } from "shared/ui/alert-success-change"
+
+import { useSearchField } from "widgets/search-field"
+
+interface ErrorData {
   name?: string
   description?: string
   parent?: string
@@ -31,7 +31,7 @@ type ErrorData = {
 }
 
 type IForm = Modify<
-  ITestPlanUpdate,
+  TestPlanUpdate,
   {
     test_cases: string[]
     started_at: Moment
@@ -40,7 +40,7 @@ type IForm = Modify<
 >
 
 interface UseTestPlanEditModalProps {
-  testPlan: ITestPlanTreeView
+  testPlan: TestPlanTreeView
   isShow: boolean
   setIsShow: (isShow: boolean) => void
 }
@@ -50,7 +50,6 @@ export const useTestPlanEditModal = ({
   isShow,
   setIsShow,
 }: UseTestPlanEditModalProps) => {
-  const [testSuites, setTestSuites] = useState<ISuite[]>([])
   const { projectId } = useParams<ParamProjectId>()
   const [errors, setErrors] = useState<ErrorData | null>(null)
   const {
@@ -64,23 +63,68 @@ export const useTestPlanEditModal = ({
   const testCasesWatch = watch("test_cases")
   const { onHandleError } = useErrors<ErrorData>(setErrors)
 
-  const { searchText, filterTable, expandedRowKeys, onSearch, onRowExpand, onClearSearch } =
-    useTestPlanSearch()
+  const {
+    isLoading: isLoadingSearch,
+    searchText,
+    treeData,
+    expandedRowKeys,
+    onSearch,
+    onRowExpand,
+    onClearSearch,
+  } = useTestCasesSearch({ isShow })
   const [selectedParent, setSelectedParent] = useState<{ label: string; value: number } | null>(
     null
   )
-
   const { setDateFrom, setDateTo, disabledDateFrom, disabledDateTo } = useDatepicker()
-  const [getTestPlan, { isLoading: isLoadingGetTestPlan }] = useLazyGetTestPlanQuery()
-  const [getTestSuitesTreeView, { data: testSuitesTreeView, isLoading: isLoadingSuitesTreeView }] =
-    useLazyGetTestSuitesTreeViewWithCasesQuery()
-  const { data: tests, isLoading: isLoadingTestPlanCases } = useGetTestPlanCasesQuery({
-    testPlanId: String(testPlan.id),
-  })
+
+  const { data: tests, isLoading: isLoadingTestCases } = useGetTestPlanCasesQuery(
+    {
+      testPlanId: String(testPlan.id),
+    },
+    { skip: !isShow }
+  )
   const [updateTestPlan, { isLoading: isLoadingUpdate }] = useUpdateTestPlanMutation()
   const { trigger } = useTestsTableParams()
 
-  const isLoadingFetch = isLoadingSuitesTreeView || isLoadingTestPlanCases || isLoadingGetTestPlan
+  const {
+    search,
+    paginationParams,
+    handleSearch: handleSearchField,
+    handleLoadNextPageData,
+  } = useSearchField()
+
+  const [getPlans] = useLazyGetTestPlansQuery()
+  const [isLastPage, setIsLastPage] = useState(false)
+  const [isLoadingTestPlans, setIsLoadingTestPlans] = useState(false)
+  const [dataTestPlans, setDataTestPlans] = useState<TestPlan[]>([])
+
+  const handleSearchTestPlan = (value?: string) => {
+    setDataTestPlans([])
+    setIsLastPage(false)
+    handleSearchField(value)
+  }
+
+  const fetchPlans = async () => {
+    setIsLoadingTestPlans(true)
+    const res = await getPlans({
+      search,
+      projectId,
+      page: paginationParams.page,
+      page_size: paginationParams.page_size,
+      is_flat: true,
+    }).unwrap()
+    setDataTestPlans((prevState) => [...prevState, ...res.results])
+    setIsLoadingTestPlans(false)
+
+    if (!res.pages.next) {
+      setIsLastPage(true)
+    }
+  }
+
+  useEffect(() => {
+    if (!projectId || search === undefined) return
+    fetchPlans()
+  }, [paginationParams, search, projectId])
 
   useEffect(() => {
     if (!isShow || !tests) return
@@ -92,34 +136,24 @@ export const useTestPlanEditModal = ({
     setDateTo(moment(testPlan.due_date))
 
     if (testPlan.parent) {
-      getTestPlan(testPlan.parent)
-        .unwrap()
-        .then((res) => {
-          setSelectedParent({ value: res.id, label: res.name })
-          setValue("parent", res.id)
-        })
-    }
-
-    getTestSuitesTreeView({ project: projectId || "" })
-
-    if (testSuitesTreeView) {
-      setTestSuites(makeTestSuitesForTreeView(testSuitesTreeView.results))
+      setSelectedParent({ value: testPlan.parent.id, label: testPlan.parent.name })
+      setValue("parent", testPlan.parent.id)
     }
 
     const ids = tests.case_ids.map((i) => String(i))
     setValue("test_cases", ids)
-  }, [testPlan, isShow, testSuitesTreeView, tests])
+  }, [testPlan, isShow, tests])
 
   const onCloseModal = () => {
     setIsShow(false)
     setErrors(null)
     onClearSearch()
-    handleClearParent()
+    handleClearTestPlan()
     reset()
   }
 
   const handleClose = () => {
-    if (isLoadingFetch || isLoadingUpdate) return
+    if (isLoadingTestCases) return
 
     if (isDirty) {
       showModalCloseConfirm(onCloseModal)
@@ -139,7 +173,7 @@ export const useTestPlanEditModal = ({
           ...data,
           due_date: moment(data.due_date).format("YYYY-MM-DDThh:mm"),
           started_at: moment(data.started_at).format("YYYY-MM-DDThh:mm"),
-          parent: data.parent || null,
+          parent: data.parent ?? null,
           test_cases: newTestCases,
         },
       }).unwrap()
@@ -161,7 +195,7 @@ export const useTestPlanEditModal = ({
     }
   }
 
-  const handleSelectParent = (value?: { label: string; value: number }) => {
+  const handleSelectTestPlan = (value?: { label: string; value: number }) => {
     setErrors({ parent: "" })
     if (value?.value === testPlan.id) {
       setErrors({ parent: "Test Plan не может быть родителем для самого себя." })
@@ -174,7 +208,7 @@ export const useTestPlanEditModal = ({
     }
   }
 
-  const handleClearParent = () => {
+  const handleClearTestPlan = () => {
     setSelectedParent(null)
     setValue("parent", null, { shouldDirty: true })
   }
@@ -188,16 +222,17 @@ export const useTestPlanEditModal = ({
     errors,
     control,
     selectedParent,
-    testSuites,
     searchText,
-    filterTable,
+    treeData,
     expandedRowKeys,
     isDirty,
-    isLoadingFetch,
+    isLoadingTestCases,
     isLoadingUpdate,
+    isLoadingTestPlans,
+    isLoadingSearch,
+    isLastPage,
+    dataTestPlans,
     handleClose,
-    handleClearParent,
-    handleSelectParent,
     handleRowExpand: onRowExpand,
     handleSubmitForm: handleSubmit(onSubmit),
     handleSearch: onSearch,
@@ -207,5 +242,9 @@ export const useTestPlanEditModal = ({
     disabledDateTo,
     setValue,
     handleTestCaseChange,
+    handleClearTestPlan,
+    handleSearchTestPlan,
+    handleSelectTestPlan,
+    handleLoadNextPageData,
   }
 }

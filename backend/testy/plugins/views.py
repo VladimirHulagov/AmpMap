@@ -30,9 +30,9 @@
 # <http://www.gnu.org/licenses/>.
 from django.apps import apps
 from django.conf import settings
-from plugins.utils import parse_plugin_config
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from utilities.settings import parse_plugin_config
 
 
 class PluginsAPIView(APIView):

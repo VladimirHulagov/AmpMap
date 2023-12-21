@@ -1,28 +1,56 @@
 import { useMemo } from "react"
+import { useParams } from "react-router-dom"
+
+import { useAppDispatch, useAppSelector } from "app/hooks"
 
 import { useTestsTableParams } from "entities/test/model"
 
-export const useLabels = () => {
+import { useGetTestPlanLabelsQuery } from "entities/test-plan/api"
+
+import { selectSelectedLabels, setSelectedLabels } from "./slice"
+
+export const useLabels = (options?: { testPlanId?: string }) => {
+  const dispatch = useAppDispatch()
+  const { testPlanId: testPlanIdParam } = useParams<ParamTestPlanId>()
+  const { data: labels, isLoading } = useGetTestPlanLabelsQuery(
+    options?.testPlanId ?? testPlanIdParam ?? "",
+    {
+      skip: !options?.testPlanId && !testPlanIdParam,
+    }
+  )
   const { tableParams, setTableParams } = useTestsTableParams()
+  const selectedLabels = useAppSelector(selectSelectedLabels)
 
   const handleLableClick = (labelId: string) => {
-    const labelsList = tableParams.filters?.labels || []
-    const isAlreadyId = labelsList.some((i) => i === labelId)
+    const findLabel = selectedLabels.labels.find((i) => i === labelId)
+    const findNotLabel = selectedLabels.not_labels.find((i) => i === labelId)
 
-    if (labelsList.length === 1 && isAlreadyId) {
-      reset()
+    if (!findLabel && !findNotLabel) {
+      dispatch(
+        setSelectedLabels({ ...selectedLabels, labels: [...selectedLabels.labels, labelId] })
+      )
       return
     }
 
-    const newLabelsList = isAlreadyId
-      ? labelsList.filter((i) => i !== labelId)
-      : [...labelsList, labelId]
+    if (findLabel) {
+      dispatch(
+        setSelectedLabels({
+          labels: selectedLabels.labels.filter((i) => i !== labelId),
+          not_labels: [...selectedLabels.not_labels, labelId],
+        })
+      )
+      return
+    }
 
-    setTableParams({
-      filters: {
-        labels: newLabelsList,
-      },
-    })
+    if (findNotLabel) {
+      dispatch(
+        setSelectedLabels({
+          labels: selectedLabels.labels.filter((i) => i !== labelId),
+          not_labels: selectedLabels.not_labels.filter((i) => i !== labelId),
+        })
+      )
+      return
+    }
   }
 
   const handleConditionClick = () => {
@@ -39,8 +67,15 @@ export const useLabels = () => {
     setTableParams({
       filters: {
         labels: [],
+        not_labels: [],
       },
     })
+    dispatch(
+      setSelectedLabels({
+        labels: [],
+        not_labels: [],
+      })
+    )
   }
 
   const toggleCondition = useMemo(() => {
@@ -51,9 +86,12 @@ export const useLabels = () => {
   }, [tableParams])
 
   return {
-    labelsFilter: tableParams.filters?.labels || [],
+    selectedLabels: selectedLabels.labels,
+    selectedNotlabels: selectedLabels.not_labels,
     labelsConditionFilter: tableParams.filters?.labels_condition,
     toggleCondition,
+    labels,
+    isLoading,
     handleLableClick,
     handleConditionClick,
     reset,

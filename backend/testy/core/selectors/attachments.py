@@ -42,14 +42,38 @@ class AttachmentSelector:
     def attachment_list(self) -> QuerySet[Attachment]:
         return Attachment.objects.all()
 
-    def attachment_list_by_parent_object(self, parent_model, object_id) -> QuerySet[Attachment]:
-        from django.contrib.contenttypes.models import ContentType
+    @classmethod
+    def attachment_list_by_parent_object(cls, parent_model, object_id) -> QuerySet[Attachment]:
         return Attachment.objects.filter(
             content_type=ContentType.objects.get_for_model(parent_model).id,
             object_id=object_id
         )
 
     @classmethod
+    def attachment_list_from_object_with_excluding(cls, parent_model, exclude_ids: List[int]):
+        return parent_model.attachments.exclude(pk__in=exclude_ids)
+
+    @classmethod
     def attachment_by_ids_list(cls, ids: List[int], model: type[_DMT]) -> QuerySet[Attachment]:
         content_type = ContentType.objects.get_for_model(model)
         return Attachment.objects.filter(content_type=content_type, object_id__in=ids)
+
+    @classmethod
+    def attachments_get_deleted_objects(cls, parent_model: type[_DMT], object_id: int) -> QuerySet[Attachment]:
+        return Attachment.deleted_objects.filter(
+            content_type=ContentType.objects.get_for_model(parent_model).id,
+            object_id=object_id
+        )
+
+    @classmethod
+    def attachment_list_by_parent_object_and_history_ids(
+            cls,
+            parent_model: type[_DMT],
+            object_id: int,
+            history_ids: List[int]
+    ):
+        return QuerySet(Attachment).filter(
+            content_type=ContentType.objects.get_for_model(parent_model).id,
+            object_id=object_id,
+            content_object_history_ids__contains=history_ids
+        )

@@ -2,6 +2,8 @@ import { createApi } from "@reduxjs/toolkit/dist/query/react"
 
 import { baseQueryWithLogout } from "app/apiSlice"
 
+import { systemStatsInvalidate } from "entities/system/api"
+
 const rootPath = "v1/projects"
 
 export const projectApi = createApi({
@@ -9,10 +11,16 @@ export const projectApi = createApi({
   tagTypes: ["Project"],
   baseQuery: baseQueryWithLogout,
   endpoints: (builder) => ({
-    getProjects: builder.query<Project[], boolean>({
-      query: (showArchive) => ({
+    getProjects: builder.query<
+      PaginationResponse<Project[]>,
+      QueryWithPagination<GetProjectsQuery>
+    >({
+      query: ({ favorites = false, ...params }) => ({
         url: rootPath,
-        params: { is_archive: showArchive },
+        params: {
+          favorites,
+          ...params,
+        },
       }),
       providesTags: () => [{ type: "Project", id: "LIST" }],
     }),
@@ -26,6 +34,10 @@ export const projectApi = createApi({
         method: "POST",
         body,
       }),
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        await queryFulfilled
+        dispatch(systemStatsInvalidate)
+      },
       invalidatesTags: [{ type: "Project", id: "LIST" }],
     }),
     updateProject: builder.mutation<Project, { id: Id; body: FormData }>({
@@ -47,6 +59,10 @@ export const projectApi = createApi({
         url: `${rootPath}/${id}/`,
         method: "DELETE",
       }),
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        await queryFulfilled
+        dispatch(systemStatsInvalidate)
+      },
       invalidatesTags: [{ type: "Project", id: "LIST" }],
     }),
     archiveProject: builder.mutation<void, number>({
@@ -54,13 +70,14 @@ export const projectApi = createApi({
         url: `${rootPath}/${id}/archive/`,
         method: "POST",
       }),
-      invalidatesTags: (result, error, id) =>
-        result
-          ? [
-              { type: "Project", id },
-              { type: "Project", id: "LIST" },
-            ]
-          : [{ type: "Project", id: "LIST" }],
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        await queryFulfilled
+        dispatch(systemStatsInvalidate)
+      },
+      invalidatesTags: (result, error, id) => [
+        { type: "Project", id: Number(id) },
+        { type: "Project", id: "LIST" },
+      ],
     }),
     getProjectDeletePreview: builder.query<DeletePreviewResponse[], string>({
       query: (id) => ({

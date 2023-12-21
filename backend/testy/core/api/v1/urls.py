@@ -36,49 +36,11 @@ from rest_framework import routers
 router = routers.SimpleRouter()
 router.register('attachments', views.AttachmentViewSet)
 router.register('labels', views.LabelViewSet)
-
-project_list = views.ProjectViewSet.as_view({
-    'get': 'list',
-    'post': 'create'
-})
-project_detail = views.ProjectViewSet.as_view({
-    'get': 'retrieve',
-    'put': 'update',
-    'patch': 'partial_update',
-    'delete': 'destroy'
-})
-
-testplans_by_project = views.ProjectViewSet.as_view({
-    'get': 'testplans_by_project'
-})
-
-parameters_by_project = views.ProjectViewSet.as_view({
-    'get': 'parameters_by_project'
-})
-messages_view = views.SystemMessagesViewSet.as_view({'get': 'list'})
+router.register('projects', views.ProjectViewSet)
 
 urlpatterns = [
-    path('projects/', project_list, name='project-list'),
-    path('projects/<int:pk>/', project_detail, name='project-detail'),
-    path('projects/<int:pk>/testplans/', testplans_by_project, name='project-testplans'),
-    path('projects/<int:pk>/parameters/', parameters_by_project, name='project-parameters'),
-    path('projects/<int:pk>/delete/preview/', views.ProjectViewSet.as_view({'get': 'delete_preview'}),
-         name='project-delete-preview'),
-    path('projects/deleted/', views.ProjectViewSet.as_view({'get': 'recovery_list'}), name='project-deleted-list'),
-    path('projects/deleted/recover/', views.ProjectViewSet.as_view({'post': 'restore'}),
-         name='project-deleted-recover'),
-    path('projects/deleted/remove/', views.ProjectViewSet.as_view({'post': 'delete_permanently'}),
-         name='project-deleted-remove'),
-    path('projects/<int:pk>/archive/preview/', views.ProjectViewSet.as_view({'get': 'archive_preview'}),
-         name='project-archive-preview'),
-    path('projects/<int:pk>/archive/', views.ProjectViewSet.as_view({'post': 'archive_objects'}),
-         name='project-archive-commit'),
-    path('projects/archive/restore/', views.ProjectViewSet.as_view({'post': 'restore_archived'}),
-         name='project-archive-restore'),
-    path('projects/<int:pk>/progress/', views.ProjectViewSet.as_view({'get': 'project_progress'}),
-         name='project-progress'),
-    path('projects/<int:pk>/icon/', views.ProjectIconView.as_view({'get': 'retrieve'}), name='icon-path'),
-    path('system/messages/', messages_view, name='system-messages'),
+    path('system/messages/', views.SystemMessagesViewSet.as_view({'get': 'list'}), name='system-messages'),
+    path('system/statistics/', views.SystemStatisticViewSet.as_view({'get': 'list'}), name='system-statistics'),
 ]
 
 urlpatterns += router.urls

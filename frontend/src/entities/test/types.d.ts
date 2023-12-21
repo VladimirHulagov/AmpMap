@@ -53,10 +53,12 @@ interface TestTableFilters {
   last_status?: string[]
   name?: FilterValue
   labels?: string[]
+  not_labels?: string[]
   labels_condition?: string
   ordering?: string
   suite?: string[]
-  assignee_username?: FilterValue | null
+  assignee_id?: string
+  unassigned?: boolean
   suite_path?: FilterValue
 }
 
@@ -65,4 +67,8 @@ interface TestUpdate {
   plan?: number
   assignee?: string
   is_archive?: boolean
+}
+
+interface TestsWithPlanBreadcrumbs extends Test {
+  breadcrumbs: BreadCrumbsActivityResult
 }

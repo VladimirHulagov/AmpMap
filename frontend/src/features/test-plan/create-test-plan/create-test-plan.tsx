@@ -4,20 +4,25 @@ import { useState } from "react"
 
 import { CreateTestPlanModal } from "./create-test-plan-modal"
 
-export const CreateTestPlan = ({ type = "main" }: { type: "main" | "child" }) => {
+interface Props {
+  testPlan?: TestPlanTreeView
+}
+
+export const CreateTestPlan = ({ testPlan }: Props) => {
   const [isShow, setIsShow] = useState(false)
 
   return (
     <>
       <Button
-        id={type === "main" ? "create-test-plan" : "create-child-test-plan"}
+        id={!testPlan ? "create-test-plan" : "create-child-test-plan"}
         icon={<PlusOutlined />}
         onClick={() => setIsShow(true)}
         type={"primary"}
+        disabled={testPlan?.is_archive}
       >
-        {type === "main" ? "Create Test Plan" : "Create Child Test Plan"}
+        {!testPlan ? "Create Test Plan" : "Create Child Test Plan"}
       </Button>
-      <CreateTestPlanModal isShow={isShow} setIsShow={setIsShow} />
+      <CreateTestPlanModal isShow={isShow} setIsShow={setIsShow} testPlan={testPlan} />
     </>
   )
 }

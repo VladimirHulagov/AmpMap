@@ -28,10 +28,13 @@ export const testSlice = createSlice({
     setTest: (state, action: PayloadAction<Test | null>) => {
       state.test = action.payload
     },
+    // TODO refactoring
     setTableParams: (state, action: PayloadAction<TestTableParams>) => {
       state.settings.table = {
         ...state.settings.table,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         sorter: action.payload.sorter,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         pagination: {
           ...state.settings.table.pagination,
           ...action.payload.pagination,
@@ -40,7 +43,7 @@ export const testSlice = createSlice({
           ...state.settings.table.filters,
           ...action.payload.filters,
         },
-        testPlanId: action.payload?.testPlanId || null,
+        testPlanId: action.payload?.testPlanId ?? null,
       }
     },
     setInitialTableParams: (state) => {

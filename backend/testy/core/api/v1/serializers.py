@@ -56,14 +56,6 @@ class LabelSerializer(ModelSerializer):
             return instance.user.username
         return None
 
-    def validate(self, attrs):
-        label = attrs.get('name')
-        project = attrs.get('project')
-        if Label.objects.filter(name__iexact=label, project=project).exists():
-            raise ValidationError({'name': f'Label {label} in project {project} already exists.'})
-
-        return attrs
-
 
 class ProjectSerializer(ModelSerializer):
     url = HyperlinkedIdentityField(view_name='api:v1:project-detail')
@@ -81,7 +73,7 @@ class ProjectRetrieveSerializer(ProjectSerializer):
         if not instance.icon:
             return ''
         return self.context['request'].build_absolute_uri(
-            reverse('api:v1:icon-path', kwargs={'pk': instance.id})
+            reverse('api:v1:project-icon', kwargs={'pk': instance.id})
         )
 
 
@@ -97,6 +89,14 @@ class ProjectStatisticsSerializer(ProjectRetrieveSerializer):
         fields = ProjectRetrieveSerializer.Meta.fields + (
             'cases_count', 'suites_count', 'plans_count', 'tests_count',
         )
+
+
+class AllProjectsStatisticSerializer(Serializer):
+    projects_count = IntegerField()
+    cases_count = IntegerField()
+    suites_count = IntegerField()
+    plans_count = IntegerField()
+    tests_count = IntegerField()
 
 
 class RecoveryInputSerializer(Serializer):

@@ -30,14 +30,13 @@
 # <http://www.gnu.org/licenses/>.
 
 from core.models import Project
-from django.db.models import OuterRef, Q, QuerySet
+from django.db.models import Case, IntegerField, OuterRef, Q, QuerySet, Value, When
 from rest_framework.generics import get_object_or_404
 from tests_description.models import TestCase, TestSuite
 from tests_representation.models import Test, TestPlan
 from tests_representation.selectors.results import TestResultSelector
 from utilities.request import PeriodDateTime
-
-from utils import SubCount
+from utilities.sql import SubCount
 
 
 class ProjectSelector:
@@ -56,7 +55,7 @@ class ProjectSelector:
 
     @staticmethod
     def project_list_statistics():
-        cases_count = TestCase.objects.filter(project_id=OuterRef('pk')).values('pk')
+        cases_count = TestCase.objects.filter(project_id=OuterRef('pk'), is_archive=False).values('pk')
         suites_count = TestSuite.objects.filter(project_id=OuterRef('pk')).values('pk')
         plans_count = TestPlan.objects.filter(project_id=OuterRef('pk'), is_archive=False).values('pk')
         tests_count = Test.objects.filter(project_id=OuterRef('pk'), is_archive=False).values('pk')
@@ -66,6 +65,16 @@ class ProjectSelector:
             plans_count=SubCount(plans_count),
             tests_count=SubCount(tests_count)
         )
+
+    @classmethod
+    def all_projects_statistic(cls):
+        return {
+            'projects_count': Project.objects.filter(is_archive=False).count(),
+            'cases_count': TestCase.objects.filter(is_archive=False).count(),
+            'suites_count': TestSuite.objects.count(),
+            'plans_count': TestPlan.objects.filter(is_archive=False).count(),
+            'tests_count': Test.objects.filter(is_archive=False).count()
+        }
 
     def project_progress(self, project_id: int, period: PeriodDateTime):
         last_status_period = TestResultSelector.get_last_status_subquery(
@@ -84,6 +93,14 @@ class ProjectSelector:
                 tests_progress_period=SubCount(tests_progress_period),
                 tests_progress_total=SubCount(tests_progress_total)
             )
+        )
+
+    @classmethod
+    def favorites_annotation(cls, favorite_conditions: Q) -> Case:
+        return Case(
+            When(favorite_conditions, then=Value(0)),
+            default=Value(1),
+            output_field=IntegerField(),
         )
 
     @staticmethod

@@ -8,6 +8,7 @@ const initialState: LabelState = {
     mode: "edit",
     label: undefined,
   },
+  selectedLabels: { labels: [], not_labels: [] },
 }
 
 export const labelSlice = createSlice({
@@ -23,11 +24,15 @@ export const labelSlice = createSlice({
       state.modal.isShow = false
       state.modal.label = undefined
     },
+    setSelectedLabels: (state, action: PayloadAction<LabelState["selectedLabels"]>) => {
+      state.selectedLabels = action.payload
+    },
   },
 })
 
-export const { showLabelModal, hideModal } = labelSlice.actions
+export const { setSelectedLabels, showLabelModal, hideModal } = labelSlice.actions
 
 export const labelReducer = labelSlice.reducer
 
 export const selectModal = (state: RootState) => state.label.modal
+export const selectSelectedLabels = (state: RootState) => state.label.selectedLabels

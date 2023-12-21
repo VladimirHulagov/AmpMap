@@ -30,6 +30,7 @@
 # <http://www.gnu.org/licenses/>.
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
+from rest_framework.utils.urls import replace_query_param
 
 
 class StandardSetPagination(PageNumberPagination):
@@ -47,8 +48,15 @@ class StandardSetPagination(PageNumberPagination):
             'pages': {
                 'next': self.page.next_page_number() if self.page.has_next() else None,
                 'previous': self.page.previous_page_number() if self.page.has_previous() else None,
-                'current': int(self.get_page_number(self.request, self.page.paginator)),
+                'current': self.page.number,
                 'total': self.page.paginator.num_pages,
             },
             'results': data
         })
+
+    def get_previous_link(self):
+        if not self.page.has_previous():
+            return None
+        url = self.request.build_absolute_uri()
+        page_number = self.page.previous_page_number()
+        return replace_query_param(url, self.page_query_param, page_number)

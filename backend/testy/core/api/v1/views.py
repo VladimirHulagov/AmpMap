@@ -32,6 +32,7 @@ from pathlib import Path
 
 import permissions
 from core.api.v1.serializers import (
+    AllProjectsStatisticSerializer,
     AttachmentSerializer,
     LabelSerializer,
     ProjectRetrieveSerializer,
@@ -45,9 +46,11 @@ from core.selectors.attachments import AttachmentSelector
 from core.selectors.labels import LabelSelector
 from core.selectors.projects import ProjectSelector
 from core.services.attachments import AttachmentService
+from core.services.labels import LabelService
 from core.services.projects import ProjectService
 from django.shortcuts import get_object_or_404
-from filters import AttachmentFilter, LabelFilter, ProjectArchiveFilter, TestyFilterBackend
+from filters import AttachmentFilter, LabelFilter, ProjectFilter, ProjectOrderingFilter, TestyFilterBackend
+from paginations import StandardSetPagination
 from rest_framework import mixins, status
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -65,15 +68,17 @@ from utilities.request import PeriodDateTime
 from testy.mixins import TestyArchiveMixin, TestyModelViewSet
 
 
-class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin):
+class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin, MediaViewMixin):
     queryset = ProjectSelector.project_list()
     serializer_class = ProjectSerializer
-    filter_backends = [TestyFilterBackend]
-    filterset_class = ProjectArchiveFilter
+    filter_backends = [TestyFilterBackend, ProjectOrderingFilter]
+    filterset_class = ProjectFilter
     permission_classes = [permissions.IsAdminOrForbidArchiveUpdate, IsAuthenticated]
+    ordering_fields = ['name', 'is_archive']
+    pagination_class = StandardSetPagination
 
     def get_queryset(self):
-        if self.action in ['recovery_list', 'restore', 'delete_permanently']:
+        if self.action in {'recovery_list', 'restore', 'delete_permanently'}:
             return ProjectSelector().project_deleted_list()
         return ProjectSelector.project_list()
 
@@ -82,19 +87,26 @@ class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin):
             return ProjectRetrieveSerializer
         return ProjectSerializer
 
-    @action(detail=False)
+    @action(methods=['get'], url_path='testplans', url_name='testplans', detail=True)
     def testplans_by_project(self, request, pk):
         qs = TestPlanSelector().testplan_project_root_list(project_id=pk)
         serializer = TestPlanTreeSerializer(qs, many=True, context={'request': request})
         return Response(serializer.data)
 
-    @action(detail=False)
+    @action(methods=['get'], url_path='parameters', url_name='parameters', detail=True)
     def parameters_by_project(self, request, pk):
         qs = ParameterSelector().parameter_project_list(project_id=pk)
         serializer = ParameterSerializer(qs, many=True, context={'request': request})
         return Response(serializer.data)
 
-    @action(detail=True)
+    @action(methods=['get'], url_path='icon', url_name='icon', detail=True)
+    def icon(self, request, pk, *args, **kwargs):
+        project = get_object_or_404(Project, pk=pk)
+        if not project.icon or not project.icon.storage.exists(project.icon.path):
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        return self.retrieve_filepath(project.icon, request, generate_thumbnail=False)
+
+    @action(methods=['get'], url_path='progress', url_name='progress', detail=True)
     def project_progress(self, request, pk):
         period = PeriodDateTime(request, 'start_date', 'end_date')
         plans = ProjectSelector().project_progress(
@@ -104,6 +116,13 @@ class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin):
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(ProjectSelector.project_list_statistics())
+
+        page = self.paginate_queryset(queryset)
+
+        if page is not None:
+            serializer = ProjectStatisticsSerializer(page, many=True, context={'request': request})
+            return self.get_paginated_response(serializer.data)
+
         serializer = ProjectStatisticsSerializer(queryset, many=True, context={'request': request})
         return Response(serializer.data)
 
@@ -156,6 +175,12 @@ class LabelViewSet(TestyModelViewSet):
     filter_backends = [TestyFilterBackend]
     filterset_class = LabelFilter
 
+    def perform_create(self, serializer: ProjectSerializer):
+        serializer.instance = LabelService().label_create(serializer.validated_data)
+
+    def perform_update(self, serializer: ProjectSerializer):
+        serializer.instance = LabelService().label_update(serializer.instance, serializer.validated_data)
+
 
 class SystemMessagesViewSet(mixins.ListModelMixin, GenericViewSet):
     serializer_class = SystemMessageSerializer
@@ -165,11 +190,8 @@ class SystemMessagesViewSet(mixins.ListModelMixin, GenericViewSet):
         return SystemMessage.objects.filter(is_active=True).order_by('-updated_at')
 
 
-class ProjectIconView(mixins.RetrieveModelMixin, GenericViewSet, MediaViewMixin):
-    permission_classes = [IsAuthenticated, ]
-
-    def retrieve(self, request, pk, *args, **kwargs):
-        project = get_object_or_404(Project, pk=pk)
-        if not project.icon or not project.icon.storage.exists(project.icon.path):
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        return self.retrieve_filepath(project.icon, request, generate_thumbnail=False)
+class SystemStatisticViewSet(mixins.ListModelMixin, GenericViewSet):
+    def list(self, request, *args, **kwargs):
+        statistic = ProjectSelector.all_projects_statistic()
+        serializer = AllProjectsStatisticSerializer(statistic)
+        return Response(serializer.data)

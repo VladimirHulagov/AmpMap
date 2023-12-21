@@ -28,26 +28,28 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-
 from typing import Any, Dict
 
 from tests_description.models import TestSuite
+from utilities.sql import lock_table
 
 
 class TestSuiteService:
     non_side_effect_fields = ['parent', 'project', 'name', 'description']
 
     def suite_create(self, data: Dict[str, Any]) -> TestSuite:
-        suite = TestSuite.model_create(
-            fields=self.non_side_effect_fields,
-            data=data,
-        )
-        TestSuite.objects.partial_rebuild(suite.tree_id)
+        with lock_table(TestSuite):
+            suite = TestSuite.model_create(
+                fields=self.non_side_effect_fields,
+                data=data,
+            )
+            TestSuite.objects.partial_rebuild(suite.tree_id)
         return suite
 
     def suite_update(self, suite: TestSuite, data: Dict[str, Any]) -> TestSuite:
-        suite, _ = suite.model_update(
-            fields=self.non_side_effect_fields,
-            data=data,
-        )
+        with lock_table(TestSuite):
+            suite, _ = suite.model_update(
+                fields=self.non_side_effect_fields,
+                data=data,
+            )
         return suite

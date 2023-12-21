@@ -7,6 +7,7 @@ export const userConfig: UserConfig = {
     graph_base_bar_type: "by_time",
     graph_base_bar_attribute_input: "",
     test_plan: {},
+    test_plan_estimate_everywhere_period: "minutes",
   },
   projects: {
     is_only_favorite: false,
@@ -14,6 +15,9 @@ export const userConfig: UserConfig = {
     favorite: [],
   },
   test_plans: {
+    is_show_archived: false,
+  },
+  test_cases: {
     is_show_archived: false,
   },
 }

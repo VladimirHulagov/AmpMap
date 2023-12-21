@@ -7,13 +7,11 @@ import { useGetProjectQuery } from "entities/project/api"
 
 import { ContainerLoader } from "shared/ui"
 
-import { MenuContextType } from "widgets/[ui]/main"
-
 import ProjectDetailsTabs from "./project-details-tabs"
 
 const { Content } = Layout
 
-export type ProjectDetailsActiveTabContextType = {
+export interface ProjectDetailsActiveTabContextType {
   projectDetailsActiveTab: string
   setProjectDetailsActiveTab: React.Dispatch<React.SetStateAction<string>>
 }
@@ -22,10 +20,10 @@ export const ProjectDetailsActiveTabContext =
   React.createContext<ProjectDetailsActiveTabContextType | null>(null)
 
 export const ProjectDetailsMainPage = () => {
-  const { setActiveMenu, setOpenSubMenu } = useContext(MenuContext) as MenuContextType
+  const { setActiveMenu, setOpenSubMenu } = useContext(MenuContext)!
   const [projectDetailsActiveTab, setProjectDetailsActiveTab] = useState("")
   const { projectId } = useParams<ParamProjectId>()
-  const { data: project, isLoading } = useGetProjectQuery(Number(projectId))
+  const { data: project, isLoading } = useGetProjectQuery(Number(projectId), { skip: !projectId })
 
   useEffect(() => {
     setOpenSubMenu(["administration"])

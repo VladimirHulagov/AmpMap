@@ -1,7 +1,7 @@
 import { CopyOutlined } from "@ant-design/icons"
 import { Button, Input, Modal } from "antd"
 
-import { TestSuiteParentField } from "entities/suite/ui/test-suite-parent-field"
+import { SearchField } from "widgets/search-field"
 
 import { useTestCaseCopyModal } from "./use-test-case-copy-modal"
 
@@ -10,13 +10,17 @@ export const CopyTestCase = ({ testCase }: { testCase: TestCase }) => {
     isShow,
     isLoading,
     selectedSuite,
+    newName,
+    dataTestSuites,
+    isLoadingTestSuites,
     handleClear,
     handleSave,
     handleCancel,
     handleShow,
     handleChange,
     handleChangeName,
-    newName,
+    handleLoadNextPageData,
+    handleSearch,
   } = useTestCaseCopyModal(testCase)
 
   return (
@@ -53,11 +57,16 @@ export const CopyTestCase = ({ testCase }: { testCase: TestCase }) => {
           autoFocus={true}
           style={{ marginBottom: "16px" }}
         />
-        <TestSuiteParentField
-          handleClearParent={handleClear}
-          handleSelectParent={handleChange}
-          selectedParent={selectedSuite}
-          placeholder="Please select a suite"
+        <SearchField
+          select={selectedSuite}
+          isLastPage={!!dataTestSuites?.pages.next}
+          data={dataTestSuites?.results}
+          isLoading={isLoadingTestSuites}
+          onClear={handleClear}
+          onSearch={handleSearch}
+          onChange={handleChange}
+          handleLoadNextPageData={handleLoadNextPageData}
+          placeholder="Search a test suite"
         />
       </Modal>
     </>

@@ -56,7 +56,8 @@ export const TestCaseStepsWrapper = ({
     stateAttachments.setAttachments(fileList)
 
     if (info.file.status === "done") {
-      setValue(fieldProps.name || "", fieldProps.value + `![](${info.file.link})`)
+      // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
+      setValue(fieldProps.name ?? "", fieldProps.value + `![](${info.file.link})`)
     }
   }
 
@@ -66,7 +67,7 @@ export const TestCaseStepsWrapper = ({
   }
 
   useEffect(() => {
-    setIsSteps(isStepsServer || false)
+    setIsSteps(isStepsServer ?? false)
   }, [isStepsServer])
 
   return (

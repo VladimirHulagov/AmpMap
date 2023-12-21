@@ -28,14 +28,17 @@ export const TextArea = ({
 }: TSTextAreaProps) => {
   const { attachments, setAttachments } = stateAttachments
 
-  // TODO fix it
+  // TODO need refactoring
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const onChange = (info: any) => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
     setAttachments(info.fileList)
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
     const { status } = info.file
     if (status === "done") {
-      setValue(fieldProps.name || "", fieldProps.value + `![](${info.file.link})`, {
+      // eslint-disable-next-line @typescript-eslint/restrict-plus-operands, @typescript-eslint/no-unsafe-member-access
+      setValue(fieldProps.name ?? "", fieldProps.value + `![](${info.file.link})`, {
         shouldDirty: true,
       })
     }

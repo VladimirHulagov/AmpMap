@@ -3,6 +3,7 @@ import { Button, Col, Divider, Form, Modal, Row, Select, Upload } from "antd"
 import { Controller } from "react-hook-form"
 
 import { statuses } from "shared/config"
+import { ErrorObj } from "shared/hooks/use-alert-error"
 import { AlertError, Attachment, Attribute, Steps, TextArea } from "shared/ui"
 
 import { useEditResultModal } from "./use-edit-result-modal"
@@ -76,7 +77,7 @@ export const TestResultEditModal = ({
         </Button>,
       ]}
     >
-      {errors ? <AlertError error={errors} skipFields={["status", "comment"]} /> : null}
+      {errors ? <AlertError error={errors as ErrorObj} skipFields={["status", "comment"]} /> : null}
 
       <Form id="test-result-edit-form" layout="vertical" onFinish={handleSubmitForm}>
         <Row>

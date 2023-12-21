@@ -7,7 +7,7 @@ import { DeleteTestCaseModal } from "./delete-test-case-modal"
 export const DeleteTestCase = ({ testCase }: { testCase: TestCase }) => {
   const [isShowTestCaseDeleteModal, setIsShowTestCaseDeleteModal] = useState(false)
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     setIsShowTestCaseDeleteModal(true)
   }
 

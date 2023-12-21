@@ -82,7 +82,7 @@ class Test(BaseModel):
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
     case = models.ForeignKey(TestCase, on_delete=models.CASCADE)
     plan = models.ForeignKey(TestPlan, on_delete=models.CASCADE)
-    assignee = models.ForeignKey(UserModel, on_delete=models.CASCADE, null=True, blank=True)
+    assignee = models.ForeignKey(UserModel, on_delete=models.SET_NULL, null=True, blank=True)
     is_archive = models.BooleanField(default=False)
     history = HistoricalRecords()
     comments = GenericRelation(Comment)

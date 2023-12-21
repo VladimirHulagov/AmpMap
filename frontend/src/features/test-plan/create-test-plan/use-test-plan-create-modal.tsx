@@ -6,21 +6,18 @@ import { useParams } from "react-router-dom"
 
 import { useGetParametersQuery } from "entities/parameter/api"
 
-import { useGetTestSuitesTreeViewWithCasesQuery } from "entities/suite/api"
+import { useTestCasesSearch } from "entities/test-case/model"
 
-import { useCreateTestPlanMutation, useLazyGetTestPlanQuery } from "entities/test-plan/api"
+import { useCreateTestPlanMutation, useLazyGetTestPlansQuery } from "entities/test-plan/api"
 import { getTestCaseChangeResult } from "entities/test-plan/lib"
-import { useTestPlanSearch } from "entities/test-plan/model/use-test-plan-search"
 
 import { useDatepicker, useErrors } from "shared/hooks"
-import {
-  makeParametersForTreeView,
-  makeTestSuitesForTreeView,
-  showModalCloseConfirm,
-} from "shared/libs"
+import { makeParametersForTreeView, showModalCloseConfirm } from "shared/libs"
 import { AlertSuccessChange } from "shared/ui/alert-success-change"
 
-type ErrorData = {
+import { useSearchField } from "widgets/search-field"
+
+interface ErrorData {
   name?: string
   description?: string
   parent?: string
@@ -31,7 +28,7 @@ type ErrorData = {
 }
 
 type IForm = Modify<
-  ITestPlanCreate,
+  TestPlanCreate,
   {
     test_cases: string[]
     started_at: Moment
@@ -42,10 +39,15 @@ type IForm = Modify<
 interface UseTestPlanCreateModalProps {
   isShow: boolean
   setIsShow: React.Dispatch<React.SetStateAction<boolean>>
+  testPlan?: TestPlanTreeView
 }
 
-export const useTestPlanCreateModal = ({ isShow, setIsShow }: UseTestPlanCreateModalProps) => {
-  const { projectId, testPlanId } = useParams<ParamProjectId & ParamTestPlanId>()
+export const useTestPlanCreateModal = ({
+  isShow,
+  setIsShow,
+  testPlan,
+}: UseTestPlanCreateModalProps) => {
+  const { projectId } = useParams<ParamProjectId & ParamTestPlanId>()
   const [errors, setErrors] = useState<ErrorData | null>(null)
   const {
     handleSubmit,
@@ -67,21 +69,31 @@ export const useTestPlanCreateModal = ({ isShow, setIsShow }: UseTestPlanCreateM
   })
   const testCasesWatch = watch("test_cases")
 
-  const [testSuites, setTestSuites] = useState<ISuite[]>([])
   const [parametersTreeView, setParametersTreeView] = useState<IParameterTreeView[]>([])
 
-  const { searchText, filterTable, expandedRowKeys, onSearch, onRowExpand, onClearSearch } =
-    useTestPlanSearch()
+  const {
+    searchText,
+    treeData,
+    expandedRowKeys,
+    isLoading: isLoadingTreeData,
+    onSearch,
+    onRowExpand,
+    onClearSearch,
+  } = useTestCasesSearch({ isShow })
   const [createTestPlan, { isLoading: isLoadingCreateTestPlan }] = useCreateTestPlanMutation()
-  const [getTestPlan] = useLazyGetTestPlanQuery()
-  const { data: testSuitesTreeView } = useGetTestSuitesTreeViewWithCasesQuery(
-    {
-      project: projectId,
-    },
-    {
-      skip: !projectId,
-    }
-  )
+
+  const {
+    search,
+    paginationParams,
+    handleSearch: handleSearchField,
+    handleLoadNextPageData,
+  } = useSearchField()
+
+  const [getPlans] = useLazyGetTestPlansQuery()
+  const [isLastPage, setIsLastPage] = useState(false)
+  const [isLoadingTestPlans, setIsLoadingTestPlans] = useState(false)
+  const [dataTestPlans, setDataTestPlans] = useState<TestPlan[]>([])
+
   const { data: parameters } = useGetParametersQuery(Number(projectId), {
     skip: !projectId,
   })
@@ -92,21 +104,39 @@ export const useTestPlanCreateModal = ({ isShow, setIsShow }: UseTestPlanCreateM
     null
   )
 
-  useEffect(() => {
-    if (!isShow || !testPlanId) return
-    getTestPlan(Number(testPlanId))
-      .unwrap()
-      .then((res) => {
-        setSelectedParent({ value: res.id, label: res.name })
-        setValue("parent", res.id)
-      })
-  }, [testPlanId, isShow])
+  const handleSearchTestPlan = (value?: string) => {
+    setDataTestPlans([])
+    setIsLastPage(false)
+    handleSearchField(value)
+  }
+
+  const fetchPlans = async () => {
+    setIsLoadingTestPlans(true)
+    const res = await getPlans({
+      search,
+      projectId,
+      page: paginationParams.page,
+      page_size: paginationParams.page_size,
+      is_flat: true,
+    }).unwrap()
+    setDataTestPlans((prevState) => [...prevState, ...res.results])
+    setIsLoadingTestPlans(false)
+
+    if (!res.pages.next) {
+      setIsLastPage(true)
+    }
+  }
 
   useEffect(() => {
-    if (testSuitesTreeView) {
-      setTestSuites(makeTestSuitesForTreeView(testSuitesTreeView.results))
-    }
-  }, [testSuitesTreeView])
+    if (!projectId || search === undefined) return
+    fetchPlans()
+  }, [paginationParams, search, projectId])
+
+  useEffect(() => {
+    if (!isShow || !testPlan) return
+    setSelectedParent({ value: testPlan.id, label: testPlan.name })
+    setValue("parent", testPlan.id)
+  }, [testPlan, isShow])
 
   useEffect(() => {
     if (parameters) {
@@ -160,9 +190,9 @@ export const useTestPlanCreateModal = ({ isShow, setIsShow }: UseTestPlanCreateM
     }
   }
 
-  const handleSelectParent = (value?: { label: string; value: number }) => {
+  const handleSelectTestPlan = (value?: { label: string; value: number }) => {
     setErrors({ parent: "" })
-    if (Number(value?.value) === Number(testPlanId)) {
+    if (Number(value?.value) === Number(testPlan?.id)) {
       setErrors({ parent: "Test Plan не может быть родителем для самого себя." })
       return
     }
@@ -173,7 +203,7 @@ export const useTestPlanCreateModal = ({ isShow, setIsShow }: UseTestPlanCreateM
     }
   }
 
-  const handleClearParent = () => {
+  const handleClearTestPlan = () => {
     setSelectedParent(null)
     setValue("parent", null, { shouldDirty: true })
   }
@@ -190,10 +220,13 @@ export const useTestPlanCreateModal = ({ isShow, setIsShow }: UseTestPlanCreateM
     control,
     searchText,
     expandedRowKeys,
-    testSuites,
-    filterTable,
+    treeData,
     parametersTreeView,
     selectedParent,
+    isLastPage,
+    isLoadingTreeData,
+    isLoadingTestPlans,
+    dataTestPlans,
     handleRowExpand: onRowExpand,
     handleSearch: onSearch,
     handleSubmitForm: handleSubmit(onSubmit),
@@ -203,8 +236,10 @@ export const useTestPlanCreateModal = ({ isShow, setIsShow }: UseTestPlanCreateM
     disabledDateFrom,
     disabledDateTo,
     setValue,
-    handleSelectParent,
-    handleClearParent,
     handleTestCaseChange,
+    handleClearTestPlan,
+    handleSearchTestPlan,
+    handleSelectTestPlan,
+    handleLoadNextPageData,
   }
 }

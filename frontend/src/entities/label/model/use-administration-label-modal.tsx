@@ -12,7 +12,7 @@ import { useErrors } from "shared/hooks"
 
 import { useCreateLabelMutation, useDeleteLabelMutation, useUpdateLabelMutation } from "../api"
 
-type ErrorData = {
+interface ErrorData {
   name?: string
   type?: string
 }

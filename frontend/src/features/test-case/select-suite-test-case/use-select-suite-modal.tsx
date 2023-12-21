@@ -2,6 +2,8 @@ import { Key } from "antd/lib/table/interface"
 import { DataNode } from "antd/lib/tree"
 import { useEffect, useMemo, useState } from "react"
 
+import { addKeyToData } from "shared/libs/add-key-to-data"
+
 import { SelectSuiteModalProps } from "./select-suite-modal"
 
 export const useSelectSuiteModal = ({
@@ -45,11 +47,11 @@ export const useSelectSuiteModal = ({
   }
 
   const treeData = useMemo(() => {
-    const buildBranch = (data: DataNode[]): DataNode[] =>
+    const buildBranch = (data: Suite[]): DataNode[] =>
       data
         .map((item) => {
-          const isSelected = selectedSuiteId === item.key
-          const strTitle = item.title as string
+          const isSelected = selectedSuiteId === item.id
+          const strTitle = item.title
           const index = strTitle.indexOf(searchValue)
           const beforeStr = strTitle.substring(0, index)
           const afterStr = strTitle.slice(index + searchValue.length)
@@ -72,7 +74,7 @@ export const useSelectSuiteModal = ({
               return null
             }
 
-            return { title, key: item.key, children }
+            return { title, key: item.id, children }
           }
 
           if (shouldSkip) {
@@ -81,12 +83,12 @@ export const useSelectSuiteModal = ({
 
           return {
             title,
-            key: item.key,
+            key: item.id,
           }
         })
         .filter((x) => !!x) as DataNode[]
 
-    return buildBranch(treeSuites)
+    return buildBranch(addKeyToData(treeSuites))
   }, [searchValue])
 
   return {

@@ -1,4 +1,4 @@
-export const labelsObject: { [statusNum: string]: LabelTypes } = {
+export const labelsObject: Record<string, LabelTypes> = {
   0: "System",
   1: "Custom",
 }

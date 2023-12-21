@@ -3,7 +3,7 @@ import { Button, Input, Modal, Select } from "antd"
 
 import { useSuiteCopyModal } from "./use-suite-copy-modal"
 
-export const CopySuite = ({ suite }: { suite: ISuite }) => {
+export const CopySuite = ({ suite }: { suite: Suite }) => {
   const {
     isShow,
     isLoading,

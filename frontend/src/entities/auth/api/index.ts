@@ -21,7 +21,7 @@ export const authApi = createApi({
   reducerPath: "authApi",
   baseQuery: baseQueryAuth,
   endpoints: (builder) => ({
-    login: builder.mutation<void, { password: string; username: string }>({
+    login: builder.mutation<void, { password: string; username: string; remember_me: boolean }>({
       query: (credentials) => ({
         url: "login/",
         method: "POST",

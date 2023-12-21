@@ -30,17 +30,17 @@
 # <http://www.gnu.org/licenses/>.
 from core.api.v1.serializers import AttachmentSerializer
 from core.selectors.attachments import AttachmentSelector
-from rest_framework.fields import CharField, ChoiceField, DateTimeField, IntegerField, SerializerMethodField
+from rest_framework.fields import CharField, ChoiceField, DateTimeField, FloatField, IntegerField, SerializerMethodField
 from rest_framework.relations import HyperlinkedIdentityField, PrimaryKeyRelatedField
 from rest_framework.reverse import reverse
 from rest_framework.serializers import ModelSerializer, Serializer
-from tests_description.api.v1.serializers import TestCaseLabelOutputSerializer, TestCaseSerializer
+from tests_description.api.v1.serializers import TestCaseLabelOutputSerializer, TestCaseListSerializer
 from tests_description.selectors.cases import TestCaseSelector
 from tests_representation.choices import TestStatuses
 from tests_representation.models import Parameter, Test, TestPlan, TestResult, TestStepResult
 from tests_representation.selectors.parameters import ParameterSelector
 from tests_representation.selectors.results import TestResultSelector
-from validators import TestResultUpdateValidator
+from validators import DateRangeValidator, TestPlanParentValidator, TestResultUpdateValidator
 
 
 class ParameterSerializer(ModelSerializer):
@@ -60,18 +60,14 @@ class TestPlanUpdateSerializer(ModelSerializer):
             'id', 'name', 'parent', 'test_cases', 'started_at', 'due_date', 'finished_at', 'is_archive', 'project',
             'description'
         )
+        validators = [DateRangeValidator(), TestPlanParentValidator()]
 
 
-class TestPlanInputSerializer(ModelSerializer):
-    test_cases = PrimaryKeyRelatedField(queryset=TestCaseSelector().case_list(), many=True, required=False)
+class TestPlanInputSerializer(TestPlanUpdateSerializer):
     parameters = PrimaryKeyRelatedField(queryset=ParameterSelector().parameter_list(), many=True, required=False)
 
-    class Meta:
-        model = TestPlan
-        fields = (
-            'id', 'name', 'parent', 'test_cases', 'parameters', 'started_at', 'due_date', 'finished_at', 'is_archive',
-            'project', 'description'
-        )
+    class Meta(TestPlanUpdateSerializer.Meta):
+        fields = TestPlanUpdateSerializer.Meta.fields + ('parameters',)
 
 
 class TestSerializer(ModelSerializer):
@@ -246,6 +242,12 @@ class TestResultInputSerializer(TestResultSerializer):
         ]
 
 
+class ParentPlanSerializer(ModelSerializer):
+    class Meta:
+        model = TestPlan
+        fields = ('id', 'name')
+
+
 class TestPlanTestResultSerializer(ModelSerializer):
     status = SerializerMethodField()
     updated_at = SerializerMethodField()
@@ -264,7 +266,7 @@ class TestPlanTestResultSerializer(ModelSerializer):
 
 
 class TestPlanTestSerializer(ModelSerializer):
-    case = TestCaseSerializer()
+    case = TestCaseListSerializer()
     current_result = SerializerMethodField()
     test_results = TestPlanTestResultSerializer(many=True, read_only=True)
 
@@ -306,12 +308,11 @@ class TestPlanOutputSerializer(ModelSerializer):
 
 class TestPlanTreeSerializer(TestPlanOutputSerializer):
     children = SerializerMethodField()
-    key = IntegerField(source='id')
-    value = IntegerField(source='id')
+    parent = ParentPlanSerializer()
 
     class Meta:
         model = TestPlan
-        fields = TestPlanOutputSerializer.Meta.fields + ('children', 'key', 'value')
+        fields = TestPlanOutputSerializer.Meta.fields + ('children',)
 
     def get_children(self, value):
         return self.__class__(value.child_test_plans.all(), many=True, context=self.context).data
@@ -322,6 +323,7 @@ class TestPlanStatisticsSerializer(Serializer):
         choices=[label.upper() for label in TestStatuses.labels]
     )
     value = IntegerField()
+    estimates = FloatField()
 
 
 class TestPlanProgressSerializer(Serializer):

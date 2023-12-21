@@ -6,14 +6,8 @@ import styles from "./styles.module.css"
 
 interface StepResultProps {
   testCase: TestCase
-  steps: {
-    [stepId: string]: string
-  }
-  setSteps: React.Dispatch<
-    React.SetStateAction<{
-      [stepId: string]: string
-    }>
-  >
+  steps: Record<string, string>
+  setSteps: React.Dispatch<React.SetStateAction<Record<string, string>>>
 }
 
 export const StepResultInCreateModal = ({ testCase, steps, setSteps }: StepResultProps) => {
@@ -26,7 +20,7 @@ export const StepResultInCreateModal = ({ testCase, steps, setSteps }: StepResul
   return (
     <ul style={{ paddingLeft: 0 }} className={styles.fieldUl}>
       {testCase.steps.map((item) => (
-        <li className={styles.resultFieldItem} key={item.id}>
+        <li id={`step-item-${item.name}`} className={styles.resultFieldItem} key={item.id}>
           <div className={styles.resultFieldIcon}>{item.sort_order}</div>
           <div className={styles.resultModalFieldWrapper}>
             <div className={styles.resultModalFieldContent}>

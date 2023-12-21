@@ -35,7 +35,7 @@ from core.models import Attachment, LabeledItem, Project
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
-from fields import EstimateField
+from fields import IntegerEstimateField
 from mptt.models import TreeForeignKey
 from simple_history.models import HistoricalRecords
 
@@ -83,14 +83,12 @@ class TestCase(BaseModel):
     scenario = models.TextField(blank=True)
     expected = models.TextField(blank=True)
     teardown = models.TextField(blank=True)
-    estimate = EstimateField(
-        null=True,
-        blank=True,
-    )
+    estimate = IntegerEstimateField(null=True, blank=True)
     attachments = GenericRelation(Attachment)
     history = HistoricalRecords()
     description = models.TextField('description', default='', blank=True)
     is_steps = models.BooleanField(default=False)
+    is_archive = models.BooleanField(default=False)
 
     labeled_items = GenericRelation(LabeledItem)
     comments = GenericRelation(Comment)

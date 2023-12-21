@@ -7,12 +7,13 @@ import { useCreateProjectMutation } from "entities/project/api"
 import { ProjectIcon } from "entities/project/ui"
 
 import { useErrors } from "shared/hooks"
+import { ErrorObj } from "shared/hooks/use-alert-error"
 import { fileReader, showModalCloseConfirm } from "shared/libs"
 import { AlertError, AlertSuccessChange } from "shared/ui"
 
 const { TextArea } = Input
 
-type ErrorData = {
+interface ErrorData {
   name?: string
   description?: string
   is_archive?: string
@@ -54,7 +55,7 @@ export const CreateProjectModal = ({ isShow, setIsShow }: Props) => {
       fmData.append("name", data.name)
       fmData.append("description", data.description)
       fmData.append("is_archive", String(data.is_archive))
-      fmData.append("icon", data.icon || "")
+      fmData.append("icon", data.icon ?? "")
       const newProject = await createProject(fmData).unwrap()
 
       onCloseModal()
@@ -145,7 +146,10 @@ export const CreateProjectModal = ({ isShow, setIsShow }: Props) => {
     >
       <>
         {errors ? (
-          <AlertError error={errors} skipFields={["name", "description", "is_archive"]} />
+          <AlertError
+            error={errors as ErrorObj}
+            skipFields={["name", "description", "is_archive"]}
+          />
         ) : null}
 
         <Form id="create-edit-project-form" layout="vertical" onFinish={handleSubmit(onSubmit)}>

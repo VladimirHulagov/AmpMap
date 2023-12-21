@@ -1,12 +1,12 @@
 import { Breadcrumb } from "antd"
-import { useEffect, useMemo } from "react"
+import { useMemo } from "react"
 import { Link, useParams } from "react-router-dom"
 
 import { useGetProjectQuery } from "entities/project/api"
 
-import { useLazyGetSuiteParentsQuery } from "entities/suite/api"
+import { useGetSuiteParentsQuery } from "entities/suite/api"
 
-import { useLazyGetTestPlanParentsQuery } from "entities/test-plan/api"
+import { useGetTestPlanParentsQuery } from "entities/test-plan/api"
 
 interface BreadCrumbElement {
   type: "suites" | "plans"
@@ -20,19 +20,11 @@ export const useBreadcrumbs = () => {
   const { projectId, testPlanId, testSuiteId } = useParams<
     ParamProjectId & ParamTestPlanId & ParamTestSuiteId
   >()
-  const { data: project, isLoading: isLoadingProject } = useGetProjectQuery(Number(projectId))
-  const [getTestPlanParents, { data: testPlan }] = useLazyGetTestPlanParentsQuery()
-  const [getTestSuiteParents, { data: testSuite }] = useLazyGetSuiteParentsQuery()
-
-  useEffect(() => {
-    if (!testPlanId) return
-    getTestPlanParents(testPlanId)
-  }, [testPlanId])
-
-  useEffect(() => {
-    if (!testSuiteId) return
-    getTestSuiteParents(testSuiteId)
-  }, [testSuiteId])
+  const { data: project, isLoading: isLoadingProject } = useGetProjectQuery(Number(projectId), {
+    skip: !projectId,
+  })
+  const { data: testPlan } = useGetTestPlanParentsQuery(String(testPlanId), { skip: !testPlanId })
+  const { data: testSuite } = useGetSuiteParentsQuery(String(testSuiteId), { skip: !testSuiteId })
 
   const getElement = ({ type, key, id, projectId, title }: BreadCrumbElement) => {
     return (

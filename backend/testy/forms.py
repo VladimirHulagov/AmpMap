@@ -28,15 +28,17 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-import datetime
-
 from django import forms
-
-from utils import format_duration
+from utilities.time import WorkTimeProcessor
 
 
 class EstimateFormField(forms.CharField):
-    def prepare_value(self, value):
-        if isinstance(value, datetime.timedelta):
-            return format_duration(value)
+    def to_python(self, value):
+        if not value:
+            return None
         return value
+
+    def prepare_value(self, value):
+        if value is None:
+            return None
+        return WorkTimeProcessor.format_duration(value)

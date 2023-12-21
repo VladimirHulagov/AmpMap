@@ -4,7 +4,7 @@ import { useState } from "react"
 
 import { DeleteTestSuiteModal } from "./delete-test-suite-modal"
 
-export const DeleteSuite = ({ suite }: { suite: ISuite }) => {
+export const DeleteSuite = ({ suite }: { suite: Suite }) => {
   const [isShowTestSuiteDeleteModal, setIsShowTestSuiteDeleteModal] = useState(false)
 
   return (

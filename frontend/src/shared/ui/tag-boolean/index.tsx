@@ -1,5 +1,4 @@
 import { Tag } from "antd"
-import React from "react"
 
 import { colors } from "shared/config"
 

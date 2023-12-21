@@ -17,7 +17,7 @@ interface Props {
 export const DeleteProjectModal = ({ isShow, setIsShow, project }: Props) => {
   const navigate = useNavigate()
   const [deleteProject, { isLoading: isLoadingDelete }] = useDeleteProjectMutation()
-  const { data, isLoading } = useGetProjectDeletePreviewQuery(String(project.id), {
+  const { data, isLoading, status } = useGetProjectDeletePreviewQuery(String(project.id), {
     skip: !isShow,
   })
 
@@ -50,13 +50,14 @@ export const DeleteProjectModal = ({ isShow, setIsShow, project }: Props) => {
 
   return (
     <ModalConfirmDeleteArchive
+      status={status}
       isShow={isShow}
       isLoading={isLoading}
       isLoadingButton={isLoadingDelete}
       name={project.name}
       typeTitle="Project"
       type="project"
-      data={data || []}
+      data={data ?? []}
       handleClose={handleClose}
       handleDelete={handleDelete}
       action="delete"

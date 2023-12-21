@@ -32,7 +32,7 @@ from comments.models import Comment
 from core.api.v1.serializers import AttachmentSerializer
 from core.selectors.attachments import AttachmentSelector
 from rest_framework.relations import PrimaryKeyRelatedField
-from rest_framework.serializers import ModelSerializer, SerializerMethodField
+from rest_framework.serializers import ModelSerializer, SerializerMethodField, ValidationError
 from users.api.v1.serializers import UserSerializer
 
 
@@ -64,3 +64,8 @@ class InputCommentSerializer(ModelSerializer):
     class Meta:
         model = Comment
         fields = ('content', 'attachments')
+
+    def validate(self, attrs):
+        if not attrs.get('content') and not attrs.get('attachments'):
+            raise ValidationError('Comment can not be empty')
+        return super().validate(attrs)

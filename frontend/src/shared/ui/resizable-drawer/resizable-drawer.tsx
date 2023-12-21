@@ -1,10 +1,8 @@
 import { MoreOutlined } from "@ant-design/icons"
 import { Drawer, DrawerProps } from "antd"
-import { PropsWithChildren, useCallback, useEffect, useState } from "react"
+import { PropsWithChildren, useCallback, useState } from "react"
 
 import { useUserConfig } from "entities/user/model"
-
-import { useDebounce } from "shared/hooks/use-debounce"
 
 import styles from "./styles.module.css"
 
@@ -23,26 +21,12 @@ export const ResizableDrawer = ({
   ...props
 }: PropsWithChildren<ResizableDrawer>) => {
   const { userConfig, updateConfig } = useUserConfig()
-  const [drawerWidth, setDrawerWidth] = useState<string | number | undefined>(
+  const [drawerWidth, setDrawerWidth] = useState(
     getDrawerMaxWidth(userConfig.ui[`drawer_size_${drawerKey}`] || 500)
   )
-  const debDrawerWidth = useDebounce(drawerWidth, 500, true)
 
   const cbHandleMouseMove = useCallback(handleMousemove, [])
-  const cbHandleMouseUp = useCallback(handleMouseup, [])
-
-  useEffect(() => {
-    const update = async () => {
-      await updateConfig({
-        ui: {
-          ...userConfig.ui,
-          [`drawer_size_${drawerKey}`]: drawerWidth,
-        },
-      })
-    }
-
-    update()
-  }, [debDrawerWidth])
+  const cbHandleMouseUp = useCallback(handleMouseup, [drawerWidth])
 
   async function handleMouseup() {
     if (!isResizing) {
@@ -50,24 +34,28 @@ export const ResizableDrawer = ({
     }
 
     isResizing = false
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
+
     document.removeEventListener("mousemove", cbHandleMouseMove)
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
     document.removeEventListener("mouseup", cbHandleMouseUp)
+
+    await updateConfig({
+      ui: {
+        ...userConfig.ui,
+        [`drawer_size_${drawerKey}`]: drawerWidth,
+      },
+    })
   }
 
-  function handleMousedown(e: React.MouseEvent<HTMLElement>) {
+  function handleMousedown(e: React.MouseEvent) {
     e.stopPropagation()
     e.preventDefault()
 
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
     document.addEventListener("mousemove", cbHandleMouseMove)
-    document.addEventListener("mouseup", cbHandleMouseUp)
     isResizing = true
   }
 
-  function handleMousemove(e: React.MouseEvent<HTMLElement>) {
+  function handleMousemove(e: MouseEvent) {
     const offsetRight = document.body.offsetWidth - (e.clientX - document.body.offsetLeft)
     const minWidth = 300
     const maxWidth = getDrawerMaxWidth(1600)
@@ -77,8 +65,18 @@ export const ResizableDrawer = ({
   }
 
   return (
-    <Drawer {...props} width={drawerWidth}>
-      <div className={styles.resizerBlock} onMouseDown={handleMousedown}>
+    <Drawer
+      {...props}
+      width={drawerWidth}
+      contentWrapperStyle={{
+        transition: "all 0.2s",
+      }}
+    >
+      <div
+        className={styles.resizerBlock}
+        onMouseDown={handleMousedown}
+        onMouseUp={cbHandleMouseUp}
+      >
         <div className={styles.resizerBtn}>
           <MoreOutlined />
         </div>

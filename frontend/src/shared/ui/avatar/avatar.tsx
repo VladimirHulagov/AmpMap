@@ -41,7 +41,7 @@ export const AvatarView = () => {
       }}
     >
       <Space className="pointer">
-        <UserAvatar avatar_link={user?.avatar_link || ""} size={32} />
+        <UserAvatar avatar_link={user?.avatar_link ?? ""} size={32} />
         <span id="header-username">{user?.username}</span>
         <DownOutlined />
       </Space>

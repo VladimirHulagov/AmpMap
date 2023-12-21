@@ -11,12 +11,12 @@ import { ModalConfirmDeleteArchive } from "widgets/[ui]/modal-confirm-delete-arc
 interface Props {
   isShow: boolean
   setIsShow: (toggle: boolean) => void
-  testPlan: ITestPlanTreeView
+  testPlan: TestPlanTreeView
 }
 
 export const DeleteTestPlanModal = ({ isShow, setIsShow, testPlan }: Props) => {
   const [deleteTestPlan, { isLoading: isLoadingDelete }] = useDeleteTestPlanMutation()
-  const { data, isLoading } = useGetTestPlanDeletePreviewQuery(String(testPlan.id), {
+  const { data, isLoading, status } = useGetTestPlanDeletePreviewQuery(String(testPlan.id), {
     skip: !isShow,
   })
 
@@ -49,13 +49,14 @@ export const DeleteTestPlanModal = ({ isShow, setIsShow, testPlan }: Props) => {
 
   return (
     <ModalConfirmDeleteArchive
+      status={status}
       isShow={isShow}
       isLoading={isLoading}
       isLoadingButton={isLoadingDelete}
       name={testPlan.name}
       typeTitle="Test Plan"
       type="test-plan"
-      data={data || []}
+      data={data ?? []}
       handleClose={handleClose}
       handleDelete={handleDelete}
       action="delete"

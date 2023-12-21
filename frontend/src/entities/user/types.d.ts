@@ -46,6 +46,7 @@ interface UserConfig {
     graph_base_bar_type: "by_time" | "by_attr"
     graph_base_bar_attribute_input: string
     test_plan: Record<string, { start_date: string; end_date: string }>
+    test_plan_estimate_everywhere_period: EstimatePeriod
   }
   projects: {
     is_only_favorite: boolean
@@ -55,5 +56,17 @@ interface UserConfig {
   test_plans: {
     is_show_archived: boolean
   }
+  test_cases: {
+    is_show_archived: boolean
+  }
   crop?: string
+}
+
+interface GetUsersQuery {
+  username?: string
+  email?: string
+  first_name?: string
+  last_name?: string
+  is_active?: boolean
+  is_staff?: boolean
 }

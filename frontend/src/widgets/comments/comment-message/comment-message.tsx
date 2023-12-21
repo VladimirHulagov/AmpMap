@@ -1,5 +1,8 @@
+import classNames from "classnames"
 import { CommentUserInfo } from "entities/comments/ui"
 import { DeleteComment, EditComment } from "features/comments"
+import { useEffect } from "react"
+import { useLocation } from "react-router-dom"
 
 import { Markdown } from "shared/ui"
 import { AttachmentField } from "shared/ui/attachment/field"
@@ -12,13 +15,28 @@ interface Props {
 }
 
 export const CommentMessage = ({ comment, isVisibleActions }: Props) => {
+  const location = useLocation()
+
+  useEffect(() => {
+    if (location.hash && location.hash.includes("comment")) {
+      const element = document.getElementById(location.hash.substring(1))
+      element?.scrollIntoView({ behavior: "smooth" })
+    }
+  }, [location])
+
   return (
-    <li className={styles.wrapper}>
+    <li
+      id={`comment-${comment.id}`}
+      className={classNames(styles.wrapper, {
+        [styles.hashActive]: location.hash === `#comment-${comment.id}`,
+      })}
+    >
       <CommentUserInfo
+        commentId={comment.id}
         username={comment.user.username}
-        avatar_link={comment.user.avatar_link}
-        created_at={comment.created_at}
-        updated_at={comment.updated_at}
+        avatarLink={comment.user.avatar_link}
+        createdAt={comment.created_at}
+        updatedAt={comment.updated_at}
       />
       {comment.deleted_at === null ? (
         <Markdown content={comment.content} />

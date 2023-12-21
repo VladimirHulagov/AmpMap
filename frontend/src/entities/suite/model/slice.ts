@@ -10,7 +10,7 @@ export const suiteSlice = createSlice({
   name: "suite",
   initialState,
   reducers: {
-    setTestSuite: (state, action: PayloadAction<ISuite>) => {
+    setTestSuite: (state, action: PayloadAction<Suite>) => {
       state.testSuite = action.payload
     },
   },

@@ -4,9 +4,12 @@ import { Controller } from "react-hook-form"
 
 import { LabelWrapper } from "entities/label/ui"
 
+import { TestCaseStepsWrapper } from "entities/test-case/ui/steps/wrapper"
+
+import { config } from "shared/config"
+import { ErrorObj } from "shared/hooks/use-alert-error"
 import { AlertError, Attachment, TextArea } from "shared/ui"
 
-import { TestCaseStepsWrapper } from "../../../entities/test-case/ui/steps/wrapper"
 import { useTestCaseCreateModal } from "./use-test-case-create-modal"
 
 const { Dragger } = Upload
@@ -62,7 +65,7 @@ export const CreateTestCaseModal = () => {
       <>
         {errors ? (
           <AlertError
-            error={errors}
+            error={errors as ErrorObj}
             skipFields={["name", "setup", "scenario", "teardown", "estimate"]}
           />
         ) : null}
@@ -161,12 +164,9 @@ export const CreateTestCaseModal = () => {
                     <Input
                       {...field}
                       id="create-estimate-input"
-                      value={field.value || ""}
+                      value={field.value ?? ""}
                       suffix={
-                        <Tooltip
-                          overlayStyle={{ minWidth: 460 }}
-                          title="Example formats: 120, 1w 1d 1h 1m 1s, 2 days, 4:13:02 (uptime format), 4:13:02.266, 5hr34m56s, 5 hours, 34 minutes, 56 seconds"
-                        >
+                        <Tooltip overlayStyle={{ minWidth: 460 }} title={config.estimateTooltip}>
                           <InfoCircleOutlined style={{ color: "rgba(0,0,0,.45)" }} />
                         </Tooltip>
                       }

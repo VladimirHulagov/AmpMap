@@ -16,7 +16,7 @@ interface Props {
 
 export const DeleteTestCaseModal = ({ isShow, setIsShow, testCase }: Props) => {
   const [deleteTestCase, { isLoading: isLoadingDelete }] = useDeleteTestCaseMutation()
-  const { data, isLoading } = useGetTestCaseDeletePreviewQuery(String(testCase.id), {
+  const { data, isLoading, status } = useGetTestCaseDeletePreviewQuery(String(testCase.id), {
     skip: !isShow,
   })
   const navigate = useNavigate()
@@ -50,13 +50,14 @@ export const DeleteTestCaseModal = ({ isShow, setIsShow, testCase }: Props) => {
 
   return (
     <ModalConfirmDeleteArchive
+      status={status}
       isShow={isShow}
       isLoading={isLoading}
       isLoadingButton={isLoadingDelete}
       name={testCase.name}
       typeTitle="Test Case"
       type="test-case"
-      data={data || []}
+      data={data ?? []}
       handleClose={handleClose}
       handleDelete={handleDelete}
       action="delete"

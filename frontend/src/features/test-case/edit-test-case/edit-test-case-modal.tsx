@@ -1,11 +1,13 @@
 import { InfoCircleOutlined } from "@ant-design/icons"
-import { Button, Col, Form, Input, Modal, Row, Tooltip, Upload } from "antd"
+import { Button, Col, Dropdown, Form, Input, MenuProps, Modal, Row, Tooltip, Upload } from "antd"
 import { Controller } from "react-hook-form"
 
 import { LabelWrapper } from "entities/label/ui"
 
 import { TestCaseStepsWrapper } from "entities/test-case/ui/steps/wrapper"
 
+import { config } from "shared/config"
+import { ErrorObj } from "shared/hooks/use-alert-error"
 import { AlertError, Attachment, TextArea } from "shared/ui"
 
 import { SelectSuiteTestCase } from "../select-suite-test-case/select-suite-test-case"
@@ -39,12 +41,31 @@ export const EditTestCaseModal = ({ testCase }: Props) => {
     setValue,
     setAttachments,
     handleCancel,
-    handleSubmitForm,
+    handleSubmitFormAsCurrent,
+    handleSubmitFormAsNew,
     register,
     treeSuites,
     shouldShowSuiteSelect,
     flatSuites,
   } = useTestCaseEditModal({ testCase })
+
+  const items: MenuProps["items"] = [
+    {
+      key: "1",
+      label: (
+        <Button
+          id="modal-update-test-case-btn"
+          key="submit"
+          loading={isLoading}
+          onClick={handleSubmitFormAsCurrent}
+          type="primary"
+          disabled={!isDirty}
+        >
+          Update current version
+        </Button>
+      ),
+    },
+  ]
 
   return (
     <Modal
@@ -57,27 +78,29 @@ export const EditTestCaseModal = ({ testCase }: Props) => {
         <Button id="modal-edit-close-btn" key="back" onClick={handleCancel}>
           Close
         </Button>,
-        <Button
-          id="modal-update-test-case-btn"
-          key="submit"
+        <Dropdown.Button
+          key="update"
+          className="edit-test-case"
+          menu={{ items }}
+          type={isDirty ? "primary" : undefined}
           loading={isLoading}
-          onClick={handleSubmitForm}
-          type="primary"
           disabled={!isDirty}
+          style={{ width: "fit-content", display: "inline-flex", marginLeft: 8 }}
+          onClick={handleSubmitFormAsNew}
         >
           Update
-        </Button>,
+        </Dropdown.Button>,
       ]}
     >
       <>
         {errors ? (
           <AlertError
-            error={errors}
+            error={errors as ErrorObj}
             skipFields={["name", "setup", "scenario", "teardown", "estimate", "steps"]}
           />
         ) : null}
 
-        <Form id="edit-test-case-form" layout="vertical" onFinish={handleSubmitForm}>
+        <Form id="edit-test-case-form" layout="vertical" onFinish={handleSubmitFormAsNew}>
           <Row gutter={[32, 32]}>
             <Col span={12}>
               <Form.Item
@@ -102,14 +125,14 @@ export const EditTestCaseModal = ({ testCase }: Props) => {
                     control={control}
                     render={({ field }) => {
                       const suiteName =
-                        flatSuites.find((item) => item.id === field.value)?.name || ""
+                        flatSuites.find((item) => item.id === field.value)?.name ?? ""
 
                       return (
                         <SelectSuiteTestCase
                           suiteName={suiteName}
                           selectedSuiteId={field.value}
                           onChange={field.onChange}
-                          treeSuites={treeSuites?.results || []}
+                          treeSuites={treeSuites?.results ?? []}
                         />
                       )
                     }}
@@ -139,8 +162,8 @@ export const EditTestCaseModal = ({ testCase }: Props) => {
               </Form.Item>
               <Form.Item
                 label="Scenario"
-                validateStatus={errors?.scenario || errors?.steps ? "error" : ""}
-                help={errors?.scenario || errors?.steps || ""}
+                validateStatus={errors?.scenario ?? errors?.steps ? "error" : ""}
+                help={errors?.scenario ?? errors?.steps ?? ""}
                 required={false}
               >
                 <Controller
@@ -197,12 +220,9 @@ export const EditTestCaseModal = ({ testCase }: Props) => {
                     <Input
                       {...field}
                       id="edit-estimate-input"
-                      value={field.value || ""}
+                      value={field.value ?? ""}
                       suffix={
-                        <Tooltip
-                          overlayStyle={{ minWidth: 460 }}
-                          title="Example formats: 120, 1w 1d 1h 1m 1s, 2 days, 4:13:02 (uptime format), 4:13:02.266, 5hr34m56s, 5 hours, 34 minutes, 56 seconds"
-                        >
+                        <Tooltip overlayStyle={{ minWidth: 460 }} title={config.estimateTooltip}>
                           <InfoCircleOutlined style={{ color: "rgba(0,0,0,.45)" }} />
                         </Tooltip>
                       }

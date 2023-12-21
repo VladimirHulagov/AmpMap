@@ -1,15 +1,13 @@
 import { Divider, Typography } from "antd"
 
-type Attribute = {
-  [key: string]: string | object | string[]
-}
+import { Markdown } from "shared/ui"
 
-export const TestResultAttributes = ({ attributes }: { attributes: Attribute }) => {
+export const TestResultAttributes = ({ attributes }: { attributes: TestResultAttribute }) => {
   const renderAttributeValue = (value: string | string[] | object) => {
     if (typeof value === "string") {
-      return value
+      return <Markdown content={value} />
     } else if (Array.isArray(value)) {
-      return value.join("\r\n")
+      return <Markdown content={value.join("\r\n")} />
     } else {
       return JSON.stringify(value, null, 2)
     }

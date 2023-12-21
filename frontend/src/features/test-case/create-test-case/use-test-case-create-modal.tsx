@@ -11,12 +11,7 @@ import { useAttachments } from "entities/attachment/model"
 import { useTestCaseFormLabels } from "entities/label/model"
 
 import { useCreateTestCaseMutation } from "entities/test-case/api"
-import {
-  clearTestCase,
-  hideModal,
-  selectModalIsEditMode,
-  selectModalIsShow,
-} from "entities/test-case/model"
+import { hideModal, selectModalIsEditMode, selectModalIsShow } from "entities/test-case/model"
 
 import { useErrors } from "shared/hooks"
 import { showModalCloseConfirm } from "shared/libs"
@@ -27,7 +22,7 @@ interface SubmitData extends Omit<TestCaseFormData, "steps"> {
   is_steps: boolean
 }
 
-type ErrorData = {
+interface ErrorData {
   suite?: string
   name?: string
   setup?: string
@@ -77,7 +72,6 @@ export const useTestCaseCreateModal = () => {
     setSteps([])
     reset()
     onReset()
-    clearTestCase()
     labelProps.setLabels([])
     labelProps.setSearchValue("")
   }

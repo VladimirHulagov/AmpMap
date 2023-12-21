@@ -16,3 +16,7 @@
 .actions button {
   color: rgb(153, 153, 153);
 }
+
+.hashActive {
+  background-color: #f7f7f7;
+}

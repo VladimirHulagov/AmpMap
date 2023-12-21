@@ -15,7 +15,7 @@ interface Props {
 
 export const ArchiveProjectModal = ({ isShow, setIsShow, project }: Props) => {
   const [archiveProject, { isLoading: isLoadingArchive }] = useArchiveProjectMutation()
-  const { data, isLoading } = useGetProjectArchivePreviewQuery(String(project.id), {
+  const { data, isLoading, status } = useGetProjectArchivePreviewQuery(String(project.id), {
     skip: !isShow,
   })
 
@@ -47,13 +47,14 @@ export const ArchiveProjectModal = ({ isShow, setIsShow, project }: Props) => {
 
   return (
     <ModalConfirmDeleteArchive
+      status={status}
       isShow={isShow}
       isLoading={isLoading}
       isLoadingButton={isLoadingArchive}
       name={project.name}
       typeTitle="Project"
       type="project"
-      data={data || []}
+      data={data ?? []}
       handleClose={handleClose}
       handleDelete={handleDelete}
       action="archive"

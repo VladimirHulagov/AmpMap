@@ -14,10 +14,11 @@ import {
 } from "entities/parameter/model"
 
 import { useErrors } from "shared/hooks"
+import { ErrorObj } from "shared/hooks/use-alert-error"
 import { showModalCloseConfirm } from "shared/libs"
 import { AlertError } from "shared/ui"
 
-type ErrorData = {
+interface ErrorData {
   data?: string
   group_name?: string
 }
@@ -119,7 +120,9 @@ export const CreateEditParameterModal = ({ projectId }: CreateParameterModalProp
       ]}
     >
       <>
-        {errors ? <AlertError error={errors} skipFields={["data", "group_name"]} /> : null}
+        {errors ? (
+          <AlertError error={errors as ErrorObj} skipFields={["data", "group_name"]} />
+        ) : null}
 
         <Form id="create-edit-parameter-form" layout="vertical" onFinish={handleSubmit(onSubmit)}>
           <Form.Item

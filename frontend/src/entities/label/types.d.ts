@@ -4,6 +4,7 @@ interface LabelState {
     mode: ModalMode
     label?: Label
   }
+  selectedLabels: { labels: string[]; not_labels: string[] }
 }
 
 interface Label {

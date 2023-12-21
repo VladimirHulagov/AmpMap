@@ -101,7 +101,7 @@ export const store = configureStore({
       .concat(labelApi.middleware)
       .concat(commentsApi.middleware)
       .concat(systemApi.middleware),
-  devTools: process.env.REACT_APP_ENVIRONMENT !== "production",
+  devTools: import.meta.env.NODE_ENV !== "production",
 })
 
 export const persistor = persistStore(store)

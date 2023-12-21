@@ -1,7 +1,7 @@
 import { Tooltip } from "antd"
 import { Link, useParams } from "react-router-dom"
 
-import { TestPlanActivityLink } from "entities/test-plan/ui/test-plan-activity"
+import { TestPlanActivityLink } from "entities/test-plan/ui"
 
 import { getRouteTestPlanActivityBreadCrumbs } from "../../lib"
 
@@ -25,7 +25,7 @@ export const useTestPlanActivityBreadcrumbs = () => {
                   title={initArray.slice(1, -1).map((iItem, iIndex, iArray) => (
                     <TestPlanActivityLink
                       key={iItem.id}
-                      projectId={projectId || ""}
+                      projectId={projectId ?? ""}
                       planId={String(iItem.id)}
                       title={iItem.title}
                       isVisibleSeparator={iArray.length > 1 && iArray.length !== iIndex + 1}
@@ -52,7 +52,7 @@ export const useTestPlanActivityBreadcrumbs = () => {
         {initArray.map((item, index, array) => (
           <TestPlanActivityLink
             key={item.id}
-            projectId={projectId || ""}
+            projectId={projectId ?? ""}
             planId={String(item.id)}
             title={item.title}
             isVisibleSeparator={array.length > 1 && array.length !== index + 1}

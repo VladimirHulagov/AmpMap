@@ -46,9 +46,8 @@ from datetime import timedelta
 from pathlib import Path
 
 from django.utils.translation import gettext_lazy as _
-
-from testy.utils import add_mimetypes, insert_plugins
-from utils import parse_bool_from_str
+from utilities.settings import add_mimetypes, insert_plugins
+from utilities.string import parse_bool_from_str
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -56,7 +55,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
-VERSION = '1.2.8'
+VERSION = '1.2.13'
 
 loaded_hosts = os.environ.get('ALLOWED_HOSTS', [])
 
@@ -243,6 +242,10 @@ COMPANY_DOMAIN = os.environ.get('COMPANY_DOMAIN')
 
 TEST_RESULT_UPDATE_GAP = 1  # hours otherwise may be None
 
+SESSION_COOKIE_AGE = 12 * 60 * 60  # 12 hours
+
+SESSION_COOKIE_AGE_REMEMBER_ME = 365 * 24 * 60 * 60  # 365 days
+
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
 ]
@@ -305,3 +308,4 @@ CACHES = {
 }
 
 PROJECT_PROGRESS_FILTER_PERIOD_IN_DAYS = 7
+WORK_HOURS = 8  # how many hours in work day, variable is used to process estimates

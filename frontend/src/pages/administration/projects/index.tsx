@@ -3,14 +3,12 @@ import { CreateProject } from "features/project"
 import { useContext, useEffect } from "react"
 import { MenuContext } from "widgets"
 
-import { ProjectsTable } from "entities/project/ui"
-
-import { MenuContextType } from "widgets/[ui]/main"
+import { ProjectsTable } from "widgets/project/ui/projects-table"
 
 const { Content } = Layout
 
 export const ProjectsMain = () => {
-  const { setActiveMenu, setOpenSubMenu } = useContext(MenuContext) as MenuContextType
+  const { setActiveMenu, setOpenSubMenu } = useContext(MenuContext)!
 
   useEffect(() => {
     setOpenSubMenu(["administration"])

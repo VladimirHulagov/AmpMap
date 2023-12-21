@@ -24,7 +24,7 @@ export const HighLighterTesty = ({
         padding: 0,
       }}
       searchWords={[searchWords]}
-      textToHighlight={textToHighlight ? textToHighlight : ""}
+      textToHighlight={textToHighlight ?? ""}
     />
   )
 }

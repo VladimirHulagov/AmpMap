@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { useParams, useSearchParams } from "react-router-dom"
+import { useParams } from "react-router-dom"
 
 import { useAppDispatch, useAppSelector } from "app/hooks"
 
@@ -8,7 +8,6 @@ import { selectTestSuite, setTestSuite } from "entities/suite/model/slice"
 
 export const useTestSuiteDetails = () => {
   const { projectId, testSuiteId } = useParams<ParamProjectId & ParamTestSuiteId>()
-  const [searchParams] = useSearchParams()
   const testSuite = useAppSelector(selectTestSuite)
   const {
     data: suite,
@@ -16,12 +15,11 @@ export const useTestSuiteDetails = () => {
     isSuccess,
     refetch,
   } = useGetSuiteQuery({
-    suiteId: testSuiteId || "",
+    suiteId: testSuiteId ?? "",
     treeview: true,
   })
 
   const dispatch = useAppDispatch()
-  const [testCaseId, setTestCaseId] = useState<number | null>(null)
   const [isShowMore, setIsShowMore] = useState(false)
 
   const handleShowMoreClick = () => {
@@ -38,19 +36,8 @@ export const useTestSuiteDetails = () => {
     dispatch(setTestSuite(suite))
   }, [suite])
 
-  useEffect(() => {
-    const testCase = searchParams.get("test_case")
-
-    if (!testCase) {
-      setTestCaseId(null)
-      return
-    }
-
-    setTestCaseId(Number(testCase))
-  }, [searchParams.get("test_case")])
-
   const descriptionLines = useMemo(() => {
-    return suite?.description.split(/\r\n|\r|\n/) || []
+    return suite?.description.split(/\r\n|\r|\n/) ?? []
   }, [suite])
 
   const shortDesc = useMemo(() => {
@@ -61,13 +48,11 @@ export const useTestSuiteDetails = () => {
 
   return {
     shortDesc,
-    testCaseId,
     suite,
     isLoading,
     isShowMore,
     descriptionLines,
     projectId,
-    setTestCaseId,
     handleShowMoreClick,
     handleRefetch: refetch,
   }

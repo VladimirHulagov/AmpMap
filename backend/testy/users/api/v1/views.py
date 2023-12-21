@@ -31,6 +31,8 @@
 from http import HTTPStatus
 
 from django.contrib.auth import get_user_model
+from filters import UserFilter
+from paginations import StandardSetPagination
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -58,6 +60,8 @@ class GroupViewSet(ModelViewSet):
 class UserViewSet(ModelViewSet):
     queryset = UserSelector().user_list()
     serializer_class = UserSerializer
+    pagination_class = StandardSetPagination
+    filterset_class = UserFilter
 
     def perform_create(self, serializer: UserSerializer):
         serializer.instance = UserService().user_create(serializer.validated_data)

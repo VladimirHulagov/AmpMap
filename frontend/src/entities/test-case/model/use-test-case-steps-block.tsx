@@ -2,7 +2,7 @@ import { useState } from "react"
 import { UseFormSetValue } from "react-hook-form"
 import { v4 as uuidv4 } from "uuid"
 
-export type TestCaseStepsBlockProps = {
+export interface TestCaseStepsBlockProps {
   steps: Step[]
   setSteps: React.Dispatch<React.SetStateAction<Step[]>>
   setValue: UseFormSetValue<TestCaseFormData>
@@ -14,7 +14,7 @@ export const useTestCaseStepsBlock = ({ steps, setSteps, setValue }: TestCaseSte
   const [isInitialSteps, setIsInitiallSteps] = useState(true)
 
   const getLastSortOrder = () => {
-    return steps.reduce((acc, shot) => (acc = acc > shot.sort_order ? acc : shot.sort_order), 0)
+    return steps.reduce((acc, shot) => (acc > shot.sort_order ? acc : shot.sort_order), 0)
   }
 
   const handleStep = (event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {

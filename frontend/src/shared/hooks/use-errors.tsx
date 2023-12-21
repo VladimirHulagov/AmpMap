@@ -3,7 +3,8 @@ import { Dispatch, SetStateAction } from "react"
 
 import { isFetchBaseQueryError } from "shared/libs"
 
-export const useErrors = <T extends unknown>(onSetErrors: Dispatch<SetStateAction<T | null>>) => {
+// prettier-ignore
+export const useErrors = <T, >(onSetErrors: Dispatch<SetStateAction<T | null>>) => {
   const onHandleError = (err: unknown) => {
     if (isFetchBaseQueryError(err)) {
       if (err?.status && err.status === 400) {

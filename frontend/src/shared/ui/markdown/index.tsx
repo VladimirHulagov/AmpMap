@@ -13,6 +13,7 @@ export const Markdown = ({ content }: MarkdownProps) => {
   return (
     <ReactMarkdown
       children={content}
+      linkTarget="_blank"
       components={{
         img: ({ ...props }) => (
           <a href={props.src} target="blank">

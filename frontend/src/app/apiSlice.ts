@@ -24,14 +24,7 @@ const createQuery = (baseUrl: string) => {
   })
 }
 
-const createSimpleQuery = (baseUrl: string) => {
-  return fetchBaseQuery({
-    baseUrl,
-  })
-}
-
 const baseQuery = createQuery(`${config.apiRoot}/api/`)
-const basePublicQueryCreator = createSimpleQuery(`${config.apiRoot}/api/`)
 
 export const authQuery = createQuery(`${config.apiRoot}/auth/`)
 
@@ -84,23 +77,6 @@ export const baseQueryWithLogout: BaseQueryFn<
       await mutex.waitForUnlock()
       result = await baseQuery(args, api, extraOptions)
     }
-  }
-
-  return result
-}
-
-export const basePublicQuery: BaseQueryFn<
-  string | FetchArgs,
-  unknown,
-  FetchBaseQueryError
-> = async (args, api, extraOptions) => {
-  await mutex.waitForUnlock()
-
-  const result = await basePublicQueryCreator(args, api, extraOptions)
-
-  if (result.error?.status === 404) {
-    await mutex.waitForUnlock()
-    window.location.href = "/404"
   }
 
   return result

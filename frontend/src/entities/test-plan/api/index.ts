@@ -2,10 +2,11 @@ import { createApi } from "@reduxjs/toolkit/dist/query/react"
 
 import { baseQueryWithLogout } from "app/apiSlice"
 
-import { labelApi } from "entities/label/api"
+import { labelInvalidate } from "entities/label/api"
+
+import { systemStatsInvalidate } from "entities/system/api"
 
 const rootPath = "v1/testplans"
-const labelInvalidate = labelApi.util.invalidateTags([{ type: "Label", id: "LIST" }])
 
 export const testPlanApi = createApi({
   reducerPath: "testPlanApi",
@@ -18,32 +19,36 @@ export const testPlanApi = createApi({
     "TestPlanHistogram",
   ],
   endpoints: (builder) => ({
-    getTestPlans: builder.query<
-      PaginationResponse<ITestPlan[]>,
-      QueryWithPagination<ITestPlanQuery>
-    >({
-      query: ({ projectId, showArchive, search, ...params }) => ({
-        url: rootPath,
-        params: { project: projectId, is_archive: showArchive, treeview: false, search, ...params },
-      }),
-      providesTags: (result) =>
-        result
-          ? [
-              ...result.results.map(({ id }) => ({
-                type: "TestPlan" as const,
-                id,
-              })),
-              { type: "TestPlan", id: "LIST" },
-            ]
-          : [{ type: "TestPlan", id: "LIST" }],
-    }),
+    getTestPlans: builder.query<PaginationResponse<TestPlan[]>, QueryWithPagination<TestPlanQuery>>(
+      {
+        query: ({ projectId, search, ...params }) => ({
+          url: rootPath,
+          params: {
+            project: projectId,
+            treeview: false,
+            search,
+            ...params,
+          },
+        }),
+        providesTags: (result) =>
+          result
+            ? [
+                ...result.results.map(({ id }) => ({
+                  type: "TestPlan" as const,
+                  id,
+                })),
+                { type: "TestPlan", id: "LIST" },
+              ]
+            : [{ type: "TestPlan", id: "LIST" }],
+      }
+    ),
     getTestPlansTreeView: builder.query<
-      PaginationResponse<ITestPlanTreeView[]>,
-      QueryWithPagination<ITestPlanQuery>
+      PaginationResponse<TestPlanTreeView[]>,
+      QueryWithPagination<TestPlanQuery>
     >({
-      query: ({ projectId, showArchive, search, ...params }) => ({
+      query: ({ projectId, search, ...params }) => ({
         url: rootPath,
-        params: { project: projectId, is_archive: showArchive, treeview: true, search, ...params },
+        params: { project: projectId, treeview: true, search, ...params },
       }),
       providesTags: (result) =>
         result
@@ -56,20 +61,23 @@ export const testPlanApi = createApi({
             ]
           : [{ type: "TestPlan", id: "LIST" }],
     }),
-    getTestPlanTreeView: builder.query<ITestPlanTreeView, TestPlanTreeViewQueryParams>({
+    getTestPlanTreeView: builder.query<TestPlanTreeView, TestPlanTreeViewQueryParams>({
       query: ({ testPlanId, is_archive }) => ({
         url: `${rootPath}/${testPlanId}?treeview=true`,
         params: { is_archive },
       }),
       providesTags: (result, error, { testPlanId: id }) => [{ type: "TestPlan", id }],
     }),
-    getTestPlan: builder.query<ITestPlan, number>({
+    getTestPlan: builder.query<TestPlan, number>({
       query: (testPlanId) => ({
         url: `${rootPath}/${testPlanId}/`,
       }),
       providesTags: (result, error, id) => [{ type: "TestPlan", id }],
     }),
-    getTestPlanActivity: builder.query<TestPlanActivity, TestPlanActivityParams>({
+    getTestPlanActivity: builder.query<
+      PaginationResponse<Record<string, TestPlanActivityResult[]>>,
+      TestPlanActivityParams
+    >({
       query: ({ testPlanId, ...params }) => ({
         url: `${rootPath}/${testPlanId}/activity`,
         params,
@@ -81,6 +89,10 @@ export const testPlanApi = createApi({
         url: `${rootPath}/${testPlanId}/`,
         method: "DELETE",
       }),
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        await queryFulfilled
+        dispatch(systemStatsInvalidate)
+      },
       invalidatesTags: [{ type: "TestPlan", id: "LIST" }],
     }),
     archiveTestPlan: builder.mutation<void, number>({
@@ -88,14 +100,25 @@ export const testPlanApi = createApi({
         url: `${rootPath}/${testPlanId}/archive/`,
         method: "POST",
       }),
-      invalidatesTags: [{ type: "TestPlan", id: "LIST" }],
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        await queryFulfilled
+        dispatch(systemStatsInvalidate)
+      },
+      invalidatesTags: (result, error, id) => [
+        { type: "TestPlan", id: "LIST" },
+        { type: "TestPlan", id },
+      ],
     }),
-    createTestPlan: builder.mutation<ITestPlan[], ITestPlanCreate>({
+    createTestPlan: builder.mutation<TestPlan[], TestPlanCreate>({
       query: (body) => ({
         url: `${rootPath}/`,
         method: "POST",
         body,
       }),
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        await queryFulfilled
+        dispatch(systemStatsInvalidate)
+      },
       invalidatesTags: (result, error, { id }) =>
         result
           ? [
@@ -104,7 +127,7 @@ export const testPlanApi = createApi({
             ]
           : [{ type: "TestPlan", id: "LIST" }],
     }),
-    updateTestPlan: builder.mutation<ITestPlan, { id: Id; body: ITestPlanUpdate }>({
+    updateTestPlan: builder.mutation<TestPlan, { id: Id; body: TestPlanUpdate }>({
       query: ({ id, body }) => ({
         url: `${rootPath}/${id}/`,
         method: "PATCH",
@@ -117,6 +140,7 @@ export const testPlanApi = createApi({
         dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanLabels", id: "LIST" }]))
         dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanCasesIds", id }]))
         dispatch(labelInvalidate)
+        dispatch(systemStatsInvalidate)
       },
       invalidatesTags: (result, error, { id }) =>
         result
@@ -126,7 +150,7 @@ export const testPlanApi = createApi({
             ]
           : [{ type: "TestPlan", id: "LIST" }],
     }),
-    getTestPlanStatistics: builder.query<ITestPlanStatistics[], TestPlanStatisticsParams>({
+    getTestPlanStatistics: builder.query<TestPlanStatistics[], TestPlanStatisticsParams>({
       query: ({ testPlanId, ...params }) => ({
         url: `${rootPath}/${testPlanId}/statistics`,
         params,
@@ -180,12 +204,17 @@ export const testPlanApi = createApi({
   }),
 })
 
+export const testPlanInvalidate = testPlanApi.util.invalidateTags([
+  { type: "TestPlanLabels", id: "LIST" },
+])
+
 export const {
   useLazyGetTestPlansQuery,
   useGetTestPlansTreeViewQuery,
   useLazyGetTestPlansTreeViewQuery,
   useCreateTestPlanMutation,
   useGetTestPlanQuery,
+  useGetTestPlansQuery,
   useLazyGetTestPlanQuery,
   useDeleteTestPlanMutation,
   useGetTestPlanStatisticsQuery,

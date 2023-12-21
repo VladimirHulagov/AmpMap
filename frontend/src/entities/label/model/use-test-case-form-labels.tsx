@@ -34,8 +34,10 @@ export const useTestCaseFormLabels = ({
   const [labels, setLabels] = useState<LabelInForm[]>([])
   const [searchValue, setSearchValue] = useState("")
   const [isShowPopup, setIsShowPopup] = useState(false)
-  const { data: labelsData } = useGetLabelsQuery({ project: projectId || "" })
-
+  const { data: labelsData } = useGetLabelsQuery(
+    { project: projectId ?? "" },
+    { skip: !projectId || !isShow }
+  )
   const handleAddLabel = (label: string) => {
     const filtered = labels.filter((item) => item.name.toLowerCase() !== label.toLowerCase())
     const newLabels = [...filtered, { name: label }]

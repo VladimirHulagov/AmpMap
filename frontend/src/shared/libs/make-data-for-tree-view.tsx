@@ -1,7 +1,10 @@
 import { FileDoneOutlined, FolderOpenOutlined } from "@ant-design/icons"
 
-export const makeTestSuitesForTreeView = (items: ISuiteWithCases[], testCases: TestCase[] = []) => {
-  const testSuitesTreeView: ISuiteWithCases[] = items.map((item) => {
+export const makeTestSuitesForTreeView = (
+  items: SuiteWithCases[],
+  testCases: TestCase[] = []
+): DataWithKey<SuiteWithCases[]> => {
+  const testSuitesTreeView: SuiteWithCases[] = items.map((item) => {
     return {
       ...item,
       key: `TS${item.id}`,

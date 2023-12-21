@@ -1,31 +1,29 @@
 import { Alert, Select, Space } from "antd"
 import { CopyTestCase, DeleteTestCase, EditTestCase } from "features/test-case"
+import { ArchiveTestCase } from "features/test-case/archive-test-case/archive-test-case"
 import { Controller } from "react-hook-form"
 
-import { useTestCaseDetail } from "entities/test-case/model"
 import { TestCaseFields } from "entities/test-case/ui/test-case-fields"
 
-import { ContainerLoader } from "shared/ui"
 import { ResizableDrawer } from "shared/ui/resizable-drawer/resizable-drawer"
 
 import "./styles.css"
+import { TestCaseDetailTabs } from "./test-case-detail-tabs"
+import { useTestCaseDetail } from "./use-test-case-detail"
 
 interface TestCaseDetailProps {
-  testCaseId: number
+  testCase: TestCase | null
+  onClose: () => void
 }
 
-export const TestCaseDetail = ({ testCaseId }: TestCaseDetailProps) => {
-  const {
-    showTestCase,
-    isLoadingTestCaseById,
-    showVersion,
-    versionData,
-    control,
-    handleClose,
-    handleChange,
-  } = useTestCaseDetail({ testCaseId })
+export const TestCaseDetail = ({ testCase, onClose }: TestCaseDetailProps) => {
+  const { showVersion, versionData, control, handleClose, handleChange, handleRestoreVersion } =
+    useTestCaseDetail({
+      testCase,
+      onClose,
+    })
 
-  if (!showTestCase) return <></>
+  const isLastVersion = Number(testCase?.versions[0]) === Number(showVersion)
 
   return (
     <ResizableDrawer
@@ -48,54 +46,66 @@ export const TestCaseDetail = ({ testCaseId }: TestCaseDetailProps) => {
             alignItems: "center",
           }}
         >
-          {showTestCase?.name}
+          {testCase?.name}
         </p>
       }
       placement="right"
       onClose={handleClose}
-      open={!!showTestCase}
+      open={!!testCase}
       extra={
-        <Space size="middle" style={{ width: "100%", display: "flex", alignItems: "flex-end" }}>
-          {showTestCase.versions.length > 1 && (
-            <Controller
-              name="select"
-              control={control}
-              defaultValue={showTestCase.current_version}
-              render={({ field }) => (
-                <Select
-                  {...field}
-                  placeholder="Version"
-                  style={{ minWidth: "100px" }}
-                  options={versionData}
-                  defaultValue={showTestCase.current_version}
-                  onChange={(value) => handleChange(value)}
-                  value={showVersion}
-                />
-              )}
-            />
-          )}
-          <CopyTestCase testCase={showTestCase} />
-          <EditTestCase testCase={showTestCase} />
-          <DeleteTestCase testCase={showTestCase} />
-        </Space>
+        testCase && (
+          <Space size="middle" style={{ width: "100%", display: "flex", alignItems: "flex-end" }}>
+            {!!testCase.versions && testCase.versions.length > 1 && (
+              <Controller
+                name="select"
+                control={control}
+                defaultValue={testCase.current_version}
+                render={({ field }) => (
+                  <Select
+                    {...field}
+                    placeholder="Version"
+                    style={{ minWidth: "100px" }}
+                    options={versionData}
+                    defaultValue={testCase.current_version}
+                    onChange={(value) => handleChange(value)}
+                    value={showVersion}
+                  />
+                )}
+              />
+            )}
+            <CopyTestCase testCase={testCase} />
+            <EditTestCase testCase={testCase} />
+            {!testCase.is_archive ? (
+              <ArchiveTestCase testCase={testCase} />
+            ) : (
+              <DeleteTestCase testCase={testCase} />
+            )}
+          </Space>
+        )
       }
     >
-      {isLoadingTestCaseById ? (
-        <ContainerLoader />
-      ) : (
-        <>
-          {showVersion !== showTestCase.versions[0] && (
-            <Alert
-              showIcon={true}
-              closable
-              type="warning"
-              description="Attention! This isn't the latest version"
-              style={{ marginBottom: 20 }}
-            />
-          )}
-          <TestCaseFields testCase={showTestCase} />
-        </>
-      )}
+      <>
+        {!isLastVersion && (
+          <Alert
+            showIcon={true}
+            closable
+            type="warning"
+            description={
+              <span>
+                Attention! This isn&apos;t the latest version.{" "}
+                <a onClick={handleRestoreVersion}>Restore</a>
+              </span>
+            }
+            style={{ marginBottom: 20 }}
+          />
+        )}
+        {testCase && (
+          <>
+            <TestCaseFields testCase={testCase} />
+            <TestCaseDetailTabs testCase={testCase} />
+          </>
+        )}
+      </>
     </ResizableDrawer>
   )
 }

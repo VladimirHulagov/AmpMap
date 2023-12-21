@@ -6,16 +6,11 @@ import { useDispatch } from "react-redux"
 import { showLabelModal } from "entities/label/model"
 import { LabelsTable } from "entities/label/ui"
 
-import {
-  ProjectDetailsActiveTabContext,
-  ProjectDetailsActiveTabContextType,
-} from "pages/administration/projects/project-details/project-details-main"
+import { ProjectDetailsActiveTabContext } from "pages/administration/projects/project-details/project-details-main"
 
 export const ProjectDetailsLabelsPage = () => {
   const dispatch = useDispatch()
-  const { setProjectDetailsActiveTab } = useContext(
-    ProjectDetailsActiveTabContext
-  ) as ProjectDetailsActiveTabContextType
+  const { setProjectDetailsActiveTab } = useContext(ProjectDetailsActiveTabContext)!
 
   useEffect(() => {
     setProjectDetailsActiveTab("labels")
