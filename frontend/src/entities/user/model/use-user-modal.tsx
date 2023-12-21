@@ -15,7 +15,7 @@ import {
 import { useErrors } from "shared/hooks"
 import { showModalCloseConfirm } from "shared/libs"
 
-type Inputs = {
+interface Inputs {
   username: string
   email: string
   first_name: string
@@ -26,7 +26,7 @@ type Inputs = {
   is_staff: boolean
 }
 
-type ErrorData = {
+interface ErrorData {
   username?: string
   email?: string
   password?: string

@@ -60,3 +60,9 @@ class TTLTokenOutputSerializer(ModelSerializer):
 
 class TTLAuthTokenInputSerializer(AuthTokenSerializer):
     description = serializers.CharField(required=False)
+
+
+class RememberMeAuthTokenSerializer(AuthTokenSerializer):
+    remember_me = serializers.BooleanField(
+        write_only=True
+    )

@@ -1,8 +1,7 @@
 import React, { useContext } from "react"
-import { useNavigate } from "react-router-dom"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 
-import { ProjectActiveTabContext, ProjectActiveTabContextType } from "pages/project/project-main"
+import { ProjectActiveTabContext } from "pages/project/project-main"
 
 export interface ProjectTabsProps {
   projectId: string
@@ -16,7 +15,7 @@ export interface Tab {
 
 export const useProjectTabs = (projectId: string) => {
   const navigate = useNavigate()
-  const { projectActiveTab } = useContext(ProjectActiveTabContext) as ProjectActiveTabContextType
+  const { projectActiveTab } = useContext(ProjectActiveTabContext)!
 
   const tabItems: Tab[] = [
     { label: "Overview", key: "overview", path: `/projects/${projectId}` },

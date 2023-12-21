@@ -3,7 +3,7 @@ import { FetchBaseQueryError } from "@reduxjs/toolkit/dist/query"
 import { Button, Modal, Space, Table, TableProps, notification } from "antd"
 import { ColumnsType } from "antd/es/table"
 import type { FilterValue, TablePaginationConfig } from "antd/es/table/interface"
-import React, { useState } from "react"
+import { useState } from "react"
 import { useDispatch } from "react-redux"
 import { useParams } from "react-router-dom"
 
@@ -16,7 +16,9 @@ import { ContainerLoader } from "shared/ui"
 export const ParametersTable = () => {
   const dispatch = useDispatch()
   const { projectId } = useParams<ParamProjectId>()
-  const { data: parameters, isLoading } = useGetParametersQuery(Number(projectId))
+  const { data: parameters, isLoading } = useGetParametersQuery(Number(projectId), {
+    skip: !projectId,
+  })
   const [deleteParameter] = useDeleteParameterMutation()
 
   const [filteredInfo, setFilteredInfo] = useState<Record<string, FilterValue | null>>({})
@@ -44,7 +46,7 @@ export const ParametersTable = () => {
       title: "Name",
       dataIndex: "data",
       key: "data",
-      filteredValue: filteredInfo.data || null,
+      filteredValue: filteredInfo.data ?? null,
       ...getColumnSearch("data"),
       onFilter: (value, record) => record.data.toLowerCase().includes(String(value).toLowerCase()),
     },
@@ -52,7 +54,7 @@ export const ParametersTable = () => {
       title: "Group",
       dataIndex: "group_name",
       key: "group_name",
-      filteredValue: filteredInfo.group_name || null,
+      filteredValue: filteredInfo.group_name ?? null,
       ...getColumnSearch("group_name"),
       onFilter: (value, record) =>
         record.group_name.toLowerCase().includes(String(value).toLowerCase()),

@@ -1,5 +1,5 @@
 import { notification } from "antd"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
 
 import { useAppDispatch, useAppSelector } from "app/hooks"
@@ -7,7 +7,7 @@ import { useAppDispatch, useAppSelector } from "app/hooks"
 import { useUpdateTestMutation } from "entities/test/api"
 import { selectTest, setTest } from "entities/test/model/slice"
 
-import { useGetMeQuery, useGetUsersQuery } from "entities/user/api"
+import { useGetMeQuery } from "entities/user/api"
 
 import { useErrors } from "shared/hooks"
 
@@ -18,15 +18,14 @@ interface UpdateData {
 export const useAssignTo = () => {
   const activeTest = useAppSelector(selectTest)
   const dispatch = useAppDispatch()
+  const [selectedUser, setSelectedUser] = useState<SelectData | null>(null)
   const [updateTest, { isLoading: isLoadingUpdateTest }] = useUpdateTestMutation()
-  const { data: users, isLoading: isLoadingUsers } = useGetUsersQuery()
   const { data: me } = useGetMeQuery()
 
   const [isOpenModal, setIsOpenModal] = useState(false)
   const {
     handleSubmit,
     reset,
-    control,
     setValue,
     formState: { isDirty },
   } = useForm<UpdateData>()
@@ -76,35 +75,33 @@ export const useAssignTo = () => {
     await assignRequest(activeTest, data.assignUserId)
   }
 
-  const handleAssignUserChange = (value: string) => {
-    setValue("assignUserId", value || "", { shouldDirty: true })
+  const handleAssignUserChange = (data?: SelectData) => {
+    if (!data) return
+    setSelectedUser(data)
+    setValue("assignUserId", String(data.value) || "", { shouldDirty: true })
   }
 
   const handleAssignUserClear = () => {
-    handleAssignUserChange("")
+    setSelectedUser(null)
+    setValue("assignUserId", "", { shouldDirty: true })
   }
 
   useEffect(() => {
-    if (!activeTest || !users || !users.length || !isOpenModal) return
-    const findUser = users.find((i) => Number(i.id) === Number(activeTest.assignee))
-    setValue("assignUserId", findUser ? String(findUser.id) : "", { shouldDirty: false })
-  }, [activeTest, users, isOpenModal])
-
-  const selectUsers = useMemo(() => {
-    if (!users?.length) return []
-    return users.map((i) => ({ value: String(i.id), label: i.username }))
-  }, [users])
+    if (!activeTest?.assignee) return
+    setSelectedUser({
+      label: String(activeTest.assignee_username),
+      value: Number(activeTest.assignee),
+    })
+  }, [activeTest])
 
   return {
     activeTest,
     isOpenModal,
     errors,
-    control,
     isDirty,
-    selectUsers,
-    isLoadingUsers,
     isLoadingUpdateTest,
     me,
+    selectedUser: selectedUser ?? undefined,
     handleClose,
     handleSubmitForm: handleSubmit(onSubmit),
     handleOpenAssignModal,

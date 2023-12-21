@@ -28,31 +28,11 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from django.urls import path
 from rest_framework.routers import SimpleRouter
 from tests_description.api.v1 import views
 
 router = SimpleRouter()
 router.register('cases', views.TestCaseViewSet)
-router.register('suites', views.TestSuiteViewSet, basename='testsuite')
+router.register('suites', views.TestSuiteViewSet)
 breadcrumbs_suites_view = views.TestSuiteViewSet.as_view({'get': 'breadcrumbs_view'})
-urlpatterns = [
-    path('suites/<int:pk>/parents/', breadcrumbs_suites_view, name='suite-breadcrumbs'),
-    path('cases/copy/', views.TestCaseViewSet.as_view({'post': 'copy_cases'}), name='cases-copy'),
-    path('suites/copy/', views.TestSuiteViewSet.as_view({'post': 'copy_suites'}), name='suites-copy'),
-    path('suites/<int:pk>/delete/preview/', views.TestSuiteViewSet.as_view({'get': 'delete_preview'}),
-         name='suite-delete-preview'),
-    path('suites/deleted/', views.TestSuiteViewSet.as_view({'get': 'recovery_list'}), name='suite-deleted-list'),
-    path('suites/deleted/recover/', views.TestSuiteViewSet.as_view({'post': 'restore'}),
-         name='suite-deleted-recover'),
-    path('suites/deleted/remove/', views.TestSuiteViewSet.as_view({'post': 'delete_permanently'}),
-         name='suite-deleted-remove'),
-    path('cases/<int:pk>/delete/preview/', views.TestCaseViewSet.as_view({'get': 'delete_preview'}),
-         name='case-delete-preview'),
-    path('cases/deleted/', views.TestCaseViewSet.as_view({'get': 'recovery_list'}), name='case-deleted-list'),
-    path('cases/deleted/recover/', views.TestCaseViewSet.as_view({'post': 'restore'}),
-         name='case-deleted-recover'),
-    path('cases/deleted/delete/', views.TestCaseViewSet.as_view({'post': 'delete_permanently'}),
-         name='case-deleted-remove'),
-]
-urlpatterns += router.urls
+urlpatterns = router.urls

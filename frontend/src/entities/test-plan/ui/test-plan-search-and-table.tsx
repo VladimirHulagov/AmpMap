@@ -8,23 +8,23 @@ import { CreateTestPlan } from "features/test-plan"
 import { TreeUtils } from "shared/libs"
 
 interface TestPlanSearchAndTableProps {
+  isLoading: boolean
   padding?: number
-  treeTestPlans: ITestPlanTreeView[]
-  expandedRowKeys: number[]
-  onSearch: (treeSuites: ITestPlanTreeView[], searchText: string) => void
-  columns: ColumnsType<ITestPlanTreeView>
-  onRowExpand: (expandedRows: number[], recordKey: number) => void
+  treeTestPlans: TestPlanTreeView[]
+  expandedRowKeys: string[]
+  onSearch: (searchText: string) => void
+  columns: ColumnsType<TestPlanTreeView>
+  onRowExpand: (expandedRows: string[], recordKey: string) => void
   onShowArchived: () => void
   showArchive: boolean
-  onHandleRowClick: (testPlan: ITestPlanTreeView) => void
-  handleSorter: (
-    sorter: SorterResult<ITestPlanTreeView> | SorterResult<ITestPlanTreeView>[]
-  ) => void
+  onHandleRowClick: (testPlan: TestPlanTreeView) => void
+  handleSorter: (sorter: SorterResult<TestPlanTreeView> | SorterResult<TestPlanTreeView>[]) => void
   paginationTable: TablePaginationConfig
 }
 
 // TODO this component looks like same test suite table, need refactoring
 export const TestPlanSearchAndTable = ({
+  isLoading,
   padding = 24,
   treeTestPlans,
   expandedRowKeys,
@@ -41,8 +41,8 @@ export const TestPlanSearchAndTable = ({
     <Content>
       <div className="site-layout-background" style={{ padding, minHeight: 360 }}>
         <div style={{ display: "flex", marginBottom: 16, gap: 16 }}>
-          <Search placeholder="Search" onChange={(e) => onSearch(treeTestPlans, e.target.value)} />
-          <CreateTestPlan type="main" />
+          <Search placeholder="Search" onChange={(e) => onSearch(e.target.value)} />
+          <CreateTestPlan />
         </div>
         <div style={{ display: "flex", marginBottom: 8, float: "right" }}>
           <Checkbox checked={showArchive} onChange={onShowArchived}>
@@ -50,20 +50,26 @@ export const TestPlanSearchAndTable = ({
           </Checkbox>
         </div>
         <Table
+          rowKey="id"
           style={{ cursor: "pointer" }}
           columns={columns}
-          dataSource={TreeUtils.deleteChildren<ITestPlanTreeView>(
+          dataSource={TreeUtils.deleteChildren<TestPlanTreeView>(
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
             JSON.parse(JSON.stringify(treeTestPlans))
           )}
           pagination={paginationTable}
-          expandedRowKeys={expandedRowKeys}
-          onExpand={(_, record) => onRowExpand(expandedRowKeys, record.id)}
+          expandable={{
+            rowExpandable: (record) => record.children.length > 0,
+            expandedRowKeys: expandedRowKeys.map((i) => Number(i)),
+            onExpand: (_, record) => onRowExpand(expandedRowKeys, String(record.id)),
+          }}
           onChange={(_, __, sorter) => handleSorter(sorter)}
           onRow={(record) => {
             return {
               onClick: () => onHandleRowClick(record),
             }
           }}
+          loading={isLoading}
         />
       </div>
     </Content>

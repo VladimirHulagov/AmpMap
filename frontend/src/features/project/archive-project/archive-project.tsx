@@ -16,7 +16,12 @@ export const ArchiveProject = ({ project }: { project: Project }) => {
 
   return (
     <>
-      <Dropdown.Button menu={{ items }} danger onClick={() => setIsShow(true)}>
+      <Dropdown.Button
+        className="archive-project"
+        menu={{ items }}
+        danger
+        onClick={() => setIsShow(true)}
+      >
         Archive
       </Dropdown.Button>
       <ArchiveProjectModal isShow={isShow} setIsShow={setIsShow} project={project} />

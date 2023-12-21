@@ -59,14 +59,14 @@ export const TestCaseStepsModal = ({
         <Form.Item
           label="Name"
           validateStatus={errors?.name ? "error" : ""}
-          help={errors?.name || ""}
+          help={errors?.name ?? ""}
         >
           <Controller name="name" control={control} render={({ field }) => <Input {...field} />} />
         </Form.Item>
         <Form.Item
           label="Scenario"
           validateStatus={errors?.scenario ? "error" : ""}
-          help={errors?.scenario || ""}
+          help={errors?.scenario ?? ""}
         >
           <Controller
             name="scenario"
@@ -85,7 +85,7 @@ export const TestCaseStepsModal = ({
         <Form.Item
           label="Expected"
           validateStatus={errors?.expected ? "error" : ""}
-          help={errors?.expected || ""}
+          help={errors?.expected ?? ""}
         >
           <Controller
             name="expected"

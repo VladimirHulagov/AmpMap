@@ -1,36 +1,41 @@
 {
   "compilerOptions": {
-    "target": "es5",
+    "target": "ES2020",
+    "useDefineForClassFields": true,
     "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
+      "ES2020",
+      "DOM",
+      "DOM.Iterable"
     ],
     "plugins": [
       {
         "name": "typescript-plugin-css-modules",
       },
     ],
-    "baseUrl": "./src",
-    "allowJs": true,
+    "module": "ESNext",
     "skipLibCheck": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "strict": true,
-    "forceConsistentCasingInFileNames": true,
-    "noFallthroughCasesInSwitch": true,
-    "module": "esnext",
-    "moduleResolution": "node",
+    "baseUrl": "./src",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "strict": true,
+    "strictNullChecks": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": true
   },
   "include": [
-    "src"
+    "src",
+    "env.d.ts",
+    ".eslintrc.json",
+    "vite.config.ts",
   ],
-  "exclude": [
-    "node_modules",
-    "build"
+  "references": [
+    {
+      "path": "./tsconfig.node.json"
+    }
   ]
 }

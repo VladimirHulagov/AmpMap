@@ -1,6 +1,6 @@
 import React from "react"
 
-export type ProjectActiveTabContextType = {
+export interface ProjectActiveTabContextType {
   projectActiveTab: string
   setProjectActiveTab: React.Dispatch<React.SetStateAction<string>>
 }

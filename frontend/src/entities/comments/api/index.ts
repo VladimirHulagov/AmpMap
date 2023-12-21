@@ -57,6 +57,7 @@ export const commentsApi = createApi({
 
 export const {
   useGetCommentsQuery,
+  useLazyGetCommentsQuery,
   useAddCommentMutation,
   useDeleteCommentMutation,
   useUpdateCommentMutation,

@@ -1,9 +1,11 @@
-import { Button, Col, Divider, Input, Radio, Row } from "antd"
+import { Button, Col, Divider, Input, Radio, Row, Tooltip } from "antd"
 import { ControllerRenderProps } from "react-hook-form"
 
 import { BracesIcon, FontsIcon, ListIcon } from "shared/ui/icons"
 
 const { TextArea } = Input
+
+type FileType = "txt" | "list" | "json"
 
 interface AttributFormProps {
   fieldProps: ControllerRenderProps<ResultFormData, "attributes">
@@ -11,7 +13,7 @@ interface AttributFormProps {
   handleAttributeRemove: (attributeId: string) => void
   handleAttributeChangeName: (attributeId: string, name: string) => void
   handleAttributeChangeValue: (attributeId: string, value: string) => void
-  handleAttributeChangeType: (attributeId: string, type: "txt" | "list" | "json") => void
+  handleAttributeChangeType: (attributeId: string, type: FileType) => void
 }
 
 export const AttributForm = ({
@@ -36,17 +38,23 @@ export const AttributForm = ({
           <Col flex="150px" style={{ textAlign: "right" }}>
             <Radio.Group
               value={attribut.type}
-              onChange={(e) => handleAttributeChangeType(attribut.id, e.target.value)}
+              onChange={(e) => handleAttributeChangeType(attribut.id, e.target.value as FileType)}
             >
-              <Radio.Button value="txt">
-                <FontsIcon />
-              </Radio.Button>
-              <Radio.Button value="list">
-                <ListIcon />
-              </Radio.Button>
-              <Radio.Button value="json">
-                <BracesIcon />
-              </Radio.Button>
+              <Tooltip placement="topRight" title="Text value">
+                <Radio.Button value="txt">
+                  <FontsIcon />
+                </Radio.Button>
+              </Tooltip>
+              <Tooltip placement="topRight" title="List value">
+                <Radio.Button value="list">
+                  <ListIcon />
+                </Radio.Button>
+              </Tooltip>
+              <Tooltip placement="topRight" title="Json value">
+                <Radio.Button value="json">
+                  <BracesIcon />
+                </Radio.Button>
+              </Tooltip>
             </Radio.Group>
           </Col>
         </Row>

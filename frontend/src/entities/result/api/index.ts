@@ -1,3 +1,4 @@
+import { AnyAction, ThunkDispatch } from "@reduxjs/toolkit"
 import { createApi } from "@reduxjs/toolkit/dist/query/react"
 
 import { baseQueryWithLogout } from "app/apiSlice"
@@ -5,6 +6,17 @@ import { baseQueryWithLogout } from "app/apiSlice"
 import { testApi } from "entities/test/api"
 
 import { testPlanApi } from "entities/test-plan/api"
+
+const invalidateListTags = (
+  testPlanId: number,
+  testId: number,
+  dispatch: ThunkDispatch<unknown, unknown, AnyAction>
+) => {
+  dispatch(testApi.util.invalidateTags([{ type: "Test", id: testId }]))
+
+  dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanStatistics", id: testPlanId }]))
+  dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanHistogram", id: testPlanId }]))
+}
 
 export const resultApi = createApi({
   reducerPath: "resultApi",
@@ -36,12 +48,7 @@ export const resultApi = createApi({
       async onQueryStarted({ testPlanId }, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled
-          dispatch(testApi.util.invalidateTags([{ type: "Test", id: data.test }]))
-
-          dispatch(
-            testPlanApi.util.invalidateTags([{ type: "TestPlanStatistics", id: testPlanId }])
-          )
-          dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanHistogram", id: testPlanId }]))
+          invalidateListTags(testPlanId, data.test, dispatch)
         } catch (error) {
           console.error(error)
         }
@@ -63,12 +70,7 @@ export const resultApi = createApi({
       async onQueryStarted({ testPlanId }, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled
-          dispatch(testApi.util.invalidateTags([{ type: "Test", id: data.test }]))
-
-          dispatch(
-            testPlanApi.util.invalidateTags([{ type: "TestPlanStatistics", id: testPlanId }])
-          )
-          dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanHistogram", id: testPlanId }]))
+          invalidateListTags(testPlanId, data.test, dispatch)
         } catch (error) {
           console.error(error)
         }

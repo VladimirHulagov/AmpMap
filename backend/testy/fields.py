@@ -34,16 +34,18 @@ import pytimeparse
 from django.core import exceptions
 from django.db import models
 from forms import EstimateFormField
+from utilities.time import WorkTimeProcessor
 
 
-class EstimateField(models.DurationField):
+class BaseEstimateField(models.Field):
     default_error_message = 'Invalid value for estimate.'
+    default_type = None
 
     def to_python(self, value):
         if value is None:
             return value
 
-        if isinstance(value, datetime.timedelta):
+        if isinstance(value, self.default_type):
             return value
 
         parsed, err = self.parse_duration(value)
@@ -59,8 +61,8 @@ class EstimateField(models.DurationField):
             **kwargs,
         })
 
-    @staticmethod
-    def parse_duration(value):
+    @classmethod
+    def get_value_in_seconds(cls, value):
         value = value.strip()
 
         if value[0] == '-':
@@ -71,10 +73,40 @@ class EstimateField(models.DurationField):
 
         seconds = pytimeparse.parse(value)
 
+        seconds_by_wd = WorkTimeProcessor.seconds_to_day(int(seconds))
+
         if not seconds:
             return None, None
 
         try:
-            return datetime.timedelta(seconds=seconds), None
+            datetime.timedelta(seconds=seconds_by_wd), None
         except OverflowError:
             return None, exceptions.ValidationError('Estimate value is too big')
+        return seconds_by_wd, None
+
+    @classmethod
+    def parse_duration(cls, value):
+        raise NotImplementedError
+
+
+class EstimateField(BaseEstimateField):
+    default_type = datetime.timedelta
+
+    @classmethod
+    def parse_duration(cls, value):
+        seconds, err = cls.get_value_in_seconds(value)
+        return datetime.timedelta(seconds=seconds), err
+
+    def get_internal_type(self):
+        return "DurationField"
+
+
+class IntegerEstimateField(BaseEstimateField):
+    default_type = int
+
+    @classmethod
+    def parse_duration(cls, value):
+        return cls.get_value_in_seconds(value)
+
+    def get_internal_type(self):
+        return "IntegerField"

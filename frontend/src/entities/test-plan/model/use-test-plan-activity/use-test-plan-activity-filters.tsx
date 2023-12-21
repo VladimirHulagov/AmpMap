@@ -13,14 +13,14 @@ export const useTestPlanActivityFilters = (
       key: "action_timestamp",
       width: "150px",
       sorter: true,
-      filteredValue: testPlanActivity.filteredInfo?.action_timestamp || null,
+      filteredValue: testPlanActivity.filteredInfo?.action_timestamp ?? null,
     },
     {
       title: "Action",
       dataIndex: "action",
       key: "action",
       width: "150px",
-      filteredValue: testPlanActivity.filteredInfo?.action || null,
+      filteredValue: testPlanActivity.filteredInfo?.action ?? null,
       filters: [
         {
           value: "added",
@@ -41,7 +41,7 @@ export const useTestPlanActivityFilters = (
       dataIndex: "status_text",
       key: "status_text",
       width: "150px",
-      filteredValue: testPlanActivity.filteredInfo?.status_text || null,
+      filteredValue: testPlanActivity.filteredInfo?.status_text ?? null,
       filters: [
         {
           value: "Failed",

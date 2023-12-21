@@ -1,60 +1,66 @@
 import { TablePaginationConfig } from "antd/es/table"
 import { ColumnsType } from "antd/lib/table"
 import { SorterResult } from "antd/lib/table/interface"
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 
 import { useGetTestSuitesTreeViewQuery } from "entities/suite/api"
 
 import { TreeUtils } from "shared/libs"
+import { addKeyToData } from "shared/libs/add-key-to-data"
 import { antdSorterToTestySort } from "shared/libs/antd-sorter-to-testy-sort"
 import { HighLighterTesty } from "shared/ui"
 
 interface UseTestSuiteTableProps {
   setCollapse: React.Dispatch<React.SetStateAction<boolean>>
-  activeSuite?: ISuite
+  activeSuite?: Suite
 }
 
-export const useTestSuiteTable = ({ setCollapse }: UseTestSuiteTableProps) => {
+export const useTestSuiteTable = ({ activeSuite, setCollapse }: UseTestSuiteTableProps) => {
   const navigate = useNavigate()
   const { projectId, testSuiteId } = useParams<ParamProjectId & ParamTestSuiteId>()
   const [searchText, setSearchText] = useState("")
-  const [expandedRowKeys, setExpandedRowKeys] = useState<number[]>([])
+  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([])
   const [paginationParams, setPaginationParams] = useState({
     page: 1,
     pageSize: 10,
   })
   const [ordering, setOrdering] = useState<string | undefined>(undefined)
+  const [treeData, setTreeData] = useState<Suite[]>([])
+  const [total, setTotal] = useState(0)
+  const { data: testSuitesTreeView, isLoading: isTreeLoading } = useGetTestSuitesTreeViewQuery({
+    search: searchText,
+    project: projectId,
+    ordering,
+    page: paginationParams.page,
+    page_size: paginationParams.pageSize,
+    parent: activeSuite ? String(activeSuite?.id) : undefined,
+  })
 
-  const { data: treeSuites, isLoading: isLoadingTreeSuites } = useGetTestSuitesTreeViewQuery(
-    {
-      project: projectId || "",
-      search: searchText,
-      ordering,
-      page: paginationParams.page,
-      page_size: paginationParams.pageSize,
-    },
-    {
-      skip: testSuiteId !== undefined,
-    }
-  )
+  useEffect(() => {
+    if (!testSuitesTreeView) return
 
-  const { data: treeSuitesChild, isLoading: isLoadingChildTreeSuites } =
-    useGetTestSuitesTreeViewQuery(
+    setTreeData(testSuitesTreeView.results)
+    setTotal(testSuitesTreeView.count)
+  }, [testSuitesTreeView])
+
+  useEffect(() => {
+    if (!testSuitesTreeView || !searchText.length) return
+    const initDataWithKeys = addKeyToData(testSuitesTreeView.results)
+    const [, expandedRows] = TreeUtils.filterRows<DataWithKey<TestPlanTreeView>>(
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      JSON.parse(JSON.stringify(initDataWithKeys)),
+      searchText,
       {
-        project: projectId || "",
-        search: searchText,
-        ordering,
-        page: paginationParams.page,
-        page_size: paginationParams.pageSize,
-        parent: testSuiteId,
-      },
-      {
-        skip: !testSuiteId,
+        isAllExpand: true,
+        isShowChildren: false,
       }
     )
 
-  const columns: ColumnsType<ISuite> = [
+    setExpandedRowKeys(expandedRows.map((key) => String(key)))
+  }, [testSuitesTreeView, searchText])
+
+  const columns: ColumnsType<Suite> = [
     {
       title: "Test Suite",
       dataIndex: "name",
@@ -62,6 +68,7 @@ export const useTestSuiteTable = ({ setCollapse }: UseTestSuiteTableProps) => {
       sorter: true,
       render: (text, record) => (
         <Link to={`/projects/${projectId}/suites/${record.id}`}>
+          {/* eslint-disable-next-line @typescript-eslint/no-unsafe-assignment */}
           <HighLighterTesty searchWords={searchText} textToHighlight={text} />
         </Link>
       ),
@@ -86,8 +93,8 @@ export const useTestSuiteTable = ({ setCollapse }: UseTestSuiteTableProps) => {
     {
       width: 150,
       title: "Test Cases",
-      key: "test-cases-count",
-      dataIndex: "cases_count",
+      key: "total_cases_count",
+      dataIndex: "total_cases_count",
       sorter: true,
       render: (text, record) => (
         <span
@@ -96,27 +103,39 @@ export const useTestSuiteTable = ({ setCollapse }: UseTestSuiteTableProps) => {
             textAlign: "center",
           }}
         >
-          {record.cases_count}
+          {record.cases_count} ({record.total_cases_count})
+        </span>
+      ),
+    },
+    {
+      width: 150,
+      title: "Estimate",
+      key: "total_estimates",
+      dataIndex: "total_estimates",
+      sorter: true,
+      render: (text, record) => (
+        <span
+          style={{
+            display: "block",
+            textAlign: "center",
+          }}
+        >
+          {record.estimates ? `${record.estimates} (${record.total_estimates})` : "-"}
         </span>
       ),
     },
   ]
 
-  const onSearch = (treeSuites: ISuite[], searchText: string) => {
-    setPaginationParams({ page: 1, pageSize: 10 })
+  const onSearch = (searchText: string) => {
     setSearchText(searchText.trim())
 
     if (!searchText.trim().length) {
       setExpandedRowKeys([])
       return
     }
-
-    const [, expandedRows] = TreeUtils.filterRows<ISuite>(treeSuites, searchText)
-
-    setExpandedRowKeys(expandedRows as number[])
   }
 
-  const onRowExpand = (expandedRows: number[], recordKey: number) => {
+  const onRowExpand = (expandedRows: string[], recordKey: string) => {
     if (expandedRows.includes(recordKey)) {
       setExpandedRowKeys(expandedRows.filter((key) => key !== recordKey))
     } else {
@@ -133,7 +152,7 @@ export const useTestSuiteTable = ({ setCollapse }: UseTestSuiteTableProps) => {
     setCollapse((prevState) => !prevState)
   }
 
-  const handleRowClick = ({ id }: ISuite) => {
+  const handleRowClick = ({ id }: Suite) => {
     navigate(`/projects/${projectId}/suites/${id}`)
   }
 
@@ -141,7 +160,7 @@ export const useTestSuiteTable = ({ setCollapse }: UseTestSuiteTableProps) => {
     setPaginationParams({ page, pageSize })
   }
 
-  const handleSorter = (sorter: SorterResult<ISuite> | SorterResult<ISuite>[]) => {
+  const handleSorter = (sorter: SorterResult<Suite> | SorterResult<Suite>[]) => {
     const formatSort = antdSorterToTestySort(sorter)
     setOrdering(formatSort || undefined)
   }
@@ -153,7 +172,7 @@ export const useTestSuiteTable = ({ setCollapse }: UseTestSuiteTableProps) => {
     showSizeChanger: true,
     current: paginationParams.page,
     pageSize: paginationParams.pageSize,
-    total: treeSuites?.count || 0,
+    total,
     onChange: handlePaginationChange,
   }
 
@@ -167,9 +186,9 @@ export const useTestSuiteTable = ({ setCollapse }: UseTestSuiteTableProps) => {
     paginationTable,
     columns,
     expandedRowKeys,
-    treeSuites,
-    treeSuitesChild,
-    isLoading: isLoadingChildTreeSuites || isLoadingTreeSuites,
+    treeSuites: treeData,
+    total,
+    isLoading: isTreeLoading,
     testSuiteId,
     searchText,
   }

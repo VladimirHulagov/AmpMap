@@ -6,7 +6,7 @@ import { useAttachments } from "entities/attachment/model"
 
 import { showModalCloseConfirm } from "shared/libs"
 
-type ErrorData = {
+interface ErrorData {
   name?: string
   scenario?: string
   expected?: string
@@ -19,7 +19,7 @@ interface FormData {
   attachments?: IAttachment[]
 }
 
-export type TestCaseStepsModalProps = {
+export interface TestCaseStepsModalProps {
   isEdit: boolean
   step: Step | null
   onCloseModal: () => void
@@ -65,7 +65,7 @@ export const useTestCaseStepsModal = ({
     onCloseModalSteps()
   }
 
-  const onSubmitForm: SubmitHandler<FormData> = async ({ name, scenario, expected }) => {
+  const onSubmitForm: SubmitHandler<FormData> = ({ name, scenario, expected }) => {
     if (!step) return
 
     if (!name) {

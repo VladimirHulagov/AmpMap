@@ -3,7 +3,7 @@ import { PayloadAction, createSlice } from "@reduxjs/toolkit"
 import { RootState } from "app/store"
 
 const initialState: TestCaseState = {
-  testCase: null,
+  drawerTestCase: null,
   modal: {
     isShow: false,
     isEditMode: false,
@@ -14,11 +14,16 @@ export const testCaseSlice = createSlice({
   name: "testCase",
   initialState,
   reducers: {
-    setTestCase: (state, action: PayloadAction<TestCase>) => {
-      state.testCase = action.payload
+    setDrawerTestCase: (state, action: PayloadAction<TestCase | null>) => {
+      state.drawerTestCase = action.payload
     },
-    clearTestCase: (state) => {
-      state.testCase = null
+    setDrawerTestCaseIsArchive: (state, action: PayloadAction<boolean>) => {
+      if (state.drawerTestCase) {
+        state.drawerTestCase = { ...state.drawerTestCase, is_archive: action.payload }
+      }
+    },
+    clearDrawerTestCase: (state) => {
+      state.drawerTestCase = null
     },
     showCreateModal: (state) => {
       state.modal.isShow = true
@@ -38,11 +43,17 @@ export const testCaseSlice = createSlice({
   },
 })
 
-export const { setTestCase, clearTestCase, showCreateModal, showEditModal, hideModal } =
-  testCaseSlice.actions
+export const {
+  setDrawerTestCase,
+  clearDrawerTestCase,
+  showCreateModal,
+  showEditModal,
+  hideModal,
+  setDrawerTestCaseIsArchive,
+} = testCaseSlice.actions
 
 export const testCaseReducer = testCaseSlice.reducer
 
-export const selectTestCase = (state: RootState) => state.testCase.testCase
+export const selectDrawerTestCase = (state: RootState) => state.testCase.drawerTestCase
 export const selectModalIsShow = (state: RootState) => state.testCase.modal.isShow
 export const selectModalIsEditMode = (state: RootState) => state.testCase.modal.isEditMode

@@ -1,0 +1,24 @@
+import { EditOutlined } from "@ant-design/icons"
+import { Button } from "antd"
+
+import { useAppDispatch } from "app/hooks"
+
+import { setUser, showEditUserModal } from "entities/user/model"
+
+export const EditUser = ({ user }: { user: User }) => {
+  const dispatch = useAppDispatch()
+
+  const showUserDetails = () => {
+    dispatch(setUser(user))
+    dispatch(showEditUserModal())
+  }
+
+  return (
+    <Button
+      id="show-user-details"
+      icon={<EditOutlined />}
+      shape="circle"
+      onClick={showUserDetails}
+    />
+  )
+}

@@ -8,10 +8,17 @@ import { useCopySuiteMutation } from "entities/suite/api"
 
 import { AlertSuccessChange } from "shared/ui/alert-success-change"
 
-export const useSuiteCopyModal = (suite: ISuite) => {
+export const useSuiteCopyModal = (suite: Suite) => {
   const [isShow, setIsShow] = useState(false)
   const [copySuite, { isLoading }] = useCopySuiteMutation()
-  const { data, isLoading: isLoadingProjects } = useGetProjectsQuery(false)
+  // TODO page_size 1000 = hack, need be scroll loading as search-field.tsx
+  const { data, isLoading: isLoadingProjects } = useGetProjectsQuery(
+    {
+      page: 1,
+      page_size: 1000,
+    },
+    { skip: !isShow }
+  )
   const [newName, setNewName] = useState("")
   const [selectedProject, setSelectedProject] = useState("")
 
@@ -62,22 +69,22 @@ export const useSuiteCopyModal = (suite: ISuite) => {
   const projects = useMemo(() => {
     if (!data) return []
 
-    return data.map((i) => ({
+    return data.results.map((i) => ({
       label: i.name,
       value: i.id,
     }))
   }, [data])
 
   return {
-    handleCancel,
-    handleShow,
-    handleSave,
-    handleChange,
-    handleChangeName,
     isShow,
     isLoading,
     isLoadingProjects,
     projects,
     newName,
+    handleCancel,
+    handleShow,
+    handleSave,
+    handleChange,
+    handleChangeName,
   }
 }

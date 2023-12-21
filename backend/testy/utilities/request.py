@@ -28,25 +28,28 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-__all__ = (
-    'get_boolean',
-    'get_datetime',
-    'PeriodDateTime'
-)
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import List, Optional
 
 from django.conf import settings
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
+from utilities.string import parse_bool_from_str
 
-from utils import parse_bool_from_str
 
-
-def get_boolean(request, key, method='GET', *, default=False):
+def get_boolean(request, key, method='GET', *, default=False) -> bool:
     """
-    Gets the value from request and returns it's boolean state
+    Get the value from request and returns it's boolean state.
+
+    Args:
+        request: Django request
+        key: query parameter key
+        method: request method
+        default: defines what default value will be returned if query parameter was not found
+
+    Returns:
+        bool
     """
     value = getattr(request, method).get(key, default)
     return parse_bool_from_str(value)
@@ -54,16 +57,31 @@ def get_boolean(request, key, method='GET', *, default=False):
 
 def get_datetime(request, key, method='GET', required=False) -> Optional[timezone.datetime]:
     """
-    Gets the value from request and returns it's as datetime object
-    """
+    Get the value from request and returns it's as datetime object.
 
+    Args:
+        request: Django request
+        key: query parameter key
+        method: request method
+        required: defines if query parameter is required
+
+    Returns:
+        timedelta if it could be parsed correctly or None
+
+    Raises:
+        ValidationError: in case of parsing error occurred
+    """
     str_value = getattr(request, method).get(key)
     try:
         dt = timezone.datetime.fromisoformat(str_value)
         return timezone.make_aware(dt, timezone.utc)
-    except (ValueError, TypeError) as e:
+    except (ValueError, TypeError) as err:
         if required:
-            raise ValidationError(f'Invalid {method} parameter {key}: {e}')
+            raise ValidationError(f'Invalid {method} parameter {key}: {err}')
+
+
+def get_user_favorites(request) -> List[int]:
+    return request.user.config.get('projects', {}).get('favorite', [])
 
 
 @dataclass
@@ -80,8 +98,8 @@ class PeriodDateTime:
         self.start = self._format_date(self.start)
         self.end = self._format_date(self.end, is_start=False)
 
-    @staticmethod
-    def _format_date(date: timezone.datetime, is_start=True):
+    @classmethod
+    def _format_date(cls, date: timezone.datetime, is_start=True):
         if is_start:
-            return date.replace(hour=0, minute=0, second=0)
-        return date.replace(hour=23, minute=59, second=59)
+            return date.replace(hour=0, minute=0, second=0)  # noqa: WPS432
+        return date.replace(hour=23, minute=59, second=59)  # noqa: WPS432

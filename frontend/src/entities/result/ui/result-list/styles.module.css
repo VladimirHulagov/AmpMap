@@ -38,3 +38,18 @@
   float: right;
   margin: 0;
 }
+
+.divider {
+  color: #999;
+  margin: 0 4px;
+}
+
+.link {
+  color: #999;
+  text-decoration: underline;
+}
+
+.activeHashResult {
+  background-color: #f7f7f7;
+  border-color: #c0c0c0;
+}

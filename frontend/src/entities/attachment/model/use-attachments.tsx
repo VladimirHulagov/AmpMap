@@ -14,7 +14,8 @@ interface UploadFileExtend<T> extends UploadFile<T> {
   link?: string
 }
 
-export const useAttachments = <T extends unknown>(
+// prettier-ignore
+export const useAttachments = <T, >(
   control: Control<T & FieldValues, unknown>,
   projectId: string | undefined
 ) => {

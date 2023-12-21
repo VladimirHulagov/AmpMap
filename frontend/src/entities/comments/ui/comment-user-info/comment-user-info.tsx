@@ -1,23 +1,35 @@
 import moment from "moment"
+import { HashLink } from "react-router-hash-link"
 
-import { UserAvatar } from "entities/user/ui/user-avatar/user-avatar"
+import { UserAvatar } from "entities/user/ui"
 
 import styles from "./styles.module.css"
 
 interface Props {
+  commentId: number
   username: string
-  avatar_link: string
-  created_at: string
-  updated_at: string
+  avatarLink: string
+  createdAt: string
+  updatedAt: string
 }
 
-export const CommentUserInfo = ({ username, avatar_link, created_at, updated_at }: Props) => {
+export const CommentUserInfo = ({
+  commentId,
+  username,
+  avatarLink,
+  createdAt,
+  updatedAt,
+}: Props) => {
+  const path = window.location.pathname + window.location.search
   return (
     <div className={styles.userInfo}>
-      <UserAvatar size={32} avatar_link={avatar_link} />
+      <UserAvatar size={32} avatar_link={avatarLink} />
       <span>{username}</span>
-      <span>added a comment - {moment(created_at).format("DD MMM YYYY HH:mm")}</span>
-      {!moment(updated_at).isSame(created_at) && <span className={styles.edited}> - edited</span>}
+      <span>added a comment</span>
+      <HashLink to={path + `#comment-${commentId}`} className={styles.link}>
+        {moment(createdAt).format("DD MMM YYYY HH:mm")}
+      </HashLink>
+      {!moment(updatedAt).isSame(createdAt) && <span className={styles.edited}> - edited</span>}
     </div>
   )
 }

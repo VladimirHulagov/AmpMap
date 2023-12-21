@@ -28,18 +28,19 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-
 from core.api.v1.serializers import AttachmentSerializer
 from core.models import Label, LabeledItem
 from core.selectors.attachments import AttachmentSelector
 from core.selectors.projects import ProjectSelector
 from rest_framework import serializers
-from rest_framework.fields import BooleanField, IntegerField, SerializerMethodField, empty
+from rest_framework.fields import BooleanField, IntegerField, ListField, SerializerMethodField, empty
 from rest_framework.relations import HyperlinkedIdentityField, PrimaryKeyRelatedField
 from rest_framework.serializers import ModelSerializer
 from serializer_fields import EstimateField
 from tests_description.models import TestCase, TestCaseStep, TestSuite
+from tests_description.selectors.cases import TestCaseSelector, TestCaseStepSelector
 from tests_description.selectors.suites import TestSuiteSelector
+from users.api.v1.serializers import UserSerializer
 from validators import EstimateValidator
 
 
@@ -61,10 +62,18 @@ class TestCaseStepInputSerializer(TestCaseStepBaseSerializer):
 
 
 class TestCaseStepOutputSerializer(TestCaseStepBaseSerializer):
-    attachments = AttachmentSerializer(many=True, read_only=True)
+    attachments = SerializerMethodField(read_only=True)
 
     class Meta(TestCaseStepBaseSerializer.Meta):
         fields = TestCaseStepBaseSerializer.Meta.fields + ('attachments',)
+
+    def get_attachments(self, instance):
+        if (version := self.context.get('version', None)) is not None:
+            attachments = TestCaseStepSelector.get_attachments_by_case_version(instance, version)
+        else:
+            attachments = instance.attachments.all()
+
+        return AttachmentSerializer(attachments, many=True, context=self.context).data
 
 
 class TestCaseBaseSerializer(ModelSerializer):
@@ -73,7 +82,7 @@ class TestCaseBaseSerializer(ModelSerializer):
     class Meta:
         model = TestCase
         fields = ('id', 'name', 'project', 'suite', 'setup', 'scenario', 'expected',
-                  'teardown', 'estimate', 'description', 'is_steps')
+                  'teardown', 'estimate', 'description', 'is_steps', 'is_archive')
 
     validators = [EstimateValidator()]
 
@@ -100,9 +109,18 @@ class TestCaseInputBaseSerializer(TestCaseBaseSerializer):
         many=True, queryset=AttachmentSelector().attachment_list(), required=False
     )
     labels = TestCaseLabelInputSerializer(many=True, required=False)
+    skip_history = serializers.BooleanField(default=False, initial=False)
 
     class Meta(TestCaseBaseSerializer.Meta):
-        fields = TestCaseBaseSerializer.Meta.fields + ('attachments', 'labels',)
+        fields = TestCaseBaseSerializer.Meta.fields + ('attachments', 'labels', 'skip_history',)
+
+    def validate(self, attrs):
+        if attrs['skip_history']:
+            request = self.context['request']
+            history_latest = TestCaseSelector.get_last_history(self.instance.pk)
+            if request.user != history_latest.history_user:
+                raise serializers.ValidationError('You can not update version of Test Case')
+        return attrs
 
 
 class TestCaseInputSerializer(TestCaseInputBaseSerializer):
@@ -122,65 +140,27 @@ class TestCaseInputWithStepsSerializer(TestCaseInputBaseSerializer):
         return value
 
 
-class TestCaseSerializer(TestCaseBaseSerializer):
-    steps = SerializerMethodField()
+class TestCaseListSerializer(TestCaseBaseSerializer):
+    steps = SerializerMethodField(read_only=True)
     url = HyperlinkedIdentityField(view_name='api:v1:testcase-detail')
-    key = IntegerField(source='id', read_only=True)
-    value = IntegerField(source='id', read_only=True)
-    attachments = PrimaryKeyRelatedField(
-        many=True, queryset=AttachmentSelector().attachment_list(), required=False
-    )
-    labels = SerializerMethodField()
-
-    class Meta(TestCaseBaseSerializer.Meta):
-        fields = TestCaseBaseSerializer.Meta.fields + ('key', 'value', 'attachments', 'url', 'steps', 'labels')
-
-    def get_steps(self, instance):
-        return TestCaseStepOutputSerializer(instance.steps.all(), many=True, context=self.context).data
-
-    def get_labels(self, instance):
-        return TestCaseLabelOutputSerializer(instance.labeled_items.all(), many=True).data
-
-
-class TestCaseTreeSerializer(ModelSerializer):
-    class Meta:
-        model = TestCase
-        fields = ('id', 'name')
-
-
-class TestCaseRetrieveSerializer(TestCaseBaseSerializer):
-    steps = SerializerMethodField()
-    url = HyperlinkedIdentityField(view_name='api:v1:testcase-detail')
-    attachments = AttachmentSerializer(many=True, read_only=True)
-    labels = SerializerMethodField()
-    versions = SerializerMethodField()
-    current_version = SerializerMethodField()
+    attachments = SerializerMethodField()
+    labels = SerializerMethodField(read_only=True)
+    versions = ListField(child=IntegerField(), read_only=True)
+    current_version = SerializerMethodField(read_only=True)
 
     def __init__(self, instance=None, version=None, data=empty, **kwargs):
         self._version = version
         super().__init__(instance, data, **kwargs)
 
-    class Meta:
-        model = TestCase
-        fields = (
-            'id',
-            'name',
-            'project',
-            'attachments',
-            'suite',
-            'setup',
-            'scenario',
-            'expected',
-            'teardown',
-            'estimate',
-            'url',
-            'versions',
-            'current_version',
-            'description',
-            'is_steps',
-            'steps',
-            'labels',
+    class Meta(TestCaseBaseSerializer.Meta):
+        fields = TestCaseBaseSerializer.Meta.fields + (
+            'attachments', 'url', 'steps', 'labels', 'versions', 'current_version',
         )
+
+    def get_current_version(self, instance):
+        if self._version is not None:
+            return self._version
+        return instance.current_version
 
     def get_labels(self, instance):
         if self._version is not None:
@@ -189,20 +169,46 @@ class TestCaseRetrieveSerializer(TestCaseBaseSerializer):
             labels = instance.labeled_items.all()
         return TestCaseLabelOutputSerializer(labels, many=True, context=self.context).data
 
+    def get_steps(self, instance):
+        if self._version is not None:
+            steps = TestCaseStepSelector.get_steps_by_case_version_id(self._version)
+        else:
+            steps = instance.steps.all()
+        return TestCaseStepOutputSerializer(steps, many=True, context={'version': self._version, **self.context}).data
+
+    def get_attachments(self, instance):
+        if self._version is None:
+            attachments = instance.attachments.all()
+        else:
+            attachments = AttachmentSelector.attachment_list_by_parent_object_and_history_ids(
+                instance, instance.id, [self._version]
+            )
+        return AttachmentSerializer(attachments, many=True, context=self.context).data
+
+
+class TestCaseRetrieveSerializer(TestCaseListSerializer):
+    versions = SerializerMethodField(read_only=True)
+    current_version = SerializerMethodField(read_only=True)
+
     def get_versions(self, instance):
-        return instance.history.values_list('history_id', flat=True).all()
+        return instance.history.values_list('history_id', flat=True).order_by('-history_id').all()
 
     def get_current_version(self, instance):
         if self._version is not None:
             return self._version
         return instance.history.first().history_id
 
-    def get_steps(self, instance):
-        if self._version is not None:
-            steps = TestCaseStep.history.filter(test_case_history_id=self._version).as_instances()
-        else:
-            steps = instance.steps.all()
-        return TestCaseStepOutputSerializer(steps, many=True, context=self.context).data
+
+class TestCaseTreeSerializer(ModelSerializer):
+    class Meta:
+        model = TestCase
+        fields = ('id', 'name')
+
+
+class ParentSuiteSerializer(ModelSerializer):
+    class Meta:
+        model = TestSuite
+        fields = ('id', 'name')
 
 
 class TestSuiteBaseSerializer(ModelSerializer):
@@ -214,7 +220,7 @@ class TestSuiteBaseSerializer(ModelSerializer):
 
 
 class TestSuiteSerializer(TestSuiteBaseSerializer):
-    test_cases = TestCaseSerializer(many=True, read_only=True)
+    test_cases = TestCaseListSerializer(many=True, read_only=True)
 
     class Meta:
         model = TestSuite
@@ -223,16 +229,18 @@ class TestSuiteSerializer(TestSuiteBaseSerializer):
 
 class TestSuiteTreeSerializer(TestSuiteBaseSerializer):
     children = SerializerMethodField()
-    key = serializers.IntegerField(source='id')
-    value = serializers.IntegerField(source='id')
     title = serializers.CharField(source='name')
     descendant_count = IntegerField()
     cases_count = IntegerField()
+    parent = ParentSuiteSerializer()
+    total_cases_count = IntegerField()
+    estimates = EstimateField()
+    total_estimates = EstimateField()
 
     class Meta:
         model = TestSuite
         fields = TestSuiteBaseSerializer.Meta.fields + (
-            'children', 'key', 'value', 'title', 'descendant_count', 'cases_count'
+            'children', 'title', 'descendant_count', 'cases_count', 'total_cases_count', 'total_estimates', 'estimates'
         )
 
     def get_children(self, value):
@@ -265,11 +273,6 @@ class TestCaseCopySerializer(serializers.Serializer):
     dst_suite_id = serializers.IntegerField(required=False)
 
 
-class TestSuiteCopyDetailSerializer(serializers.Serializer):
-    id = serializers.IntegerField(required=True)
-    new_name = serializers.CharField(required=False)
-
-
 class TestSuiteCopySerializer(serializers.Serializer):
     suites = TestSuiteCopyDetailSerializer(many=True, required=True)
     dst_project_id = serializers.PrimaryKeyRelatedField(
@@ -282,3 +285,32 @@ class TestSuiteCopySerializer(serializers.Serializer):
         required=False,
         allow_null=True
     )
+
+
+class TestCaseHistorySerializer(serializers.Serializer):
+    HISTORY_TYPES = {
+        '+': 'Created',
+        '~': 'Updated',
+        '-': 'Deleted',
+    }
+    user = SerializerMethodField(read_only=True)
+    version = IntegerField(source='history_id')
+    action = SerializerMethodField(read_only=True)
+    history_date = serializers.DateTimeField()
+
+    def get_user(self, instance):
+        if instance.history_user:
+            return UserSerializer(instance.history_user, context=self.context).data
+        return None
+
+    def get_action(self, instance):
+        return self.HISTORY_TYPES.get(instance.history_type)
+
+
+class TestCaseRestoreSerializer(serializers.Serializer):
+    version = IntegerField(required=True)
+
+    def validate_version(self, version):
+        if not TestCaseSelector.version_exists(version=version, pk=self.instance.id):
+            raise serializers.ValidationError('Incorrect version')
+        return version

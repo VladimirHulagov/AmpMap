@@ -20,12 +20,14 @@ export const useTestDetail = (test: Test | null) => {
   const { projectId } = useParams<ParamProjectId>()
 
   const { data: testCase, isLoading: isLoadingTestCase } = useGetTestCaseByIdQuery(
-    Number(test?.case),
+    { testCaseId: String(test?.case) },
     {
       skip: !test,
     }
   )
-  const { data: project, isLoading: isLoadingProject } = useGetProjectQuery(Number(projectId))
+  const { data: project, isLoading: isLoadingProject } = useGetProjectQuery(Number(projectId), {
+    skip: !projectId,
+  })
   const showArchive = useAppSelector(selectArchivedResultsIsShow)
   const [searchParams, setSearchParams] = useSearchParams()
 

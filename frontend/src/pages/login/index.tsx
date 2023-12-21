@@ -1,9 +1,9 @@
 import { Col, Row } from "antd"
 import { SystemMessages } from "widgets"
 
-import { Copyright } from "shared/ui"
+import { Auth } from "entities/auth/auth"
 
-import { Auth } from "../../entities/auth/auth"
+import { Copyright } from "shared/ui"
 
 export const LoginPage = () => {
   return (

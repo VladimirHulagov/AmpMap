@@ -30,11 +30,12 @@
 # <http://www.gnu.org/licenses/>.
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Type, Union
 
 from core.models import Attachment
 from core.selectors.attachments import AttachmentSelector
 from core.services.media import MediaService
+from django.db.models import Model
 
 
 class AttachmentService(MediaService):
@@ -64,10 +65,15 @@ class AttachmentService(MediaService):
             self.populate_image_thumbnails(attachment.file)
         return attachments_instances
 
-    def attachment_set_content_object(self, attachment: Attachment, content_object):
+    def attachment_set_content_object(self, attachment: Attachment, content_object) -> Attachment:
         if attachment.content_object:
             raise ValueError('Attachment already has content object.')
         attachment.content_object = content_object
+        attachment.save()
+        return attachment
+
+    def attachment_add_content_object_history_id(self, attachment: Attachment, history_id: int) -> Attachment:
+        attachment.content_object_history_ids.append(history_id)
         attachment.save()
         return attachment
 
@@ -82,6 +88,21 @@ class AttachmentService(MediaService):
 
         for old_attachment in old_attachments:
             if old_attachment not in attachments:
-                old_attachment.content_type = None
-                old_attachment.object_id = None
-                old_attachment.save()
+                old_attachment.delete()
+
+    def attachments_bulk_add_content_object_history_id(self, attachments: List[Attachment], history_id: int):
+        for attachment in attachments:
+            self.attachment_add_content_object_history_id(attachment, history_id)
+
+    def restore_by_version(self, content_object: Type[Model], history_id: int):
+        old_attachments = AttachmentSelector.attachment_list_by_parent_object_and_history_ids(
+            content_object, content_object.id, [history_id]
+        )
+        for attachment in old_attachments:
+            attachment = self.attachment_add_content_object_history_id(
+                attachment, content_object.history.latest().history_id
+            )
+            attachment.restore()
+        exclude_ids = [attachment.id for attachment in old_attachments]
+        for attachment in AttachmentSelector.attachment_list_from_object_with_excluding(content_object, exclude_ids):
+            attachment.delete()

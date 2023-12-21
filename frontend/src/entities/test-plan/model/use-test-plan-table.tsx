@@ -2,7 +2,7 @@ import { Tag } from "antd"
 import { TablePaginationConfig } from "antd/es/table"
 import { ColumnsType } from "antd/lib/table"
 import { SorterResult } from "antd/lib/table/interface"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 
 import { useGetTestPlansTreeViewQuery } from "entities/test-plan/api"
@@ -11,31 +11,74 @@ import { useUserConfig } from "entities/user/model"
 
 import { colors } from "shared/config"
 import { TreeUtils } from "shared/libs"
+import { addKeyToData } from "shared/libs/add-key-to-data"
 import { antdSorterToTestySort } from "shared/libs/antd-sorter-to-testy-sort"
 import { HighLighterTesty } from "shared/ui"
+
+const defaultPaginationParams = {
+  page: 1,
+  pageSize: 10,
+}
 
 export const useTestPlanTable = () => {
   const navigate = useNavigate()
   const { userConfig, updateConfig } = useUserConfig()
-  const { projectId, testPlanId } = useParams<ParamProjectId & ParamTestPlanId>()
+  const { projectId: pid, testPlanId: tid } = useParams<ParamProjectId & ParamTestPlanId>()
   const [searchText, setSearchText] = useState("")
   const [ordering, setOrdering] = useState<string | undefined>(undefined)
+  const [projectId, setProjectId] = useState<string | undefined>(pid)
+  const [testPlanId, setTestPlanId] = useState<string | undefined>(tid)
+  const [total, setTotal] = useState<number>(0)
 
-  const [expandedRowKeys, setExpandedRowKeys] = useState<number[]>([])
-  const [paginationParams, setPaginationParams] = useState({
-    page: 1,
-    pageSize: 10,
-  })
+  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([])
+  const [paginationParams, setPaginationParams] = useState(defaultPaginationParams)
+  const [treeData, setTreeData] = useState<TestPlanTreeView[]>([])
 
-  const { data: treeTestPlans, isLoading } = useGetTestPlansTreeViewQuery({
-    projectId,
-    parent: testPlanId,
-    showArchive: userConfig.test_plans.is_show_archived,
-    search: searchText,
-    ordering,
-    page: paginationParams.page,
-    page_size: paginationParams.pageSize,
-  })
+  useEffect(() => {
+    setPaginationParams(defaultPaginationParams)
+    setProjectId(pid)
+    setSearchText("")
+    setOrdering(undefined)
+    setTestPlanId(tid)
+  }, [pid, tid])
+
+  const { data: testPlansTreeView, isLoading } = useGetTestPlansTreeViewQuery(
+    {
+      search: searchText,
+      projectId,
+      is_archive: userConfig.test_plans.is_show_archived,
+      ordering,
+      page: paginationParams.page,
+      page_size: paginationParams.pageSize,
+      parent: testPlanId,
+    },
+    {
+      skip: !projectId,
+    }
+  )
+
+  useEffect(() => {
+    if (!testPlansTreeView) return
+
+    setTreeData(testPlansTreeView.results)
+    setTotal(testPlansTreeView.count)
+  }, [testPlansTreeView])
+
+  useEffect(() => {
+    if (!testPlansTreeView || !searchText.length) return
+    const initDataWithKeys = addKeyToData(testPlansTreeView.results)
+    const [, expandedRows] = TreeUtils.filterRows<DataWithKey<TestPlanTreeView>>(
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      JSON.parse(JSON.stringify(initDataWithKeys)),
+      searchText,
+      {
+        isAllExpand: true,
+        isShowChildren: false,
+      }
+    )
+
+    setExpandedRowKeys(expandedRows.map((key) => String(key)))
+  }, [testPlansTreeView, searchText])
 
   const onShowArchived = async () => {
     await updateConfig({
@@ -43,7 +86,7 @@ export const useTestPlanTable = () => {
     })
   }
 
-  const columns: ColumnsType<ITestPlanTreeView> = [
+  const columns: ColumnsType<TestPlanTreeView> = [
     {
       title: "Test Plan",
       dataIndex: "title",
@@ -51,6 +94,7 @@ export const useTestPlanTable = () => {
       sorter: true,
       render: (text, record) => (
         <Link to={`/projects/${projectId}/plans/${record.id}`}>
+          {/* eslint-disable-next-line @typescript-eslint/no-unsafe-assignment*/}
           <HighLighterTesty searchWords={searchText} textToHighlight={text} />
         </Link>
       ),
@@ -73,7 +117,7 @@ export const useTestPlanTable = () => {
     },
   ]
 
-  const onSearch = (treePlans: ITestPlanTreeView[], searchText: string) => {
+  const onSearch = (searchText: string) => {
     setPaginationParams({ page: 1, pageSize: 10 })
     setSearchText(searchText.trim())
 
@@ -81,20 +125,9 @@ export const useTestPlanTable = () => {
       setExpandedRowKeys([])
       return
     }
-
-    const [, expandedRows] = TreeUtils.filterRows<ITestPlanTreeView>(
-      JSON.parse(JSON.stringify(treePlans)),
-      searchText,
-      {
-        isAllExpand: true,
-        isShowChildren: false,
-      }
-    )
-
-    setExpandedRowKeys(expandedRows as number[])
   }
 
-  const onRowExpand = (expandedRows: number[], recordKey: number) => {
+  const onRowExpand = (expandedRows: string[], recordKey: string) => {
     if (expandedRows.includes(recordKey)) {
       setExpandedRowKeys(expandedRows.filter((key) => key !== recordKey))
     } else {
@@ -102,7 +135,7 @@ export const useTestPlanTable = () => {
     }
   }
 
-  const handleRowClick = ({ id }: ITestPlanTreeView) => {
+  const handleRowClick = ({ id }: TestPlanTreeView) => {
     navigate(`/projects/${projectId}/plans/${id}`)
   }
 
@@ -111,7 +144,7 @@ export const useTestPlanTable = () => {
   }
 
   const handleSorter = (
-    sorter: SorterResult<ITestPlanTreeView> | SorterResult<ITestPlanTreeView>[]
+    sorter: SorterResult<TestPlanTreeView> | SorterResult<TestPlanTreeView>[]
   ) => {
     const formatSort = antdSorterToTestySort(sorter, "plans")
     setOrdering(formatSort || undefined)
@@ -124,7 +157,7 @@ export const useTestPlanTable = () => {
     showSizeChanger: true,
     current: paginationParams.page,
     pageSize: paginationParams.pageSize,
-    total: treeTestPlans?.count || 0,
+    total,
     onChange: handlePaginationChange,
   }
 
@@ -137,7 +170,7 @@ export const useTestPlanTable = () => {
     columns,
     expandedRowKeys,
     isLoading,
-    treeTestPlans,
+    treeData,
     showArchive: userConfig.test_plans.is_show_archived,
     searchText,
     paginationTable,

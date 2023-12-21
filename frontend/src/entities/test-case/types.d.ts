@@ -1,5 +1,5 @@
 interface TestCaseState {
-  testCase: TestCase | null
+  drawerTestCase: TestCase | null
   modal: {
     isShow: boolean
     isEditMode: boolean
@@ -19,13 +19,12 @@ interface TestCase {
   teardown: string
   estimate?: string | null
   description: string
-  key: string
-  value: number
   current_version: number
   versions: number[]
   attachments: IAttachment[]
   url: string
   labels: LabelInForm[]
+  is_archive: boolean
 }
 
 interface TestCaseCreate {
@@ -46,6 +45,7 @@ interface TestCaseCreate {
 interface TestCaseUpdate extends TestCase {
   attachments?: number[]
   steps: StepUpload[] | StepAttachNumber[]
+  skip_history?: boolean
 }
 
 interface Step {
@@ -75,12 +75,21 @@ interface StepUpload {
 }
 
 interface GetTestCasesQuery {
-  suite: string
   project: string
+  suite?: string
   search?: string
   ordering?: string
   page?: number
   page_size?: number
+  is_archive?: boolean
+  treeview?: boolean
+}
+
+interface SearchTestCasesQuery {
+  project: string
+  id?: string
+  suite?: string
+  name?: string
 }
 
 interface TestCaseFormData {
@@ -107,4 +116,22 @@ interface TestCaseCopyBody {
 interface TestCaseCopyItem {
   id: string
   new_name: string
+}
+
+interface TestCaseHistoryChange {
+  action: "Created" | "Updated" | "Deleted"
+  history_date: string
+  version: number
+  user: User | null
+}
+
+interface TestCaseTestsList {
+  testCaseId: number
+  ordering?: string
+  last_status?: string
+}
+
+interface GetTestCaseByIdParams {
+  testCaseId: string
+  version?: string
 }

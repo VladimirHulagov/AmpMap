@@ -12,7 +12,9 @@ import { TestPlanActivityTable } from "./test-plan-activity-table"
 export const TestPlanActivityWrapper = () => {
   const testPlanActivity = useTestPlanActivity()
   const { testPlanId, projectId } = useParams<ParamTestPlanId & ParamProjectId>()
-  const { data: testPlan, isLoading } = useGetTestPlanParentsQuery(testPlanId || "")
+  const { data: testPlan, isLoading } = useGetTestPlanParentsQuery(testPlanId ?? "", {
+    skip: !testPlanId,
+  })
 
   if (isLoading || !testPlan || !projectId || !testPlanId) return <ContainerLoader />
 

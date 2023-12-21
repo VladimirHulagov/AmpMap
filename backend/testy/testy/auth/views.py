@@ -28,6 +28,8 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
+
+from django.conf import settings
 from django.contrib.auth import login, logout
 from rest_framework import parsers, renderers
 from rest_framework.authentication import SessionAuthentication
@@ -38,7 +40,7 @@ from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 
 from .models import TTLToken
-from .serializers import TTLAuthTokenInputSerializer, TTLTokenOutputSerializer
+from .serializers import RememberMeAuthTokenSerializer, TTLAuthTokenInputSerializer, TTLTokenOutputSerializer
 
 
 class CsrfExemptSessionAuthentication(SessionAuthentication):
@@ -104,7 +106,7 @@ class LoginView(APIView):
     authentication_classes = (CsrfExemptSessionAuthentication,)
     parser_classes = (parsers.FormParser, parsers.MultiPartParser, parsers.JSONParser,)
     renderer_classes = (renderers.JSONRenderer,)
-    serializer_class = AuthTokenSerializer
+    serializer_class = RememberMeAuthTokenSerializer
 
     def get_serializer_context(self):
         return {
@@ -120,6 +122,9 @@ class LoginView(APIView):
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        remember_me = serializer.validated_data['remember_me']
+        if remember_me:
+            request.session.set_expiry(settings.SESSION_COOKIE_AGE_REMEMBER_ME)
         user = serializer.validated_data['user']
         login(request, user)
         return Response({'details': 'logged in successfully'})

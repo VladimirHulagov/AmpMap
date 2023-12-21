@@ -4,6 +4,7 @@ import { Controller } from "react-hook-form"
 import { useAdministrationLabelModal } from "entities/label/model"
 
 import { labelTypes } from "shared/config/label-types"
+import { ErrorObj } from "shared/hooks/use-alert-error"
 import { AlertError } from "shared/ui"
 
 export const LabelCreateEditModal = () => {
@@ -43,7 +44,7 @@ export const LabelCreateEditModal = () => {
       ]}
     >
       <>
-        {errors ? <AlertError error={errors} skipFields={["name"]} /> : null}
+        {errors ? <AlertError error={errors as ErrorObj} skipFields={["name"]} /> : null}
 
         <Form id="create-edit-label-form" layout="vertical" onFinish={handleSubmitForm}>
           <Form.Item

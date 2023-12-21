@@ -10,15 +10,10 @@ import { useAttachments } from "entities/attachment/model"
 
 import { useTestCaseFormLabels } from "entities/label/model"
 
-import { useLazyGetTestSuitesTreeViewQuery } from "entities/suite/api"
+import { useGetTestSuitesTreeViewQuery } from "entities/suite/api"
 
 import { useUpdateTestCaseMutation } from "entities/test-case/api"
-import {
-  clearTestCase,
-  hideModal,
-  selectModalIsEditMode,
-  selectModalIsShow,
-} from "entities/test-case/model"
+import { hideModal, selectModalIsEditMode, selectModalIsShow } from "entities/test-case/model"
 
 import { useErrors } from "shared/hooks"
 import { showModalCloseConfirm } from "shared/libs"
@@ -29,7 +24,7 @@ interface SubmitData extends Omit<TestCaseFormData, "steps"> {
   is_steps: boolean
 }
 
-type ErrorData = {
+interface ErrorData {
   suite?: string
   name?: string
   setup?: string
@@ -40,6 +35,15 @@ type ErrorData = {
   estimate?: string
   description?: string
   labels?: string
+}
+
+interface SortingStep {
+  id: undefined
+  name: string
+  scenario: string
+  expected: string
+  sort_order: number
+  attachments: number[]
 }
 
 interface Props {
@@ -64,7 +68,7 @@ export const useTestCaseEditModal = ({ testCase }: Props) => {
     formState: { isDirty },
   } = useForm<TestCaseFormData>({
     defaultValues: {
-      name: testCase?.name || "",
+      name: testCase?.name ?? "",
       setup: "",
       estimate: "",
       scenario: "",
@@ -93,10 +97,11 @@ export const useTestCaseEditModal = ({ testCase }: Props) => {
   } = useAttachments<TestCaseFormData>(control, projectId)
   const [, setSearchParams] = useSearchParams()
   const labelProps = useTestCaseFormLabels({ setValue, testCase, isShow, isEditMode })
-  const [getTestSuites, { data: treeSuites, isLoading: isLoadingTreeSuites }] =
-    useLazyGetTestSuitesTreeViewQuery()
+  const { data: treeSuites, isLoading: isLoadingTreeSuites } = useGetTestSuitesTreeViewQuery(
+    { project: projectId },
+    { skip: !projectId }
+  )
   const navigate = useNavigate()
-
   useEffect(() => {
     setValue("name", "")
     if (!isShow || !testCase || !isEditMode) return
@@ -113,8 +118,8 @@ export const useTestCaseEditModal = ({ testCase }: Props) => {
     setValue("name", testCase.name)
     setValue("description", testCase.description)
     setValue("setup", testCase.setup)
-    setValue("scenario", !testCase.steps.length ? testCase.scenario || "" : "")
-    setValue("expected", testCase.expected || "")
+    setValue("scenario", !testCase.steps.length ? testCase.scenario ?? "" : "")
+    setValue("expected", testCase.expected ?? "")
     setValue("teardown", testCase.teardown)
     setValue("estimate", testCase.estimate)
     setValue("steps", stepsSorted)
@@ -123,20 +128,10 @@ export const useTestCaseEditModal = ({ testCase }: Props) => {
     setValue("suite", Number(testCase.suite))
   }, [testCase, isEditMode, isShow])
 
-  useEffect(() => {
-    if (projectId) {
-      handleFetchTreeSuites(projectId)
-    }
-  }, [projectId])
-
-  const handleFetchTreeSuites = (projectId: string) => {
-    getTestSuites({ project: projectId })
-  }
-
   const flatSuites = useMemo(() => {
     if (!treeSuites) return []
-    const flat: ISuite[] = []
-    const recurse = (node: ISuite) => {
+    const flat: Suite[] = []
+    const recurse = (node: Suite) => {
       flat.push(node)
       if (node.children) {
         node.children.forEach(recurse)
@@ -152,7 +147,6 @@ export const useTestCaseEditModal = ({ testCase }: Props) => {
     setSteps([])
     reset()
     onReset()
-    clearTestCase()
     labelProps.setLabels([])
     labelProps.setSearchValue("")
   }
@@ -176,17 +170,9 @@ export const useTestCaseEditModal = ({ testCase }: Props) => {
     }),
   })
 
-  const sortingSteps = (
-    steps: {
-      id: undefined
-      name: string
-      scenario: string
-      expected: string
-      sort_order: number
-      attachments: number[]
-    }[]
-  ) => {
-    const sortList = steps.sort((a, b) => a.sort_order - b.sort_order)
+  const sortingSteps = (steps: SortingStep[]) => {
+    const sortList = steps.sort((a: SortingStep, b: SortingStep) => a.sort_order - b.sort_order)
+
     return sortList.map((step, index) => ({
       ...step,
       sort_order: index + 1,
@@ -206,7 +192,7 @@ export const useTestCaseEditModal = ({ testCase }: Props) => {
     })
   }
 
-  const onSubmit: SubmitHandler<TestCaseFormData> = async (data) => {
+  const onSubmit = async (data: TestCaseFormData, asCurrent = true) => {
     if (!testCase) return
     const dataForm = data as SubmitData
 
@@ -231,6 +217,7 @@ export const useTestCaseEditModal = ({ testCase }: Props) => {
         scenario: dataForm.is_steps ? undefined : dataForm.scenario,
         steps: dataForm.is_steps ? sortSteps : [],
         estimate: dataForm.estimate?.length ? dataForm.estimate : null,
+        skip_history: asCurrent,
       }).unwrap()
       setSearchParams({
         version: String(newTestCase.versions[0]),
@@ -254,6 +241,14 @@ export const useTestCaseEditModal = ({ testCase }: Props) => {
     } catch (err: unknown) {
       onHandleError(err)
     }
+  }
+
+  const onSubmitWithoutNewVersion: SubmitHandler<TestCaseFormData> = (data) => {
+    onSubmit(data, true)
+  }
+
+  const onSubmitAsNewVersion: SubmitHandler<TestCaseFormData> = (data) => {
+    onSubmit(data, false)
   }
 
   const handleCancel = () => {
@@ -290,7 +285,8 @@ export const useTestCaseEditModal = ({ testCase }: Props) => {
     setValue,
     setAttachments,
     handleCancel,
-    handleSubmitForm: handleSubmit(onSubmit),
+    handleSubmitFormAsNew: handleSubmit(onSubmitAsNewVersion),
+    handleSubmitFormAsCurrent: handleSubmit(onSubmitWithoutNewVersion),
     register,
     labelProps,
     treeSuites,

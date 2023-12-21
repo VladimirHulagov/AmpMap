@@ -39,10 +39,12 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.postgres.fields import ArrayField
 from django.core.files.base import ContentFile
 from django.db import models
 from django.utils.translation import gettext_lazy
 from django.utils.translation import gettext_lazy as _
+from rest_framework.exceptions import ValidationError
 from simple_history.models import HistoricalRecords
 
 from testy.models import BaseModel
@@ -110,6 +112,7 @@ class Attachment(BaseModel):
         upload_to=partial(get_media_file_path, media_name='attachments'),
         validators=[ExtensionValidator()]
     )
+    content_object_history_ids = ArrayField(models.IntegerField(), default=list, blank=True)
 
     def __str__(self):
         if self.file:
@@ -151,6 +154,15 @@ class Label(BaseModel):
         verbose_name = _("Label")
         verbose_name_plural = _("Labels")
         unique_together = ('project', 'name')
+
+    def clean(self):
+        if label := Label.objects.filter(name__iexact=self.name, project=self.project).first():
+            raise ValidationError(
+                {
+                    'name': f'Label name "{self.name}" clashes with already existing label name '
+                            f'"{label.name}" in project {self.project}.'
+                }
+            )
 
 
 class LabeledItem(BaseModel):

@@ -54,7 +54,7 @@ export const AddComment = ({ model, object_id, setIsShowAdd }: Props) => {
             type="primary"
             onClick={handleAddClick}
             loading={isLoadingAddComment || isLoadingCreateAttachment}
-            disabled={!comment.length}
+            disabled={!comment.length && !attachments.length}
           >
             Add
           </Button>

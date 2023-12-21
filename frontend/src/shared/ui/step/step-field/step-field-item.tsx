@@ -9,7 +9,7 @@ interface StepFieldItemProps {
 
 export const StepFieldItem = ({ step }: StepFieldItemProps) => {
   return (
-    <li className={styles.fieldItem}>
+    <li id={`step-item-${step.name}`} className={styles.fieldItem}>
       <div className={styles.fieldIcon}>{step.sort_order}</div>
       <div className={styles.fieldWrapper}>
         <Collapse ghost style={{ padding: 0, margin: 0 }}>
@@ -42,7 +42,7 @@ export const StepFieldItem = ({ step }: StepFieldItemProps) => {
                   Expected
                 </Divider>
                 <div className="content markdown">
-                  <Markdown content={step.expected || ""} />
+                  <Markdown content={step.expected ?? ""} />
                 </div>
               </div>
             )}

@@ -42,3 +42,9 @@ interface DeletePreviewResponse {
   verbose_name_related_model: string
   count: number
 }
+
+interface GetProjectsQuery {
+  favorites?: boolean
+  is_archive?: boolean
+  name?: string
+}

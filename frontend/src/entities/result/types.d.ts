@@ -8,16 +8,14 @@ interface IResult {
   comment: string
   user_full_name: string
   avatar_link: string | null
-  test_case_version: number
+  test_case_version?: number
   is_archive: boolean
   created_at: string
   updated_at: string
   url: string
   execution_time: number
   attachments: IAttachment[]
-  attributes: {
-    [key: string]: string[] | string | object
-  }
+  attributes: TestResultAttribute
   steps_results: StepResult[]
 }
 
@@ -34,9 +32,7 @@ interface IResultCreate {
   is_archive?: boolean
   execution_time?: number
   attachments?: number[]
-  attributes?: {
-    [key: string]: string[] | string | object
-  }
+  attributes?: TestResultAttribute
   steps_results?: StepResultCreate[]
 }
 
@@ -47,9 +43,7 @@ interface IResultUpdate {
   is_archive?: boolean
   execution_time?: number
   attachments?: number[]
-  attributes?: {
-    [key: string]: string[] | string | object
-  }
+  attributes?: TestResultAttribute
   steps_results?: StepResultUpdate[]
 }
 
@@ -76,5 +70,7 @@ interface ResultFormData {
   status: string
   attachments?: number[]
   steps?: Step[]
-  attributes?: Record<string, string | string[] | Dictionary>
+  attributes?: Attribute[]
 }
+
+type TestResultAttribute = Record<string, string[] | string | object>

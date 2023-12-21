@@ -15,13 +15,13 @@ export const TestCaseFields = ({ testCase }: TestCaseFieldsProps) => {
       {testCase.steps.length ? (
         <Steps.Field steps={[...testCase.steps].sort((a, b) => a.sort_order - b.sort_order)} />
       ) : (
-        <Field id="test-case-scenario" markdown title="Scenario" value={testCase.scenario || ""} />
+        <Field id="test-case-scenario" markdown title="Scenario" value={testCase.scenario ?? ""} />
       )}
       {!testCase.steps.length && (
-        <Field id="test-case-expected" markdown title="Expected" value={testCase.expected || ""} />
+        <Field id="test-case-expected" markdown title="Expected" value={testCase.expected ?? ""} />
       )}
       <Field id="test-case-teardown" markdown title="Teardown" value={testCase.teardown} />
-      <Field id="test-case-estimate" title="Estimate" value={testCase.estimate || ""} />
+      <Field id="test-case-estimate" title="Estimate" value={testCase.estimate ?? ""} />
       {!!testCase.labels.length && <LabelField title="Labels" labels={testCase.labels} />}
 
       {!!testCase.attachments.length && <Attachment.Field attachments={testCase.attachments} />}

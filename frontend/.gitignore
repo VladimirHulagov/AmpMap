@@ -25,3 +25,5 @@ yarn-error.log*
 /.vscode
 /.idea
 .env
+.scannerwork
+sonar-project.properties

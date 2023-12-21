@@ -1,28 +1,33 @@
 import { EditOutlined } from "@ant-design/icons"
-import { Button, Form, Input, Modal, TreeSelect } from "antd"
+import { Button, Form, Input, Modal } from "antd"
 import { Controller } from "react-hook-form"
 
+import { ErrorObj } from "shared/hooks/use-alert-error"
 import { AlertError } from "shared/ui"
+
+import { SearchField } from "widgets/search-field"
 
 import { useSuiteEditModal } from "./use-suite-edit-modal"
 
-export const EditSuite = () => {
+export const EditSuite = ({ suite }: { suite: Suite }) => {
   const {
     isShow,
     control,
     isLoadingUpdating,
-    isLoadingTreeSuites,
     isDirty,
     errors,
     selectedParent,
-    treeSuites,
-    testSuite,
+    dataTestSuites,
+    isLoadingTestSuites,
+    isLastPage,
     handleClearParent,
     handleSelectParent,
     handleSubmitForm,
     handleCancel,
     handleShowEdit,
-  } = useSuiteEditModal()
+    handleSearch,
+    handleLoadNextPageData,
+  } = useSuiteEditModal(suite)
 
   return (
     <>
@@ -31,7 +36,7 @@ export const EditSuite = () => {
       </Button>
       <Modal
         className="edit-test-suite-modal"
-        title={`Edit Test Suite '${testSuite?.name}'`}
+        title={`Edit Test Suite '${suite?.name}'`}
         open={isShow}
         onCancel={handleCancel}
         centered
@@ -51,7 +56,7 @@ export const EditSuite = () => {
           </Button>,
         ]}
       >
-        {errors ? <AlertError error={errors} skipFields={["name", "parent"]} /> : null}
+        {errors ? <AlertError error={errors as ErrorObj} skipFields={["name", "parent"]} /> : null}
 
         <Form id="edit-test-suite-form" layout="vertical" onFinish={handleSubmitForm}>
           <Form.Item
@@ -73,24 +78,17 @@ export const EditSuite = () => {
             <Controller
               name="parent"
               control={control}
-              render={({ field }) => (
-                <TreeSelect
-                  {...field}
-                  id="edit-test-suite-form-parent"
-                  style={{ width: "100%" }}
-                  dropdownStyle={{ maxHeight: 400, overflow: "auto" }}
-                  treeData={treeSuites?.results}
-                  placeholder="Please select"
-                  allowClear
-                  treeDefaultExpandAll
-                  // @ts-ignore
-                  onSelect={handleSelectParent}
+              render={() => (
+                <SearchField
+                  select={selectedParent}
+                  data={dataTestSuites}
+                  isLoading={isLoadingTestSuites}
+                  isLastPage={isLastPage}
                   onClear={handleClearParent}
-                  // @ts-ignore
-                  value={selectedParent}
-                  loading={isLoadingTreeSuites}
-                  disabled={isLoadingTreeSuites}
-                  dropdownRender={(menu) => <div id="edit-test-suite-dropdown">{menu}</div>}
+                  onSearch={handleSearch}
+                  onChange={handleSelectParent}
+                  handleLoadNextPageData={handleLoadNextPageData}
+                  placeholder="Search a test suite"
                 />
               )}
             />

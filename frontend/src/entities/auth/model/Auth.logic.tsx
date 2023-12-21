@@ -9,9 +9,17 @@ import { useLazyGetConfigQuery, useLazyGetMeQuery } from "entities/user/api"
 
 import { clearPrevPageUrl, getPrevPageUrl } from "shared/libs/local-storage"
 
-export type Inputs = {
+export interface Inputs {
   username: string
   password: string
+  remember_me: boolean
+}
+
+interface LocationState {
+  from?: {
+    pathname: string
+    search: string
+  }
 }
 
 export const useAuthLogic = () => {
@@ -20,8 +28,14 @@ export const useAuthLogic = () => {
   const [getUserConfig] = useLazyGetConfigQuery()
   const [errMsg, setErrMsg] = useState("")
   const navigate = useNavigate()
-  const { handleSubmit, reset, control } = useForm<Inputs>()
-  const location = useLocation()
+  const { handleSubmit, reset, control } = useForm<Inputs>({
+    defaultValues: {
+      username: "",
+      password: "",
+      remember_me: false,
+    },
+  })
+  const locationState = useLocation().state as LocationState
   const [isLoading, setIsLoading] = useState(false)
 
   const onSubmit: SubmitHandler<Inputs> = async (data) => {
@@ -32,7 +46,7 @@ export const useAuthLogic = () => {
       await login(data).unwrap()
       await getMe().unwrap()
       await getUserConfig().unwrap()
-      await reset()
+      reset()
 
       const prevPageUrl = getPrevPageUrl()
       if (prevPageUrl) {
@@ -41,8 +55,15 @@ export const useAuthLogic = () => {
         return
       }
 
-      if (location.state?.from) {
-        navigate(`${location.state.from.pathname}${location.state.from.search}`)
+      if (locationState?.from) {
+        // django plugin redirect
+        if (locationState.from.search.includes("?next=/plugins/")) {
+          const path = locationState.from.search.replace("?next=/", "")
+          window.location.replace(`${locationState.from.pathname}${path}`)
+          return
+        }
+
+        navigate(`${locationState.from.pathname}${locationState.from.search}`)
         return
       }
 

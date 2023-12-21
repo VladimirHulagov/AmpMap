@@ -1,4 +1,4 @@
-import { createSlice } from "@reduxjs/toolkit"
+import { PayloadAction, createSlice } from "@reduxjs/toolkit"
 
 import { RootState } from "app/store"
 
@@ -11,11 +11,11 @@ export const systemSlice = createSlice({
   name: "system",
   initialState,
   reducers: {
-    setMessages: (state, action) => {
+    setMessages: (state, action: PayloadAction<SystemMessage[]>) => {
       state.messages = action.payload
     },
-    addHiddenMessageId: (state, action) => {
-      state.hiddenMessageIds = (state.hiddenMessageIds || []).concat(action.payload)
+    addHiddenMessageId: (state, action: PayloadAction<number>) => {
+      state.hiddenMessageIds = (state.hiddenMessageIds ?? []).concat(action.payload)
     },
   },
 })

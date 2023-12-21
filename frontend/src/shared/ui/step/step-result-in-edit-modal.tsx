@@ -6,14 +6,8 @@ import styles from "./styles.module.css"
 
 interface StepResultProps {
   stepResultsData: StepResult[]
-  stepResults: {
-    [stepId: string]: string
-  }
-  setStepsResult: React.Dispatch<
-    React.SetStateAction<{
-      [stepId: string]: string
-    }>
-  >
+  stepResults: Record<string, string>
+  setStepsResult: React.Dispatch<React.SetStateAction<Record<string, string>>>
 }
 
 export const StepResultInEditModal = ({
@@ -32,7 +26,7 @@ export const StepResultInEditModal = ({
       {[...stepResultsData]
         .sort((a, b) => a.sort_order - b.sort_order)
         .map((item) => (
-          <li className={styles.resultFieldItem} key={item.id}>
+          <li id={`step-item-${item.name}`} className={styles.resultFieldItem} key={item.id}>
             <div className={styles.resultFieldIcon}>{item.sort_order}</div>
             <div className={styles.resultModalFieldWrapper}>
               <div className={styles.resultModalFieldContent}>

@@ -20,7 +20,7 @@ export const userSlice = createSlice({
   name: "user",
   initialState,
   reducers: {
-    setUser: (state, action) => {
+    setUser: (state, action: PayloadAction<User | null>) => {
       state.user = action.payload
     },
     setUserConfig: (state, action: PayloadAction<UserConfig>) => {

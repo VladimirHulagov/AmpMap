@@ -15,12 +15,14 @@ export function useTestsTableParams() {
 
   const setTableParams = (params: TestTableParams) => {
     const sortTesty =
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       params.sorter && !tableParams.sorter ? antdSorterToTestySort(params.sorter, "tests") : ""
 
     dispatch(
       setTableParamsModel({
         ...tableParams,
         ...params,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         sorter: params.sorter ? sortTesty : tableParams.sorter,
       })
     )

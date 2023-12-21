@@ -62,9 +62,15 @@ class ServiceModelMixin(models.Model):
         return instance
 
     def model_update(
-            self, fields: List[str], data: Dict[str, Any], commit: bool = True, force: bool = False
+            self,
+            fields: List[str],
+            data: Dict[str, Any],
+            commit: bool = True,
+            force: bool = False,
+            skip_history: bool = False,
     ) -> Tuple[DjangoModelType, bool]:
         has_updated = False
+        update_fields = []
 
         for field in fields:
             if field not in data:
@@ -73,13 +79,32 @@ class ServiceModelMixin(models.Model):
             if getattr(self, field) != data[field]:
                 has_updated = True
                 setattr(self, field, data[field])
+                update_fields.append(field)
+
+        if not has_updated:
+            logger.warning('Model was not updated.')
 
         if (has_updated and commit) or force:
+            # needed when there were changes in generic models, for example, attachment of a test case was removed
+            update_fields = update_fields or None
             self.full_clean()
-            self.save(update_fields=fields)
-        if not has_updated:
-            logger.error('Model was not updated.')
+            if skip_history:
+                self.save_without_history(data, update_fields)
+            else:
+                self.save(update_fields=update_fields)
+
         return self, has_updated
+
+    def save_without_history(self, data, update_fields):
+        if not hasattr(self, 'save_without_historical_record'):
+            raise ValueError(f'Model {self} not historical')
+        self.save_without_historical_record(update_fields=update_fields)
+
+        history_instance = self.history.latest()
+        for field in update_fields:
+            setattr(history_instance, field, data[field])
+        history_instance.full_clean(exclude=['history_user', 'history_change_reason'])
+        history_instance.save(update_fields=update_fields)
 
     @transaction.atomic
     def model_clone(
@@ -220,15 +245,17 @@ class SoftDeleteMixin(models.Model):
     class Meta:
         abstract = True
 
-    def delete(self, *args, **kwargs):
+    def delete(self, commit: bool = True, *args, **kwargs):
         self.is_deleted = True
         self.deleted_at = timezone.now()
-        self.save()
+        if commit:
+            self.save(*args, **kwargs)
 
-    def restore(self):
+    def restore(self, commit: bool = True, *args, **kwargs):
         self.is_deleted = False
         self.deleted_at = None
-        self.save()
+        if commit:
+            self.save(*args, **kwargs)
 
     def hard_delete(self, *args, **kwargs):
         super().delete(*args, **kwargs)

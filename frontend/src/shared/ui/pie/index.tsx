@@ -1,30 +1,22 @@
-import {
-  Cell,
-  Label,
-  Legend,
-  PieChart,
-  Pie as PieRechart,
-  ResponsiveContainer,
-  Tooltip,
-} from "recharts"
+import { Label, Legend, PieChart, Pie as PieRechart, ResponsiveContainer, Tooltip } from "recharts"
 
-import { colors } from "shared/config"
-
+import { PieCellList } from "./cell-list"
 import { usePie } from "./model/use-pie"
-import styles from "./styles.module.css"
 
 interface PieProps {
-  data: ITestPlanStatistics[]
+  data: TestPlanStatistics[]
   tableParams: TestTableParams
   setTableParams: (params: TestTableParams) => void
+  type: "value" | "estimates"
 }
 
-export const Pie = ({ data, tableParams, setTableParams }: PieProps) => {
+export const Pie = ({ data, tableParams, setTableParams, type }: PieProps) => {
   const { formatData, total, legendFormatter, tooltipFormatter, handleCellClick, checkActive } =
     usePie({
-      data: data || [],
+      data: data ?? [],
       tableParams,
       setTableParams,
+      type,
     })
 
   return (
@@ -32,7 +24,7 @@ export const Pie = ({ data, tableParams, setTableParams }: PieProps) => {
       <PieChart>
         <PieRechart
           data={formatData}
-          dataKey="value"
+          dataKey={type}
           nameKey="label"
           cx="50%"
           cy="50%"
@@ -40,15 +32,11 @@ export const Pie = ({ data, tableParams, setTableParams }: PieProps) => {
           outerRadius={140}
           fill="#a0a0a0"
         >
-          {formatData.map((entry, index) => (
-            <Cell
-              className={styles.cell}
-              key={`cell-${index}`}
-              fill={entry.fill}
-              stroke={(checkActive(entry.label) && colors.accent) || undefined}
-              onClick={() => handleCellClick(entry)}
-            />
-          ))}
+          <PieCellList
+            data={formatData}
+            checkActive={checkActive}
+            handleCellClick={handleCellClick}
+          />
           <Label position="centerBottom" fontSize={26} value="Total" />
           <Label
             value={total}
@@ -71,6 +59,7 @@ export const Pie = ({ data, tableParams, setTableParams }: PieProps) => {
           formatter={legendFormatter}
         />
         <Tooltip formatter={tooltipFormatter} />
+        <span>123123</span>
       </PieChart>
     </ResponsiveContainer>
   )

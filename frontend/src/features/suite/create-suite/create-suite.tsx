@@ -2,13 +2,14 @@ import { PlusOutlined } from "@ant-design/icons"
 import { Button, Form, Input, Modal } from "antd"
 import { Controller } from "react-hook-form"
 
-import { TestSuiteParentField } from "entities/suite/ui/test-suite-parent-field"
-
+import { ErrorObj } from "shared/hooks/use-alert-error"
 import { AlertError } from "shared/ui"
+
+import { SearchField } from "widgets/search-field"
 
 import { useSuiteCreateModal } from "./use-suite-create-modal"
 
-export const CreateSuite = ({ type = "main" }: { type: "main" | "child" }) => {
+export const CreateSuite = ({ suite }: { suite?: Suite }) => {
   const {
     isShow,
     control,
@@ -16,12 +17,17 @@ export const CreateSuite = ({ type = "main" }: { type: "main" | "child" }) => {
     isDirty,
     errors,
     selectedParent,
+    dataTestSuites,
+    isLoadingTestSuites,
+    isLastPage,
     handleClearParent,
     handleSelectParent,
     handleSubmitForm,
     handleCancel,
     handleShowCreate,
-  } = useSuiteCreateModal()
+    handleSearch,
+    handleLoadNextPageData,
+  } = useSuiteCreateModal(suite)
 
   return (
     <>
@@ -32,7 +38,7 @@ export const CreateSuite = ({ type = "main" }: { type: "main" | "child" }) => {
         onClick={handleShowCreate}
         type={"primary"}
       >
-        {type === "main" ? "Create Test Suite" : "Create Child Test Suite"}
+        {!suite ? "Create Test Suite" : "Create Child Test Suite"}
       </Button>
       <Modal
         className="create-test-suite-modal"
@@ -56,7 +62,7 @@ export const CreateSuite = ({ type = "main" }: { type: "main" | "child" }) => {
           </Button>,
         ]}
       >
-        {errors ? <AlertError error={errors} skipFields={["name", "parent"]} /> : null}
+        {errors ? <AlertError error={errors as ErrorObj} skipFields={["name", "parent"]} /> : null}
 
         <Form id="create-test-suite-form" layout="vertical" onFinish={handleSubmitForm}>
           <Form.Item
@@ -79,10 +85,16 @@ export const CreateSuite = ({ type = "main" }: { type: "main" | "child" }) => {
               name="parent"
               control={control}
               render={() => (
-                <TestSuiteParentField
-                  handleSelectParent={handleSelectParent}
-                  handleClearParent={handleClearParent}
-                  selectedParent={selectedParent}
+                <SearchField
+                  select={selectedParent}
+                  data={dataTestSuites}
+                  isLastPage={isLastPage}
+                  isLoading={isLoadingTestSuites}
+                  onClear={handleClearParent}
+                  onSearch={handleSearch}
+                  onChange={handleSelectParent}
+                  handleLoadNextPageData={handleLoadNextPageData}
+                  placeholder="Search a test suite"
                 />
               )}
             />

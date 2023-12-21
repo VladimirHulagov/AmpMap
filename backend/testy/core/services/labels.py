@@ -28,6 +28,7 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
+from typing import Any, Dict
 
 from core.choices import LabelTypes
 from core.models import Label, LabeledItem
@@ -36,6 +37,19 @@ from django.contrib.contenttypes.models import ContentType
 
 class LabelService:
     non_side_effect_fields = ['name', 'user', 'project', 'type']
+
+    def label_create(self, data: Dict[str, Any]) -> Label:
+        return Label.model_create(
+            fields=self.non_side_effect_fields,
+            data=data,
+        )
+
+    def label_update(self, label: Label, data: Dict[str, Any]) -> Label:
+        label, _ = label.model_update(
+            fields=self.non_side_effect_fields,
+            data=data,
+        )
+        return label
 
     def add(self, labels, content_object, label_kwargs=None, labeled_item_kwargs=None):
         self._project = content_object.project
@@ -58,11 +72,11 @@ class LabelService:
 
         for label in labels:
             name = label['name'].strip()
-            try:
-                label = Label.objects.get(name__iexact=name, project=self._project)
+            label = Label.objects.filter(name__iexact=name, project=self._project).first()
+            if label:
                 existing.append(label)
-            except Label.DoesNotExist:
-                labels_to_create.append(name)
+                continue
+            labels_to_create.append(name)
 
         label_objs.update(existing)
 

@@ -3,7 +3,7 @@ import { Button } from "antd"
 
 import { useAppDispatch } from "app/hooks"
 
-import { clearTestCase, showCreateModal } from "entities/test-case/model"
+import { showCreateModal } from "entities/test-case/model"
 
 import { CreateTestCaseModal } from "./create-test-case-modal"
 
@@ -17,7 +17,6 @@ export const CreateTestCase = () => {
         type="primary"
         icon={<PlusOutlined />}
         onClick={() => {
-          dispatch(clearTestCase())
           dispatch(showCreateModal())
         }}
       >

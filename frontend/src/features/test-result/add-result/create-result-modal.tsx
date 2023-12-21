@@ -3,6 +3,7 @@ import { Button, Col, Divider, Form, Modal, Row, Select, Upload } from "antd"
 import { Controller } from "react-hook-form"
 
 import { statusesWithoutUntested } from "shared/config"
+import { ErrorObj } from "shared/hooks/use-alert-error"
 import { AlertError, Attachment, Attribute, Steps, TextArea } from "shared/ui"
 
 import { CreateResultModalProps, useCreateResultModal } from "./use-create-result-modal"
@@ -61,7 +62,7 @@ export const CreateResultModal = (props: CreateResultModalProps) => {
       ]}
     >
       {errors ? (
-        <AlertError error={errors} skipFields={["status", "comment", "attributes"]} />
+        <AlertError error={errors as ErrorObj} skipFields={["status", "comment", "attributes"]} />
       ) : null}
 
       <Form id="create-result-form" layout="vertical" onFinish={handleSubmitForm}>
@@ -143,7 +144,6 @@ export const CreateResultModal = (props: CreateResultModalProps) => {
               <Controller
                 name="attributes"
                 control={control}
-                defaultValue={{}}
                 render={({ field }) => (
                   <Row
                     style={{ flexDirection: "column", marginTop: testCase.steps.length ? 24 : 0 }}

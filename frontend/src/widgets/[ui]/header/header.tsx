@@ -1,7 +1,6 @@
-import { Layout } from "antd"
-import { Col, Row } from "antd"
+import { Col, Layout, Row } from "antd"
 
-import { AvatarView as Avatar } from "../../../shared/ui/avatar/avatar"
+import { AvatarView as Avatar } from "shared/ui/avatar/avatar"
 
 const { Header } = Layout
 

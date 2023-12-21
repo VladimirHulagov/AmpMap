@@ -9,12 +9,11 @@ import { Link, useParams } from "react-router-dom"
 import { useLazyGetTestPlanActivityQuery } from "entities/test-plan/api"
 import { filterActionFormat, filterStatusFormat } from "entities/test-plan/lib"
 
-import { UserAvatar } from "entities/user/ui/user-avatar/user-avatar"
+import { UserAvatar } from "entities/user/ui"
 
 import { useTableSearch } from "shared/hooks"
 import { antdSorterToTestySort } from "shared/libs/antd-sorter-to-testy-sort"
-import { Status } from "shared/ui"
-import { HighLighterTesty } from "shared/ui"
+import { HighLighterTesty, Status } from "shared/ui"
 
 import { useTestPlanActivityBreadcrumbs } from "./index"
 
@@ -50,7 +49,7 @@ export const useTestPlanActivity = () => {
       key: "action_timestamp",
       width: "100px",
       sorter: (a, b) => moment(a.action_timestamp).diff(b.action_timestamp),
-      render: (value) => moment(value).format("HH:MM:ss"),
+      render: (value: string) => moment(value).format("HH:MM:ss"),
     },
     {
       title: "Test",
@@ -75,7 +74,7 @@ export const useTestPlanActivity = () => {
       dataIndex: "breadcrumbs",
       key: "breadcrumbs",
       width: "500px",
-      render: (value) => renderBreadCrumbs(value),
+      render: (value: BreadCrumbsActivityResult) => renderBreadCrumbs(value),
     },
     {
       title: "Action",
@@ -133,7 +132,7 @@ export const useTestPlanActivity = () => {
           text: "Untested",
         },
       ],
-      render: (last_status) => <Status value={last_status ? last_status : "Untested"} />,
+      render: (last_status: Statuses) => <Status value={last_status ?? "Untested"} />,
       onFilter: (value, record) => record.status_text.includes(String(value)),
     },
     {
@@ -167,10 +166,10 @@ export const useTestPlanActivity = () => {
       page_size: tableParams.pagination?.pageSize,
       page: tableParams.pagination?.current,
       status: tableParams.filters?.status_text
-        ? filterStatusFormat((tableParams.filters.status_text as string[]) || [])
+        ? filterStatusFormat((tableParams.filters.status_text as string[]) ?? [])
         : undefined,
       history_type: tableParams.filters?.action
-        ? filterActionFormat((tableParams.filters.action as string[]) || [])
+        ? filterActionFormat((tableParams.filters.action as string[]) ?? [])
         : undefined,
       search: tableParams.search ? tableParams.search : undefined,
       ordering: tableParams.sorter ? tableParams.sorter : undefined,

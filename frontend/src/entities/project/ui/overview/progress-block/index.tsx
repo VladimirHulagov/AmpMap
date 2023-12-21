@@ -16,7 +16,7 @@ export const ProjectOverviewProgressBlock = () => {
       <Table
         dataSource={data}
         columns={columns}
-        rowKey="test_plan_id"
+        rowKey="id"
         className={styles.table}
         pagination={{
           size: "small",

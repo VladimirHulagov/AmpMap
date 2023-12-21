@@ -1,11 +1,8 @@
 import { Tabs } from "antd"
-import React, { useContext } from "react"
+import { useContext } from "react"
 import { useNavigate } from "react-router-dom"
 
-import {
-  ProjectDetailsActiveTabContext,
-  ProjectDetailsActiveTabContextType,
-} from "./project-details-main"
+import { ProjectDetailsActiveTabContext } from "./project-details-main"
 
 interface ProjectDetailsTabsProps {
   projectId: string
@@ -13,9 +10,7 @@ interface ProjectDetailsTabsProps {
 
 const ProjectDetailsTabs = ({ projectId }: ProjectDetailsTabsProps) => {
   const navigate = useNavigate()
-  const { projectDetailsActiveTab } = useContext(
-    ProjectDetailsActiveTabContext
-  ) as ProjectDetailsActiveTabContextType
+  const { projectDetailsActiveTab } = useContext(ProjectDetailsActiveTabContext)!
 
   const tabItems = [
     { label: "Overview", key: "overview", path: `/administration/projects/${projectId}/overview` },

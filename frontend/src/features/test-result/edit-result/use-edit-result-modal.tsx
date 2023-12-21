@@ -10,8 +10,9 @@ import { makeAttributesJson } from "entities/result/lib"
 
 import { useErrors } from "shared/hooks"
 import { makeRandomId, showModalCloseConfirm } from "shared/libs"
+import { AlertSuccessChange } from "shared/ui"
 
-type ErrorData = {
+interface ErrorData {
   status?: string
   comment?: string
   attributes?: string | null
@@ -57,10 +58,10 @@ export const useEditResultModal = ({ setIsShow, testResult, isShow }: UseEditRes
   } = useAttachments<ResultFormData>(control, projectId)
   const { onHandleError } = useErrors<ErrorData>(setErrors)
   const [updatedTestResult, { isLoading: isLoadingUpdateTestResult }] = useUpdateResultMutation()
-  const [stepsResult, setStepsResult] = useState<{ [stepId: string]: string }>({})
+  const [stepsResult, setStepsResult] = useState<Record<string, string>>({})
 
   useEffect(() => {
-    const resultSteps: { [stepId: string]: string } = {}
+    const resultSteps: Record<string, string> = {}
     testResult.steps_results.forEach((result) => {
       const stepId = String(result.id)
       resultSteps[stepId] = String(result.status)
@@ -104,7 +105,7 @@ export const useEditResultModal = ({ setIsShow, testResult, isShow }: UseEditRes
     }
   }, [testResult, isShow])
 
-  const loadAttributeJson = (attributesJson: { [key: string]: string[] | string | object }) => {
+  const loadAttributeJson = (attributesJson: Record<string, string[] | string | object>) => {
     const _attributes: Attribute[] = []
 
     Object.keys(attributesJson).map((key: string) => {
@@ -163,7 +164,7 @@ export const useEditResultModal = ({ setIsShow, testResult, isShow }: UseEditRes
         steps_results: stepsResultData,
         test: testResult.test,
       }
-      await updatedTestResult({
+      const newResult = await updatedTestResult({
         id: testResult.id,
         testPlanId: Number(testPlanId),
         body: dataReq,
@@ -171,7 +172,14 @@ export const useEditResultModal = ({ setIsShow, testResult, isShow }: UseEditRes
       onCloseModal()
       notification.success({
         message: "Success",
-        description: "Test Result updated successfully",
+        description: (
+          <AlertSuccessChange
+            action="updated"
+            title="Result"
+            link={`/projects/${projectId}/plans/${testPlanId}/?test=${newResult.test}#result-${newResult.id}`}
+            id={String(newResult.id)}
+          />
+        ),
       })
     } catch (err: unknown) {
       onHandleError(err)

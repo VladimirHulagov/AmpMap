@@ -6,10 +6,7 @@ import { useParams } from "react-router-dom"
 import { useGetProjectQuery } from "entities/project/api"
 import { ProjectIcon } from "entities/project/ui"
 
-import {
-  ProjectDetailsActiveTabContext,
-  ProjectDetailsActiveTabContextType,
-} from "pages/administration/projects/project-details/project-details-main"
+import { ProjectDetailsActiveTabContext } from "pages/administration/projects/project-details/project-details-main"
 
 import { ContainerLoader, Field, TagBoolean } from "shared/ui"
 
@@ -28,11 +25,9 @@ export const ProjectFields = ({ project }: { project: Project }) => {
 }
 
 export const ProjectDetailsOverviewPage = () => {
-  const { setProjectDetailsActiveTab } = useContext(
-    ProjectDetailsActiveTabContext
-  ) as ProjectDetailsActiveTabContextType
+  const { setProjectDetailsActiveTab } = useContext(ProjectDetailsActiveTabContext)!
   const { projectId } = useParams<ParamProjectId>()
-  const { data, isLoading } = useGetProjectQuery(Number(projectId))
+  const { data, isLoading } = useGetProjectQuery(Number(projectId), { skip: !projectId })
 
   useEffect(() => {
     setProjectDetailsActiveTab("overview")

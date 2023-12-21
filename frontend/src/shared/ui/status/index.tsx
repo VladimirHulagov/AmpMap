@@ -3,7 +3,7 @@ import { Tag } from "antd"
 import { colors } from "shared/config"
 
 interface StatusProps {
-  value: string
+  value: StatusesCaps | Statuses
 }
 
 export const Status = ({ value }: StatusProps) => {

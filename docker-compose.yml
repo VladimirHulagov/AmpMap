@@ -12,9 +12,9 @@ services:
       - "3007:3000"
     environment:
       - NODE_ENV=development
-      - REACT_APP_API_ROOT=${REACT_APP_API_ROOT}
-      - REACT_APP_REPO_URL=${REACT_APP_REPO_URL}
-      - REACT_APP_BUG_REPORT_URL=${REACT_APP_BUG_REPORT_URL}
+      - VITE_APP_API_ROOT=${VITE_APP_API_ROOT}
+      - VITE_APP_REPO_URL=${VITE_APP_REPO_URL}
+      - VITE_APP_BUG_REPORT_URL=${VITE_APP_BUG_REPORT_URL}
 
   testy:
     container_name: testy-backend

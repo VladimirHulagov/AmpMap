@@ -7,13 +7,14 @@ import { useUpdateProjectMutation } from "entities/project/api"
 import { ProjectIcon } from "entities/project/ui"
 
 import { useErrors } from "shared/hooks"
+import { ErrorObj } from "shared/hooks/use-alert-error"
 import { fileReader, showModalCloseConfirm } from "shared/libs"
 import { AlertError } from "shared/ui"
 import { AlertSuccessChange } from "shared/ui/alert-success-change"
 
 const { TextArea } = Input
 
-type ErrorData = {
+interface ErrorData {
   name?: string
   description?: string
   is_archive?: string
@@ -45,7 +46,7 @@ export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
     setValue("name", project.name)
     setValue("description", project.description)
     setValue("is_archive", project.is_archive)
-    setLocalIcon(project.icon || null)
+    setLocalIcon(project.icon ?? null)
   }, [isShow, project])
 
   const onSubmit: SubmitHandler<Project> = async (data) => {
@@ -57,7 +58,7 @@ export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
       fmData.append("name", data.name)
       fmData.append("description", data.description)
       fmData.append("is_archive", String(data.is_archive))
-      fmData.append("icon", data.icon || "")
+      fmData.append("icon", data.icon ?? "")
       const newProject = await updateProject({ id: project.id, body: fmData }).unwrap()
 
       onCloseModal()
@@ -148,7 +149,10 @@ export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
     >
       <>
         {errors ? (
-          <AlertError error={errors} skipFields={["name", "description", "is_archive"]} />
+          <AlertError
+            error={errors as ErrorObj}
+            skipFields={["name", "description", "is_archive"]}
+          />
         ) : null}
 
         <Form id="create-edit-project-form" layout="vertical" onFinish={handleSubmit(onSubmit)}>

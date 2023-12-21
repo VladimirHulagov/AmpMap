@@ -126,6 +126,9 @@ class EstimateValidator:
         estimate = estimate.strip()
         if estimate[0] == '-':
             raise ValidationError('Estimate value cannot be negative.')
+        for week_alias in ('w', 'wk', 'week', 'weeks'):
+            if week_alias in estimate:
+                raise ValidationError('Max estimate period is a day')
         estimate = estimate + 'm' if estimate.isnumeric() else estimate
         secs = pytimeparse.parse(estimate)
         if not secs:
@@ -142,4 +145,28 @@ class CaseInsensitiveUsernameValidator:
         if get_user_model().objects.filter(username__iexact=value).exclude(username=value).exists():
             raise ValidationError(
                 [{'username': ["A user with that username in a different letter case already exists."]}]
+            )
+
+
+@deconstructible
+class DateRangeValidator:
+    def __call__(self, attrs):
+        started_at = attrs.get('started_at')
+        due_date = attrs.get('due_date')
+
+        if started_at and due_date and started_at >= due_date:
+            raise ValidationError('End date must be greater than start date.')
+
+
+@deconstructible
+class TestPlanParentValidator:
+    def __call__(self, attrs):
+        parent = attrs.get('parent')
+        if not parent:
+            return
+        archived_ancestors = parent.get_ancestors(include_self=True).filter(is_archive=True)
+        if archived_ancestors:
+            ids = list(archived_ancestors.values_list('id', flat=True))
+            raise serializers.ValidationError(
+                f'Cannot make child to an archived ancestor, archive ancestors ids are: {ids}'
             )

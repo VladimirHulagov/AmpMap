@@ -2,6 +2,8 @@ import { CloseOutlined, EditOutlined } from "@ant-design/icons"
 import { Button, Tag } from "antd"
 import React from "react"
 
+import { colors } from "shared/config"
+
 import styles from "./styles.module.css"
 
 interface LabelProps {
@@ -16,8 +18,11 @@ export const Label = ({ content, color, onDelete, onClick, onEdit }: LabelProps)
   return (
     <Tag
       className={styles.label}
-      color={color}
-      style={{ cursor: onClick ? "pointer" : "default" }}
+      color={color !== "line-through" ? color : colors.accent}
+      style={{
+        cursor: onClick ? "pointer" : "default",
+        textDecoration: color === "line-through" ? "line-through" : undefined,
+      }}
       onClick={onClick ? () => onClick({ name: String(content) }) : undefined}
     >
       {content}

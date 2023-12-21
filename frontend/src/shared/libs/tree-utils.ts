@@ -1,7 +1,8 @@
 interface Data<T> {
+  id: Id
+  key: string
   name: string
   children?: T[]
-  key: string
   title: string
 }
 
@@ -21,7 +22,7 @@ export class TreeUtils {
     for (let i: number = childs.length; i--; i > 0) {
       if (childs[i].children) {
         if (childs[i].children?.length) {
-          TreeUtils.deleteChildren(childs[i].children || [])
+          TreeUtils.deleteChildren(childs[i].children ?? [])
         } else {
           delete childs[i].children
         }
@@ -87,7 +88,7 @@ export class TreeUtils {
       const titleLower = currentRow.title.toLowerCase()
 
       if (titleLower.includes(searchTextLower) && !currentRow.children?.length) {
-        result.push(currentRow.key)
+        result.push(String(currentRow.key))
         return result
       }
 
@@ -96,10 +97,10 @@ export class TreeUtils {
         // if need expand result push
         // if need no expand just return result
         if (!nodes.length) {
-          if (options.isAllExpand) result.push(currentRow.key)
+          if (options.isAllExpand) result.push(String(currentRow.key))
           return result
         }
-        result.push(currentRow.key, ...nodes)
+        result.push(String(currentRow.key), ...nodes)
       }
 
       return result

@@ -45,8 +45,7 @@ from rest_framework import mixins, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
-
-from utils import get_sha256_from_value
+from utilities.string import get_sha256_from_value
 
 
 class RelationTreeMixin:
@@ -161,18 +160,28 @@ class TestyDestroyModelMixin(RelationTreeMixin):
         cache and if he submits deletion within time gap use user cookie to retrieve cache and delete objects.
         """
         querysets_to_delete = None
+        target_object = self.get_object()
+        tree_id = target_object.tree_id if isinstance(target_object, MPTTModel) else None
+        model_class = type(target_object)
         if cache_key := request.COOKIES.get('delete_cache'):
             objects_to_delete = cache.get(cache_key, {})
-            if objects_to_delete.get('target_object') == self.get_object():
+            if objects_to_delete.get('target_object') == target_object:
                 querysets_to_delete = objects_to_delete['querysets_to_delete']
             cache.delete(cache_key)
         if not querysets_to_delete:
             querysets_to_delete, _ = self.get_deleted_objects()
         for related_qs in querysets_to_delete:
             related_qs.delete()
+        if tree_id:
+            model_class.objects.partial_rebuild(tree_id)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    @action(detail=True)
+    @action(
+        methods=['get'],
+        url_path='delete/preview',
+        url_name='delete-preview',
+        detail=True,
+    )
     def delete_preview(self, request, pk):
         """Get preview of objects to delete, retrieved querysets are cached."""
         related_querysets, objects_info = self.get_deleted_objects()
@@ -186,7 +195,12 @@ class TestyDestroyModelMixin(RelationTreeMixin):
         response.set_cookie('delete_cache', cache_key, max_age=settings.CACHE_TTL)
         return response
 
-    @action(detail=False)
+    @action(
+        detail=False,
+        methods=['post'],
+        url_path='deleted/remove',
+        url_name='deleted-remove',
+    )
     def delete_permanently(self, request):
         serializer = RecoveryInputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -218,7 +232,12 @@ class TestyDestroyModelMixin(RelationTreeMixin):
 
 class TestyArchiveMixin(RelationTreeMixin):
 
-    @action(detail=True)
+    @action(
+        methods=['get'],
+        url_path='archive/preview',
+        url_name='archive-preview',
+        detail=True,
+    )
     def archive_preview(self, request, pk):
         related_querysets, objects_info = self.get_objects_to_archive()
         objects_to_archive = {
@@ -231,7 +250,12 @@ class TestyArchiveMixin(RelationTreeMixin):
         response.set_cookie('archive_cache', cache_key, max_age=settings.CACHE_TTL)
         return response
 
-    @action(detail=True)
+    @action(
+        methods=['post'],
+        url_path='archive',
+        url_name='archive-commit',
+        detail=True,
+    )
     def archive_objects(self, request, pk):
         querysets_to_archive = None
         if cache_key := request.COOKIES.get('archive_cache'):
@@ -245,7 +269,12 @@ class TestyArchiveMixin(RelationTreeMixin):
             related_qs.update(is_archive=True)
         return Response(status=status.HTTP_200_OK)
 
-    @action(detail=False)
+    @action(
+        methods=['post'],
+        url_path='archive/restore',
+        url_name='archive-restore',
+        detail=False,
+    )
     def restore_archived(self, request):
         serializer = RecoveryInputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -304,7 +333,12 @@ class TestyArchiveMixin(RelationTreeMixin):
 
 class TestyRestoreModelMixin(RelationTreeMixin):
 
-    @action(detail=False)
+    @action(
+        methods=['post'],
+        url_path='deleted/recover',
+        url_name='deleted-recover',
+        detail=False,
+    )
     def restore(self, request):
         serializer = RecoveryInputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -330,7 +364,12 @@ class TestyRestoreModelMixin(RelationTreeMixin):
                 related_qs.model.objects.partial_rebuild(tree_id)
         return Response(status=status.HTTP_200_OK)
 
-    @action(detail=False)
+    @action(
+        methods=['get'],
+        url_path='deleted',
+        url_name='deleted-list',
+        detail=False,
+    )
     def recovery_list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         pagination = StandardSetPagination()

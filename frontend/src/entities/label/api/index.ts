@@ -57,6 +57,8 @@ export const labelApi = createApi({
   }),
 })
 
+export const labelInvalidate = labelApi.util.invalidateTags([{ type: "Label", id: "LIST" }])
+
 export const {
   useGetLabelsQuery,
   useCreateLabelMutation,

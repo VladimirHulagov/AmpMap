@@ -42,7 +42,7 @@ UserModel = get_user_model()
 
 class Comment(BaseModel):
     user = models.ForeignKey(UserModel, on_delete=models.CASCADE)
-    content = models.TextField(null=False)
+    content = models.TextField(null=True, blank=True)
     attachments = GenericRelation(Attachment)
 
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)

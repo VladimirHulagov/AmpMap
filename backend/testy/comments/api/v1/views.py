@@ -31,21 +31,22 @@
 from comments.api.v1.serializers import CommentSerializer, InputCommentSerializer
 from comments.exceptions import ContentTypeDoesntExist, WrongObjectId
 from comments.models import Comment
+from comments.paginations import CommentSetPagination
+from comments.selectors.comments import CommentSelector
 from comments.services.comment import CommentService
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
 from django.shortcuts import get_object_or_404
 from filters import TestyFilterBackend
-from paginations import StandardSetPagination
 from rest_framework import filters, status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 
 class CommentsViewSet(viewsets.ModelViewSet):
-    queryset = None
+    queryset = Comment.objects.none()
     serializer_class = CommentSerializer
-    pagination_class = StandardSetPagination
+    pagination_class = CommentSetPagination
     filter_backends = [TestyFilterBackend, filters.OrderingFilter]
     permission_classes = [IsAuthenticated]
 
@@ -57,7 +58,7 @@ class CommentsViewSet(viewsets.ModelViewSet):
         return super().get_serializer_class()
 
     def get_object_with_content_type(self):
-        request_data = self.request.GET if self.action == 'list' else self.request.data
+        request_data = self.request.query_params if self.action == 'list' else self.request.data
         model_name = request_data.get('model')
         try:
             model_id = int(request_data.get('object_id'))
@@ -75,6 +76,8 @@ class CommentsViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         if self.action not in ('list', 'create',):
             return Comment.objects.filter(user=self.request.user)
+        if comment_id := self.request.query_params.get('comment_id'):
+            return CommentSelector.get_same_comments(comment_id)
         obj, ct_object = self.get_object_with_content_type()
         return Comment.objects.filter(content_type=ct_object, object_id=obj.id)
 

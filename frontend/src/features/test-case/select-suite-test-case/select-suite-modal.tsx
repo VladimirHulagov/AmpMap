@@ -5,11 +5,11 @@ import Search from "antd/lib/input/Search"
 import "./index.css"
 import { useSelectSuiteModal } from "./use-select-suite-modal"
 
-export type SelectSuiteModalProps = {
+export interface SelectSuiteModalProps {
   opened: boolean
   onCancel: () => void
   onSubmit: (suiteId: number) => void
-  treeSuites: ISuite[]
+  treeSuites: Suite[]
   selectedSuiteId: number
 }
 

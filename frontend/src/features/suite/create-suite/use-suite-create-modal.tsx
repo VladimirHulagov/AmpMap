@@ -5,30 +5,44 @@ import { useParams } from "react-router"
 
 import { useAppDispatch } from "app/hooks"
 
-import { useCreateSuiteMutation, useLazyGetSuiteQuery } from "entities/suite/api"
+import { useCreateSuiteMutation } from "entities/suite/api"
+import { useTestSuiteSearch } from "entities/suite/model"
 import { setTestSuite } from "entities/suite/model/slice"
 
 import { useErrors } from "shared/hooks"
 import { showModalCloseConfirm } from "shared/libs"
 import { AlertSuccessChange } from "shared/ui/alert-success-change"
 
-type ErrorData = {
+import { useSearchField } from "widgets/search-field"
+
+interface ErrorData {
   name?: string
   parent?: string
   description?: string
 }
 
-export const useSuiteCreateModal = () => {
+export const useSuiteCreateModal = (suite?: Suite) => {
   const [isShow, setIsShow] = useState(false)
 
   const dispatch = useAppDispatch()
-  const { projectId, testSuiteId } = useParams<ParamProjectId & ParamTestSuiteId>()
-  const [selectedParent, setSelectedParent] = useState<{ label: string; value: number } | null>(
-    null
-  )
+  const { projectId } = useParams<ParamProjectId>()
+  const [selectedParent, setSelectedParent] = useState<SelectData | null>(null)
   const [createSuite, { isLoading: isLoadingCreating, isSuccess: isSuccessCreate }] =
     useCreateSuiteMutation()
-  const [getSuite] = useLazyGetSuiteQuery()
+
+  const {
+    search,
+    paginationParams,
+    handleSearch: handleSearchField,
+    handleLoadNextPageData,
+  } = useSearchField()
+
+  const {
+    isLoading: isLoadingTestSuites,
+    data: dataTestSuites,
+    isLastPage,
+    searchSuite,
+  } = useTestSuiteSearch()
 
   const [errors, setErrors] = useState<ErrorData | null>(null)
   const { onHandleError } = useErrors<ErrorData>(setErrors)
@@ -38,7 +52,7 @@ export const useSuiteCreateModal = () => {
     control,
     setValue,
     formState: { isDirty },
-  } = useForm<ISuiteUpdate>({
+  } = useForm<SuiteUpdate>({
     defaultValues: {
       name: "",
       description: "",
@@ -47,14 +61,20 @@ export const useSuiteCreateModal = () => {
   })
 
   useEffect(() => {
-    if (!isShow || !testSuiteId) return
-    getSuite({ suiteId: testSuiteId })
-      .unwrap()
-      .then((res) => {
-        setSelectedParent({ value: res.id, label: res.name })
-        setValue("parent", String(res.id))
-      })
-  }, [isShow, testSuiteId])
+    if (!projectId || search === undefined) return
+    searchSuite({
+      search,
+      project: projectId,
+      page: paginationParams.page,
+      page_size: paginationParams.page_size,
+    })
+  }, [paginationParams, search, projectId])
+
+  useEffect(() => {
+    if (!isShow || !suite) return
+    setSelectedParent({ value: Number(suite.id), label: suite.name })
+    setValue("parent", String(suite.id))
+  }, [isShow, suite])
 
   const onCloseModal = () => {
     setIsShow(false)
@@ -79,7 +99,7 @@ export const useSuiteCreateModal = () => {
     setIsShow(true)
   }
 
-  const onSubmit: SubmitHandler<ISuiteUpdate> = async (data) => {
+  const onSubmit: SubmitHandler<SuiteUpdate> = async (data) => {
     setErrors(null)
 
     try {
@@ -106,7 +126,7 @@ export const useSuiteCreateModal = () => {
 
   const handleSelectParent = (value?: { label: string; value: number }) => {
     setErrors({ parent: "" })
-    if (Number(value?.value) === Number(testSuiteId)) {
+    if (Number(value?.value) === Number(suite?.id)) {
       setErrors({ parent: "Test Suite не может быть родителем для самого себя." })
       return
     }
@@ -123,12 +143,6 @@ export const useSuiteCreateModal = () => {
   }
 
   return {
-    handleShowCreate,
-    handleClearParent,
-    handleSelectParent,
-    handleCancel,
-    onSubmit,
-    handleSubmitForm: handleSubmit(onSubmit),
     isShow,
     isLoadingCreating,
     isSuccessCreate,
@@ -136,6 +150,17 @@ export const useSuiteCreateModal = () => {
     selectedParent,
     control,
     errors,
+    dataTestSuites,
+    isLoadingTestSuites,
+    isLastPage,
+    handleShowCreate,
+    handleClearParent,
+    handleSelectParent,
+    handleCancel,
+    onSubmit,
+    handleSubmitForm: handleSubmit(onSubmit),
     setValue,
+    handleSearch: handleSearchField,
+    handleLoadNextPageData,
   }
 }

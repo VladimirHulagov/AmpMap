@@ -9,6 +9,7 @@ interface CommentType {
 }
 
 interface GetCommentsRequest {
+  comment_id?: string
   model: Models
   object_id: string
   ordering?: string

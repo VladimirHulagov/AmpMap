@@ -15,10 +15,15 @@ export const useTestPlanDetails = () => {
   const test = useAppSelector(selectTest)
   const { userConfig } = useUserConfig()
   const { projectId, testPlanId } = useParams<ParamProjectId & ParamTestPlanId>()
-  const { data: testPlan, isLoading } = useGetTestPlanTreeViewQuery({
-    testPlanId: testPlanId || "",
-    is_archive: userConfig.test_plans.is_show_archived,
-  })
+  const { data: testPlan, isLoading } = useGetTestPlanTreeViewQuery(
+    {
+      testPlanId: testPlanId ?? "",
+      is_archive: userConfig.test_plans.is_show_archived,
+    },
+    {
+      skip: !testPlanId,
+    }
+  )
   const [getTest] = useLazyGetTestQuery()
 
   const [searchParams] = useSearchParams()

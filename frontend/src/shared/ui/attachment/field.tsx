@@ -16,7 +16,7 @@ export const AttachmentField = ({ attachments, isDivider = true }: IAttachmentsF
       )}
       {attachments.map((attachment, index) => {
         return (
-          <Row align="middle" key={index} id={`attachment-${index + 1}`}>
+          <Row align="middle" key={attachment.id} id={`attachment-${index + 1}`}>
             <Col flex="0 1 40px" style={{ padding: 8 }}>
               <FileOutlined style={{ color: "#096dd9", fontSize: 32 }} />
             </Col>

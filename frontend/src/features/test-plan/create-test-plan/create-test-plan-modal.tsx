@@ -3,11 +3,11 @@ import Search from "antd/lib/input/Search"
 import moment from "moment"
 import { Controller } from "react-hook-form"
 
-import { TestPlanParentField } from "entities/test-plan/ui/parent-field"
-
+import { ErrorObj } from "shared/hooks/use-alert-error"
 import { TreeUtils } from "shared/libs"
-import { AlertError } from "shared/ui"
-import { HighLighterTesty } from "shared/ui"
+import { AlertError, ContainerLoader, HighLighterTesty } from "shared/ui"
+
+import { SearchField } from "widgets/search-field"
 
 import styles from "./styles.module.css"
 import { useTestPlanCreateModal } from "./use-test-plan-create-modal"
@@ -15,19 +15,23 @@ import { useTestPlanCreateModal } from "./use-test-plan-create-modal"
 interface CreateTestPlanModalProps {
   isShow: boolean
   setIsShow: React.Dispatch<React.SetStateAction<boolean>>
+  testPlan?: TestPlanTreeView
 }
 
-export const CreateTestPlanModal = ({ isShow, setIsShow }: CreateTestPlanModalProps) => {
+export const CreateTestPlanModal = ({ isShow, setIsShow, testPlan }: CreateTestPlanModalProps) => {
   const {
     isLoadingCreateTestPlan,
+    isLoadingTreeData,
+    isLoadingTestPlans,
+    dataTestPlans,
     errors,
     control,
     searchText,
-    testSuites,
-    filterTable,
+    treeData,
     parametersTreeView,
     expandedRowKeys,
     isDirty,
+    isLastPage,
     selectedParent,
     handleRowExpand,
     setDateFrom,
@@ -37,12 +41,15 @@ export const CreateTestPlanModal = ({ isShow, setIsShow }: CreateTestPlanModalPr
     handleSubmitForm,
     handleClose,
     handleSearch,
-    handleSelectParent,
-    handleClearParent,
     handleTestCaseChange,
+    handleClearTestPlan,
+    handleLoadNextPageData,
+    handleSearchTestPlan,
+    handleSelectTestPlan,
   } = useTestPlanCreateModal({
     isShow,
     setIsShow,
+    testPlan,
   })
 
   return (
@@ -72,7 +79,7 @@ export const CreateTestPlanModal = ({ isShow, setIsShow }: CreateTestPlanModalPr
       <>
         {errors ? (
           <AlertError
-            error={errors}
+            error={errors as ErrorObj}
             skipFields={[
               "name",
               "description",
@@ -161,10 +168,17 @@ export const CreateTestPlanModal = ({ isShow, setIsShow }: CreateTestPlanModalPr
                   name="parent"
                   control={control}
                   render={() => (
-                    <TestPlanParentField
-                      handleSelectParent={handleSelectParent}
-                      selectedParent={selectedParent}
-                      handleClearParent={handleClearParent}
+                    <SearchField
+                      select={selectedParent}
+                      isLastPage={isLastPage}
+                      data={dataTestPlans}
+                      isLoading={isLoadingTestPlans}
+                      onClear={handleClearTestPlan}
+                      onSearch={handleSearchTestPlan}
+                      onChange={handleSelectTestPlan}
+                      handleLoadNextPageData={handleLoadNextPageData}
+                      placeholder="Search a test plan"
+                      valueKey="title"
                     />
                   )}
                 />
@@ -220,37 +234,42 @@ export const CreateTestPlanModal = ({ isShow, setIsShow }: CreateTestPlanModalPr
                       <>
                         <Search
                           placeholder="Search"
-                          onChange={(e) => handleSearch(testSuites, e.target.value)}
+                          onChange={(e) => handleSearch(e.target.value)}
                           value={searchText}
                           style={{ marginBottom: "8px" }}
                         />
-                        <Tree
-                          {...field}
-                          titleRender={(node) => (
-                            <HighLighterTesty
-                              searchWords={searchText}
-                              textToHighlight={String(node.title)}
+                        {isLoadingTreeData && <ContainerLoader />}
+                        {!isLoadingTreeData && (
+                          <>
+                            <Tree
+                              {...field}
+                              //@ts-ignore
+                              titleRender={(node: TestPlanTreeView) => (
+                                <HighLighterTesty
+                                  searchWords={searchText}
+                                  textToHighlight={String(node.title)}
+                                />
+                              )}
+                              height={200}
+                              virtual={false}
+                              showIcon={true}
+                              checkable={true}
+                              selectable={false}
+                              //@ts-ignore
+                              treeData={TreeUtils.deleteChildren<Suite>(treeData)}
+                              checkedKeys={field.value}
+                              // @ts-ignore
+                              onCheck={handleTestCaseChange}
+                              expandedKeys={expandedRowKeys}
+                              onExpand={(_, record) => {
+                                handleRowExpand(expandedRowKeys, String(record.node.key))
+                              }}
                             />
-                          )}
-                          height={200}
-                          virtual={false}
-                          showIcon={true}
-                          checkable={true}
-                          selectable={false}
-                          treeData={TreeUtils.deleteChildren<ISuite>(
-                            filterTable.length ? filterTable : testSuites || []
-                          )}
-                          checkedKeys={field.value}
-                          // @ts-ignore
-                          onCheck={handleTestCaseChange}
-                          expandedKeys={expandedRowKeys}
-                          onExpand={(_, record) =>
-                            handleRowExpand(expandedRowKeys, String(record.node.key))
-                          }
-                        />
-                        <span style={{ opacity: 0.7, marginTop: 4 }}>
-                          Selected: {testCases.length} test cases
-                        </span>
+                            <span style={{ opacity: 0.7, marginTop: 4 }}>
+                              Selected: {testCases.length} test cases
+                            </span>
+                          </>
+                        )}
                       </>
                     )
                   }}

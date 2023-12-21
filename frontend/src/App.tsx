@@ -20,7 +20,7 @@ import { ProjectDetailsMainPage } from "./pages/administration/projects/project-
 import { UsersPage } from "./pages/administration/users"
 import { DashboardPage } from "./pages/dashboard"
 import { LogoutPage } from "./pages/logout/logout"
-import { ProfilePage } from "./pages/profile"
+import { ProfilePage } from "./pages/profile/profile-page"
 import { ProjectOverviewTab } from "./pages/project/overview"
 import { ProjectTestPlans } from "./pages/project/test-plans"
 import { ProjectTestSuitesPage } from "./pages/project/test-suites"

@@ -57,10 +57,5 @@ export const testApi = createApi({
   }),
 })
 
-export const {
-  useGetTestsQuery,
-  useLazyGetTestsQuery,
-  useGetTestQuery,
-  useLazyGetTestQuery,
-  useUpdateTestMutation,
-} = testApi
+export const { useLazyGetTestsQuery, useGetTestQuery, useLazyGetTestQuery, useUpdateTestMutation } =
+  testApi

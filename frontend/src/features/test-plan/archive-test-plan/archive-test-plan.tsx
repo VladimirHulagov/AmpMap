@@ -5,7 +5,7 @@ import { DeleteTestPlan } from "../delete-test-plan/delete-test-plan"
 import { ArchiveTestPlanModal } from "./archive-test-plan-modal"
 
 interface Props {
-  testPlan: ITestPlanTreeView
+  testPlan: TestPlanTreeView
 }
 
 export const ArchiveTestPlan = ({ testPlan }: Props) => {
@@ -20,7 +20,12 @@ export const ArchiveTestPlan = ({ testPlan }: Props) => {
 
   return (
     <>
-      <Dropdown.Button menu={{ items }} danger onClick={() => setIsShow(true)}>
+      <Dropdown.Button
+        className="archive-test-plan"
+        menu={{ items }}
+        danger
+        onClick={() => setIsShow(true)}
+      >
         Archive
       </Dropdown.Button>
       <ArchiveTestPlanModal isShow={isShow} setIsShow={setIsShow} testPlan={testPlan} />

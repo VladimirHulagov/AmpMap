@@ -29,13 +29,14 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 from rest_framework.fields import CharField
-
-from utils import format_duration
+from utilities.time import WorkTimeProcessor
 
 
 class EstimateField(CharField):
-    available_formats = ('123', '1w 1d 1h 1m 1s', '2 days, 4:13:02 (uptime format)', '2 days, 4:13:02.266',
+    available_formats = ('123', '1d 1h 1m 1s', '2 days, 4:13:02 (uptime format)', '2 days, 4:13:02.266',
                          '5hr34m56s', '5 hours, 34 minutes, 56 seconds')
 
     def to_representation(self, value):
-        return format_duration(value)
+        if not value:
+            return None
+        return WorkTimeProcessor.format_duration(value)

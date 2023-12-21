@@ -28,7 +28,7 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from typing import List
+from typing import Any, Dict, List, Optional
 
 from django.contrib.postgres.aggregates import StringAgg
 from django.db import models
@@ -45,7 +45,9 @@ class TestSelector:
     def test_list_by_testplan_ids(plan_ids: List[int]) -> QuerySet[Test]:
         return Test.objects.filter(plan__in=plan_ids)
 
-    def test_list_with_last_status(self) -> QuerySet[Test]:
+    def test_list_with_last_status(self, filter_condition: Optional[Dict[str, Any]] = None) -> QuerySet[Test]:
+        if not filter_condition:
+            filter_condition = {}
         subquery = (
             TestSuite.objects
             .filter(
@@ -63,7 +65,7 @@ class TestSelector:
             Test.objects
             .select_related('case')
             .prefetch_related('case__suite', 'case__labeled_items', 'case__labeled_items__label', 'assignee')
-            .all()
+            .filter(**filter_condition)
             .annotate(
                 last_status=Subquery(
                     TestResult.objects.filter(test_id=OuterRef("id")).order_by("-created_at").values('status')[:1]

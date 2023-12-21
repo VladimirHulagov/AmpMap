@@ -28,11 +28,13 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
+from contextlib import nullcontext
 from typing import Union
 
 from mptt.models import MPTTModel
+from utilities.sql import lock_table
 
-from testy.models import DeletedQuerySet, DeletedTreeQuerySet
+from testy.models import DeletedQuerySet, DeletedTreeQuerySet, MPTTBaseModel
 
 
 class RecoveryService:
@@ -44,7 +46,8 @@ class RecoveryService:
 
     @staticmethod
     def delete_permanently(queryset: Union[DeletedQuerySet, DeletedTreeQuerySet], data):
-        queryset.filter(id__in=data['instance_ids']).hard_delete()
+        with lock_table(queryset.model) if issubclass(queryset.model, MPTTBaseModel) else nullcontext():
+            queryset.filter(id__in=data['instance_ids']).hard_delete()
 
     @staticmethod
     def get_objects_by_ids(queryset, data):

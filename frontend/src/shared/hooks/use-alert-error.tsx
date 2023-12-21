@@ -1,4 +1,4 @@
-export type ErrorObj = { [key: string]: string | null }
+export type ErrorObj = Record<string, string | null>
 
 export const useAlertError = (error: ErrorObj, skipFields: string[]) => {
   const errors = Object.keys(error)

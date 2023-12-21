@@ -32,20 +32,20 @@
 import logging
 from typing import Any, Dict, List, Optional
 
-from django.contrib.contenttypes.models import ContentType
-from django.db import connection
-from django.db.models import Count, DateTimeField, OuterRef, Q, QuerySet, expressions
+from django.db.models import Case, Count, DateTimeField, F, FloatField, OuterRef, Q, QuerySet, Sum, When, expressions
+from django.db.models.functions import Cast, Coalesce
 from mptt.querysets import TreeQuerySet
-from tests_description.models import TestCase
 from tests_representation.api.v1.serializers import TestPlanOutputSerializer
 from tests_representation.choices import TestStatuses
 from tests_representation.models import Parameter, Test, TestPlan
 from tests_representation.selectors.results import TestResultSelector
-from tests_representation.utils import HistogramProcessor
+from tests_representation.services.statistics import HistogramProcessor, StatisticProcessor
 from utilities.request import PeriodDateTime
+from utilities.sql import DateTrunc, SubCount
+from utilities.time import PERIODS_IN_SECONDS
+from utilities.tree import form_tree_prefetch_lookups, form_tree_prefetch_objects, get_breadcrumbs_treeview
 
 from testy.selectors import MPTTSelector
-from utils import DateTrunc, SubCount, form_tree_prefetch_lookups, form_tree_prefetch_objects, get_breadcrumbs_treeview
 
 logger = logging.getLogger(__name__)
 
@@ -153,73 +153,69 @@ class TestPlanSelector:
     def get_testplan_descendants_ids_by_testplan(test_plan: TestPlan, include_self: bool = True):
         return test_plan.get_descendants(include_self=include_self).values_list('pk', flat=True)
 
-    def testplan_statistics(self, test_plan, filter):
+    def testplan_statistics(
+        self,
+        test_plan: TestPlan,
+        filter_condition: Dict[str, Any],
+        estimate_period: Optional[str] = None,
+        is_archive: bool = False
+    ):
         test_plan_child_ids = tuple(self.get_testplan_descendants_ids_by_testplan(test_plan))
-        params = []
-        query = """
-                SELECT
-                    Count(t.*),
-                    COALESCE((
-                        SELECT
-                            status
-                        FROM tests_representation_testresult tr
-                        WHERE
-                            tr.test_id = t.id ORDER BY created_at DESC LIMIT 1), %s) status
-                FROM
-                    tests_representation_test t
-        """
-        params.append(TestStatuses.UNTESTED)
+        seconds = PERIODS_IN_SECONDS['minutes']
+        if estimate_period:
+            seconds = PERIODS_IN_SECONDS.get(estimate_period, seconds)
+        is_archive_condition = Q(is_archive=False) if not is_archive else Q()
+        latest_status = TestResultSelector.get_last_status_subquery()
+        total_estimate = Sum(
+            Cast(F('case__estimate'), FloatField()) / seconds,
+            output_field=FloatField()
+        )
+        tests = Test.objects.filter(
+            is_archive_condition,
+            plan_id__in=test_plan_child_ids,
+            is_deleted=False,
+        ).annotate(
+            status=Coalesce(latest_status, TestStatuses.UNTESTED),
+            estimates=Coalesce(total_estimate, 0, output_field=FloatField()),
+            is_empty_estimate=Case(
+                When(Q(case__estimate__isnull=True), then=1),
+                default=0,
+            ),
+            empty_estimates=Sum('is_empty_estimate')
+        )
+        statistic_processor = StatisticProcessor(filter_condition)
+        if statistic_processor.labels or statistic_processor.not_labels:
+            tests = statistic_processor.process_labels(tests)
 
-        if labels := filter.get('labels'):
-            query += """
-            JOIN (
-                SELECT
-                    object_id
-                FROM
-                    core_labeleditem
-                WHERE
-                    label_id IN %s
-                    AND content_type_id = %s
-                    AND NOT is_deleted
-                GROUP BY
-                    object_id
-            """
-            params.append(labels)
-            params.append(ContentType.objects.get(model=TestCase.__name__.lower()).id)
+        rows = tests.values(
+            'status', 'estimates', 'empty_estimates'
+        ).annotate(
+            count=Count('id', distinct=True)
+        ).order_by('status')
 
-            labels_condition = filter.get('labels_condition')
-            if labels_condition == 'and':
-                query += """
-                HAVING
-                    COUNT(id) >= %s
-                """
-                params.append(len(labels))
-
-            query += """
-                 ) li ON li.object_id = t.case_id
-            """
-
-        query += """
-            WHERE
-                plan_id IN %s AND is_deleted = false
-            GROUP BY
-                status
-        """
-        params.append(test_plan_child_ids)
-
-        with connection.cursor() as cursor:
-            cursor.execute(query, params)
-            rows = cursor.fetchall()
-
-        result = [
-            {
-                "label": status[1].upper(),
-                "value": 0
-            } for status in TestStatuses.choices if status[0] not in [row[1] for row in rows]
-        ]
+        result = []
+        presented_statuses = [row['status'] for row in rows]
+        for status in TestStatuses:
+            if status.value in presented_statuses:
+                continue
+            result.append(
+                {
+                    'label': status.label.upper(),
+                    'value': 0,
+                    'estimates': 0,
+                    'empty_estimates': 0
+                }
+            )
 
         for row in rows:
-            result.append({"label": TestStatuses(row[1]).name, "value": row[0]})
+            result.append(
+                {
+                    'label': TestStatuses(row['status']).name,
+                    'value': row['count'],
+                    'estimates': round(row['estimates'], 2),
+                    'empty_estimates': row['empty_estimates']
+                }
+            )
         return sorted(result, key=lambda d: d['value'], reverse=True)
 
     def get_plan_progress(self, plan_id: int, period: PeriodDateTime):
@@ -255,15 +251,19 @@ class TestPlanSelector:
         ).values('pk')
 
     def testplan_histogram(
-            self,
-            test_plan: TestPlan,
-            processor: HistogramProcessor
+        self,
+        test_plan: TestPlan,
+        processor: HistogramProcessor,
+            filter_condition: Dict[str, Any],
+            is_archive: bool = False
     ):
         test_plan_child_ids = tuple(self.get_testplan_descendants_ids_by_testplan(test_plan))
         annotate_condition = {}
         filters = {
             'created_at__range': processor.period
         }
+        if not is_archive:
+            filters['is_archive'] = False
         if processor.attribute:
             order_condition = expressions.RawSQL(
                 'attributes->>%s', (processor.attribute,)
@@ -282,11 +282,17 @@ class TestPlanSelector:
             order_condition = 'period_day'
             values_list = ('period_day', 'status')
 
-        test_results_formatted = (
+        test_results = (
             TestResultSelector()
             .result_by_test_plan_ids(test_plan_child_ids, filters)
             .annotate(**annotate_condition)
-            .values(*values_list).distinct()
+        )
+        statistic_processor = StatisticProcessor(filter_condition, 'test__case')
+        if statistic_processor.labels or statistic_processor.not_labels:
+            test_results = statistic_processor.process_labels(test_results)
+
+        test_results_formatted = (
+            test_results.values(*values_list).distinct()
             .annotate(status_count=Count('status'))
             .order_by(order_condition)
         )

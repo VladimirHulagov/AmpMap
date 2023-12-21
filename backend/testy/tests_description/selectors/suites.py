@@ -30,18 +30,21 @@
 # <http://www.gnu.org/licenses/>.
 from typing import List
 
-from django.db.models import BooleanField, Case, Count, F, QuerySet, When
+from django.db.models import BooleanField, Case, F, OuterRef, Q, QuerySet, Subquery, Sum, When
 from django.db.models.functions import Floor
 from mptt.querysets import TreeQuerySet
 from tests_description.models import TestCase, TestSuite
+from tests_description.selectors.cases import TestCaseSelector
 from tests_representation.models import Test
+from utilities.sql import SubCount
+from utilities.tree import form_tree_prefetch_lookups, form_tree_prefetch_objects
 
 from testy.selectors import MPTTSelector
-from utils import form_tree_prefetch_lookups, form_tree_prefetch_objects
 
 
 class TestSuiteSelector:
-    def get_max_level(self) -> int:
+    @classmethod
+    def get_max_level(cls) -> int:
         return MPTTSelector.model_max_level(TestSuite)
 
     @staticmethod
@@ -66,11 +69,7 @@ class TestSuiteSelector:
             TestSuite.objects.all()
             .order_by("name")
             .prefetch_related(
-                *form_tree_prefetch_lookups(
-                    'child_test_suites',
-                    'test_cases',
-                    max_level,
-                ),
+                *self.suites_tree_prefetch_cases(max_level),
                 *form_tree_prefetch_lookups(
                     'child_test_suites',
                     'test_cases__attachments',
@@ -113,21 +112,8 @@ class TestSuiteSelector:
             .filter(**parent)
             .order_by('name')
             .prefetch_related(
-                *form_tree_prefetch_objects(
-                    nested_prefetch_field='child_test_suites',
-                    prefetch_field='child_test_suites',
-                    tree_depth=max_level,
-                    queryset_class=TestSuite,
-                    annotation={
-                        'cases_count': Count('test_cases'),
-                        'descendant_count': Floor((F('rght') - F('lft') - 1) / 2)
-                    },
-                    order_by_fields=['name']
-                ),
-            ).annotate(
-                cases_count=Count('test_cases'),
-                descendant_count=Floor((F('rght') - F('lft') - 1) / 2)
-            )
+                *self.suites_tree_prefetch_children(max_level),
+            ).annotate(**self.cases_count_annotation())
         )
 
     def suite_list_treeview_with_cases(self, root_only: bool = True) -> QuerySet[TestSuite]:
@@ -138,27 +124,9 @@ class TestSuiteSelector:
             .filter(**parent)
             .order_by('name')
             .prefetch_related(
-                *form_tree_prefetch_objects(
-                    nested_prefetch_field='child_test_suites',
-                    prefetch_field='child_test_suites',
-                    tree_depth=max_level,
-                    queryset_class=TestSuite,
-                    annotation={
-                        'cases_count': Count('test_cases'),
-                        'descendant_count': Floor((F('rght') - F('lft') - 1) / 2)
-                    },
-                    order_by_fields=['name']
-                ),
-                *form_tree_prefetch_objects(
-                    nested_prefetch_field='child_test_suites',
-                    prefetch_field='test_cases',
-                    tree_depth=max_level,
-                    queryset_class=TestCase,
-                ),
-            ).annotate(
-                cases_count=Count('test_cases'),
-                descendant_count=Floor((F('rght') - F('lft') - 1) / 2)
-            )
+                *self.suites_tree_prefetch_children(max_level),
+                *self.suites_tree_prefetch_cases(max_level),
+            ).annotate(**self.cases_count_annotation())
         )
 
     @staticmethod
@@ -172,3 +140,59 @@ class TestSuiteSelector:
     @classmethod
     def suites_descendants(cls, suites: TreeQuerySet[TestSuite], include_self: bool = False) -> TreeQuerySet[TestSuite]:
         return suites.get_descendants(include_self=include_self).order_by('id')
+
+    @classmethod
+    def cases_count_annotation(cls):
+        return {
+            'descendant_count': Floor((F('rght') - F('lft') - 1) / 2),
+            'estimates': cls._get_estimate_sum_subquery(),
+            'total_estimates': cls._get_estimate_sum_subquery(sum_descendants=True),
+            'cases_count': SubCount(TestCase.objects.filter(is_archive=False, suite_id=OuterRef('pk'))),
+            'total_cases_count': SubCount(
+                TestCase.objects.filter(
+                    Q(suite__tree_id=OuterRef('tree_id'))
+                    & Q(suite__lft__gte=OuterRef('lft'))
+                    & Q(suite__rght__lte=OuterRef('rght')),
+                    is_archive=False,
+                )
+            )
+        }
+
+    @classmethod
+    def suites_tree_prefetch_children(cls, max_level: int):
+        return form_tree_prefetch_objects(
+            nested_prefetch_field='child_test_suites',
+            prefetch_field='child_test_suites',
+            tree_depth=max_level,
+            queryset_class=TestSuite,
+            annotation=cls.cases_count_annotation(),
+            order_by_fields=['name']
+        )
+
+    @classmethod
+    def suites_tree_prefetch_cases(cls, max_level: int):
+        return form_tree_prefetch_objects(
+            nested_prefetch_field='child_test_suites',
+            prefetch_field='test_cases',
+            tree_depth=max_level,
+            queryset=TestCaseSelector().case_list(filter_condition={'is_archive': False}),
+        )
+
+    @classmethod
+    def _get_estimate_sum_subquery(cls, sum_descendants: bool = False):
+        sum_condition = Q(test_cases__is_deleted=False) & Q(test_cases__is_archive=False)
+        if not sum_descendants:
+            filter_condition = Q(pk=OuterRef('pk'))
+        else:
+            filter_condition = (
+                Q(tree_id=OuterRef('tree_id'))
+                & Q(lft__gte=OuterRef('lft'))
+                & Q(rght__lte=OuterRef('rght'))
+            )
+
+        descendant_count_subquery = Subquery(
+            TestSuite.objects.filter(filter_condition)
+            .prefetch_related('test_cases').values('tree_id').annotate(
+                total=Sum('test_cases__estimate', filter=sum_condition)
+            ).values('total'))
+        return descendant_count_subquery

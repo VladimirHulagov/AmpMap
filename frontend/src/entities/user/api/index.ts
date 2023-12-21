@@ -33,8 +33,11 @@ export const usersApi = createApi({
       }),
       invalidatesTags: ["Config"],
     }),
-    getUsers: builder.query<User[], void>({
-      query: () => rootPath,
+    getUsers: builder.query<PaginationResponse<User[]>, QueryWithPagination<GetUsersQuery>>({
+      query: (params) => ({
+        url: "v1/users/",
+        params,
+      }),
       providesTags: () => [{ type: "User", id: "LIST" }],
     }),
     getMe: builder.query<User, void>({
@@ -106,6 +109,7 @@ export const usersApi = createApi({
 
 export const {
   useGetUsersQuery,
+  useLazyGetUsersQuery,
   useGetConfigQuery,
   useCreateUserMutation,
   useUpdateUserMutation,

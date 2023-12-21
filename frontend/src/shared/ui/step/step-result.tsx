@@ -13,7 +13,11 @@ export const StepResult = ({ stepsResult }: StepResultProps) => {
       {[...stepsResult]
         .sort((a, b) => a.sort_order - b.sort_order)
         .map((stepResult) => (
-          <li className={styles.resultFieldItem} key={stepResult.id}>
+          <li
+            id={`step-item-${stepResult.name}`}
+            className={styles.resultFieldItem}
+            key={stepResult.id}
+          >
             <div className={styles.resultFieldIcon}>{stepResult.sort_order}</div>
             <div className={styles.resultFieldWrapper}>
               <span>{stepResult.name}</span>

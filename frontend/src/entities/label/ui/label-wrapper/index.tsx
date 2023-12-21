@@ -1,7 +1,7 @@
 import { DownOutlined } from "@ant-design/icons"
 import { Input } from "antd"
 import { useMemo, useRef } from "react"
-import { ControllerRenderProps } from "react-hook-form/dist/types/controller"
+import { ControllerRenderProps } from "react-hook-form"
 
 import { UseFormLabelsProps } from "entities/label/model"
 
@@ -74,8 +74,8 @@ export const LabelWrapper = ({
         {isShowPopup && (
           <div id="label-popup" className={styles.popup} ref={popupRef}>
             <ul>
-              {searchingLabels.map((label, index) => (
-                <li key={index} onClick={() => handleAddLabel(label.name)}>
+              {searchingLabels.map((label) => (
+                <li key={label.id} onClick={() => handleAddLabel(label.name)}>
                   <HighLighterTesty searchWords={searchValue} textToHighlight={label.name} />
                 </li>
               ))}
@@ -103,8 +103,8 @@ export const LabelWrapper = ({
       </div>
       {!!labels.length && (
         <ul id="label-list" className={styles.list}>
-          {labels.map((label, index) => (
-            <li key={index}>
+          {labels.map((label) => (
+            <li key={label.id}>
               <Label
                 content={label.name}
                 onDelete={() => handleDeleteLabel(label.name)}

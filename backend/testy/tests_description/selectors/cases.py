@@ -29,23 +29,34 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 
-from typing import List
+from typing import Any, Dict, List, Optional, Tuple
 
-from django.db.models import QuerySet
+from core.selectors.attachments import AttachmentSelector
+from django.contrib.postgres.aggregates import ArrayAgg
+from django.db.models import OuterRef, QuerySet, Subquery
 from django.shortcuts import get_object_or_404
+from rest_framework.exceptions import ValidationError
 from tests_description.models import TestCase, TestCaseStep
 from tests_representation.models import TestPlan
 from tests_representation.selectors.tests import TestSelector
 
 
 class TestCaseSelector:
-    def case_list(self) -> QuerySet[TestCase]:
-        return TestCase.objects.all().prefetch_related(
+    def case_list(self, filter_condition: Optional[Dict[str, Any]] = None) -> QuerySet[TestCase]:
+        if not filter_condition:
+            filter_condition = {}
+        return TestCase.objects.filter(**filter_condition).prefetch_related(
             'attachments', 'steps', 'steps__attachments', 'labeled_items', 'labeled_items__label',
+        ).annotate(
+            current_version=self._current_version_subquery(),
+            versions=self._versions_subquery(),
         )
 
     def case_deleted_list(self):
-        return TestCase.deleted_objects.all().prefetch_related()
+        return TestCase.deleted_objects.all().prefetch_related().annotate(
+            current_version=self._current_version_subquery(),
+            versions=self._versions_subquery(),
+        )
 
     def case_version(self, case: TestCase) -> int:
         history = case.history.first()
@@ -69,6 +80,58 @@ class TestCaseSelector:
     def cases_by_ids_list(cls, ids: List[int], field_name: str) -> QuerySet[TestCase]:
         return TestCase.objects.filter(**{f'{field_name}__in': ids}).order_by('id')
 
+    @classmethod
+    def case_by_version(cls, pk: str, version: Optional[str]) -> Tuple[TestCase, Optional[str]]:
+        instance = get_object_or_404(TestCase, pk=pk)
+
+        if not version:
+            return instance, None
+
+        if not version.isnumeric():
+            raise ValidationError('Version must be a valid integer.')
+
+        history_instance = get_object_or_404(instance.history, history_id=version)
+        return history_instance.instance, version
+
+    @classmethod
+    def _current_version_subquery(cls):
+        return (
+            TestCase.history
+            .filter(id=OuterRef('id'))
+            .order_by('-history_id')
+            .values_list('history_id', flat=True)[:1]
+        )
+
+    @classmethod
+    def _versions_subquery(cls):
+        return Subquery(
+            TestCase.history
+            .filter(id=OuterRef('id'))
+            .values('id')
+            .annotate(temp=ArrayAgg('history_id', ordering='-history_id'))
+            .values('temp')
+        )
+
+    @classmethod
+    def get_history_by_case_id(cls, pk: int):
+        return TestCase.history.select_related('history_user').filter(id=pk).order_by('-history_id')
+
+    @classmethod
+    def get_case_history_by_version(cls, pk: int, version: int):
+        return TestCase.history.select_related('history_user').filter(id=pk, history_id=version).first()
+
+    @classmethod
+    def get_latest_version_by_id(cls, pk: int):
+        return TestCase.history.filter(id=pk).latest().history_id
+
+    @classmethod
+    def version_exists(cls, pk: int, version: int):
+        return TestCase.history.filter(id=pk, history_id=version).exists()
+
+    @classmethod
+    def get_last_history(cls, pk: int):
+        return TestCase.history.filter(id=pk).latest()
+
 
 class TestCaseStepSelector:
     def step_exists(self, step_id) -> bool:
@@ -77,3 +140,23 @@ class TestCaseStepSelector:
     @classmethod
     def steps_by_ids_list(cls, ids: List[int], field_name: str) -> QuerySet[TestCaseStep]:
         return TestCaseStep.objects.filter(**{f'{field_name}__in': ids}).order_by('id')
+
+    @classmethod
+    def get_steps_by_case_version_id(cls, version: int):
+        return TestCaseStep.history.filter(test_case_history_id=version, is_deleted=False).as_instances()
+
+    @classmethod
+    def get_latest_version_by_id(cls, pk: int):
+        return TestCaseStep.history.filter(id=pk).latest().history_id
+
+    @classmethod
+    def get_attachments_by_case_version(cls, step: TestCaseStep, version: int):
+        step_versions = list(
+            TestCaseStep.history
+            .filter(id=step.pk, test_case_history_id=version)
+            .values_list('history_id', flat=True)
+        )
+        old_attachments = AttachmentSelector.attachment_list_by_parent_object_and_history_ids(
+            step, step.id, step_versions
+        )
+        return old_attachments

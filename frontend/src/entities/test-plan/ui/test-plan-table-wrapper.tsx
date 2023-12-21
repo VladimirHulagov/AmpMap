@@ -3,25 +3,23 @@ import { useParams } from "react-router-dom"
 
 import { useTestPlanTable } from "entities/test-plan/model"
 
-import { ContainerLoader } from "shared/ui"
-
 import { TestPlanSearchAndTable } from "./test-plan-search-and-table"
 
 interface TestPlanTableProps {
   collapse: boolean
   setCollapse: React.Dispatch<React.SetStateAction<boolean>>
-  activePlan?: ITestPlanTreeView
+  activePlan?: TestPlanTreeView
 }
 
 // TODO this component looks like same test suite table, need refactoring
 export const TestPlanTableWrapper = ({ activePlan, collapse, setCollapse }: TestPlanTableProps) => {
   const {
-    isLoading,
-    treeTestPlans,
+    treeData,
     columns,
     showArchive,
     expandedRowKeys,
     paginationTable,
+    isLoading,
     onSearch,
     onShowArchived,
     onRowExpand,
@@ -35,8 +33,6 @@ export const TestPlanTableWrapper = ({ activePlan, collapse, setCollapse }: Test
     setCollapse((prevState) => !prevState)
   }
 
-  if (isLoading || !treeTestPlans) return <ContainerLoader />
-
   if (testPlanId && activePlan) {
     return (
       <Collapse
@@ -47,9 +43,10 @@ export const TestPlanTableWrapper = ({ activePlan, collapse, setCollapse }: Test
       >
         <Collapse.Panel header={<Typography.Text>Child plans</Typography.Text>} key="1">
           <TestPlanSearchAndTable
+            isLoading={isLoading}
             handleSorter={handleSorter}
             padding={0}
-            treeTestPlans={treeTestPlans.results}
+            treeTestPlans={treeData}
             columns={columns}
             expandedRowKeys={expandedRowKeys}
             onRowExpand={onRowExpand}
@@ -66,8 +63,9 @@ export const TestPlanTableWrapper = ({ activePlan, collapse, setCollapse }: Test
 
   return (
     <TestPlanSearchAndTable
+      isLoading={isLoading}
       handleSorter={handleSorter}
-      treeTestPlans={treeTestPlans.results}
+      treeTestPlans={treeData}
       columns={columns}
       expandedRowKeys={expandedRowKeys}
       onRowExpand={onRowExpand}

@@ -3,20 +3,20 @@ interface TestPlanState {
   showArchivedResults: boolean
 }
 
-interface ITestPlanQuery {
+interface TestPlanQuery {
   projectId: string | undefined
-  showArchive: boolean
+  is_archive?: boolean
   parent?: string
   search?: string
   ordering?: string
   is_flat?: boolean
 }
 
-interface ITestPlan {
+interface TestPlan {
   id: Id
   name: string
   description: string
-  parent: number | null
+  parent: TestPlanParentData | null
   parameters: number[]
   started_at: string
   due_date: string
@@ -29,17 +29,20 @@ interface ITestPlan {
   description: string
 }
 
-interface ITestPlanTreeView {
+interface TestPlanParentData {
+  id: number
+  name: string
+}
+
+interface TestPlanTreeView {
   id: Id
-  key: string
-  value: number
   title: string
   name: string
   description: string
   is_archive: boolean
   level: number
-  children: ITestPlanTreeView[]
-  parent: number | null
+  children: TestPlanTreeView[]
+  parent: TestPlanParentData | null
   project: number
   started_at: string
   due_date: string
@@ -51,7 +54,7 @@ interface TestPlanTreeViewQueryParams {
   is_archive?: boolean
 }
 
-interface ITestPlanUpdate {
+interface TestPlanUpdate {
   name: string
   description: string
   parent: number | null
@@ -60,7 +63,7 @@ interface ITestPlanUpdate {
   due_date: string
 }
 
-interface ITestPlanCreate extends ITestPlan {
+interface TestPlanCreate extends TestPlan {
   description: string
   test_cases: string[]
   parent: number | null
@@ -68,9 +71,11 @@ interface ITestPlanCreate extends ITestPlan {
   due_date: MomentInput
 }
 
-interface ITestPlanStatistics {
-  label: string
+interface TestPlanStatistics {
+  label: StatusesCaps
   value: number
+  estimates: number
+  empty_estimates: number
 }
 
 interface TestPlanParents {
@@ -82,10 +87,13 @@ interface TestPlanParents {
 interface TestPlanStatisticsParams {
   testPlanId: string
   labels?: string[]
+  not_labels?: string[]
   labels_condition?: string
+  estimate_period?: EstimatePeriod
+  is_archive?: boolean
 }
 
-type TestPlanActivityPagination = {
+interface TestPlanActivityPagination {
   next: null | number
   previous: null | number
 }
@@ -115,23 +123,6 @@ interface TestPlanActivityParams {
   search?: string
 }
 
-interface TestPlanActivity {
-  count: number
-  links: {
-    next: null | number
-    previous: null | number
-  }
-  pages: {
-    current: number
-    total: number
-    next: null | number
-    previous: null | number
-  }
-  results: {
-    [keyData: string]: TestPlanActivityResult[]
-  }
-}
-
 interface TestPlanParent {
   id: Id
   title: string
@@ -155,6 +146,10 @@ interface TestPlanHistogramParams {
   start_date?: string
   end_date?: string
   attribute?: string
+  labels?: string[]
+  not_labels?: string[]
+  labels_condition?: string
+  is_archive?: boolean
 }
 
 interface TestPlanHistogramData {
