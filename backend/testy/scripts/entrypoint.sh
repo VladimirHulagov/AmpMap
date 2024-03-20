@@ -7,4 +7,4 @@ echo "PostgreSQL started"
 python manage.py migrate --no-input
 python manage.py seed_db
 python manage.py collectstatic --no-input
-gunicorn testy.wsgi:application -c scripts/gunicorn.conf.py
+gunicorn root.wsgi:application -c scripts/gunicorn.conf.py

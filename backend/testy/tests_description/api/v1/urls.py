@@ -29,7 +29,8 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 from rest_framework.routers import SimpleRouter
-from tests_description.api.v1 import views
+
+from testy.tests_description.api.v1 import views
 
 router = SimpleRouter()
 router.register('cases', views.TestCaseViewSet)

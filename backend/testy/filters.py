@@ -32,25 +32,26 @@ import operator
 from functools import reduce
 from typing import Callable, List
 
-from core.models import Attachment, Label, Project
-from core.selectors.projects import ProjectSelector
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.aggregates import StringAgg
-from django.db import models
-from django.db.models import F, OuterRef, Prefetch, Q, Subquery, Value
+from django.db.models import F, OuterRef, Prefetch, Q, Subquery, TextField, Value
 from django.db.models.functions import Concat
 from django_filters import rest_framework as filters
 from rest_framework.compat import distinct
 from rest_framework.exceptions import NotFound
 from rest_framework.filters import OrderingFilter, SearchFilter
-from tests_description.models import TestCase, TestSuite
-from tests_description.selectors.suites import TestSuiteSelector
-from tests_representation.models import Parameter, Test, TestPlan, TestResult
-from tests_representation.selectors.testplan import TestPlanSelector
-from tests_representation.services.statistics import StatisticProcessor
-from utilities.request import get_boolean, get_user_favorites
-from utilities.string import parse_bool_from_str
-from utilities.tree import form_tree_prefetch_lookups
+
+from testy.core.models import Attachment, Label, Project
+from testy.core.selectors.projects import ProjectSelector
+from testy.tests_description.models import TestCase, TestSuite
+from testy.tests_description.selectors.suites import TestSuiteSelector
+from testy.tests_representation.models import Parameter, Test, TestPlan, TestResult
+from testy.tests_representation.selectors.results import TestResultSelector
+from testy.tests_representation.selectors.testplan import TestPlanSelector
+from testy.tests_representation.services.statistics import StatisticProcessor
+from testy.utilities.request import get_boolean, get_user_favorites
+from testy.utilities.string import parse_bool_from_str
+from testy.utilities.tree import form_tree_prefetch_lookups
 
 UserModel = get_user_model()
 
@@ -103,7 +104,7 @@ class ProjectOrderingFilter(OrderingFilter):
 
     def filter_queryset(self, request, queryset, view):
         ordering = self.get_ordering(request, queryset, view)
-        favorite_conditions = Q(**{'pk__in': get_user_favorites(request)})
+        favorite_conditions = Q(pk__in=get_user_favorites(request))
         if ordering:
             queryset = queryset.annotate(priority=ProjectSelector.favorites_annotation(favorite_conditions))
             return queryset.order_by('priority', *ordering)
@@ -197,9 +198,7 @@ class TestFilter(ArchiveFilter):
                 q_lookup = Q(last_status__in=last_status) | Q(last_status__isnull=True)
 
             queryset = queryset.annotate(
-                last_status=Subquery(
-                    TestResult.objects.filter(test_id=OuterRef('id')).order_by('-created_at').values('status')[:1]
-                ),
+                last_status=TestResultSelector.get_last_status_subquery(),
             ).filter(q_lookup)
         if suites := self.data.get('suite'):
             queryset = queryset.filter(case__suite__id__in=suites.split(','))
@@ -213,7 +212,7 @@ class TestFilter(ArchiveFilter):
 class TestResultFilter(ArchiveFilter):
     class Meta:
         model = TestResult
-        fields = ('project', 'test',)
+        fields = ('project', 'test')
 
 
 class TestOrderingFilter(OrderingFilter):
@@ -222,11 +221,16 @@ class TestOrderingFilter(OrderingFilter):
         ordering = self.get_ordering(request, queryset, view)
         if not ordering:
             return queryset
-
+        case_name_subquery = Subquery(
+            TestCase.objects.filter(
+                pk=OuterRef('case_id'),
+            ).values(
+                'name',
+            )[:1],
+        )
         return queryset.annotate(
-            last_status=Subquery(
-                TestResult.objects.filter(test_id=OuterRef('id')).order_by('-created_at').values('status')[:1]),
-            case_name=Subquery(TestCase.objects.filter(pk=OuterRef('case_id')).values('name')[:1])
+            last_status=TestResultSelector.get_last_status_subquery(),
+            case_name=case_name_subquery,
         ).order_by(*ordering)
 
 
@@ -237,8 +241,8 @@ class TestyBaseSearchFilter(SearchFilter):
             for search_field in search_fields
         ]
 
-    @staticmethod
-    def custom_filter(queryset, filter_conditions, request):
+    @classmethod
+    def custom_filter(cls, queryset, filter_conditions, request):
         return queryset.filter(filter_conditions)
 
     def filter_queryset(self, request, queryset, view):
@@ -255,7 +259,7 @@ class TestyBaseSearchFilter(SearchFilter):
         conditions = []
         for search_term in search_terms:
             queries = [
-                models.Q(**{orm_lookup: search_term})
+                Q(**{orm_lookup: search_term})
                 for orm_lookup in orm_lookups
             ]
             conditions.append(reduce(operator.or_, queries))
@@ -283,7 +287,7 @@ class TreeSearchBaseFilter(TestyBaseSearchFilter):
     def get_valid_options(self, filter_conditions, request):
         return self.model_class.objects.filter(
             filter_conditions,
-            project_id=request.query_params.get('project')
+            project_id=request.query_params.get('project'),
         )
 
     def custom_filter(self, queryset, filter_conditions, request):
@@ -294,7 +298,7 @@ class TreeSearchBaseFilter(TestyBaseSearchFilter):
         lookups = form_tree_prefetch_lookups(
             self.children_field_name,
             self.children_field_name,
-            self.max_level_method()
+            self.max_level_method(),
         )
         prefetch_objects = []
         for lookup in lookups:
@@ -332,7 +336,7 @@ class TestPlanSearchFilter(TreeSearchBaseFilter):
 
     def get_valid_options(self, filter_conditions, request):
         additional_filters = {
-            'project_id': request.query_params.get('project')
+            'project_id': request.query_params.get('project'),
         }
         if not get_boolean(request, 'is_archive'):
             additional_filters['is_archive'] = False
@@ -344,11 +348,11 @@ class TestPlanSearchFilter(TreeSearchBaseFilter):
                 Value('['),
                 StringAgg('parameters__data', delimiter=', '),
                 Value(']'),
-                output_field=models.TextField()
-            )
+                output_field=TextField(),
+            ),
         ).filter(
             filter_conditions,
-            **additional_filters
+            **additional_filters,
         )
 
 
@@ -368,13 +372,11 @@ class ActivitySearchFilter(SearchFilter):
         conditions = []
         for search_term in search_terms:
             queries = [
-                models.Q(**{orm_lookup: search_term})
+                Q(**{orm_lookup: search_term})
                 for orm_lookup in orm_lookups
             ]
             conditions.append(reduce(operator.or_, queries))
-        queryset = queryset.filter(reduce(operator.and_, conditions))
-
-        return queryset
+        return queryset.filter(reduce(operator.and_, conditions))
 
 
 class CustomOrderingFilter(OrderingFilter):
@@ -392,7 +394,9 @@ class CustomSearchFilter(SearchFilter):
         filter_lookup = {}
         for query_param_name in allowed_search_params:
             if value := request.query_params.get(query_param_name):
-                filter_lookup[f'{query_param_name}__in'] = list(map(str.strip, value.split(',')))
+                filter_lookup[f'{query_param_name}__in'] = list(
+                    map(str.strip, value.split(',')),
+                )
         return queryset.filter(**filter_lookup)
 
 

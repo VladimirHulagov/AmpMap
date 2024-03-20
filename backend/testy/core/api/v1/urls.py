@@ -29,9 +29,10 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 
-from core.api.v1 import views
 from django.urls import path
 from rest_framework import routers
+
+from testy.core.api.v1 import views
 
 router = routers.SimpleRouter()
 router.register('attachments', views.AttachmentViewSet)

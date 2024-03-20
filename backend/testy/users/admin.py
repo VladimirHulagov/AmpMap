@@ -32,8 +32,9 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import Group
-from users.models import Group as Group_
-from users.models import User
+
+from testy.users.models import Group as Group_  # noqa: WPS120
+from testy.users.models import User
 
 admin.site.unregister(Group)
 
@@ -44,8 +45,8 @@ class GroupAdmin(admin.ModelAdmin):
     ordering = ('name',)
     search_fields = ('name',)
 
-    @staticmethod
-    def user_count(obj):
+    @classmethod
+    def user_count(cls, obj):
         return obj.user_set.count()
 
 

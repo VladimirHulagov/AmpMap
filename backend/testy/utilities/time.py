@@ -37,8 +37,8 @@ PERIODS_IN_SECONDS = MappingProxyType(
         'days': 60 * 60 * settings.WORK_HOURS,
         'hours': 60 * 60,
         'minutes': 60,
-        'seconds': 1
-    }
+        'seconds': 1,
+    },
 )
 
 
@@ -52,7 +52,7 @@ class WorkTimeProcessor:
             value = seconds // count
             if value:
                 seconds -= value * count
-                result.append("{}{}".format(value, name[0]))
+                result.append('{0}{1}'.format(value, name[0]))
         return ' '.join(result)
 
     @classmethod

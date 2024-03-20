@@ -30,8 +30,8 @@
 # <http://www.gnu.org/licenses/>.
 from typing import Any, Dict
 
-from tests_description.models import TestSuite
-from utilities.sql import lock_table
+from testy.tests_description.models import TestSuite
+from testy.utilities.sql import lock_table
 
 
 class TestSuiteService:

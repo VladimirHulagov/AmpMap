@@ -32,20 +32,23 @@ import re
 from copy import deepcopy
 from typing import Any, Callable, Dict, List, Optional, Tuple, TypeVar, Union
 
-from core.models import Label, LabeledItem
-from core.selectors.attachments import AttachmentSelector
-from core.selectors.labeled_items import LabeledItemSelector
-from core.selectors.labels import LabelSelector
-from django.db import models, transaction
-from django.db.models import QuerySet
+from django.db import transaction
+from django.db.models import Model, QuerySet
 from mptt.querysets import TreeQuerySet
 from simple_history.utils import bulk_create_with_history
-from tests_description.models import TestCase, TestCaseStep, TestSuite
-from tests_description.selectors.cases import TestCaseSelector, TestCaseStepSelector
-from tests_description.selectors.suites import TestSuiteSelector
 
-_DMT = TypeVar('_DMT', bound=models.Model)
+from testy.core.models import Label, LabeledItem
+from testy.core.selectors.attachments import AttachmentSelector
+from testy.core.selectors.labeled_items import LabeledItemSelector
+from testy.core.selectors.labels import LabelSelector
+from testy.tests_description.models import TestCase, TestCaseStep, TestSuite
+from testy.tests_description.selectors.cases import TestCaseSelector, TestCaseStepSelector
+from testy.tests_description.selectors.suites import TestSuiteSelector
+
 _Mapping = TypeVar('_Mapping', bound=Dict[int, int])
+_PROJECT_ID = 'project_id'
+_PK = 'pk'
+_ID = 'id'
 
 
 class CopyService:
@@ -55,15 +58,15 @@ class CopyService:
         dst_suite_id = None
         project_data = {}
         if project := data.get('dst_project_id'):
-            project_data = {'project_id': project.id}
+            project_data = {_PROJECT_ID: project.id}
         if suite := data.get('dst_suite_id'):
             dst_suite_id = suite.id
         suite_ids = [suite.get('id') for suite in data.get('suites', [])]
-        root_suites = TestSuiteSelector.suites_by_ids_list(suite_ids, 'pk')
+        root_suites = TestSuiteSelector.suites_by_ids_list(suite_ids, _PK)
         root_suite_mappings, tree_id_mapping, copied_root_suites = cls._copy_suites(
             root_suites,
             parent_id=dst_suite_id,
-            **project_data
+            **project_data,
         )
 
         suite_mappings, copied_bulk_suites = cls._copy_suites_bulk(
@@ -74,18 +77,18 @@ class CopyService:
         suite_mappings.update(root_suite_mappings)
         cls._update_suite_relations(copied_bulk_suites, suite_mappings)
         cases_to_copy = TestCaseSelector.cases_by_ids_list(
-            root_suites.get_descendants(include_self=True).values_list('id', flat=True),
-            'suite_id'
+            root_suites.get_descendants(include_self=True).values_list(_ID, flat=True),
+            'suite_id',
         )
 
         case_mappings = cls._copy_cases_bulk(
             cases_to_copy,
             field_to_mapping={'suite_id': suite_mappings},
-            **project_data
+            **project_data,
         )
         steps_to_copy = TestCaseStepSelector.steps_by_ids_list(
-            cases_to_copy.values_list('id', flat=True),
-            'test_case_id'
+            cases_to_copy.values_list(_ID, flat=True),
+            'test_case_id',
         )
 
         steps_mapping = cls._copy_steps(steps_to_copy, case_mappings, **project_data)
@@ -93,24 +96,24 @@ class CopyService:
             TestCase,
             cases_to_copy,
             case_mappings,
-            project_data.get('project_id'),
+            project_data.get(_PROJECT_ID),
             ['setup', 'scenario', 'expected', 'teardown', 'description'],
-            TestCaseSelector.cases_by_ids_list
+            TestCaseSelector.cases_by_ids_list,
         )
         cls._copy_attachments(
             TestCaseStep,
             steps_to_copy,
             steps_mapping,
-            project_data.get('project_id'),
+            project_data.get(_PROJECT_ID),
             ['scenario', 'expected'],
-            TestCaseStepSelector.steps_by_ids_list
+            TestCaseStepSelector.steps_by_ids_list,
         )
         labeled_cases = LabeledItemSelector.items_by_ids_list(
-            cases_to_copy.values_list('id', flat=True),
-            TestCase
+            cases_to_copy.values_list(_ID, flat=True),
+            TestCase,
         )
 
-        cls._copy_labels_and_items(labeled_cases, case_mappings, project_data.get('project_id'))
+        cls._copy_labels_and_items(labeled_cases, case_mappings, project_data.get(_PROJECT_ID))
         for suite in copied_root_suites:
             TestSuite.objects.partial_rebuild(suite.tree_id)
         for suite_dict in data.get('suites', []):
@@ -124,7 +127,7 @@ class CopyService:
     def _copy_suites(
         cls,
         suites: QuerySet[TestSuite],
-        **kwargs
+        **kwargs,
     ) -> Tuple[_Mapping, _Mapping, TreeQuerySet[TestSuite]]:
         suite_mappings = {}
         copied_suites = []
@@ -143,12 +146,12 @@ class CopyService:
             copied_suites.append(copied_suite)
             copied_suites_ids.append(copied_suite.id)
             suite_mappings[suite.id] = copied_suite.id
-        new_suites = TestSuiteSelector.suites_by_ids_list(copied_suites_ids, 'pk')
+        new_suites = TestSuiteSelector.suites_by_ids_list(copied_suites_ids, _PK)
         tree_id_mapping = cls._map_ids(
             suites.all(),
             new_suites,
             mapping_key_objs='tree_id',
-            mapping_key='tree_id'
+            mapping_key='tree_id',
         )
         return suite_mappings, tree_id_mapping, new_suites
 
@@ -157,7 +160,7 @@ class CopyService:
         cls,
         suites: TreeQuerySet[TestSuite],
         field_to_mapping: Dict[str, _Mapping],
-        **kwargs
+        **kwargs,
     ) -> Tuple[_Mapping, List[TestSuite]]:
         copied_suites = []
         for suite in suites:
@@ -168,15 +171,15 @@ class CopyService:
                     copied_suite,
                     field_name,
                     mapping.get(
-                        getattr(suite, field_name)
-                    )
+                        getattr(suite, field_name),
+                    ),
                 )
             for field_name, field_value in kwargs.items():
                 setattr(copied_suite, field_name, field_value)
             copied_suites.append(copied_suite)
         new_suites = TestSuite.objects.bulk_create(copied_suites)
-        mapping = cls._map_ids(suites, new_suites)
-        return mapping, new_suites
+        resulting_mapping = cls._map_ids(suites, new_suites)
+        return resulting_mapping, new_suites
 
     @classmethod
     def _update_suite_relations(
@@ -192,7 +195,7 @@ class CopyService:
         fields_to_update = ['parent_id']
         TestSuite.objects.bulk_update(
             updated_instances,
-            fields_to_update
+            fields_to_update,
         )
         return updated_instances
 
@@ -201,7 +204,7 @@ class CopyService:
         cls,
         cases: QuerySet[TestCase],
         field_to_mapping: Dict[str, _Mapping],
-        **kwargs
+        **kwargs,
     ) -> _Mapping:
         new_case_models = []
         for case in cases:
@@ -212,8 +215,8 @@ class CopyService:
                     copied_case,
                     field_name,
                     mapping.get(
-                        getattr(copied_case, field_name)
-                    )
+                        getattr(copied_case, field_name),
+                    ),
                 )
 
             for field_name, field_value in kwargs.items():
@@ -228,24 +231,24 @@ class CopyService:
         cls,
         labeled_items: QuerySet[LabeledItem],
         mapping: _Mapping,
-        project_id: Optional[int]
+        project_id: Optional[int],
     ):
         labels = LabelSelector.labels_by_ids_list(
             labeled_items.values_list('label_id', flat=True),
-            'pk'
+            _PK,
         )
         label_mappings = {}
         for label in labels:
             filter_conditions = {}
-            default = {'name': label.name, 'type': label.type, 'project_id': label.project_id, 'user_id': label.user_id}
+            default = {'name': label.name, 'type': label.type, _PROJECT_ID: label.project_id, 'user_id': label.user_id}
             if project_id:
-                filter_conditions['project_id'] = project_id
-                default['project_id'] = project_id
+                filter_conditions[_PROJECT_ID] = project_id
+                default[_PROJECT_ID] = project_id
             new_label, _ = Label.objects.get_or_create(
                 name__iexact=label.name,
                 type=label.type,
                 defaults=default,
-                **filter_conditions
+                **filter_conditions,
             )
             label_mappings[label.id] = new_label.id
 
@@ -264,7 +267,7 @@ class CopyService:
         cls,
         steps: QuerySet[TestCaseStep],
         case_mappings: _Mapping,
-        **kwargs
+        **kwargs,
     ) -> _Mapping:
         step_instances = []
         for step in steps:
@@ -280,7 +283,7 @@ class CopyService:
     @classmethod
     def _copy_attachments(
         cls,
-        model: type[_DMT],
+        model: type[Model],
         objs: QuerySet[Any],
         mapping: _Mapping,
         project_id: Optional[int],
@@ -288,22 +291,22 @@ class CopyService:
         selector_method: Callable[[List[int], str], QuerySet[Any]],
     ):
         attachments = AttachmentSelector.attachment_by_ids_list(
-            objs.values_list('id', flat=True),
-            model
+            objs.values_list(_ID, flat=True),
+            model,
         )
         attachments_mapping = {}
         for attachment in attachments:
             attrs_to_change = {'object_id': mapping.get(attachment.object_id)}
             if project_id:
-                attrs_to_change['project_id'] = project_id
+                attrs_to_change[_PROJECT_ID] = project_id
             attachments_mapping[attachment.id] = attachment.model_clone(common_attrs_to_change=attrs_to_change).id
         updated_objs = []
-        objs_to_update = selector_method(list(mapping.values()), 'pk')
+        objs_to_update = selector_method(list(mapping.values()), _PK)
         for obj in objs_to_update.filter(attachments__isnull=False):
             for field_name in attachment_references_fields:
                 for old_id, new_id in attachments_mapping.items():
                     formatted_text = cls._change_attachments_reference(
-                        getattr(obj, field_name), old_id, new_id
+                        getattr(obj, field_name), old_id, new_id,
                     )
                     setattr(obj, field_name, formatted_text)
             updated_objs.append(obj)
@@ -315,14 +318,14 @@ class CopyService:
         key_objs: Union[QuerySet[Any], List[Any]],
         value_objs: Union[QuerySet[Any], List[Any]],
         *,
-        mapping_key: str = 'id',
-        mapping_key_objs: str = 'id'
+        mapping_key: str = _ID,
+        mapping_key_objs: str = _ID,
     ):
         mapping = {}
         for key_obj, value_obj in zip(key_objs, value_objs):
             mapping[getattr(key_obj, mapping_key)] = getattr(value_obj, mapping_key_objs)
         return mapping
 
-    @staticmethod
-    def _change_attachments_reference(src_text: str, old_id: int, new_id: int):
+    @classmethod
+    def _change_attachments_reference(cls, src_text: str, old_id: int, new_id: int):
         return re.sub(f'attachments/{old_id}/', f'attachments/{new_id}/', src_text)

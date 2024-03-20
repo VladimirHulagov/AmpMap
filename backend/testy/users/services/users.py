@@ -30,11 +30,14 @@
 # <http://www.gnu.org/licenses/>.
 from typing import Any, Dict
 
-from core.services.media import MediaService
 from django.contrib.auth import get_user_model
 from PIL import Image
 
+from testy.core.services.media import MediaService
+
 UserModel = get_user_model()
+
+_AVATAR = 'avatar'
 
 
 class UserService(MediaService):
@@ -66,12 +69,12 @@ class UserService(MediaService):
         return user
 
     def update_avatar(self, user: UserModel, data: Dict[str, Any]):
-        if data['avatar']:
-            img = Image.open(data['avatar'])
+        if data[_AVATAR]:
+            img = Image.open(data[_AVATAR])
             img.load()
         old_avatar = user.avatar
         user, _ = user.model_update(
-            fields=['avatar'],
+            fields=[_AVATAR],
             data=data,
             commit=False,
         )

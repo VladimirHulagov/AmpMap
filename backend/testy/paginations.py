@@ -42,7 +42,7 @@ class StandardSetPagination(PageNumberPagination):
         return Response({
             'links': {
                 'next': self.get_next_link(),
-                'previous': self.get_previous_link()
+                'previous': self.get_previous_link(),
             },
             'count': self.page.paginator.count,
             'pages': {
@@ -51,7 +51,7 @@ class StandardSetPagination(PageNumberPagination):
                 'current': self.page.number,
                 'total': self.page.paginator.num_pages,
             },
-            'results': data
+            'results': data,
         })
 
     def get_previous_link(self):

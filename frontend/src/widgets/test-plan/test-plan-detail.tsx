@@ -1,7 +1,7 @@
 import { HistoryOutlined } from "@ant-design/icons"
 import { Button, Card, Col, Descriptions, Empty, Row, Space, Tag } from "antd"
+import dayjs from "dayjs"
 import { ArchiveTestPlan, CreateTestPlan, DeleteTestPlan, EditTestPlan } from "features/test-plan"
-import moment from "moment"
 import React from "react"
 import { Link } from "react-router-dom"
 import { TestPlanStatistics } from "widgets"
@@ -35,7 +35,9 @@ export const TestPlanDetail = ({ collapse, setCollapse }: TestPlanDetailProps) =
           <Card>
             <Row>
               <Col flex={"auto"}>
-                <p style={{ margin: 0, fontSize: 22 }}>{testPlan.title}</p>
+                <p style={{ margin: 0, fontSize: 22 }} id="test-plan-title">
+                  {testPlan.title}
+                </p>
               </Col>
               <Col flex={"none"}>
                 <Space size="middle">
@@ -61,17 +63,17 @@ export const TestPlanDetail = ({ collapse, setCollapse }: TestPlanDetailProps) =
             <Descriptions style={{ marginTop: 12 }}>
               {!!testPlan.started_at && (
                 <Descriptions.Item label="Start date">
-                  {moment(testPlan.started_at).format("YYYY-MM-DD")}
+                  {dayjs(testPlan.started_at).format("YYYY-MM-DD")}
                 </Descriptions.Item>
               )}
               {!!testPlan.due_date && (
                 <Descriptions.Item label="Due date">
-                  {moment(testPlan.due_date).format("YYYY-MM-DD")}
+                  {dayjs(testPlan.due_date).format("YYYY-MM-DD")}
                 </Descriptions.Item>
               )}
               {!!testPlan.finished_at && (
                 <Descriptions.Item label="Finish date">
-                  {moment(testPlan.finished_at).format("YYYY-MM-DD")}
+                  {dayjs(testPlan.finished_at).format("YYYY-MM-DD")}
                 </Descriptions.Item>
               )}
               {testPlan.is_archive && (
@@ -88,7 +90,9 @@ export const TestPlanDetail = ({ collapse, setCollapse }: TestPlanDetailProps) =
                 >
                   Description
                 </span>
-                <Markdown content={testPlan.description} />
+                <div id="test-plan-description">
+                  <Markdown content={testPlan.description} />
+                </div>
               </>
             )}
             <TestPlanStatistics testPlanId={testPlanId} />

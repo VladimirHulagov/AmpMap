@@ -1,90 +1,153 @@
-import { FetchBaseQueryError } from "@reduxjs/toolkit/dist/query"
 import { notification } from "antd"
 import { useEffect, useMemo, useState } from "react"
+import { useForm } from "react-hook-form"
 
 import { useGetProjectsQuery } from "entities/project/api"
 
 import { useCopySuiteMutation } from "entities/suite/api"
 
+import { initInternalError, isFetchBaseQueryError } from "shared/libs"
 import { AlertSuccessChange } from "shared/ui/alert-success-change"
 
-export const useSuiteCopyModal = (suite: Suite) => {
+interface FormSuiteCopy {
+  new_name: string
+  project: SelectData | null
+  suite: SelectData | null
+}
+
+interface ErrorData {
+  suites: {
+    id: string[]
+    new_name?: string[]
+  }[]
+}
+
+export const useSuiteCopyModal = (mainSuite: Suite) => {
+  const [errors, setErrors] = useState<string[]>([])
   const [isShow, setIsShow] = useState(false)
+  const [selectedSuite, setSelectedSuite] = useState<SelectData | null>(null)
+
   const [copySuite, { isLoading }] = useCopySuiteMutation()
   // TODO page_size 1000 = hack, need be scroll loading as search-field.tsx
-  const { data, isLoading: isLoadingProjects } = useGetProjectsQuery(
+  const { data: dataProjects, isLoading: isLoadingProjects } = useGetProjectsQuery(
     {
       page: 1,
       page_size: 1000,
     },
     { skip: !isShow }
   )
-  const [newName, setNewName] = useState("")
-  const [selectedProject, setSelectedProject] = useState("")
+
+  const {
+    handleSubmit,
+    reset,
+    control,
+    formState: { isDirty, errors: formErrors },
+    setValue,
+    watch,
+  } = useForm<FormSuiteCopy>({
+    defaultValues: {
+      new_name: `${mainSuite.name}(Copy)`,
+      project: null,
+      suite: null,
+    },
+  })
+  const watchProject = watch("project")
+
+  const onHandleError = (err: unknown) => {
+    if (isFetchBaseQueryError(err) && err?.status === 400) {
+      const error = err.data as ErrorData
+      const newNameErorrs = error.suites[0].new_name!
+      setErrors(newNameErorrs)
+    } else {
+      initInternalError(err)
+    }
+  }
 
   const handleCancel = () => {
     setIsShow(false)
-    setSelectedProject("")
+    setErrors([])
+    reset()
   }
 
   const handleShow = () => {
     setIsShow(true)
   }
 
-  const handleSave = async () => {
+  const handleSave = async ({ new_name, project, suite }: FormSuiteCopy) => {
+    if (!project) {
+      setErrors(["Project is required"])
+      return
+    }
+
+    if (!new_name.trim().length) {
+      setErrors(["New name is not be empty"])
+      return
+    }
+
     try {
-      await copySuite({
-        suites: [{ id: String(suite.id), new_name: newName }],
-        dst_project_id: selectedProject,
-      })
+      const newSuite = await copySuite({
+        suites: [{ id: mainSuite.id.toString(), new_name }],
+        dst_project_id: project.value.toString(),
+        dst_suite_id: suite ? suite.value.toString() : undefined,
+      }).unwrap()
       notification.success({
         message: "Success",
-        description: <AlertSuccessChange id={String(suite.id)} action="copied" title="Suite" />,
+        description: (
+          <AlertSuccessChange
+            id={newSuite[0].id.toString()}
+            link={`/projects/${newSuite[0].project}/suites/${newSuite[0].id}/`}
+            action="copied"
+            title="Suite"
+          />
+        ),
       })
       handleCancel()
     } catch (err) {
-      const error = err as FetchBaseQueryError
-
-      console.error(error)
-      notification.error({
-        message: "Error!",
-        description: "Internal server error. Showing in console log.",
-      })
+      onHandleError(err)
     }
   }
 
-  const handleChange = (value: { label: string; value: string }) => {
-    setSelectedProject(value.value)
+  const handleClearSuite = () => {
+    setSelectedSuite(null)
+    setValue("suite", null, { shouldDirty: true })
   }
 
-  const handleChangeName = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setNewName(e.target.value)
+  const handleSelectSuite = (value?: SelectData | null) => {
+    if (value) {
+      setValue("suite", value, { shouldDirty: true })
+      setSelectedSuite({ value: value.value, label: value.label })
+    }
   }
-
-  useEffect(() => {
-    if (!isShow) return
-    setNewName(`${suite.name}(Copy)`)
-  }, [suite, isShow])
 
   const projects = useMemo(() => {
-    if (!data) return []
+    if (!dataProjects) return []
 
-    return data.results.map((i) => ({
+    return dataProjects.results.map((i) => ({
       label: i.name,
       value: i.id,
     }))
-  }, [data])
+  }, [dataProjects])
+
+  useEffect(() => {
+    reset({
+      new_name: `${mainSuite.name}(Copy)`,
+    })
+  }, [mainSuite])
 
   return {
+    errors,
+    formErrors,
     isShow,
     isLoading,
-    isLoadingProjects,
+    isDisabled: !isDirty || isLoading || isLoadingProjects,
     projects,
-    newName,
+    control,
+    selectedSuite,
+    selectedProject: watchProject,
     handleCancel,
     handleShow,
-    handleSave,
-    handleChange,
-    handleChangeName,
+    handleClearSuite,
+    handleSelectSuite,
+    handleSubmitForm: handleSubmit(handleSave),
   }
 }

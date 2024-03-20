@@ -65,7 +65,9 @@ export const useTestCaseEditModal = ({ testCase }: Props) => {
     control,
     setValue,
     register,
-    formState: { isDirty },
+    setError: setFormError,
+    clearErrors,
+    formState: { isDirty, errors: formErrors },
   } = useForm<TestCaseFormData>({
     defaultValues: {
       name: testCase?.name ?? "",
@@ -196,6 +198,16 @@ export const useTestCaseEditModal = ({ testCase }: Props) => {
     if (!testCase) return
     const dataForm = data as SubmitData
 
+    if (data.is_steps && !data.steps?.length) {
+      setFormError("steps", { type: "required", message: "Обязательное поле." })
+      return
+    }
+
+    if (!data.is_steps && !data.scenario?.length) {
+      setFormError("scenario", { type: "required", message: "Обязательное поле." })
+      return
+    }
+
     const isSwitchingSuite = dataForm.suite && dataForm.suite !== Number(testSuiteId)
     if (isSwitchingSuite) {
       const isConfirmed = await confirmSwitchSuite()
@@ -271,6 +283,7 @@ export const useTestCaseEditModal = ({ testCase }: Props) => {
     isEditMode,
     isLoading: isLoading || isLoadingAttachments,
     errors,
+    formErrors,
     control,
     attachments,
     attachmentsIds,
@@ -283,6 +296,7 @@ export const useTestCaseEditModal = ({ testCase }: Props) => {
     onRemove,
     onChange,
     setValue,
+    clearErrors,
     setAttachments,
     handleCancel,
     handleSubmitFormAsNew: handleSubmit(onSubmitAsNewVersion),

@@ -1,5 +1,5 @@
 import { Empty, Pagination, Table, Typography } from "antd"
-import moment from "moment"
+import dayjs from "dayjs"
 
 import { useTestPlanActivity } from "entities/test-plan/model"
 
@@ -18,7 +18,7 @@ export const TestPlanActivityTable = ({
     <ul style={{ paddingLeft: 0 }}>
       {Object.entries(testPlanActivity.data.results).map(([dayStr, item], index) => (
         <li style={{ marginBottom: 24, listStyle: "none" }} key={`${index}_${dayStr}`}>
-          <Typography.Paragraph strong>{moment(dayStr).format("D MMMM YYYY")}</Typography.Paragraph>
+          <Typography.Paragraph strong>{dayjs(dayStr).format("D MMMM YYYY")}</Typography.Paragraph>
           <Table
             columns={testPlanActivity.columns}
             dataSource={item}

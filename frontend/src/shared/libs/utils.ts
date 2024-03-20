@@ -1,3 +1,4 @@
+import { notification } from "antd"
 import { UploadFile } from "antd/lib/upload"
 
 export const getNumberToFixed = (value: number, fixed: number) => {
@@ -16,3 +17,13 @@ export const fileReader = async (file: UploadFile<unknown>) => {
     file: file.originFileObj,
   }
 }
+
+export const initInternalError = (err: unknown) => {
+  console.error(err)
+  notification.error({
+    message: "Error!",
+    description: "Internal server error. Showing in console log.",
+  })
+}
+
+export const capitalizeFirstLetter = (str: string) => str.charAt(0).toUpperCase() + str.slice(1)

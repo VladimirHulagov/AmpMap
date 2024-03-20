@@ -1,5 +1,6 @@
 import { EditOutlined } from "@ant-design/icons"
-import { Breadcrumb, Button, Card, Col, Divider, Layout, PageHeader, Row } from "antd"
+import { PageHeader } from "@ant-design/pro-layout"
+import { Breadcrumb, Button, Card, Col, Divider, Layout, Row } from "antd"
 import { useDispatch } from "react-redux"
 import { ProfileAvatar } from "widgets"
 
@@ -40,6 +41,7 @@ export const ProfilePage = () => {
       <PageHeader
         breadcrumbRender={() => <Breadcrumb>{breadcrumbItems}</Breadcrumb>}
         title="Profile"
+        style={{ paddingBottom: 0 }}
       ></PageHeader>
       <Row style={{ margin: "24px" }}>
         <Col flex="0 1 260px">

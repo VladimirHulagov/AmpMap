@@ -1,4 +1,3 @@
-import { FetchBaseQueryError } from "@reduxjs/toolkit/dist/query"
 import { Modal, notification } from "antd"
 import { useEffect, useMemo, useState } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
@@ -9,6 +8,7 @@ import { useAppDispatch, useAppSelector } from "app/hooks"
 import { hideModal, selectModal } from "entities/label/model"
 
 import { useErrors } from "shared/hooks"
+import { initInternalError } from "shared/libs"
 
 import { useCreateLabelMutation, useDeleteLabelMutation, useUpdateLabelMutation } from "../api"
 
@@ -76,13 +76,7 @@ export const useAdministrationLabelModal = () => {
             description: "Label deleted successfully",
           })
         } catch (err: unknown) {
-          const error = err as FetchBaseQueryError
-
-          console.error(error)
-          notification.error({
-            message: "Error!",
-            description: "Internal server error. Showing in console log.",
-          })
+          initInternalError(err)
         }
       },
     })

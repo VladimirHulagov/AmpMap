@@ -33,21 +33,22 @@ from datetime import datetime
 from itertools import groupby
 from typing import Any, Dict, List, Union
 
-from core.models import LabeledItem
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import F, Func, OuterRef, Q, QuerySet, Subquery
 from django.utils import timezone
-from tests_description.models import TestCase
-from tests_representation.choices import TestStatuses
-from tests_representation.exceptions import DateRangeIsAbsent
-from tests_representation.models import Test, TestResult
+
+from testy.core.models import LabeledItem
+from testy.tests_description.models import TestCase
+from testy.tests_representation.choices import TestStatuses
+from testy.tests_representation.exceptions import DateRangeIsAbsent
+from testy.tests_representation.models import Test, TestResult
 
 
 class StatisticProcessor:
     def __init__(
-            self,
-            filter_condition: Dict[str, Any],
-            outer_ref_prefix: str = 'case'
+        self,
+        filter_condition: Dict[str, Any],
+        outer_ref_prefix: str = 'case',
     ):
         self.labels = filter_condition.get('labels') or []
         self.not_labels = filter_condition.get('not_labels') or []
@@ -64,10 +65,10 @@ class StatisticProcessor:
                 object_id=OuterRef(outer_ref_lookup),
                 label_id__in=self.labels,
                 content_type=self.content_type_instance,
-                is_deleted=False
+                is_deleted=False,
             ).order_by().annotate(
-                count=Func(F('id'), function='Count')
-            ).values('count')
+                count=Func(F('id'), function='Count'),
+            ).values('count'),
         )
 
     @property
@@ -79,7 +80,6 @@ class StatisticProcessor:
                 f'{labeled_item_outer_ref}__label_id': label,
                 f'{labeled_item_outer_ref}__content_type': self.content_type_instance,
                 f'{labeled_item_outer_ref}__is_deleted': False,
-
             }
             not_condition = self.operation(not_condition, ~Q(**condition_dict))
         return not_condition
@@ -104,16 +104,16 @@ class HistogramProcessor:
             value = request_data.get(key, None)
             if not value:
                 raise DateRangeIsAbsent
-            date = datetime.strptime(value, "%Y-%m-%d")
+            date = datetime.strptime(value, '%Y-%m-%d')
             if key == 'end_date':
                 date += timezone.timedelta(days=1)
             self.period.append(
-                timezone.make_aware(date)
+                timezone.make_aware(date),
             )
 
         self.all_dates = {
             self.period[0] + timezone.timedelta(days=n_day) for n_day in range(
-                (self.period[1] - self.period[0]).days
+                (self.period[1] - self.period[0]).days,
             )
         }
 
@@ -121,7 +121,7 @@ class HistogramProcessor:
         for unused_date in self.all_dates:
             item = {'point': unused_date.date()}
             item.update(
-                {status.label.lower(): 0 for status in TestStatuses if status != TestStatuses.UNTESTED}
+                {status.label.lower(): 0 for status in TestStatuses if status != TestStatuses.UNTESTED},
             )
             result.append(item)
         return result
@@ -133,7 +133,10 @@ class HistogramProcessor:
         key_name = f'attributes__{self.attribute}'
         return instance.get(key_name, None)
 
-    def process_statistic(self, test_results_formatted: QuerySet[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def process_statistic(
+        self,
+        test_results_formatted: QuerySet[Dict[str, Any]],
+    ) -> List[Dict[str, Any]]:
         group_func = self.group_by_attribute if self.attribute else self.group_by_date
         grouped_data = groupby(test_results_formatted, group_func)
         result = []
@@ -147,7 +150,7 @@ class HistogramProcessor:
             histogram_bar_data.update({
                 TestStatuses(obj['status']).label.lower(): obj['status_count'] for obj in group_values
             })
-            histogram_bar_data['point'] = group_key.date() if not self.attribute else group_key
+            histogram_bar_data['point'] = group_key if self.attribute else group_key.date()
             result.append(histogram_bar_data)
 
         if not self.attribute:

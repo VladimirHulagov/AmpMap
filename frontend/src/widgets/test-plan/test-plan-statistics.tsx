@@ -1,7 +1,7 @@
 import { BarChartOutlined, ClockCircleOutlined, PieChartOutlined } from "@ant-design/icons"
 import { Row, Segmented } from "antd"
 import { SegmentedValue } from "antd/lib/segmented"
-import moment from "moment"
+import dayjs from "dayjs"
 import { useEffect, useState } from "react"
 
 import { useAppSelector } from "app/hooks"
@@ -55,11 +55,11 @@ export const TestPlanStatistics = ({ testPlanId }: TestPlanStatisticsProps) => {
   )
   const [dateHistogram, setDateHistogram] = useState({
     start: userConfig.ui?.test_plan?.[testPlanId]?.start_date
-      ? moment(userConfig.ui?.test_plan?.[testPlanId]?.start_date)
-      : moment().subtract(6, "days"),
+      ? dayjs(userConfig.ui?.test_plan?.[testPlanId]?.start_date)
+      : dayjs().subtract(6, "days"),
     end: userConfig.ui?.test_plan?.[testPlanId]?.end_date
-      ? moment(userConfig.ui?.test_plan?.[testPlanId]?.end_date)
-      : moment(),
+      ? dayjs(userConfig.ui?.test_plan?.[testPlanId]?.end_date)
+      : dayjs(),
   })
   const [attribute, setAttribute] = useState(userConfig.ui.graph_base_bar_attribute_input ?? "")
 

@@ -11,7 +11,7 @@ export const labelApi = createApi({
   endpoints: (builder) => ({
     getLabels: builder.query<Label[], GetLabelsParams>({
       query: ({ project }) => ({
-        url: rootPath,
+        url: `${rootPath}/`,
         params: { project },
       }),
       providesTags: (result) =>

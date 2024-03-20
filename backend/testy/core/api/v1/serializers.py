@@ -31,16 +31,12 @@
 from typing import Optional
 
 import humanize
-from core.models import Attachment, Label, Project, SystemMessage
 from django.urls import reverse
 from rest_framework.exceptions import ValidationError
 from rest_framework.fields import IntegerField, ListField, SerializerMethodField
 from rest_framework.serializers import HyperlinkedIdentityField, ModelSerializer, Serializer
 
-__all__ = (
-    'ProjectSerializer',
-    'LabelSerializer'
-)
+from testy.core.models import Attachment, Label, Project, SystemMessage
 
 
 class LabelSerializer(ModelSerializer):
@@ -73,7 +69,7 @@ class ProjectRetrieveSerializer(ProjectSerializer):
         if not instance.icon:
             return ''
         return self.context['request'].build_absolute_uri(
-            reverse('api:v1:project-icon', kwargs={'pk': instance.id})
+            reverse('api:v1:project-icon', kwargs={'pk': instance.id}),
         )
 
 
@@ -112,7 +108,7 @@ class AttachmentSerializer(ModelSerializer):
         model = Attachment
         fields = (
             'id', 'project', 'comment', 'name', 'filename', 'file_extension', 'size', 'size_humanize', 'content_type',
-            'object_id', 'user', 'file', 'url', 'link'
+            'object_id', 'user', 'file', 'url', 'link',
         )
 
         read_only_fields = ('name', 'filename', 'file_extension', 'size', 'user', 'url')
@@ -123,7 +119,7 @@ class AttachmentSerializer(ModelSerializer):
 
     def get_link(self, instance):
         return self.context['request'].build_absolute_uri(
-            reverse('attachment-path', kwargs={'pk': instance.id})
+            reverse('attachment-path', kwargs={'pk': instance.id}),
         )
 
     def validate(self, attrs):

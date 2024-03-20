@@ -1,7 +1,7 @@
 import { Button, Col, Divider, Input, Radio, Row, Tooltip } from "antd"
 import { ControllerRenderProps } from "react-hook-form"
 
-import { BracesIcon, FontsIcon, ListIcon } from "shared/ui/icons"
+import { FontsIcon, JsonIcon, ListIcon } from "shared/ui/icons"
 
 const { TextArea } = Input
 
@@ -52,7 +52,7 @@ export const AttributForm = ({
               </Tooltip>
               <Tooltip placement="topRight" title="Json value">
                 <Radio.Button value="json">
-                  <BracesIcon />
+                  <JsonIcon />
                 </Radio.Button>
               </Tooltip>
             </Radio.Group>

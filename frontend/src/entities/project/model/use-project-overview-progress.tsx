@@ -1,7 +1,7 @@
 import { FetchBaseQueryError } from "@reduxjs/toolkit/dist/query"
 import { DatePicker, Progress, Tooltip } from "antd"
 import { ColumnsType } from "antd/lib/table"
-import moment, { Moment } from "moment"
+import dayjs, { Dayjs } from "dayjs"
 import { RangeValue } from "rc-picker/lib/interface"
 import { useEffect, useState } from "react"
 import { Link, useParams } from "react-router-dom"
@@ -34,11 +34,11 @@ export const useProjectOverviewProgress = () => {
   const [getProgress, { data }] = useLazyGetProjectProgressQuery()
   const [isLoading, setIsLoading] = useState(false)
 
-  const disabledDateStart = (current: Moment) => {
-    return !current.isBefore(moment())
+  const disabledDateStart = (current: Dayjs) => {
+    return !current.isBefore(dayjs())
   }
 
-  const handleChange = async (values: RangeValue<moment.Moment>) => {
+  const handleChange = async (values: RangeValue<Dayjs>) => {
     if (!values || !projectId) return
     const [dateStart, dateEnd] = values
     if (!dateStart || !dateEnd) return
@@ -98,7 +98,7 @@ export const useProjectOverviewProgress = () => {
     {
       title: (
         <DatePicker.RangePicker
-          defaultValue={[moment().subtract(7, "days"), moment()]}
+          defaultValue={[dayjs().subtract(7, "days"), dayjs()]}
           onChange={handleChange}
           disabledDate={disabledDateStart}
           size="small"
@@ -126,8 +126,8 @@ export const useProjectOverviewProgress = () => {
     setIsLoading(true)
     getProgress({
       projectId,
-      period_date_start: formatBaseDate(moment().subtract(7, "days")),
-      period_date_end: formatBaseDate(moment()),
+      period_date_start: formatBaseDate(dayjs().subtract(7, "days")),
+      period_date_end: formatBaseDate(dayjs()),
     }).finally(() => {
       setIsLoading(false)
     })

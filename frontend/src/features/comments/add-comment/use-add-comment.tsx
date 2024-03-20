@@ -1,4 +1,3 @@
-import { FetchBaseQueryError } from "@reduxjs/toolkit/dist/query"
 import { notification } from "antd"
 import { useAddCommentMutation } from "entities/comments/api"
 import { useState } from "react"
@@ -6,6 +5,8 @@ import { useForm } from "react-hook-form"
 import { useParams } from "react-router-dom"
 
 import { useAttachments } from "entities/attachment/model"
+
+import { useErrors } from "shared/hooks"
 
 interface Props {
   model: Models
@@ -16,6 +17,8 @@ interface Props {
 export const useAddComment = ({ setIsShowAdd, model, object_id }: Props) => {
   const { projectId } = useParams<ParamProjectId>()
   const [comment, setComment] = useState("")
+  const [errors, setErrors] = useState<{ errors: string[] } | null>(null)
+  const { onHandleError } = useErrors<{ errors: string[] }>(setErrors)
   const [addComment, { isLoading: isLoadingAddComment }] = useAddCommentMutation()
   const { control } = useForm()
   const {
@@ -29,20 +32,14 @@ export const useAddComment = ({ setIsShowAdd, model, object_id }: Props) => {
   const handleAddClick = async () => {
     const attachmentsIds = attachments.map((attach) => String(attach.id))
     try {
-      await addComment({ model, object_id, content: comment, attachments: attachmentsIds })
+      await addComment({ model, object_id, content: comment, attachments: attachmentsIds }).unwrap()
       notification.success({
         message: "Success",
       })
       setComment("")
       setIsShowAdd(false)
     } catch (err: unknown) {
-      const error = err as FetchBaseQueryError
-
-      console.error(error)
-      notification.error({
-        message: "Error!",
-        description: "Internal server error. Showing in console log.",
-      })
+      onHandleError(err)
     }
   }
 
@@ -51,6 +48,7 @@ export const useAddComment = ({ setIsShowAdd, model, object_id }: Props) => {
     isLoadingCreateAttachment,
     attachments,
     comment,
+    errors,
     handleAddClick,
     handleAttachmentRemove,
     handleAttachmentLoad,

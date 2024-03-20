@@ -28,17 +28,12 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from django.apps import apps
 from django.conf import settings
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from utilities.settings import parse_plugin_config
 
 
 class PluginsAPIView(APIView):
 
     def get(self, request):
-        plugin_list = []
-        for plugin in settings.TESTY_PLUGINS:
-            plugin_list.append(parse_plugin_config(apps.get_app_config(plugin), request))
-        return Response(plugin_list)
+        return Response([config.verbose_dict(request) for config in settings.PLUGIN_CONFIGS])

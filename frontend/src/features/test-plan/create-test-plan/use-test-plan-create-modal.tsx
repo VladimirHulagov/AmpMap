@@ -1,5 +1,5 @@
 import { notification } from "antd"
-import moment, { Moment } from "moment"
+import dayjs, { Dayjs } from "dayjs"
 import React, { useEffect, useState } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
 import { useParams } from "react-router-dom"
@@ -31,8 +31,8 @@ type IForm = Modify<
   TestPlanCreate,
   {
     test_cases: string[]
-    started_at: Moment
-    due_date: Moment
+    started_at: Dayjs
+    due_date: Dayjs
   }
 >
 
@@ -54,7 +54,7 @@ export const useTestPlanCreateModal = ({
     reset,
     control,
     setValue,
-    formState: { isDirty },
+    formState: { isDirty, errors: formErrors },
     watch,
   } = useForm<IForm>({
     defaultValues: {
@@ -63,8 +63,8 @@ export const useTestPlanCreateModal = ({
       test_cases: [],
       parameters: [],
       parent: undefined,
-      started_at: moment(),
-      due_date: moment().add(1, "day"),
+      started_at: dayjs(),
+      due_date: dayjs().add(1, "day"),
     },
   })
   const testCasesWatch = watch("test_cases")
@@ -217,6 +217,7 @@ export const useTestPlanCreateModal = ({
     isLoadingCreateTestPlan,
     isDirty,
     errors,
+    formErrors,
     control,
     searchText,
     expandedRowKeys,

@@ -93,7 +93,7 @@ export const useTestPlanTable = () => {
       key: "title",
       sorter: true,
       render: (text, record) => (
-        <Link to={`/projects/${projectId}/plans/${record.id}`}>
+        <Link id={record.name} to={`/projects/${projectId}/plans/${record.id}`}>
           {/* eslint-disable-next-line @typescript-eslint/no-unsafe-assignment*/}
           <HighLighterTesty searchWords={searchText} textToHighlight={text} />
         </Link>

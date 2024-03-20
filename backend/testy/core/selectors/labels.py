@@ -30,9 +30,10 @@
 # <http://www.gnu.org/licenses/>.
 from typing import List
 
-from core.models import Label
 from django.db.models import QuerySet
-from tests_representation.selectors.testplan import TestPlanSelector
+
+from testy.core.models import Label
+from testy.tests_representation.selectors.testplan import TestPlanSelector
 
 
 class LabelSelector:
@@ -44,16 +45,18 @@ class LabelSelector:
 
         return Label.objects.filter(
             id__in=testplan.get_descendants(
-                include_self=True
+                include_self=True,
             ).prefetch_related(
-                'tests', 'tests__case', 'tests__case__labeled_items', 'tests__case__labeled_items__label'
+                'tests', 'tests__case', 'tests__case__labeled_items', 'tests__case__labeled_items__label',
             ).filter(
-                tests__case__labeled_items__is_deleted=False
+                tests__case__labeled_items__is_deleted=False,
             ).values_list(
-                'tests__case__labeled_items__label', flat=True
-            ).distinct()
+                'tests__case__labeled_items__label', flat=True,
+            ).distinct(),
         )
 
     @classmethod
     def labels_by_ids_list(cls, ids: List[int], field_name: str) -> QuerySet[Label]:
-        return Label.objects.filter(**{f'{field_name}__in': ids}).order_by('id')
+        return Label.objects.filter(
+            **{f'{field_name}__in': ids},
+        ).order_by('id')

@@ -1,4 +1,5 @@
-import { Breadcrumb, Layout, PageHeader, Tag } from "antd"
+import { PageHeader } from "@ant-design/pro-layout"
+import { Breadcrumb, Layout, Tag } from "antd"
 import { Outlet } from "react-router-dom"
 
 import { useProjectMain } from "entities/project/model/use-project-main"
@@ -45,6 +46,7 @@ export const ProjectMainPage = () => {
           }
           footer={<ProjectTabs projectId={projectId} />}
           extra={project.is_archive ? <Tag color={colors.error}>Archived</Tag> : null}
+          style={{ paddingBottom: 0 }}
         ></PageHeader>
         <Content style={{ margin: "24px" }}>
           <Outlet context={projectId} />

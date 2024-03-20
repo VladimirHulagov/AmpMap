@@ -31,16 +31,17 @@
 
 from typing import Any, Dict
 
-from core.services.attachments import AttachmentService
 from django.db import transaction
-from tests_description.selectors.cases import TestCaseSelector
-from tests_representation.models import TestResult, TestStepResult
-from users.models import User
+
+from testy.core.services.attachments import AttachmentService
+from testy.tests_description.selectors.cases import TestCaseSelector
+from testy.tests_representation.models import TestResult, TestStepResult
+from testy.users.models import User
 
 
 class TestResultService:
     non_side_effect_fields = [
-        'status', 'user', 'test', 'comment', 'is_archive', 'test_case_version', 'execution_time', 'attributes'
+        'status', 'user', 'test', 'comment', 'is_archive', 'test_case_version', 'execution_time', 'attributes',
     ]
 
     step_non_side_effect_fields = ['test_result', 'step', 'status', 'project']
@@ -66,7 +67,7 @@ class TestResultService:
             steps_results['project'] = test_result.project
             TestStepResult.model_create(
                 fields=self.step_non_side_effect_fields,
-                data=steps_results
+                data=steps_results,
             )
 
         return test_result
@@ -90,7 +91,7 @@ class TestResultService:
             step_result = TestStepResult.objects.get(pk=step_result_data['id'])
             step_result.model_update(
                 fields=self.step_non_side_effect_fields,
-                data=step_result_data
+                data=step_result_data,
             )
 
         return test_result

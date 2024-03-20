@@ -6,14 +6,11 @@ import { useParams } from "react-router"
 import { useAppDispatch } from "app/hooks"
 
 import { useCreateSuiteMutation } from "entities/suite/api"
-import { useTestSuiteSearch } from "entities/suite/model"
 import { setTestSuite } from "entities/suite/model/slice"
 
 import { useErrors } from "shared/hooks"
 import { showModalCloseConfirm } from "shared/libs"
 import { AlertSuccessChange } from "shared/ui/alert-success-change"
-
-import { useSearchField } from "widgets/search-field"
 
 interface ErrorData {
   name?: string
@@ -30,20 +27,6 @@ export const useSuiteCreateModal = (suite?: Suite) => {
   const [createSuite, { isLoading: isLoadingCreating, isSuccess: isSuccessCreate }] =
     useCreateSuiteMutation()
 
-  const {
-    search,
-    paginationParams,
-    handleSearch: handleSearchField,
-    handleLoadNextPageData,
-  } = useSearchField()
-
-  const {
-    isLoading: isLoadingTestSuites,
-    data: dataTestSuites,
-    isLastPage,
-    searchSuite,
-  } = useTestSuiteSearch()
-
   const [errors, setErrors] = useState<ErrorData | null>(null)
   const { onHandleError } = useErrors<ErrorData>(setErrors)
   const {
@@ -51,7 +34,7 @@ export const useSuiteCreateModal = (suite?: Suite) => {
     reset,
     control,
     setValue,
-    formState: { isDirty },
+    formState: { isDirty, errors: formErrors },
   } = useForm<SuiteUpdate>({
     defaultValues: {
       name: "",
@@ -59,16 +42,6 @@ export const useSuiteCreateModal = (suite?: Suite) => {
       parent: null,
     },
   })
-
-  useEffect(() => {
-    if (!projectId || search === undefined) return
-    searchSuite({
-      search,
-      project: projectId,
-      page: paginationParams.page,
-      page_size: paginationParams.page_size,
-    })
-  }, [paginationParams, search, projectId])
 
   useEffect(() => {
     if (!isShow || !suite) return
@@ -80,6 +53,7 @@ export const useSuiteCreateModal = (suite?: Suite) => {
     setIsShow(false)
     setErrors(null)
     reset()
+    setSelectedParent(null)
   }
 
   const handleCancel = () => {
@@ -124,7 +98,7 @@ export const useSuiteCreateModal = (suite?: Suite) => {
     }
   }
 
-  const handleSelectParent = (value?: { label: string; value: number }) => {
+  const handleSelectParent = (value?: SelectData | null) => {
     setErrors({ parent: "" })
     if (Number(value?.value) === Number(suite?.id)) {
       setErrors({ parent: "Test Suite не может быть родителем для самого себя." })
@@ -150,9 +124,7 @@ export const useSuiteCreateModal = (suite?: Suite) => {
     selectedParent,
     control,
     errors,
-    dataTestSuites,
-    isLoadingTestSuites,
-    isLastPage,
+    formErrors,
     handleShowCreate,
     handleClearParent,
     handleSelectParent,
@@ -160,7 +132,5 @@ export const useSuiteCreateModal = (suite?: Suite) => {
     onSubmit,
     handleSubmitForm: handleSubmit(onSubmit),
     setValue,
-    handleSearch: handleSearchField,
-    handleLoadNextPageData,
   }
 }

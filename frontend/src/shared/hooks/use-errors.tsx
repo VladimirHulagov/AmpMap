@@ -1,7 +1,6 @@
-import { notification } from "antd"
 import { Dispatch, SetStateAction } from "react"
 
-import { isFetchBaseQueryError } from "shared/libs"
+import { initInternalError, isFetchBaseQueryError } from "shared/libs"
 
 // prettier-ignore
 export const useErrors = <T, >(onSetErrors: Dispatch<SetStateAction<T | null>>) => {
@@ -10,18 +9,10 @@ export const useErrors = <T, >(onSetErrors: Dispatch<SetStateAction<T | null>>) 
       if (err?.status && err.status === 400) {
         onSetErrors(err.data as T)
       } else {
-        console.error(err)
-        notification.error({
-          message: "Error!",
-          description: "Internal server error. Showing in console log.",
-        })
+        initInternalError(err)
       }
     } else {
-      console.error(err)
-      notification.error({
-        message: "Error!",
-        description: "Internal server error. Showing in console log.",
-      })
+      initInternalError(err)
     }
   }
 

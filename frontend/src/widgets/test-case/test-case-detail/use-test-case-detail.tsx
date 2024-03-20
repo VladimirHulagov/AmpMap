@@ -1,4 +1,3 @@
-import { FetchBaseQueryError } from "@reduxjs/toolkit/query"
 import { Modal, notification } from "antd"
 import { useEffect, useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
@@ -9,6 +8,7 @@ import { useAppDispatch, useAppSelector } from "app/hooks"
 import { useLazyGetTestCaseByIdQuery, useRestoreTestCaseMutation } from "entities/test-case/api"
 import { selectDrawerTestCase, setDrawerTestCase } from "entities/test-case/model"
 
+import { initInternalError } from "shared/libs"
 import { AlertSuccessChange } from "shared/ui"
 
 interface UseTestCaseDetailProps {
@@ -113,13 +113,7 @@ export const useTestCaseDetail = ({ testCase, onClose }: UseTestCaseDetailProps)
             ),
           })
         } catch (err: unknown) {
-          const error = err as FetchBaseQueryError
-
-          console.error(error)
-          notification.error({
-            message: "Error!",
-            description: "Internal server error. Showing in console log.",
-          })
+          initInternalError(err)
         }
       },
     })

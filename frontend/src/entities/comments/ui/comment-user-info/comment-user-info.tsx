@@ -1,4 +1,4 @@
-import moment from "moment"
+import dayjs from "dayjs"
 import { HashLink } from "react-router-hash-link"
 
 import { UserAvatar } from "entities/user/ui"
@@ -27,9 +27,9 @@ export const CommentUserInfo = ({
       <span>{username}</span>
       <span>added a comment</span>
       <HashLink to={path + `#comment-${commentId}`} className={styles.link}>
-        {moment(createdAt).format("DD MMM YYYY HH:mm")}
+        {dayjs(createdAt).format("DD MMM YYYY HH:mm")}
       </HashLink>
-      {!moment(updatedAt).isSame(createdAt) && <span className={styles.edited}> - edited</span>}
+      {!dayjs(updatedAt).isSame(createdAt) && <span className={styles.edited}> - edited</span>}
     </div>
   )
 }

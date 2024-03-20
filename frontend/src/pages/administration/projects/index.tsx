@@ -1,4 +1,5 @@
-import { Breadcrumb, Layout, PageHeader, Space } from "antd"
+import { PageHeader } from "@ant-design/pro-layout"
+import { Breadcrumb, Layout, Space } from "antd"
 import { CreateProject } from "features/project"
 import { useContext, useEffect } from "react"
 import { MenuContext } from "widgets"
@@ -25,6 +26,7 @@ export const ProjectsMain = () => {
       <PageHeader
         breadcrumbRender={() => <Breadcrumb>{breadcrumbItems}</Breadcrumb>}
         title="Projects"
+        style={{ paddingBottom: 0 }}
       />
       <Content style={{ margin: "24px" }}>
         <div className="site-layout-background" style={{ padding: 24, minHeight: 360 }}>

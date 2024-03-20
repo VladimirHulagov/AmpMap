@@ -28,8 +28,9 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from comments.models import Comment
 from rest_framework.exceptions import NotFound
+
+from testy.comments.models import Comment
 
 
 class CommentSelector:

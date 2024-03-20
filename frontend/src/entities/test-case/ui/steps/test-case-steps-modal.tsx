@@ -6,7 +6,7 @@ import {
   useTestCaseStepsModal,
 } from "entities/test-case/model/use-test-case-steps-modal"
 
-import { Attachment, TextArea } from "shared/ui"
+import { Attachment, TextAreaWithAttach } from "shared/ui"
 
 export const TestCaseStepsModal = ({
   step,
@@ -59,25 +59,44 @@ export const TestCaseStepsModal = ({
         <Form.Item
           label="Name"
           validateStatus={errors?.name ? "error" : ""}
-          help={errors?.name ?? ""}
+          help={errors?.name?.message ?? ""}
+          required
         >
-          <Controller name="name" control={control} render={({ field }) => <Input {...field} />} />
+          <Controller
+            name="name"
+            control={control}
+            rules={{
+              maxLength: { value: 255, message: "Максимальная длина 255." },
+              required: { value: true, message: "Обязательное поле." },
+            }}
+            render={({ field }) => <Input {...field} />}
+          />
         </Form.Item>
         <Form.Item
           label="Scenario"
           validateStatus={errors?.scenario ? "error" : ""}
-          help={errors?.scenario ?? ""}
+          help={errors.scenario?.message ?? ""}
+          required
         >
           <Controller
             name="scenario"
             control={control}
-            render={({ field }) => (
-              <TextArea
-                uploadId="step-scenario"
-                fieldProps={field}
-                stateAttachments={{ attachments, setAttachments }}
-                customRequest={onLoad}
-                setValue={setValue}
+            render={() => (
+              <Controller
+                name="scenario"
+                control={control}
+                rules={{
+                  required: { value: true, message: "Обязательное поле." },
+                }}
+                render={({ field }) => (
+                  <TextAreaWithAttach
+                    uploadId="step-scenario"
+                    fieldProps={field}
+                    stateAttachments={{ attachments, setAttachments }}
+                    customRequest={onLoad}
+                    setValue={setValue}
+                  />
+                )}
               />
             )}
           />
@@ -85,13 +104,13 @@ export const TestCaseStepsModal = ({
         <Form.Item
           label="Expected"
           validateStatus={errors?.expected ? "error" : ""}
-          help={errors?.expected ?? ""}
+          help={errors?.expected?.message ?? ""}
         >
           <Controller
             name="expected"
             control={control}
             render={({ field }) => (
-              <TextArea
+              <TextAreaWithAttach
                 uploadId="step-expected"
                 fieldProps={field}
                 stateAttachments={{ attachments, setAttachments }}

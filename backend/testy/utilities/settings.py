@@ -28,71 +28,9 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-import importlib
 import json
 import mimetypes
-from json import JSONDecodeError
 from typing import Optional
-
-from django.core.exceptions import ImproperlyConfigured
-from django.urls import reverse
-from packaging import version
-
-
-def parse_plugin_config(plugin_config, request):
-    plugin_dict = {
-        'name': plugin_config.verbose_name,
-        'package': plugin_config.name,
-        'author': plugin_config.author,
-        'author_email': plugin_config.author_email,
-        'description': plugin_config.description,
-        'version': plugin_config.version,
-    }
-    if plugin_config.index_reverse_name:
-        plugin_dict['plugin_index_url'] = request.build_absolute_uri(
-            reverse(f'plugins:{plugin_config.name}:{plugin_config.index_reverse_name}'),
-        )
-    return plugin_dict
-
-
-def insert_plugins(testy_plugins, installed_plugins, middleware, testy_version):
-    for plugin_name in testy_plugins:
-        try:
-            plugin = importlib.import_module(plugin_name)
-        except ModuleNotFoundError as err:
-            if err.name == plugin_name:
-                raise ImproperlyConfigured(
-                    f'Unable to import plugin {plugin_name}: did you forget to install wanted plugin?'
-                )
-            raise err
-
-        current_version = version.parse(testy_version)
-
-        try:
-            plugin_config = plugin.config
-        except AttributeError:
-            raise ImproperlyConfigured(
-                f'You forgot to instantiate config for plugin {plugin_name} after overriding default config'
-            )
-
-        installed_plugins.append(f'{plugin_config.__module__}.{plugin_config.__name__}')
-
-        if plugin_config.min_version:
-            if current_version < version.parse(plugin_config.min_version):
-                raise ImproperlyConfigured(
-                    f'Plugin {plugin_config.__module__} requires min version {plugin_config.min_version} of TestY.'
-                )
-
-        if plugin_config.max_version:
-            if current_version > version.parse(plugin_config.max_version):
-                raise ImproperlyConfigured(
-                    f'Plugin {plugin_config.__module__} requires max version {plugin_config.max_version} of TestY.'
-                )
-
-        plugin_middleware = plugin_config.middleware
-        middleware.extend(plugin_middleware)
-
-    return installed_plugins, middleware
 
 
 def add_mimetypes(mimetype_json: Optional[str]):
@@ -100,7 +38,7 @@ def add_mimetypes(mimetype_json: Optional[str]):
         return
     try:
         custom_mimetypes = json.loads(mimetype_json)
-    except JSONDecodeError:
+    except json.JSONDecodeError:
         custom_mimetypes = []
 
     for custom_type, custom_extension in custom_mimetypes:

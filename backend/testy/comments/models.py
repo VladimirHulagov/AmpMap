@@ -28,14 +28,13 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-
-from core.models import Attachment
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 
-from testy.models import BaseModel
+from testy.core.models import Attachment
+from testy.root.models import BaseModel
 
 UserModel = get_user_model()
 

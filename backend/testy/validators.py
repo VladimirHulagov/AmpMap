@@ -41,6 +41,8 @@ from django.utils.deconstruct import deconstructible
 from django.utils.timezone import now, timedelta
 from rest_framework import serializers
 
+_ID = 'id'
+
 
 @deconstructible
 class ExtensionValidator:
@@ -81,11 +83,9 @@ class TestResultUpdateValidator:
         creation_timedelta = now() - instance.created_at
         version_changed = instance.test_case_version != instance.test.case.history.first().history_id
         update_forbidden = creation_timedelta > timedelta(hours=settings.TEST_RESULT_UPDATE_GAP) or version_changed
-
-        err_msg = (
-            f'Update gap closed, you can only update "comment" on this result.\n'
-            f'Update gap is set to "{settings.TEST_RESULT_UPDATE_GAP}" hours'
-        )
+        err_msg = f"""Update gap closed, you can only update "comment" on this result.\n
+        Update gap is set to "{settings.TEST_RESULT_UPDATE_GAP}" hours
+        """  # noqa: S608
 
         if version_changed:
             err_msg = 'Test case version changed you can only update "comment" on current result'
@@ -96,18 +96,18 @@ class TestResultUpdateValidator:
             if all([not fields_are_equal, is_time_limited, update_forbidden]):
                 raise serializers.ValidationError(err_msg)
 
-    @staticmethod
-    def _compare_fields(field_name: str, old_value, new_value):
+    @classmethod
+    def _compare_fields(cls, field_name: str, old_value, new_value):
         related_managers = ['steps_results', 'attachments']
         if field_name not in related_managers:
             return old_value == new_value
 
         if field_name == 'attachments':
-            old_value = list(old_value.all().order_by('id').values_list('id', flat=True))
+            old_value = list(old_value.all().order_by(_ID).values_list(_ID, flat=True))
             return old_value == new_value
 
         old_steps = old_value.all()
-        new_value.sort(key=itemgetter('id'))
+        new_value.sort(key=itemgetter(_ID))
         if len(old_steps) != len(new_value):
             return False
         for old_step, new_step in zip(old_steps, new_value):
@@ -119,17 +119,17 @@ class TestResultUpdateValidator:
 
 @deconstructible
 class EstimateValidator:
-    def __call__(self, value):
+    def __call__(self, value):  # noqa: WPS238, WPS231
         estimate = value.get('estimate')
         if not estimate:
-            return None
+            return
         estimate = estimate.strip()
         if estimate[0] == '-':
             raise ValidationError('Estimate value cannot be negative.')
         for week_alias in ('w', 'wk', 'week', 'weeks'):
             if week_alias in estimate:
                 raise ValidationError('Max estimate period is a day')
-        estimate = estimate + 'm' if estimate.isnumeric() else estimate
+        estimate = f'{estimate}m' if estimate.isnumeric() else estimate
         secs = pytimeparse.parse(estimate)
         if not secs:
             raise ValidationError('Invalid estimate format.')
@@ -144,7 +144,7 @@ class CaseInsensitiveUsernameValidator:
     def __call__(self, value):
         if get_user_model().objects.filter(username__iexact=value).exclude(username=value).exists():
             raise ValidationError(
-                [{'username': ["A user with that username in a different letter case already exists."]}]
+                [{'username': ['A user with that username in a different letter case already exists.']}],
             )
 
 
@@ -166,7 +166,7 @@ class TestPlanParentValidator:
             return
         archived_ancestors = parent.get_ancestors(include_self=True).filter(is_archive=True)
         if archived_ancestors:
-            ids = list(archived_ancestors.values_list('id', flat=True))
+            ids = list(archived_ancestors.values_list(_ID, flat=True))
             raise serializers.ValidationError(
-                f'Cannot make child to an archived ancestor, archive ancestors ids are: {ids}'
+                f'Cannot make child to an archived ancestor, archive ancestors ids are: {ids}',
             )

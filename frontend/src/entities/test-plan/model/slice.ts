@@ -1,10 +1,11 @@
-import { createSlice } from "@reduxjs/toolkit"
+import { PayloadAction, createSlice } from "@reduxjs/toolkit"
 
 import { RootState } from "app/store"
 
 const initialState: TestPlanState = {
   showArchivedTests: false,
   showArchivedResults: false,
+  tests: [],
 }
 
 export const testPlanSlice = createSlice({
@@ -17,12 +18,16 @@ export const testPlanSlice = createSlice({
     showArchivedResults: (state) => {
       state.showArchivedResults = !state.showArchivedResults
     },
+    setTests: (state, action: PayloadAction<Test[]>) => {
+      state.tests = action.payload
+    },
   },
 })
 
-export const { showArchivedTests, showArchivedResults } = testPlanSlice.actions
+export const { showArchivedTests, showArchivedResults, setTests } = testPlanSlice.actions
 
 export const testPlanReducer = testPlanSlice.reducer
 
 export const selectArchivedTestsIsShow = (state: RootState) => state.testPlan.showArchivedTests
 export const selectArchivedResultsIsShow = (state: RootState) => state.testPlan.showArchivedResults
+export const selectTests = (state: RootState) => state.testPlan.tests

@@ -5,7 +5,7 @@ import uuid
 
 from django.db import migrations, models
 import django.contrib.auth.validators
-import validators
+import testy.validators as validators
 
 
 def rename_ci_username_duplicates(apps, schema_editor):

@@ -22,6 +22,7 @@ interface Test {
   assignee: string | null
   assignee_username: string | null
   avatar_link: string | null
+  test_suite_description?: string | null
 }
 
 interface ITestGet {

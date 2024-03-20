@@ -1,15 +1,20 @@
-import moment, { Moment } from "moment"
+import dayjs, { Dayjs } from "dayjs"
+import isSameOrAfter from "dayjs/plugin/isSameOrAfter"
+import isSameOrBefore from "dayjs/plugin/isSameOrBefore"
 import { useState } from "react"
 
-export const useDatepicker = () => {
-  const [dateTo, setDateTo] = useState<Moment | null>(moment())
-  const [dateFrom, setDateFrom] = useState<Moment | null>(moment())
+dayjs.extend(isSameOrAfter)
+dayjs.extend(isSameOrBefore)
 
-  const disabledDateFrom = (current: Moment) => {
+export const useDatepicker = () => {
+  const [dateTo, setDateTo] = useState<Dayjs | null>(dayjs())
+  const [dateFrom, setDateFrom] = useState<Dayjs | null>(dayjs())
+
+  const disabledDateFrom = (current: Dayjs) => {
     return current.isSameOrAfter(dateTo)
   }
 
-  const disabledDateTo = (current: Moment) => {
+  const disabledDateTo = (current: Dayjs) => {
     return current.isSameOrBefore(dateFrom)
   }
 

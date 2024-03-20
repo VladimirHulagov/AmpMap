@@ -30,19 +30,23 @@
 # <http://www.gnu.org/licenses/>.
 from typing import Any, Dict, List, Optional
 
+from django.conf import settings
 from django.contrib.postgres.aggregates import StringAgg
-from django.db import models
-from django.db.models import OuterRef, Q, QuerySet, Subquery
-from tests_description.models import TestSuite
-from tests_representation.models import Test, TestResult
+from django.db.models import CharField, F, OuterRef, Q, QuerySet, Subquery
+
+from testy.tests_description.models import TestSuite
+from testy.tests_representation.models import Test
+from testy.tests_representation.selectors.results import TestResultSelector
 
 
 class TestSelector:
     def test_list(self) -> QuerySet[Test]:
-        return Test.objects.select_related('case').prefetch_related('results').all()
+        return Test.objects.select_related('case').prefetch_related('results').annotate(
+            test_suite_description=F('case__suite__description'),
+        ).all()
 
-    @staticmethod
-    def test_list_by_testplan_ids(plan_ids: List[int]) -> QuerySet[Test]:
+    @classmethod
+    def test_list_by_testplan_ids(cls, plan_ids: List[int]) -> QuerySet[Test]:
         return Test.objects.filter(plan__in=plan_ids)
 
     def test_list_with_last_status(self, filter_condition: Optional[Dict[str, Any]] = None) -> QuerySet[Test]:
@@ -54,8 +58,8 @@ class TestSelector:
                 Q(
                     lft__lt=OuterRef('case__suite__lft'),
                     rght__gt=OuterRef('case__suite__rght'),
-                    tree_id=OuterRef('case__suite__tree_id')
-                ) | Q(id=OuterRef('case__suite__id'))
+                    tree_id=OuterRef('case__suite__tree_id'),
+                ) | Q(id=OuterRef('case__suite__id')),
             )
             .values('tree_id')
             .annotate(concatenated_name=StringAgg('name', delimiter='/'))
@@ -67,13 +71,12 @@ class TestSelector:
             .prefetch_related('case__suite', 'case__labeled_items', 'case__labeled_items__label', 'assignee')
             .filter(**filter_condition)
             .annotate(
-                last_status=Subquery(
-                    TestResult.objects.filter(test_id=OuterRef("id")).order_by("-created_at").values('status')[:1]
-                ),
+                last_status=TestResultSelector.get_last_status_subquery(),
                 suite_path=Subquery(
                     subquery,
-                    output_field=models.CharField(max_length=255)
+                    output_field=CharField(max_length=settings.CHAR_FIELD_MAX_LEN),
                 ),
+                test_suite_description=F('case__suite__description'),
             )
             .order_by('case__suite')
         )

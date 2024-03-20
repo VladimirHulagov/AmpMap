@@ -32,7 +32,6 @@ from contextlib import contextmanager
 
 from django.db import transaction
 from django.db.models import Func, IntegerField, Subquery, Value
-from django.db.transaction import get_connection
 
 
 class SubCount(Subquery):
@@ -44,14 +43,14 @@ class DateTrunc(Func):
     function = 'DATE_TRUNC'
 
     def __init__(self, trunc_type, field_expression, **extra):
-        super(DateTrunc, self).__init__(Value(trunc_type), field_expression, **extra)
+        super().__init__(Value(trunc_type), field_expression, **extra)
 
 
 @contextmanager
 def lock_table(model):
     with transaction.atomic():
-        cursor = get_connection().cursor()
-        cursor.execute(f'LOCK TABLE {model._meta.db_table}')
+        cursor = transaction.get_connection().cursor()
+        cursor.execute(f'LOCK TABLE {model._meta.db_table}')  # noqa: WPS237
         try:
             yield
         finally:

@@ -29,17 +29,18 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 
-from core.mixins import MediaViewMixin
-from core.models import Attachment
 from rest_framework import status
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from testy.core.mixins import MediaViewMixin
+from testy.core.models import Attachment
+
 
 class AttachmentView(APIView, MediaViewMixin):
-    permission_classes = [IsAuthenticated, ]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
         attachment = get_object_or_404(Attachment, pk=pk)

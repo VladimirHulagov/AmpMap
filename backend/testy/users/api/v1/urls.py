@@ -30,7 +30,8 @@
 # <http://www.gnu.org/licenses/>.
 
 from rest_framework.routers import SimpleRouter
-from users.api.v1 import views
+
+from testy.users.api.v1 import views
 
 router = SimpleRouter()
 

@@ -34,7 +34,7 @@ export const TestPlanLabels = ({ testPlanId }: TestPlanLabelsProps) => {
       <Row>
         <Col>
           <div className={`${styles.titleBlock} labels-switcher`}>
-            <Typography.Title level={5} style={{ marginBottom: 0, marginRight: 6 }}>
+            <Typography.Title level={5} style={{ marginBottom: 0, marginTop: 0, marginRight: 6 }}>
               Labels
             </Typography.Title>
             <Switch
@@ -52,8 +52,8 @@ export const TestPlanLabels = ({ testPlanId }: TestPlanLabelsProps) => {
               const color = selectedLabels.includes(String(label.id))
                 ? colors.accent
                 : selectedNotlabels.includes(String(label.id))
-                ? "line-through"
-                : undefined
+                  ? "line-through"
+                  : undefined
               return (
                 <li key={label.id}>
                   <Label

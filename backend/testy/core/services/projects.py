@@ -31,8 +31,8 @@
 
 from typing import Any, Dict
 
-from core.models import Project
-from core.services.media import MediaService
+from testy.core.models import Project
+from testy.core.services.media import MediaService
 
 
 class ProjectService(MediaService):

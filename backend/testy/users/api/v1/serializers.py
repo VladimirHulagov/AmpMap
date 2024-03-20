@@ -33,7 +33,8 @@ from django.contrib.auth import get_user_model
 from rest_framework.fields import JSONField, SerializerMethodField
 from rest_framework.reverse import reverse
 from rest_framework.serializers import HyperlinkedIdentityField, ModelSerializer
-from users.models import Group
+
+from testy.users.models import Group
 
 UserModel = get_user_model()
 
@@ -54,20 +55,20 @@ class UserSerializer(ModelSerializer):
         model = UserModel
         fields = (
             'id', 'url', 'username', 'password', 'first_name', 'last_name', 'email', 'is_staff', 'is_active',
-            'date_joined', 'groups', 'avatar', 'avatar_link'
+            'date_joined', 'groups', 'avatar', 'avatar_link',
         )
 
         read_only_fields = ('date_joined',)
         extra_kwargs = {
             'password': {'write_only': True},
-            'avatar': {'write_only': True}
+            'avatar': {'write_only': True},
         }
 
     def get_avatar_link(self, instance):
         if not instance.avatar:
             return ''
         return self.context['request'].build_absolute_uri(
-            reverse('avatar-path', kwargs={'pk': instance.id})
+            reverse('avatar-path', kwargs={'pk': instance.id}),
         )
 
 

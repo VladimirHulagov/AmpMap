@@ -1,5 +1,5 @@
 import { notification } from "antd"
-import moment, { Moment } from "moment"
+import dayjs, { Dayjs } from "dayjs"
 import { useEffect, useState } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
 import { useParams } from "react-router-dom"
@@ -34,8 +34,8 @@ type IForm = Modify<
   TestPlanUpdate,
   {
     test_cases: string[]
-    started_at: Moment
-    due_date: Moment
+    started_at: Dayjs
+    due_date: Dayjs
   }
 >
 
@@ -58,7 +58,7 @@ export const useTestPlanEditModal = ({
     control,
     setValue,
     watch,
-    formState: { isDirty },
+    formState: { isDirty, errors: formErrors },
   } = useForm<IForm>()
   const testCasesWatch = watch("test_cases")
   const { onHandleError } = useErrors<ErrorData>(setErrors)
@@ -130,10 +130,10 @@ export const useTestPlanEditModal = ({
     if (!isShow || !tests) return
     setValue("name", testPlan.name)
     setValue("description", testPlan.description)
-    setValue("started_at", moment(testPlan.started_at))
-    setDateFrom(moment(testPlan.started_at))
-    setValue("due_date", moment(testPlan.due_date))
-    setDateTo(moment(testPlan.due_date))
+    setValue("started_at", dayjs(testPlan.started_at))
+    setDateFrom(dayjs(testPlan.started_at))
+    setValue("due_date", dayjs(testPlan.due_date))
+    setDateTo(dayjs(testPlan.due_date))
 
     if (testPlan.parent) {
       setSelectedParent({ value: testPlan.parent.id, label: testPlan.parent.name })
@@ -171,8 +171,8 @@ export const useTestPlanEditModal = ({
         id: testPlan.id,
         body: {
           ...data,
-          due_date: moment(data.due_date).format("YYYY-MM-DDThh:mm"),
-          started_at: moment(data.started_at).format("YYYY-MM-DDThh:mm"),
+          due_date: dayjs(data.due_date).format("YYYY-MM-DDThh:mm"),
+          started_at: dayjs(data.started_at).format("YYYY-MM-DDThh:mm"),
           parent: data.parent ?? null,
           test_cases: newTestCases,
         },
@@ -220,6 +220,7 @@ export const useTestPlanEditModal = ({
 
   return {
     errors,
+    formErrors,
     control,
     selectedParent,
     searchText,

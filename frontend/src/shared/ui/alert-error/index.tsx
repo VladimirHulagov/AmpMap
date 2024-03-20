@@ -4,11 +4,16 @@ import { ErrorObj, useAlertError } from "shared/hooks/use-alert-error"
 
 interface AlertErrorProps {
   error: ErrorObj
-  skipFields: string[]
+  skipFields?: string[]
+  style?: React.CSSProperties
 }
 
-export const AlertError = ({ error, skipFields }: AlertErrorProps) => {
+export const AlertError = ({ error, skipFields, style }: AlertErrorProps) => {
   const errors = useAlertError(error, skipFields)
 
-  return errors && <Alert style={{ marginBottom: 24 }} description={errors.errors} type="error" />
+  return (
+    errors && (
+      <Alert style={{ marginBottom: 24, ...style }} description={errors.errors} type="error" />
+    )
+  )
 }

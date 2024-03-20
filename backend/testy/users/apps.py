@@ -34,7 +34,7 @@ from django.apps import AppConfig
 
 class UsersConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'users'
+    name = 'testy.users'
 
     def ready(self):
-        from . import signals  # noqa
+        from . import signals

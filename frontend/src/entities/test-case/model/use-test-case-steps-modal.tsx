@@ -1,16 +1,10 @@
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
 import { useParams } from "react-router-dom"
 
 import { useAttachments } from "entities/attachment/model"
 
 import { showModalCloseConfirm } from "shared/libs"
-
-interface ErrorData {
-  name?: string
-  scenario?: string
-  expected?: string
-}
 
 interface FormData {
   name: string
@@ -32,13 +26,13 @@ export const useTestCaseStepsModal = ({
   onCloseModal,
 }: TestCaseStepsModalProps) => {
   const { projectId } = useParams<ParamProjectId>()
-  const [errors, setErrors] = useState<ErrorData | null>(null)
   const {
     handleSubmit,
     control,
     setValue,
     register,
-    formState: { isDirty },
+    clearErrors,
+    formState: { isDirty, errors },
   } = useForm<FormData>({
     defaultValues: {
       name: "",
@@ -53,7 +47,7 @@ export const useTestCaseStepsModal = ({
 
   const onCloseModalSteps = () => {
     onCloseModal()
-    setErrors(null)
+    clearErrors()
   }
 
   const handleClose = () => {
@@ -67,16 +61,6 @@ export const useTestCaseStepsModal = ({
 
   const onSubmitForm: SubmitHandler<FormData> = ({ name, scenario, expected }) => {
     if (!step) return
-
-    if (!name) {
-      setErrors({ name: "Это поле не может быть пустым." })
-      return
-    }
-
-    if (!scenario) {
-      setErrors({ scenario: "Это поле не может быть пустым." })
-      return
-    }
 
     onSubmit({
       id: step.id,
@@ -99,7 +83,7 @@ export const useTestCaseStepsModal = ({
     setValue("scenario", step.scenario)
     setValue("expected", step.expected)
     setAttachments(testResultAttachesWithUid)
-    setErrors(null)
+    clearErrors()
   }, [step])
 
   return {

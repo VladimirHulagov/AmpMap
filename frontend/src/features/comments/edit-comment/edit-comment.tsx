@@ -1,7 +1,7 @@
 import { UploadOutlined } from "@ant-design/icons"
-import { Button, Input, Modal, Upload } from "antd"
+import { Button, Modal, Upload } from "antd"
 
-import { Attachment } from "shared/ui"
+import { Attachment, TextArea } from "shared/ui"
 
 import { useEditComment } from "./use-edit-comment"
 
@@ -45,7 +45,7 @@ export const EditComment = ({ comment }: Props) => {
         open={isShow}
         onCancel={handleClose}
         footer={[
-          <Button key="back" onClick={handleClose} type="ghost">
+          <Button key="back" onClick={handleClose} type="text">
             Cancel
           </Button>,
           <Button
@@ -59,7 +59,7 @@ export const EditComment = ({ comment }: Props) => {
           </Button>,
         ]}
       >
-        <Input.TextArea
+        <TextArea
           id="edit-comments-text-area"
           style={{ fontSize: 13 }}
           rows={4}

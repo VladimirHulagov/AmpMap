@@ -28,8 +28,6 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from core.services.copy import CopyService
-from drf_yasg.utils import swagger_auto_schema
 from filters import (
     CustomOrderingFilter,
     CustomSearchFilter,
@@ -45,7 +43,21 @@ from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter
 from rest_framework.response import Response
-from tests_description.api.v1.serializers import (
+from swagger.cases import (
+    cases_copy_schema,
+    cases_create_schema,
+    cases_list_schema,
+    cases_retrieve_schema,
+    cases_search_schema,
+    cases_tests_schema,
+    cases_update_schema,
+    cases_version_restore_schema,
+)
+from swagger.suites import suite_copy_schema, suite_list_schema, suite_retrieve_schema, suites_breadcrumbs_schema
+
+from testy.core.services.copy import CopyService
+from testy.root.mixins import TestyArchiveMixin, TestyModelViewSet
+from testy.tests_description.api.v1.serializers import (
     TestCaseCopySerializer,
     TestCaseHistorySerializer,
     TestCaseInputSerializer,
@@ -59,32 +71,37 @@ from tests_description.api.v1.serializers import (
     TestSuiteTreeCasesSerializer,
     TestSuiteTreeSerializer,
 )
-from tests_description.models import TestSuite
-from tests_description.selectors.cases import TestCaseSelector
-from tests_description.selectors.suites import TestSuiteSelector
-from tests_description.services.cases import TestCaseService
-from tests_description.services.suites import TestSuiteService
-from tests_representation.api.v1.serializers import TestSerializer
-from tests_representation.selectors.testplan import TestPlanSelector
-from tests_representation.selectors.tests import TestSelector
-from utilities.request import get_boolean
-from utilities.tree import form_tree_prefetch_objects, get_breadcrumbs_treeview
+from testy.tests_description.models import TestSuite
+from testy.tests_description.selectors.cases import TestCaseSelector
+from testy.tests_description.selectors.suites import TestSuiteSelector
+from testy.tests_description.services.cases import TestCaseService
+from testy.tests_description.services.suites import TestSuiteService
+from testy.tests_representation.api.v1.serializers import TestSerializer
+from testy.tests_representation.selectors.testplan import TestPlanSelector
+from testy.tests_representation.selectors.tests import TestSelector
+from testy.utilities.request import get_boolean
+from testy.utilities.tree import form_tree_prefetch_objects, get_breadcrumbs_treeview
 
-from testy.mixins import TestyArchiveMixin, TestyModelViewSet
+_USER = 'user'
+_GET = 'get'
+_POST = 'post'
+_COPY = 'copy'
 
 
+@cases_list_schema
 class TestCaseViewSet(TestyModelViewSet, TestyArchiveMixin):
     queryset = TestCaseSelector().case_list()
     serializer_class = TestCaseListSerializer
     filter_backends = [TestyFilterBackend, TestyBaseSearchFilter, OrderingFilter]
     filterset_class = TestCaseFilter
     pagination_class = StandardSetPagination
-    http_method_names = ['get', 'post', 'put', 'delete', 'head', 'options', 'trace']
+    http_method_names = [_GET, _POST, 'put', 'delete', 'head', 'options', 'trace']
     search_fields = ['name']
     ordering_fields = ['id', 'name']
+    schema_tags = ['Test cases']
 
     def get_queryset(self):
-        if self.action in ['recovery_list', 'restore', 'delete_permanently']:
+        if self.action in {'recovery_list', 'restore', 'delete_permanently'}:
             return TestCaseSelector().case_deleted_list()
         if self.action == 'restore_archived':
             return TestCaseSelector().case_list({'is_archive': True})
@@ -96,31 +113,25 @@ class TestCaseViewSet(TestyModelViewSet, TestyArchiveMixin):
     def get_serializer_class(self):
         if self.action == 'copy_cases':
             return TestCaseRetrieveSerializer
-        if self.action in ['create', 'update']:
+        if self.action in {'create', 'update'}:
             if get_boolean(self.request, 'is_steps', method='data'):
                 return TestCaseInputWithStepsSerializer
             return TestCaseInputSerializer
         return super().get_serializer_class()
 
-    @swagger_auto_schema(
-        request_body=TestCaseInputWithStepsSerializer,
-        responses={201: TestCaseRetrieveSerializer}
-    )
+    @cases_create_schema
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         if serializer.validated_data.get('is_steps', False):
-            test_case = TestCaseService().case_with_steps_create({'user': request.user, **serializer.validated_data})
+            test_case = TestCaseService().case_with_steps_create({_USER: request.user, **serializer.validated_data})
         else:
-            test_case = TestCaseService().case_create({'user': request.user, **serializer.validated_data})
-        serializer_output = TestCaseRetrieveSerializer(test_case, context={'request': request})
+            test_case = TestCaseService().case_create({_USER: request.user, **serializer.validated_data})
+        serializer_output = TestCaseRetrieveSerializer(test_case, context=self.get_serializer_context())
         headers = self.get_success_headers(serializer_output.data)
         return Response(serializer_output.data, status=status.HTTP_201_CREATED, headers=headers)
 
-    @swagger_auto_schema(
-        request_body=TestCaseInputWithStepsSerializer,
-        responses={201: TestCaseRetrieveSerializer}
-    )
+    @cases_update_schema
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
@@ -128,48 +139,57 @@ class TestCaseViewSet(TestyModelViewSet, TestyArchiveMixin):
         serializer.is_valid(raise_exception=True)
 
         if serializer.validated_data.get('is_steps', False):
-            instance = TestCaseService().case_with_steps_update(serializer.instance, {
-                'user': request.user, **serializer.validated_data})
+            instance = TestCaseService().case_with_steps_update(
+                serializer.instance, {
+                    _USER: request.user, **serializer.validated_data,
+                },
+            )
         else:
-            instance = TestCaseService().case_update(serializer.instance, {
-                'user': request.user, **serializer.validated_data})
+            instance = TestCaseService().case_update(
+                serializer.instance, {
+                    _USER: request.user, **serializer.validated_data,
+                },
+            )
 
         if getattr(instance, '_prefetched_objects_cache', None):
             # If 'prefetch_related' has been applied to a queryset, we need to
             # forcibly invalidate the prefetch cache on the instance.
             instance._prefetched_objects_cache = {}
 
-        return Response(TestCaseRetrieveSerializer(instance, context={'request': request}).data)
+        return Response(TestCaseRetrieveSerializer(instance, context=self.get_serializer_context()).data)
 
+    @cases_retrieve_schema
     def retrieve(self, request, pk=None, **kwargs):
         version = request.query_params.get('version')
         instance, version = TestCaseSelector.case_by_version(pk, version)
-        serializer = TestCaseRetrieveSerializer(instance, version=version, context={'request': request})
+        serializer = TestCaseRetrieveSerializer(instance, version=version, context=self.get_serializer_context())
         return Response(serializer.data)
 
-    @action(methods=['post'], url_path='copy', url_name='copy', detail=False)
+    @cases_copy_schema
+    @action(methods=[_POST], url_path=_COPY, url_name=_COPY, detail=False)
     def copy_cases(self, request):
         serializer = TestCaseCopySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         cases = TestCaseService.cases_copy(serializer.validated_data)
         return Response(self.get_serializer(cases, many=True).data)
 
-    @action(methods=['get'], url_path='tests', url_name='tests', detail=True)
+    @cases_tests_schema
+    @action(methods=[_GET], url_path='tests', url_name='tests', detail=True)
     def get_tests(self, request, pk):
         query = TestSelector().test_list_with_last_status({'case_id': pk})
         filtered_query = CustomSearchFilter().filter_queryset(request, query, ['last_status'])
         ordered_query = CustomOrderingFilter().filter_queryset(request, filtered_query)
         page = self.paginate_queryset(ordered_query)
-        serializer = TestSerializer(page, many=True, context={'request': request})
+        serializer = TestSerializer(page, many=True, context=self.get_serializer_context())
         response_tests = []
-        plan_ids = set([test['plan'] for test in serializer.data])
+        plan_ids = {test['plan'] for test in serializer.data}
         ids_to_breadcrumbs = TestPlanSelector().testplan_breadcrumbs_by_ids(plan_ids)
         for test in serializer.data:
             test['breadcrumbs'] = ids_to_breadcrumbs[test.get('plan')]
             response_tests.append(test)
         return self.get_paginated_response(response_tests)
 
-    @action(methods=['get'], url_path='history', url_name='history', detail=True)
+    @action(methods=[_GET], url_path='history', url_name='history', detail=True)
     def get_history(self, request, pk):
         ordering_filter = CustomOrderingFilter()
         pagination = StandardSetPagination()
@@ -181,28 +201,29 @@ class TestCaseViewSet(TestyModelViewSet, TestyArchiveMixin):
         page = pagination.paginate_queryset(queryset, request) or queryset
         serializer = TestCaseHistorySerializer(
             page,
-            context={'request': request},
-            many=True
+            context=self.get_serializer_context(),
+            many=True,
         )
         return pagination.get_paginated_response(serializer.data)
 
-    @swagger_auto_schema(request_body=TestCaseRestoreSerializer)
-    @action(methods=['post'], url_path='version/restore', url_name='restore-version', detail=True)
+    @cases_version_restore_schema
+    @action(methods=[_POST], url_path='version/restore', url_name='restore-version', detail=True)
     def restore_case_version(self, request, pk):
         instance = self.get_object()
         serializer = TestCaseRestoreSerializer(instance, data=request.data)
         serializer.is_valid(raise_exception=True)
         updated_test_case = TestCaseService.restore_version(serializer.validated_data.get('version'), pk)
-        return Response(TestCaseRetrieveSerializer(updated_test_case, context={'request': request}).data)
+        return Response(TestCaseRetrieveSerializer(updated_test_case, context=self.get_serializer_context()).data)
 
-    @action(methods=['get'], url_path='search', url_name='search', detail=False)
+    @cases_search_schema
+    @action(methods=[_GET], url_path='search', url_name='search', detail=False)
     def cases_search(self, request):
         cases = self.get_queryset()
         cases = self.filter_queryset(cases)
         suites_selector = TestSuiteSelector()
         suites = TestSuiteSelector().suites_by_ids_list(
             cases.values_list('pk', flat=True),
-            field_name='test_cases__pk'
+            field_name='test_cases__pk',
         )
         suites_depth = suites_selector.get_max_level()
         suites = (
@@ -216,12 +237,20 @@ class TestCaseViewSet(TestyModelViewSet, TestyArchiveMixin):
                     prefetch_field='test_cases',
                     tree_depth=suites_depth,
                     queryset=cases,
-                )
+                ),
             ).annotate(**suites_selector.cases_count_annotation())
         )
-        return Response(data=TestSuiteTreeCasesSerializer(suites, context={'request': request}, many=True).data)
+        return Response(
+            data=TestSuiteTreeCasesSerializer(
+                suites,
+                context=self.get_serializer_context(),
+                many=True,
+            ).data,
+        )
 
 
+@suite_list_schema
+@suite_retrieve_schema
 class TestSuiteViewSet(TestyModelViewSet):
     queryset = TestSuite.objects.none()
     serializer_class = TestSuiteSerializer
@@ -229,6 +258,7 @@ class TestSuiteViewSet(TestyModelViewSet):
     filterset_class = TestSuiteFilter
     pagination_class = StandardSetPagination
     search_fields = ['name']
+    schema_tags = ['Test suites']
 
     def perform_create(self, serializer: TestSuiteSerializer):
         serializer.instance = TestSuiteService().suite_create(serializer.validated_data)
@@ -251,7 +281,7 @@ class TestSuiteViewSet(TestyModelViewSet):
             # forcibly invalidate the prefetch cache on the instance.
             instance._prefetched_objects_cache = {}
 
-        return Response(serializer.data)
+        return Response(self.get_serializer(self.get_object()).data)
 
     def get_serializer_class(self):
         if get_boolean(self.request, 'show_cases') and get_boolean(self.request, 'treeview'):
@@ -263,27 +293,30 @@ class TestSuiteViewSet(TestyModelViewSet):
         return TestSuiteSerializer
 
     def get_queryset(self):
-        if self.action in ['recovery_list', 'restore', 'delete_permanently']:
+        treeview = get_boolean(self.request, 'treeview')
+        if self.action in {'recovery_list', 'restore', 'delete_permanently'}:
             return TestSuiteSelector().suite_deleted_list()
-        if get_boolean(self.request, 'show_cases') and get_boolean(self.request, 'treeview') and self.action == 'list':
+        if get_boolean(self.request, 'show_cases') and treeview and self.action == 'list':
             return TestSuiteSelector().suite_list_treeview_with_cases()
-        if get_boolean(self.request, 'treeview') and self.action == 'list':
+        if treeview and self.action == 'list':
             parent = self.request.query_params.get('parent')
             root_only = parent is None or parent == ''  # if parent is provided turn off root_only
             return TestSuiteSelector().suite_list_treeview(root_only=root_only)
-        if get_boolean(self.request, 'treeview') and self.action == 'retrieve':
+        if treeview and self.action == 'retrieve':
             return TestSuiteSelector().suite_list_treeview(root_only=False)
         if self.action == 'breadcrumbs_view':
             return TestSuiteSelector.suite_list_raw()
         return TestSuiteSelector().suite_list()
 
-    @action(methods=['get'], url_path='parents', url_name='breadcrumbs', detail=True)
+    @suites_breadcrumbs_schema
+    @action(methods=[_GET], url_path='parents', url_name='breadcrumbs', detail=True)
     def breadcrumbs_view(self, request, *args, **kwargs):
         instance = self.get_object()
         tree = TestSuiteSelector.suite_list_ancestors(instance)
         return Response(get_breadcrumbs_treeview(instances=tree, depth=len(tree) - 1))
 
-    @action(methods=['post'], url_path='copy', url_name='copy', detail=False)
+    @suite_copy_schema
+    @action(methods=[_POST], url_path=_COPY, url_name=_COPY, detail=False)
     def copy_suites(self, request):
         serializer = TestSuiteCopySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -291,7 +324,7 @@ class TestSuiteViewSet(TestyModelViewSet):
             if suite.project != serializer.validated_data.get('dst_project_id'):
                 return Response(
                     status=status.HTTP_400_BAD_REQUEST,
-                    data={'errors': ["Project and Suite's project must be same"]}
+                    data={'errors': ["Project and Suite's project must be same"]},
                 )
         suites = CopyService.suites_copy(serializer.validated_data)
-        return Response(TestSuiteBaseSerializer(suites, many=True, context={'request': request}).data)
+        return Response(TestSuiteBaseSerializer(suites, many=True, context=self.get_serializer_context()).data)

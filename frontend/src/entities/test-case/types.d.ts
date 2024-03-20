@@ -25,6 +25,7 @@ interface TestCase {
   url: string
   labels: LabelInForm[]
   is_archive: boolean
+  test_suite_description?: string | null
 }
 
 interface TestCaseCreate {

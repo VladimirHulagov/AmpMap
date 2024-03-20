@@ -1,5 +1,6 @@
 import { PlusOutlined } from "@ant-design/icons"
-import { Breadcrumb, Button, Layout, PageHeader, Space } from "antd"
+import { PageHeader } from "@ant-design/pro-layout"
+import { Breadcrumb, Button, Layout, Space } from "antd"
 import { useContext, useEffect } from "react"
 import { useDispatch } from "react-redux"
 
@@ -32,6 +33,7 @@ export const UsersPage = () => {
       <PageHeader
         breadcrumbRender={() => <Breadcrumb>{breadcrumbItems}</Breadcrumb>}
         title="Users"
+        style={{ paddingBottom: 0 }}
       ></PageHeader>
 
       <Content style={{ margin: "24px" }}>

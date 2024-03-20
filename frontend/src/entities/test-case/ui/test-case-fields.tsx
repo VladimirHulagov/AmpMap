@@ -1,6 +1,6 @@
 import { LabelField } from "entities/label/ui"
 
-import { Attachment, Field, Steps } from "shared/ui"
+import { Attachment, Field, FieldWithHide, Steps } from "shared/ui"
 
 interface TestCaseFieldsProps {
   testCase: TestCase
@@ -9,6 +9,13 @@ interface TestCaseFieldsProps {
 export const TestCaseFields = ({ testCase }: TestCaseFieldsProps) => {
   return (
     <>
+      {testCase.test_suite_description && (
+        <FieldWithHide
+          id="test-suite-description"
+          title="Test Suite description"
+          value={testCase.test_suite_description}
+        />
+      )}
       <Field id="test-case-name" title="Name" value={testCase.name} />
       <Field id="test-case-desc" markdown title="Description" value={testCase.description} />
       <Field id="test-case-setup" markdown title="Setup" value={testCase.setup} />

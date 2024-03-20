@@ -33,8 +33,6 @@ from functools import partial
 from pathlib import Path
 from typing import Any, Dict, List
 
-from core.choices import LabelTypes, SystemMessageLevel
-from core.services.media import MediaService
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -47,37 +45,34 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework.exceptions import ValidationError
 from simple_history.models import HistoricalRecords
 
-from testy.models import BaseModel
-
-__all__ = (
-    'Project',
-    'Attachment'
-)
-
-from validators import ExtensionValidator, ProjectValidator
-
-from utils import get_media_file_path
+from testy.core.choices import LabelTypes, SystemMessageLevel
+from testy.core.services.media import MediaService
+from testy.root.models import BaseModel
+from testy.utils import get_media_file_path
+from testy.validators import ExtensionValidator, ProjectValidator
 
 UserModel = get_user_model()
 
+_NAME = 'name'
+
 
 class Project(BaseModel):
-    name = models.CharField('name', max_length=settings.CHAR_FIELD_MAX_LEN)
+    name = models.CharField(_NAME, max_length=settings.CHAR_FIELD_MAX_LEN)
     description = models.TextField('description', blank=True)
     is_archive = models.BooleanField(default=False)
     icon = models.ImageField(
         null=True,
         blank=True,
-        max_length=150,
-        upload_to=partial(get_media_file_path, media_name='icons')
+        max_length=settings.FILEPATH_MAX_LEN,
+        upload_to=partial(get_media_file_path, media_name='icons'),
     )
 
     class Meta:
-        ordering = ('name',)
+        ordering = (_NAME,)
         verbose_name = gettext_lazy('project')
         verbose_name_plural = gettext_lazy('projects')
 
-    class ModelHierarchyWeightMeta:
+    class ModelHierarchyWeightMeta:  # noqa: WPS431
         weight = 10
 
     def __str__(self) -> str:
@@ -99,7 +94,7 @@ class Attachment(BaseModel):
         on_delete=models.CASCADE,
         validators=[ProjectValidator()],
         null=True,
-        blank=True
+        blank=True,
     )
     # Id of object from table of content_type
     object_id = models.PositiveIntegerField(null=True, blank=True)
@@ -108,9 +103,9 @@ class Attachment(BaseModel):
     content_object = GenericForeignKey('content_type', 'object_id')
     user = models.ForeignKey(UserModel, null=True, on_delete=models.SET_NULL)
     file = models.FileField(
-        max_length=150,
+        max_length=settings.FILEPATH_MAX_LEN,
         upload_to=partial(get_media_file_path, media_name='attachments'),
-        validators=[ExtensionValidator()]
+        validators=[ExtensionValidator()],
     )
     content_object_history_ids = ArrayField(models.IntegerField(), default=list, blank=True)
 
@@ -120,11 +115,11 @@ class Attachment(BaseModel):
         return ''
 
     def model_clone(
-            self,
-            related_managers: List[str] = None,
-            attrs_to_change: Dict[str, Any] = None,
-            attachment_references_fields: List[str] = None,
-            common_attrs_to_change: Dict[str, Any] = None
+        self,
+        related_managers: List[str] = None,
+        attrs_to_change: Dict[str, Any] = None,
+        attachment_references_fields: List[str] = None,
+        common_attrs_to_change: Dict[str, Any] = None,
     ):
         self_copy = deepcopy(self)
         attrs = {'pk': None, 'id': None}
@@ -151,17 +146,19 @@ class Label(BaseModel):
     type = models.IntegerField(choices=LabelTypes.choices, default=LabelTypes.CUSTOM)
 
     class Meta:
-        verbose_name = _("Label")
-        verbose_name_plural = _("Labels")
-        unique_together = ('project', 'name')
+        verbose_name = _('Label')
+        verbose_name_plural = _('Labels')
+        unique_together = ('project', _NAME)
 
     def clean(self):
         if label := Label.objects.filter(name__iexact=self.name, project=self.project).first():
             raise ValidationError(
                 {
-                    'name': f'Label name "{self.name}" clashes with already existing label name '
-                            f'"{label.name}" in project {self.project}.'
-                }
+                    _NAME: (
+                        f'Label name "{self.name}" clashes with already existing label name '
+                        f'"{label.name}" in project {self.project}.'  # noqa: WPS326
+                    ),
+                },
             )
 
 
@@ -185,5 +182,5 @@ class SystemMessage(BaseModel):
     is_closing = models.BooleanField(default=False)
 
     class Meta:
-        verbose_name = _("System message")
-        verbose_name_plural = _("System messages")
+        verbose_name = _('System message')
+        verbose_name_plural = _('System messages')

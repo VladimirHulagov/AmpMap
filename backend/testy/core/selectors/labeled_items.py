@@ -28,18 +28,16 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from typing import List, TypeVar
+from typing import List
 
-from core.models import LabeledItem
 from django.contrib.contenttypes.models import ContentType
-from django.db import models
-from django.db.models import QuerySet
+from django.db.models import Model, QuerySet
 
-_DMT = TypeVar('_DMT', bound=models.Model)
+from testy.core.models import LabeledItem
 
 
 class LabeledItemSelector:
     @classmethod
-    def items_by_ids_list(cls, ids: List[int], model: type[_DMT]) -> QuerySet[LabeledItem]:
+    def items_by_ids_list(cls, ids: List[int], model: type[Model]) -> QuerySet[LabeledItem]:
         content_type = ContentType.objects.get_for_model(model)
         return LabeledItem.objects.filter(content_type=content_type, object_id__in=ids)

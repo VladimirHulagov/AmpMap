@@ -28,23 +28,23 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from core.api.v1.serializers import AttachmentSerializer
-from core.models import Label, LabeledItem
-from core.selectors.attachments import AttachmentSelector
-from core.selectors.projects import ProjectSelector
 from rest_framework import serializers
 from rest_framework.fields import BooleanField, IntegerField, ListField, SerializerMethodField, empty
 from rest_framework.relations import HyperlinkedIdentityField, PrimaryKeyRelatedField
-from rest_framework.serializers import ModelSerializer
 from serializer_fields import EstimateField
-from tests_description.models import TestCase, TestCaseStep, TestSuite
-from tests_description.selectors.cases import TestCaseSelector, TestCaseStepSelector
-from tests_description.selectors.suites import TestSuiteSelector
-from users.api.v1.serializers import UserSerializer
-from validators import EstimateValidator
+
+from testy.core.api.v1.serializers import AttachmentSerializer
+from testy.core.models import Label, LabeledItem
+from testy.core.selectors.attachments import AttachmentSelector
+from testy.core.selectors.projects import ProjectSelector
+from testy.tests_description.models import TestCase, TestCaseStep, TestSuite
+from testy.tests_description.selectors.cases import TestCaseSelector, TestCaseStepSelector
+from testy.tests_description.selectors.suites import TestSuiteSelector
+from testy.users.api.v1.serializers import UserSerializer
+from testy.validators import EstimateValidator
 
 
-class TestCaseStepBaseSerializer(ModelSerializer):
+class TestCaseStepBaseSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False)
 
     class Meta:
@@ -54,7 +54,7 @@ class TestCaseStepBaseSerializer(ModelSerializer):
 
 class TestCaseStepInputSerializer(TestCaseStepBaseSerializer):
     attachments = PrimaryKeyRelatedField(
-        many=True, queryset=AttachmentSelector().attachment_list(), required=False
+        many=True, queryset=AttachmentSelector().attachment_list(), required=False,
     )
 
     class Meta(TestCaseStepBaseSerializer.Meta):
@@ -76,27 +76,39 @@ class TestCaseStepOutputSerializer(TestCaseStepBaseSerializer):
         return AttachmentSerializer(attachments, many=True, context=self.context).data
 
 
-class TestCaseBaseSerializer(ModelSerializer):
+class TestCaseBaseSerializer(serializers.ModelSerializer):
     estimate = EstimateField(allow_null=True, required=False)
 
     class Meta:
         model = TestCase
-        fields = ('id', 'name', 'project', 'suite', 'setup', 'scenario', 'expected',
-                  'teardown', 'estimate', 'description', 'is_steps', 'is_archive')
+        fields = (
+            'id',
+            'name',
+            'project',
+            'suite',
+            'setup',
+            'scenario',
+            'expected',
+            'teardown',
+            'estimate',
+            'description',
+            'is_steps',
+            'is_archive',
+        )
 
     validators = [EstimateValidator()]
 
 
-class TestCaseLabelOutputSerializer(ModelSerializer):
+class TestCaseLabelOutputSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(source='label.id')
     name = serializers.CharField(source='label.name')
 
     class Meta:
         model = LabeledItem
-        fields = ('id', 'name',)
+        fields = ('id', 'name')
 
 
-class TestCaseLabelInputSerializer(ModelSerializer):
+class TestCaseLabelInputSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(required=False)
 
     class Meta:
@@ -106,13 +118,13 @@ class TestCaseLabelInputSerializer(ModelSerializer):
 
 class TestCaseInputBaseSerializer(TestCaseBaseSerializer):
     attachments = PrimaryKeyRelatedField(
-        many=True, queryset=AttachmentSelector().attachment_list(), required=False
+        many=True, queryset=AttachmentSelector().attachment_list(), required=False,
     )
     labels = TestCaseLabelInputSerializer(many=True, required=False)
     skip_history = serializers.BooleanField(default=False, initial=False)
 
     class Meta(TestCaseBaseSerializer.Meta):
-        fields = TestCaseBaseSerializer.Meta.fields + ('attachments', 'labels', 'skip_history',)
+        fields = TestCaseBaseSerializer.Meta.fields + ('attachments', 'labels', 'skip_history')
 
     def validate(self, attrs):
         if attrs['skip_history']:
@@ -135,7 +147,7 @@ class TestCaseInputWithStepsSerializer(TestCaseInputBaseSerializer):
         fields = TestCaseInputBaseSerializer.Meta.fields + ('steps',)
 
     def validate_steps(self, value):
-        if len(value) == 0:
+        if not len(value):
             raise serializers.ValidationError('At least one step required')
         return value
 
@@ -181,7 +193,7 @@ class TestCaseListSerializer(TestCaseBaseSerializer):
             attachments = instance.attachments.all()
         else:
             attachments = AttachmentSelector.attachment_list_by_parent_object_and_history_ids(
-                instance, instance.id, [self._version]
+                instance, instance.id, [self._version],
             )
         return AttachmentSerializer(attachments, many=True, context=self.context).data
 
@@ -199,19 +211,19 @@ class TestCaseRetrieveSerializer(TestCaseListSerializer):
         return instance.history.first().history_id
 
 
-class TestCaseTreeSerializer(ModelSerializer):
+class TestCaseTreeSerializer(serializers.ModelSerializer):
     class Meta:
         model = TestCase
         fields = ('id', 'name')
 
 
-class ParentSuiteSerializer(ModelSerializer):
+class ParentSuiteSerializer(serializers.ModelSerializer):
     class Meta:
         model = TestSuite
         fields = ('id', 'name')
 
 
-class TestSuiteBaseSerializer(ModelSerializer):
+class TestSuiteBaseSerializer(serializers.ModelSerializer):
     url = HyperlinkedIdentityField(view_name='api:v1:testsuite-detail')
 
     class Meta:
@@ -240,7 +252,7 @@ class TestSuiteTreeSerializer(TestSuiteBaseSerializer):
     class Meta:
         model = TestSuite
         fields = TestSuiteBaseSerializer.Meta.fields + (
-            'children', 'title', 'descendant_count', 'cases_count', 'total_cases_count', 'total_estimates', 'estimates'
+            'children', 'title', 'descendant_count', 'cases_count', 'total_cases_count', 'total_estimates', 'estimates',
         )
 
     def get_children(self, value):
@@ -278,12 +290,12 @@ class TestSuiteCopySerializer(serializers.Serializer):
     dst_project_id = serializers.PrimaryKeyRelatedField(
         required=False,
         allow_null=True,
-        queryset=ProjectSelector.project_list()
+        queryset=ProjectSelector.project_list(),
     )
     dst_suite_id = serializers.PrimaryKeyRelatedField(
         queryset=TestSuiteSelector.suite_list_raw(),
         required=False,
-        allow_null=True
+        allow_null=True,
     )
 
 

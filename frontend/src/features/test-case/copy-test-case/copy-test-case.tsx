@@ -1,26 +1,28 @@
 import { CopyOutlined } from "@ant-design/icons"
 import { Button, Input, Modal } from "antd"
+import { useParams } from "react-router-dom"
 
-import { SearchField } from "widgets/search-field"
+import { useLazyGetTestSuitesQuery } from "entities/suite/api"
+
+import { SearchFieldImprove } from "widgets/search-field-improve"
 
 import { useTestCaseCopyModal } from "./use-test-case-copy-modal"
 
 export const CopyTestCase = ({ testCase }: { testCase: TestCase }) => {
+  const { projectId } = useParams<ParamProjectId>()
+  const [getSuites] = useLazyGetTestSuitesQuery()
+
   const {
     isShow,
     isLoading,
     selectedSuite,
     newName,
-    dataTestSuites,
-    isLoadingTestSuites,
-    handleClear,
+    handleClearSelected,
     handleSave,
     handleCancel,
     handleShow,
-    handleChange,
+    handleSelectSuite,
     handleChangeName,
-    handleLoadNextPageData,
-    handleSearch,
   } = useTestCaseCopyModal(testCase)
 
   return (
@@ -51,22 +53,25 @@ export const CopyTestCase = ({ testCase }: { testCase: TestCase }) => {
         ]}
       >
         <Input
+          id="copy-test-case-name"
           placeholder="Please enter a name"
           onChange={handleChangeName}
           value={newName}
           autoFocus={true}
           style={{ marginBottom: "16px" }}
         />
-        <SearchField
-          select={selectedSuite}
-          isLastPage={!!dataTestSuites?.pages.next}
-          data={dataTestSuites?.results}
-          isLoading={isLoadingTestSuites}
-          onClear={handleClear}
-          onSearch={handleSearch}
-          onChange={handleChange}
-          handleLoadNextPageData={handleLoadNextPageData}
+        <SearchFieldImprove
+          id="copy-test-case-suite"
+          getData={getSuites}
+          onSelect={handleSelectSuite}
+          onClear={handleClearSelected}
+          dataParams={{
+            project: projectId,
+            is_flat: true,
+          }}
+          selected={selectedSuite}
           placeholder="Search a test suite"
+          searchKey="search"
         />
       </Modal>
     </>

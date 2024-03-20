@@ -30,18 +30,19 @@
 # <http://www.gnu.org/licenses/>.
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Type, Union
+from typing import Any, Dict, List, Union
 
-from core.models import Attachment
-from core.selectors.attachments import AttachmentSelector
-from core.services.media import MediaService
 from django.db.models import Model
+
+from testy.core.models import Attachment
+from testy.core.selectors.attachments import AttachmentSelector
+from testy.core.services.media import MediaService
 
 
 class AttachmentService(MediaService):
     non_side_effect_fields = [
         'project', 'name', 'filename', 'comment', 'file_extension', 'content_type', 'size', 'object_id', 'user', 'file',
-        'url'
+        'url',
     ]
 
     def attachment_create(self, data: Dict[str, Any], request) -> Union[List[Attachment], str]:
@@ -56,7 +57,7 @@ class AttachmentService(MediaService):
                     'size': file.size,
                     'user': request.user,
                     'file': file,
-                }
+                },
             )
             attachment = Attachment.model_create(fields=self.non_side_effect_fields, data=data)
             attachments_instances.append(attachment)
@@ -72,14 +73,14 @@ class AttachmentService(MediaService):
         attachment.save()
         return attachment
 
-    def attachment_add_content_object_history_id(self, attachment: Attachment, history_id: int) -> Attachment:
+    def add_history_to_attachment(self, attachment: Attachment, history_id: int) -> Attachment:
         attachment.content_object_history_ids.append(history_id)
         attachment.save()
         return attachment
 
     def attachments_update_content_object(self, attachments, content_object):
         old_attachments = AttachmentSelector().attachment_list_by_parent_object(
-            content_object, content_object.id
+            content_object, content_object.id,
         )
 
         for attachment in attachments:
@@ -90,17 +91,21 @@ class AttachmentService(MediaService):
             if old_attachment not in attachments:
                 old_attachment.delete()
 
-    def attachments_bulk_add_content_object_history_id(self, attachments: List[Attachment], history_id: int):
+    def bulk_add_history_to_attachment(
+        self,
+        attachments: List[Attachment],
+        history_id: int,
+    ):
         for attachment in attachments:
-            self.attachment_add_content_object_history_id(attachment, history_id)
+            self.add_history_to_attachment(attachment, history_id)
 
-    def restore_by_version(self, content_object: Type[Model], history_id: int):
+    def restore_by_version(self, content_object: type[Model], history_id: int):
         old_attachments = AttachmentSelector.attachment_list_by_parent_object_and_history_ids(
-            content_object, content_object.id, [history_id]
+            content_object, content_object.id, [history_id],
         )
         for attachment in old_attachments:
-            attachment = self.attachment_add_content_object_history_id(
-                attachment, content_object.history.latest().history_id
+            attachment = self.add_history_to_attachment(
+                attachment, content_object.history.latest().history_id,
             )
             attachment.restore()
         exclude_ids = [attachment.id for attachment in old_attachments]

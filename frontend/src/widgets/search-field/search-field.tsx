@@ -8,6 +8,8 @@ interface WorkData {
 }
 
 interface Props<T = WorkData> {
+  id?: string
+  isDisabled?: boolean
   isLoading: boolean
   isLastPage: boolean
   placeholder?: string
@@ -18,12 +20,15 @@ interface Props<T = WorkData> {
   onChange?: (dataValue?: SelectData) => void
   onClear?: () => void
   handleLoadNextPageData?: () => void
+  handleInitLoad?: () => void
 }
 
 export const SearchField = <T extends WorkData>({
+  id = "search-field",
   data,
   placeholder,
   isLoading,
+  isDisabled = false,
   isLastPage,
   select,
   valueKey = "name",
@@ -31,6 +36,7 @@ export const SearchField = <T extends WorkData>({
   onSearch,
   onClear,
   handleLoadNextPageData,
+  handleInitLoad,
 }: Props<T>) => {
   const [selectState, setSelectState] = useState<SelectData | null | undefined>(select ?? null)
   const { ref, inView } = useInView()
@@ -68,8 +74,8 @@ export const SearchField = <T extends WorkData>({
   }
 
   const handleFocusSearch = () => {
-    if (onSearch) {
-      onSearch("")
+    if (handleInitLoad) {
+      handleInitLoad()
     }
   }
 
@@ -84,7 +90,8 @@ export const SearchField = <T extends WorkData>({
 
   return (
     <Select
-      id="search-field"
+      id={id}
+      disabled={isDisabled}
       value={selectState}
       showSearch
       labelInValue
@@ -112,7 +119,7 @@ export const SearchField = <T extends WorkData>({
           </div>
         </Select.Option>
       )}
-      {data?.length && !isLastPage && !isLoading && (
+      {!isLastPage && !isLoading && (
         <Select.Option value="">
           <div ref={ref} />
         </Select.Option>

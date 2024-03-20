@@ -22,7 +22,7 @@ export const testPlanApi = createApi({
     getTestPlans: builder.query<PaginationResponse<TestPlan[]>, QueryWithPagination<TestPlanQuery>>(
       {
         query: ({ projectId, search, ...params }) => ({
-          url: rootPath,
+          url: `${rootPath}/`,
           params: {
             project: projectId,
             treeview: false,
@@ -47,7 +47,7 @@ export const testPlanApi = createApi({
       QueryWithPagination<TestPlanQuery>
     >({
       query: ({ projectId, search, ...params }) => ({
-        url: rootPath,
+        url: `${rootPath}/`,
         params: { project: projectId, treeview: true, search, ...params },
       }),
       providesTags: (result) =>
@@ -79,7 +79,7 @@ export const testPlanApi = createApi({
       TestPlanActivityParams
     >({
       query: ({ testPlanId, ...params }) => ({
-        url: `${rootPath}/${testPlanId}/activity`,
+        url: `${rootPath}/${testPlanId}/activity/`,
         params,
       }),
       providesTags: (result, error, { testPlanId: id }) => [{ type: "TestPlan", id }],
@@ -152,7 +152,7 @@ export const testPlanApi = createApi({
     }),
     getTestPlanStatistics: builder.query<TestPlanStatistics[], TestPlanStatisticsParams>({
       query: ({ testPlanId, ...params }) => ({
-        url: `${rootPath}/${testPlanId}/statistics`,
+        url: `${rootPath}/${testPlanId}/statistics/`,
         params,
       }),
       providesTags: (result, error, { testPlanId }) => [
@@ -161,7 +161,7 @@ export const testPlanApi = createApi({
     }),
     getTestPlanHistogram: builder.query<TestPlanHistogramData[], TestPlanHistogramParams>({
       query: ({ testPlanId, ...params }) => ({
-        url: `${rootPath}/${testPlanId}/histogram`,
+        url: `${rootPath}/${testPlanId}/histogram/`,
         params,
       }),
       providesTags: (result, error, { testPlanId }) => [
@@ -191,13 +191,13 @@ export const testPlanApi = createApi({
     }),
     getTestPlanDeletePreview: builder.query<DeletePreviewResponse[], string>({
       query: (testPlanId) => ({
-        url: `${rootPath}/${testPlanId}/delete/preview`,
+        url: `${rootPath}/${testPlanId}/delete/preview/`,
       }),
       providesTags: (result, error, id) => [{ type: "TestPlan", id }],
     }),
     getTestPlanArchivePreview: builder.query<DeletePreviewResponse[], string>({
       query: (testPlanId) => ({
-        url: `${rootPath}/${testPlanId}/archive/preview`,
+        url: `${rootPath}/${testPlanId}/archive/preview/`,
       }),
       providesTags: (result, error, id) => [{ type: "TestPlan", id }],
     }),

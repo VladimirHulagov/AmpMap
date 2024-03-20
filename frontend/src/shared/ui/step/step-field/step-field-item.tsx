@@ -16,7 +16,11 @@ export const StepFieldItem = ({ step }: StepFieldItemProps) => {
           <Collapse.Panel
             id="steps-collapse"
             className="collapse-wrapper"
-            header={<Typography.Title level={5}>{step.name}</Typography.Title>}
+            header={
+              <Typography.Title level={5} style={{ marginTop: 0, marginBottom: 0 }}>
+                {step.name}
+              </Typography.Title>
+            }
             key="1"
           >
             <div className={styles.fieldContent}>

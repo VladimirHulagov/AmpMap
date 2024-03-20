@@ -31,10 +31,11 @@
 
 from typing import Any, Dict
 
-from comments.models import Comment
-from core.services.attachments import AttachmentService
 from django.db import transaction
-from users.models import User
+
+from testy.comments.models import Comment
+from testy.core.services.attachments import AttachmentService
+from testy.users.models import User
 
 
 class CommentService:

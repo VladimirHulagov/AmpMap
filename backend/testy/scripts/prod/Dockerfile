@@ -5,10 +5,10 @@ ENV PYTHONDONTWRITEBYTECODE 1
 
 RUN apk update && \
     apk add --virtual build-deps gcc musl-dev && \
-    apk add postgresql-dev && \
-    apk add netcat-openbsd &&  \
     apk add libffi-dev && \
-    apk add build-base python3-dev && \
+    apk add postgresql-dev && \
+    apk add netcat-openbsd && \
+    apk add build-base python3-dev &&\
     apk add git
 
 RUN mkdir /testy
@@ -24,5 +24,4 @@ RUN chmod +x /testy/scripts/entrypoint.sh
 COPY . /testy
 
 WORKDIR /testy/testy
-
 CMD ["/testy/testy/scripts/entrypoint.sh"]

@@ -1,4 +1,5 @@
-import { Breadcrumb, Layout, PageHeader } from "antd"
+import { PageHeader } from "@ant-design/pro-layout"
+import { Breadcrumb, Layout } from "antd"
 import React, { useContext, useEffect, useState } from "react"
 import { Link, Outlet, useParams } from "react-router-dom"
 import { MenuContext } from "widgets"
@@ -51,6 +52,7 @@ export const ProjectDetailsMainPage = () => {
           breadcrumbRender={() => <Breadcrumb>{breadcrumbItems}</Breadcrumb>}
           title={project?.name}
           footer={<ProjectDetailsTabs projectId={projectId} />}
+          style={{ paddingBottom: 0 }}
         />
         <Content style={{ margin: "24px" }}>
           <Outlet context={projectId} />

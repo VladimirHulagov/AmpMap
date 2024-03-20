@@ -29,10 +29,10 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 
-from core.models import Attachment, Project, SystemMessage
 from django.contrib import admin
 
-from testy.admin import BaseAdmin
+from testy.core.models import Attachment, Project, SystemMessage
+from testy.root.admin import BaseAdmin
 
 
 @admin.register(Project)
@@ -45,7 +45,7 @@ class ProjectAdmin(BaseAdmin):
 class AttachmentAdmin(BaseAdmin):
     list_display = (
         'project', 'name', 'filename', 'content_type',
-        'size', 'content_type', 'object_id', 'content_object', 'user', 'file'
+        'size', 'content_type', 'object_id', 'content_object', 'user', 'file',
     )
     search_fields = ('name',)
 

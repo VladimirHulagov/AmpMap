@@ -64,9 +64,19 @@ interface SuiteParents {
   parent: SuiteParents | null
 }
 
+interface CopySuiteResponse {
+  id: Id
+  description: string
+  name: string
+  parent: number | null
+  project: number | null
+  url: string
+}
+
 interface SuiteCopyBody {
   suites: SuiteCopyItem[]
   dst_project_id: string
+  dst_suite_id?: string
 }
 
 interface SuiteCopyItem {

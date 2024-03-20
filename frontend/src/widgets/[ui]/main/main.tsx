@@ -9,7 +9,6 @@ import { useMain } from "./model/use-main"
 const { Content, Sider } = Layout
 
 const menuProps: MenuProps = {
-  theme: "dark",
   mode: "inline",
   items: [
     {
@@ -58,7 +57,6 @@ export const Main = () => {
       <Layout>
         <Sider collapsible collapsed={!collapsed} onCollapse={(value) => onHandleCollapsed(value)}>
           <div className="logo">TestY</div>
-
           <Menu
             {...{
               selectedKeys: activeMenu,

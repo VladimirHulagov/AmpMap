@@ -8,7 +8,7 @@ import { TestCaseStepsWrapper } from "entities/test-case/ui/steps/wrapper"
 
 import { config } from "shared/config"
 import { ErrorObj } from "shared/hooks/use-alert-error"
-import { AlertError, Attachment, TextArea } from "shared/ui"
+import { AlertError, Attachment, TextAreaWithAttach } from "shared/ui"
 
 import { SelectSuiteTestCase } from "../select-suite-test-case/select-suite-test-case"
 import { useTestCaseEditModal } from "./use-test-case-edit-modal"
@@ -26,6 +26,7 @@ export const EditTestCaseModal = ({ testCase }: Props) => {
     isEditMode,
     isLoading,
     errors,
+    formErrors,
     control,
     attachments,
     attachmentsIds,
@@ -39,6 +40,7 @@ export const EditTestCaseModal = ({ testCase }: Props) => {
     onRemove,
     onChange,
     setValue,
+    clearErrors,
     setAttachments,
     handleCancel,
     handleSubmitFormAsCurrent,
@@ -48,6 +50,12 @@ export const EditTestCaseModal = ({ testCase }: Props) => {
     shouldShowSuiteSelect,
     flatSuites,
   } = useTestCaseEditModal({ testCase })
+
+  const scenarioFormErrors = !isSteps
+    ? formErrors.scenario?.message ?? errors?.scenario ?? ""
+    : !steps.length
+      ? "Обязательное поле."
+      : ""
 
   const items: MenuProps["items"] = [
     {
@@ -105,8 +113,9 @@ export const EditTestCaseModal = ({ testCase }: Props) => {
             <Col span={12}>
               <Form.Item
                 label="Name"
-                validateStatus={errors?.name ? "error" : ""}
-                help={errors?.name ? errors.name : ""}
+                validateStatus={formErrors.name?.message ?? errors?.name ? "error" : ""}
+                help={formErrors.name?.message ?? errors?.name ?? ""}
+                required
               >
                 <Controller
                   name="name"
@@ -149,7 +158,7 @@ export const EditTestCaseModal = ({ testCase }: Props) => {
                   name="setup"
                   control={control}
                   render={({ field }) => (
-                    <TextArea
+                    <TextAreaWithAttach
                       uploadId="edit-setup"
                       textAreaId="edit-setup-textarea"
                       fieldProps={field}
@@ -162,9 +171,9 @@ export const EditTestCaseModal = ({ testCase }: Props) => {
               </Form.Item>
               <Form.Item
                 label="Scenario"
-                validateStatus={errors?.scenario ?? errors?.steps ? "error" : ""}
-                help={errors?.scenario ?? errors?.steps ?? ""}
-                required={false}
+                validateStatus={scenarioFormErrors ? "error" : ""}
+                help={scenarioFormErrors}
+                required
               >
                 <Controller
                   name="scenario"
@@ -176,6 +185,7 @@ export const EditTestCaseModal = ({ testCase }: Props) => {
                       stateSteps={{ steps, setSteps }}
                       customRequest={onLoad}
                       setValue={setValue}
+                      clearErrors={clearErrors}
                       control={control}
                       isSteps={isSteps}
                       setIsSteps={setIsSteps}
@@ -194,7 +204,7 @@ export const EditTestCaseModal = ({ testCase }: Props) => {
                     name="expected"
                     control={control}
                     render={({ field }) => (
-                      <TextArea
+                      <TextAreaWithAttach
                         uploadId="edit-expected"
                         textAreaId="edit-expected-textarea"
                         fieldProps={field}
@@ -239,7 +249,7 @@ export const EditTestCaseModal = ({ testCase }: Props) => {
                   name="teardown"
                   control={control}
                   render={({ field }) => (
-                    <TextArea
+                    <TextAreaWithAttach
                       uploadId="edit-teardown"
                       textAreaId="edit-teardown-textarea"
                       fieldProps={field}
@@ -259,7 +269,7 @@ export const EditTestCaseModal = ({ testCase }: Props) => {
                   name="description"
                   control={control}
                   render={({ field }) => (
-                    <TextArea
+                    <TextAreaWithAttach
                       uploadId="edit-description"
                       textAreaId="edit-description-textarea"
                       fieldProps={field}

@@ -2,7 +2,7 @@
 
 from datetime import timedelta
 from django.db import migrations, transaction
-from utilities.time import WorkTimeProcessor
+from testy.utilities.time import WorkTimeProcessor
 
 
 @transaction.atomic

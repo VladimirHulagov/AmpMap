@@ -30,11 +30,18 @@
 # <http://www.gnu.org/licenses/>.
 from typing import Any, Dict, List
 
-from core.services.attachments import AttachmentService
-from core.services.labels import LabelService
 from django.db import transaction
-from tests_description.models import TestCase, TestCaseStep
-from tests_description.selectors.cases import TestCaseSelector, TestCaseStepSelector
+
+from testy.core.services.attachments import AttachmentService
+from testy.core.services.labels import LabelService
+from testy.tests_description.models import TestCase, TestCaseStep
+from testy.tests_description.selectors.cases import TestCaseSelector, TestCaseStepSelector
+
+_ATTACHMENTS = 'attachments'
+_USER = 'user'
+_ID = 'id'
+_SKIP_HISTORY = 'skip_history'
+_TEST_CASE_HISTORY_ID = 'test_case_history_id'
 
 
 class TestCaseService:
@@ -45,19 +52,19 @@ class TestCaseService:
         *non_side_effect_fields,
     ]
     step_non_side_effect_fields = [
-        'sort_order', 'test_case', 'test_case_history_id',
+        'sort_order', 'test_case', _TEST_CASE_HISTORY_ID,
         *non_side_effect_fields,
     ]
 
     def step_create(self, data: Dict[str, Any]) -> TestCaseStep:
         step: TestCaseStep = TestCaseStep.model_create(
             fields=self.step_non_side_effect_fields,
-            data=data
+            data=data,
         )
         latest_history_id = TestCaseStepSelector.get_latest_version_by_id(step.id)
-        for attachment in data.get('attachments', []):
+        for attachment in data.get(_ATTACHMENTS, []):
             AttachmentService().attachment_set_content_object(attachment, step)
-            AttachmentService().attachment_add_content_object_history_id(attachment, latest_history_id)
+            AttachmentService().add_history_to_attachment(attachment, latest_history_id)
 
         return step
 
@@ -66,18 +73,18 @@ class TestCaseService:
         step: TestCaseStep,
         data: Dict[str, Any],
     ) -> TestCaseStep:
-        skip_history = data.pop('skip_history', False)
+        skip_history = data.pop(_SKIP_HISTORY, False)
         step, _ = step.model_update(
             fields=self.step_non_side_effect_fields,
             data=data,
             skip_history=skip_history,
-            force=True
+            force=True,
         )
 
-        attachments = data.get('attachments', [])
+        attachments = data.get(_ATTACHMENTS, [])
         AttachmentService().attachments_update_content_object(attachments, step)
-        AttachmentService().attachments_bulk_add_content_object_history_id(
-            attachments, step.history.latest().history_id
+        AttachmentService().bulk_add_history_to_attachment(
+            attachments, step.history.latest().history_id,
         )
         return step
 
@@ -88,24 +95,24 @@ class TestCaseService:
         for step in data.pop('steps', []):
             step['test_case'] = case
             step['project'] = case.project
-            step['test_case_history_id'] = case.history.first().history_id
+            step[_TEST_CASE_HISTORY_ID] = case.history.first().history_id
             self.step_create(step)
 
         return case
 
     def case_create(self, data: Dict[str, Any]) -> TestCase:
-        user = data.pop('user')
+        user = data.pop(_USER)
         case: TestCase = TestCase.model_create(
             fields=self.case_non_side_effect_fields,
             data=data,
         )
 
         latest_history_id = TestCaseSelector.get_latest_version_by_id(case.id)
-        for attachment in data.get('attachments', []):
+        for attachment in data.get(_ATTACHMENTS, []):
             AttachmentService().attachment_set_content_object(attachment, case)
-            AttachmentService().attachment_add_content_object_history_id(attachment, latest_history_id)
+            AttachmentService().add_history_to_attachment(attachment, latest_history_id)
 
-        label_kwargs = {'user': user}
+        label_kwargs = {_USER: user}
         labeled_item_kwargs = {'content_object_history_id': case.history.first().history_id}
         LabelService().add(data.get('labels', []), case, label_kwargs, labeled_item_kwargs)
 
@@ -118,17 +125,17 @@ class TestCaseService:
         steps_id_pool: List[int] = []
 
         for step in case_steps:
-            if 'id' in step.keys():
-                if TestCaseStepSelector().step_exists(step['id']):
-                    step_instance = TestCaseStep.objects.get(id=step['id'])
+            if _ID in step.keys():
+                if TestCaseStepSelector().step_exists(step[_ID]):
+                    step_instance = TestCaseStep.objects.get(id=step[_ID])
 
                     step_instance = self.step_update(
                         step=step_instance,
                         data={
-                            'test_case_history_id': case.history.first().history_id,
-                            'skip_history': data.get('skip_history'),
-                            **step
-                        }
+                            _TEST_CASE_HISTORY_ID: case.history.first().history_id,
+                            _SKIP_HISTORY: data.get(_SKIP_HISTORY),
+                            **step,
+                        },
                     )
                     steps_id_pool.append(step_instance.id)
                 else:
@@ -137,7 +144,7 @@ class TestCaseService:
             else:
                 step['test_case'] = case
                 step['project'] = case.project
-                step['test_case_history_id'] = case.history.first().history_id
+                step[_TEST_CASE_HISTORY_ID] = case.history.first().history_id
                 step_instance = self.step_create(step)
                 steps_id_pool.append(step_instance.id)
 
@@ -150,8 +157,8 @@ class TestCaseService:
 
     @transaction.atomic
     def case_update(self, case: TestCase, data: Dict[str, Any]) -> TestCase:
-        user = data.pop('user')
-        skip_history = data.get('skip_history', False)
+        user = data.pop(_USER)
+        skip_history = data.get(_SKIP_HISTORY, False)
         case, _ = case.model_update(
             fields=self.case_non_side_effect_fields,
             data=data,
@@ -163,20 +170,20 @@ class TestCaseService:
             TestCaseStep.objects.filter(test_case=case).update(test_case_history_id=case.history.first().history_id)
             TestCaseStep.objects.filter(test_case=case).delete()
 
-        attachments = data.get('attachments', [])
+        attachments = data.get(_ATTACHMENTS, [])
         latest_history_id = TestCaseSelector.get_latest_version_by_id(case.id)
 
         AttachmentService().attachments_update_content_object(attachments, case)
-        AttachmentService().attachments_bulk_add_content_object_history_id(attachments, latest_history_id)
+        AttachmentService().bulk_add_history_to_attachment(attachments, latest_history_id)
 
-        label_kwargs = {'user': user}
+        label_kwargs = {_USER: user}
         labeled_item_kwargs = {'content_object_history_id': case.history.first().history_id}
         LabelService().set(data.get('labels', []), case, label_kwargs, labeled_item_kwargs)
 
         return case
 
-    @staticmethod
-    def cases_copy(data):
+    @classmethod
+    def cases_copy(cls, data):
         copied_cases = []
         for case_data in data.get('cases'):
             attrs_to_change = {}
@@ -184,15 +191,17 @@ class TestCaseService:
                 attrs_to_change['suite_id'] = suite_id
             if new_name := case_data.get('new_name'):
                 attrs_to_change['name'] = new_name
-            case = TestCase.objects.get(pk=case_data.get('id'))
+            case = TestCase.objects.get(pk=case_data.get(_ID))
             copied_cases.append(case.model_clone(attrs_to_change=attrs_to_change))
         return copied_cases
 
     @classmethod
     def restore_test_case_steps_versions(cls, history_case):
         current_steps_id = {step.id for step in history_case.instance.steps.all()}
-        old_steps_id = {step.id for step in
-                        TestCaseStepSelector.get_steps_by_case_version_id(history_case.history_id)}
+        old_steps_id = {
+            step.id for step in  # noqa: WPS361
+            TestCaseStepSelector.get_steps_by_case_version_id(history_case.history_id)
+        }
 
         delete_ids = current_steps_id - old_steps_id
         latest_case_history_id = TestCaseSelector.get_latest_version_by_id(history_case.id)

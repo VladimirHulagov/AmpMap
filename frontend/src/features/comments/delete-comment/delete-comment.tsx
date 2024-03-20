@@ -1,6 +1,7 @@
-import { FetchBaseQueryError } from "@reduxjs/toolkit/dist/query"
 import { Button, Modal, notification } from "antd"
 import { useDeleteCommentMutation } from "entities/comments/api"
+
+import { initInternalError } from "shared/libs"
 
 export const DeleteComment = ({ commentId }: { commentId: number }) => {
   const [deleteComment] = useDeleteCommentMutation()
@@ -13,12 +14,7 @@ export const DeleteComment = ({ commentId }: { commentId: number }) => {
         description: "Comment deleted successfully",
       })
     } catch (err: unknown) {
-      const error = err as FetchBaseQueryError
-      console.error(error)
-      notification.error({
-        message: "Error!",
-        description: "Internal server error. Showing in console log.",
-      })
+      initInternalError(err)
     }
   }
 

@@ -1,5 +1,5 @@
 import { Pagination } from "antd"
-import moment from "moment"
+import dayjs from "dayjs"
 import { useState } from "react"
 import { Link } from "react-router-dom"
 
@@ -41,7 +41,7 @@ export const TestCaseHistoryChanges = ({ testCase }: { testCase: TestCase }) => 
               <UserUsername username={history.user?.username ?? "unknown"} />
               <div className={styles.info}>
                 <span style={{ fontWeight: 500 }}>{history.action.toLowerCase()}</span> a test case
-                <span>at {moment(history.history_date).format("DD MMM YYYY HH:mm")}</span>|
+                <span>at {dayjs(history.history_date).format("DD MMM YYYY HH:mm")}</span>|
                 <Link
                   to={`/projects/${testCase.project}/suites/${testCase.suite}?version=${history.version}&test_case=${testCase.id}`}
                   id={`${history.version}-${index}`}

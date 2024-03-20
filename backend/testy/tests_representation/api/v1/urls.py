@@ -31,8 +31,8 @@
 
 from django.urls import path
 from rest_framework.routers import SimpleRouter
-from tests_representation.api.v1 import views
-from tests_representation.api.v1.views import TestPLanStatisticsView
+
+from testy.tests_representation.api.v1 import views
 
 router = SimpleRouter()
 router.register('parameters', views.ParameterViewSet)
@@ -41,11 +41,15 @@ router.register('tests', views.TestViewSet)
 router.register('testplans', views.TestPlanViewSet)
 
 urlpatterns = [
-    path('testplans/<int:pk>/statistics/', TestPLanStatisticsView.as_view({'get': 'get'}), name='testplan-statistics'),
+    path(
+        'testplans/<int:pk>/statistics/',
+        views.TestPLanStatisticsView.as_view({'get': 'get'}),
+        name='testplan-statistics',
+    ),
     path(
         'testplans/<int:pk>/histogram/',
-        TestPLanStatisticsView.as_view({'get': 'get_histogram'}),
-        name='testplan-histogram'
+        views.TestPLanStatisticsView.as_view({'get': 'get_histogram'}),
+        name='testplan-histogram',
     ),
 ]
 urlpatterns += router.urls

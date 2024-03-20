@@ -1,0 +1,93 @@
+version: "3.9"
+services:
+  nginx:
+    container_name: nginx
+    image: nginx:1.25.1
+    ports:
+      - '80:80'
+    volumes:
+      - ./backend/testy/testy-static:/opt/testy/testy/testy-static
+      - ./nginx/testy-dev.conf.template:/etc/nginx/templates/testy-dev.conf.template
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ${VOLUMES_PATH}/media:/opt/testy/testy/media
+      - ${VOLUMES_PATH}/build:/opt/testy-frontend/build
+    env_file:
+      - .env
+    depends_on:
+      - client
+      - testy
+  client:
+    container_name: testy-frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile-dev
+    volumes:
+      - './frontend:/app'
+      - '/app/node_modules'
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+    env_file:
+      - .env
+  testy:
+    container_name: testy-backend
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    build:
+      context: ./backend/testy
+      dockerfile: scripts/dev/Dockerfile
+    volumes:
+      - './backend:/testy'
+    ports:
+      - "8000:8000"
+    environment:
+      - DJANGO_SETTINGS_MODULE=root.settings.development
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+  db:
+    container_name: testy_db
+    image: postgres:14.5-alpine
+    volumes:
+      - ${VOLUMES_PATH}/pg-data:/var/lib/postgresql/data
+    ports:
+      - "5435:5432"
+    env_file:
+      - .env
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  redis:
+    container_name: testy_redis
+    image: redis:alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - ${VOLUMES_PATH}/redis_data:/data
+    ports:
+      - "6380:6379"
+    env_file:
+      - .env
+  celery:
+    container_name: testy_celery
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: always
+    build:
+      context: ./backend/testy
+      dockerfile: scripts/dev/celery/Dockerfile
+    command: celery -A root worker -B -l INFO
+    environment:
+      - DJANGO_SETTINGS_MODULE=root.settings.development
+    env_file:
+      - .env
+    volumes:
+      - './backend/testy:/testy'
+    depends_on:
+      - testy
+      - db
+      - redis

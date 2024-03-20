@@ -13,7 +13,7 @@ export const testApi = createApi({
   endpoints: (builder) => ({
     getTest: builder.query<Test, string>({
       query: (testId) => ({
-        url: `${rootPath}/${testId}`,
+        url: `${rootPath}/${testId}/`,
       }),
       providesTags: (result, error, id) => [{ type: "Test", id }],
       async onQueryStarted(id, { dispatch, queryFulfilled }) {
@@ -27,7 +27,7 @@ export const testApi = createApi({
     }),
     getTests: builder.query<PaginationResponse<Test[]>, QueryWithPagination<ITestGetWithFilters>>({
       query: (params) => ({
-        url: rootPath,
+        url: `${rootPath}/`,
         params,
       }),
       providesTags: (data) =>

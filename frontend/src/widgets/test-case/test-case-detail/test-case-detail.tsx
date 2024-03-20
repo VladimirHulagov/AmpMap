@@ -28,13 +28,6 @@ export const TestCaseDetail = ({ testCase, onClose }: TestCaseDetailProps) => {
   return (
     <ResizableDrawer
       drawerKey="test_case_details"
-      headerStyle={{
-        display: "flex",
-        alignItems: "flex-start",
-        flexWrap: "wrap",
-        width: "100%",
-        gap: 14,
-      }}
       className="testCaseDetailDrawer"
       title={
         <p

@@ -4,7 +4,7 @@ from django.conf import settings
 from django.db import migrations, models
 import django.db.models.deletion
 import simple_history.models
-import validators
+import testy.validators as validators
 
 
 class Migration(migrations.Migration):

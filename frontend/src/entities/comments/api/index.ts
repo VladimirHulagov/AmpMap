@@ -14,7 +14,7 @@ export const commentsApi = createApi({
       QueryWithPagination<GetCommentsRequest>
     >({
       query: (params) => ({
-        url: rootPath,
+        url: `${rootPath}/`,
         params,
       }),
       providesTags: () => [{ type: "Comments", id: "LIST" }],
