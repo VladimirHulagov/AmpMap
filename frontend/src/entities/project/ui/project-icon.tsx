@@ -18,6 +18,7 @@ export const ProjectIcon = ({ icon, name, size = 40 }: Props) => {
         fontSize: size / 2.7,
         lineHeight: `${size}px`,
         userSelect: "none",
+        marginRight: 12,
       }}
       size="large"
       src={icon?.length ? icon : undefined}

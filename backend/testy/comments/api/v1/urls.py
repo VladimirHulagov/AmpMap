@@ -29,8 +29,9 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 
-from comments.api.v1 import views
 from rest_framework import routers
+
+from testy.comments.api.v1 import views
 
 router = routers.SimpleRouter()
 

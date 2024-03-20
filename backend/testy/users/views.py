@@ -29,7 +29,6 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 
-from core.mixins import MediaViewMixin
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
 from rest_framework import status
@@ -37,11 +36,13 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from testy.core.mixins import MediaViewMixin
+
 UserModel = get_user_model()
 
 
 class AvatarView(APIView, MediaViewMixin):
-    permission_classes = [IsAuthenticated, ]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, pk):
         user = get_object_or_404(UserModel, pk=pk)

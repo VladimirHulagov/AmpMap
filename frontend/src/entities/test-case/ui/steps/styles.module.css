@@ -4,3 +4,10 @@
   align-items: center;
   justify-content: space-between;
 }
+
+.checkbox {
+  position: absolute;
+  top: -31px;
+  right: 0;
+  z-index: 2;
+}

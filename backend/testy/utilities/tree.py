@@ -58,7 +58,7 @@ def form_tree_prefetch_lookups(nested_prefetch_field: str, prefetch_field: str, 
     return queries
 
 
-def form_tree_prefetch_objects(
+def form_tree_prefetch_objects(  # noqa: WPS211
     nested_prefetch_field: str,
     prefetch_field: str,
     tree_depth: int,

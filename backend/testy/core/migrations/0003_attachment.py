@@ -3,8 +3,8 @@
 from django.conf import settings
 from django.db import migrations, models
 import django.db.models.deletion
-import utils
-import validators
+import testy.utils as utils
+import testy.validators as validators
 
 
 class Migration(migrations.Migration):

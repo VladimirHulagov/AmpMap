@@ -31,14 +31,17 @@
 
 from typing import Any, Dict, List, Optional, Tuple
 
-from core.selectors.attachments import AttachmentSelector
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.db.models import OuterRef, QuerySet, Subquery
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import ValidationError
-from tests_description.models import TestCase, TestCaseStep
-from tests_representation.models import TestPlan
-from tests_representation.selectors.tests import TestSelector
+
+from testy.core.selectors.attachments import AttachmentSelector
+from testy.tests_description.models import TestCase, TestCaseStep
+from testy.tests_representation.models import TestPlan
+from testy.tests_representation.selectors.tests import TestSelector
+
+_ID = 'id'
 
 
 class TestCaseSelector:
@@ -63,10 +66,10 @@ class TestCaseSelector:
         return history.history_id
 
     def get_steps_ids_by_testcase(self, case: TestCase) -> List[int]:
-        return case.steps.values_list('id', flat=True)
+        return case.steps.values_list(_ID, flat=True)
 
-    @staticmethod
-    def case_ids_by_testplan_id(plan_id: int, include_children: bool) -> List[int]:
+    @classmethod
+    def case_ids_by_testplan_id(cls, plan_id: int, include_children: bool) -> List[int]:
         if not include_children:
             return TestSelector.test_list_by_testplan_ids([plan_id]).values_list('case__id', flat=True)
         plan_ids = (
@@ -74,11 +77,12 @@ class TestCaseSelector:
             .get_descendants(include_self=True)
             .values_list('pk', flat=True)
         )
+
         return TestSelector.test_list_by_testplan_ids(plan_ids).values_list('case__id', flat=True)
 
     @classmethod
     def cases_by_ids_list(cls, ids: List[int], field_name: str) -> QuerySet[TestCase]:
-        return TestCase.objects.filter(**{f'{field_name}__in': ids}).order_by('id')
+        return TestCase.objects.filter(**{f'{field_name}__in': ids}).order_by(_ID)
 
     @classmethod
     def case_by_version(cls, pk: str, version: Optional[str]) -> Tuple[TestCase, Optional[str]]:
@@ -92,25 +96,6 @@ class TestCaseSelector:
 
         history_instance = get_object_or_404(instance.history, history_id=version)
         return history_instance.instance, version
-
-    @classmethod
-    def _current_version_subquery(cls):
-        return (
-            TestCase.history
-            .filter(id=OuterRef('id'))
-            .order_by('-history_id')
-            .values_list('history_id', flat=True)[:1]
-        )
-
-    @classmethod
-    def _versions_subquery(cls):
-        return Subquery(
-            TestCase.history
-            .filter(id=OuterRef('id'))
-            .values('id')
-            .annotate(temp=ArrayAgg('history_id', ordering='-history_id'))
-            .values('temp')
-        )
 
     @classmethod
     def get_history_by_case_id(cls, pk: int):
@@ -132,6 +117,25 @@ class TestCaseSelector:
     def get_last_history(cls, pk: int):
         return TestCase.history.filter(id=pk).latest()
 
+    @classmethod
+    def _current_version_subquery(cls):
+        return (
+            TestCase.history
+            .filter(id=OuterRef(_ID))
+            .order_by('-history_id')
+            .values_list('history_id', flat=True)[:1]
+        )
+
+    @classmethod
+    def _versions_subquery(cls):
+        return Subquery(
+            TestCase.history
+            .filter(id=OuterRef(_ID))
+            .values(_ID)
+            .annotate(temp=ArrayAgg('history_id', ordering='-history_id'))
+            .values('temp'),
+        )
+
 
 class TestCaseStepSelector:
     def step_exists(self, step_id) -> bool:
@@ -139,7 +143,7 @@ class TestCaseStepSelector:
 
     @classmethod
     def steps_by_ids_list(cls, ids: List[int], field_name: str) -> QuerySet[TestCaseStep]:
-        return TestCaseStep.objects.filter(**{f'{field_name}__in': ids}).order_by('id')
+        return TestCaseStep.objects.filter(**{f'{field_name}__in': ids}).order_by(_ID)
 
     @classmethod
     def get_steps_by_case_version_id(cls, version: int):
@@ -154,9 +158,8 @@ class TestCaseStepSelector:
         step_versions = list(
             TestCaseStep.history
             .filter(id=step.pk, test_case_history_id=version)
-            .values_list('history_id', flat=True)
+            .values_list('history_id', flat=True),
         )
-        old_attachments = AttachmentSelector.attachment_list_by_parent_object_and_history_ids(
-            step, step.id, step_versions
+        return AttachmentSelector.attachment_list_by_parent_object_and_history_ids(
+            type(step), step.id, step_versions,
         )
-        return old_attachments

@@ -49,7 +49,9 @@ export const useTestCaseCreateModal = () => {
     control,
     setValue,
     register,
-    formState: { isDirty },
+    setError: setFormError,
+    clearErrors,
+    formState: { isDirty, errors: formErrors },
   } = useForm<TestCaseFormData>()
 
   const [createTestCase, { isLoading }] = useCreateTestCaseMutation()
@@ -98,7 +100,18 @@ export const useTestCaseCreateModal = () => {
   const onSubmit: SubmitHandler<TestCaseFormData> = async (data) => {
     const dataForm = data as SubmitData
 
+    if (data.is_steps && !data.steps?.length) {
+      setFormError("steps", { type: "required", message: "Обязательное поле." })
+      return
+    }
+
+    if (!data.is_steps && !data.scenario?.length) {
+      setFormError("scenario", { type: "required", message: "Обязательное поле." })
+      return
+    }
+
     setErrors(null)
+
     try {
       const stepsFormat = dataForm.steps
         ? dataForm.steps.map((step) => formattingAttachmentForSteps(step))
@@ -146,6 +159,7 @@ export const useTestCaseCreateModal = () => {
     isShow,
     isLoading: isLoading || isLoadingAttachments,
     errors,
+    formErrors,
     control,
     attachments,
     attachmentsIds,
@@ -158,6 +172,7 @@ export const useTestCaseCreateModal = () => {
     onRemove,
     onChange,
     setValue,
+    clearErrors,
     setAttachments,
     handleCancel,
     handleSubmitForm: handleSubmit(onSubmit),

@@ -21,11 +21,19 @@ export const ProjectCards = () => {
       <Row style={{ marginBottom: "16px", display: "flex", justifyContent: "right", gap: 20 }}>
         <Space align="baseline">
           Only favorites
-          <Switch checked={userConfig.projects.is_only_favorite} onChange={onIsOnlyFavoriteClick} />
+          <Switch
+            id="only-favorites-switcher"
+            checked={userConfig.projects.is_only_favorite}
+            onChange={onIsOnlyFavoriteClick}
+          />
         </Space>
         <Space align="baseline">
           Show Archived
-          <Switch checked={userConfig.projects.is_show_archived} onChange={onShowArchived} />
+          <Switch
+            id="show-archived-switcher"
+            checked={userConfig.projects.is_show_archived}
+            onChange={onShowArchived}
+          />
         </Space>
       </Row>
       {!isLoading && !projects.length && <Empty />}

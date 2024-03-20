@@ -28,12 +28,13 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from comments.models import Comment
-from core.api.v1.serializers import AttachmentSerializer
-from core.selectors.attachments import AttachmentSelector
 from rest_framework.relations import PrimaryKeyRelatedField
 from rest_framework.serializers import ModelSerializer, SerializerMethodField, ValidationError
-from users.api.v1.serializers import UserSerializer
+
+from testy.comments.models import Comment
+from testy.core.api.v1.serializers import AttachmentSerializer
+from testy.core.selectors.attachments import AttachmentSelector
+from testy.users.api.v1.serializers import UserSerializer
 
 
 class CommentSerializer(ModelSerializer):
@@ -58,7 +59,7 @@ class CommentSerializer(ModelSerializer):
 
 class InputCommentSerializer(ModelSerializer):
     attachments = PrimaryKeyRelatedField(
-        many=True, queryset=AttachmentSelector().attachment_list(), required=False
+        many=True, queryset=AttachmentSelector().attachment_list(), required=False,
     )
 
     class Meta:

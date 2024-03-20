@@ -8,7 +8,7 @@ import { TestCaseStepsWrapper } from "entities/test-case/ui/steps/wrapper"
 
 import { config } from "shared/config"
 import { ErrorObj } from "shared/hooks/use-alert-error"
-import { AlertError, Attachment, TextArea } from "shared/ui"
+import { AlertError, Attachment, TextAreaWithAttach } from "shared/ui"
 
 import { useTestCaseCreateModal } from "./use-test-case-create-modal"
 
@@ -20,6 +20,7 @@ export const CreateTestCaseModal = () => {
     isShow,
     isLoading,
     errors,
+    formErrors,
     control,
     attachments,
     attachmentsIds,
@@ -32,12 +33,19 @@ export const CreateTestCaseModal = () => {
     onRemove,
     onChange,
     setValue,
+    clearErrors,
     setAttachments,
     handleCancel,
     handleSubmitForm,
     register,
     labelProps,
   } = useTestCaseCreateModal()
+
+  const scenarioFormErrors = !isSteps
+    ? formErrors.scenario?.message ?? errors?.scenario ?? ""
+    : !steps.length
+      ? "Обязательное поле."
+      : ""
 
   return (
     <Modal
@@ -56,6 +64,7 @@ export const CreateTestCaseModal = () => {
           loading={isLoading}
           onClick={handleSubmitForm}
           type="primary"
+          htmlType="submit"
           disabled={!isDirty}
         >
           Create
@@ -75,12 +84,14 @@ export const CreateTestCaseModal = () => {
             <Col span={12}>
               <Form.Item
                 label="Name"
-                validateStatus={errors?.name ? "error" : ""}
-                help={errors?.name ? errors.name : ""}
+                validateStatus={formErrors.name?.message ?? errors?.name ? "error" : ""}
+                help={formErrors.name?.message ?? errors?.name ?? ""}
+                required
               >
                 <Controller
                   name="name"
                   control={control}
+                  rules={{ required: "Обязательное поле." }}
                   render={({ field }) => <Input {...field} id="create-name-input" />}
                 />
               </Form.Item>
@@ -93,7 +104,7 @@ export const CreateTestCaseModal = () => {
                   name="setup"
                   control={control}
                   render={({ field }) => (
-                    <TextArea
+                    <TextAreaWithAttach
                       uploadId="create-setup"
                       textAreaId="create-setup-textarea"
                       fieldProps={field}
@@ -104,11 +115,13 @@ export const CreateTestCaseModal = () => {
                   )}
                 />
               </Form.Item>
+              {/* // TODO Нужно разделить эту часть на два отдельных контроллера
+              // чтобы контролировать ошибки по полю scenario и steps отдельно */}
               <Form.Item
                 label="Scenario"
-                validateStatus={errors?.scenario ? "error" : ""}
-                help={errors?.scenario ? errors.scenario : ""}
-                required={false}
+                validateStatus={scenarioFormErrors ? "error" : ""}
+                help={scenarioFormErrors}
+                required
               >
                 <Controller
                   name="scenario"
@@ -120,6 +133,7 @@ export const CreateTestCaseModal = () => {
                       stateSteps={{ steps, setSteps }}
                       customRequest={onLoad}
                       setValue={setValue}
+                      clearErrors={clearErrors}
                       control={control}
                       isSteps={isSteps}
                       setIsSteps={setIsSteps}
@@ -138,7 +152,7 @@ export const CreateTestCaseModal = () => {
                     name="expected"
                     control={control}
                     render={({ field }) => (
-                      <TextArea
+                      <TextAreaWithAttach
                         uploadId="create-expected"
                         textAreaId="create-expected-textarea"
                         fieldProps={field}
@@ -183,7 +197,7 @@ export const CreateTestCaseModal = () => {
                   name="teardown"
                   control={control}
                   render={({ field }) => (
-                    <TextArea
+                    <TextAreaWithAttach
                       uploadId="create-teardown"
                       textAreaId="create-teardown-textarea"
                       fieldProps={field}
@@ -203,7 +217,7 @@ export const CreateTestCaseModal = () => {
                   name="description"
                   control={control}
                   render={({ field }) => (
-                    <TextArea
+                    <TextAreaWithAttach
                       uploadId="create-description"
                       textAreaId="create-description-textarea"
                       fieldProps={field}

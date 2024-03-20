@@ -4,7 +4,7 @@ import { Controller } from "react-hook-form"
 
 import { statuses } from "shared/config"
 import { ErrorObj } from "shared/hooks/use-alert-error"
-import { AlertError, Attachment, Attribute, Steps, TextArea } from "shared/ui"
+import { AlertError, Attachment, Attribute, Status, Steps, TextAreaWithAttach } from "shared/ui"
 
 import { useEditResultModal } from "./use-edit-result-modal"
 
@@ -92,13 +92,13 @@ export const TestResultEditModal = ({
                 control={control}
                 render={({ field }) => {
                   return (
-                    <Select
-                      {...field}
-                      placeholder="Please select"
-                      style={{ width: "100%" }}
-                      options={statuses}
-                      value={String(field.value)}
-                    />
+                    <Select {...field} placeholder="Please select" style={{ width: "100%" }}>
+                      {statuses.map((status) => (
+                        <Select.Option key={status.value} value={Number(status.value)}>
+                          <Status value={status.label} />
+                        </Select.Option>
+                      ))}
+                    </Select>
                   )
                 }}
               />
@@ -113,7 +113,7 @@ export const TestResultEditModal = ({
                 name="comment"
                 control={control}
                 render={({ field }) => (
-                  <TextArea
+                  <TextAreaWithAttach
                     fieldProps={field}
                     stateAttachments={{ attachments, setAttachments }}
                     customRequest={handleAttachmentsLoad}

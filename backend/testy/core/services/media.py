@@ -54,16 +54,19 @@ class MediaService:
         full_image = Image.open(file.path)
         old_path = Path(file.path)
         for resolution in settings.TESTY_THUMBNAIL_RESOLUTIONS:
+            width, height = resolution
             new_parts = list(old_path.parts[:-1])
-            new_parts.append(f'{old_path.stem}@{resolution[0]}x{resolution[1]}{old_path.suffix}')
+            new_parts.append(
+                f'{old_path.stem}@{width}x{height}{old_path.suffix}',
+            )
             thumbnail = full_image.copy()
             thumbnail.thumbnail(resolution)
             thumbnail.save(Path(*new_parts))
 
-    @staticmethod
-    def remove_media(src_file_path: Path):
+    @classmethod
+    def remove_media(cls, src_file_path: Path):
         """
-        Removes media file and all related files by name from filesystem.
+        Remove media file and all related files by name from filesystem.
 
         Args:
             src_file_path: path to source file
@@ -79,8 +82,8 @@ class MediaService:
                 attachment_file_path.unlink(missing_ok=True)
         src_file_path.unlink(missing_ok=True)
 
-    @staticmethod
-    def crop_src_img(file: FieldFile, crop: Dict[str, float]):
+    @classmethod
+    def crop_src_img(cls, file: FieldFile, crop: Dict[str, float]):
         """
         Crop image uploaded to model and replace src image with cropped one.
 
@@ -99,6 +102,6 @@ class MediaService:
                 full_image.height * crop['upper'],
                 full_image.width * crop['right'],
                 full_image.height * crop['lower'],
-            )
+            ),
         )
         cropped_img.save(file.path)

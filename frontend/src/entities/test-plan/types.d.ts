@@ -1,6 +1,7 @@
 interface TestPlanState {
   showArchivedTests: boolean
   showArchivedResults: boolean
+  tests: Test[]
 }
 
 interface TestPlanQuery {
@@ -67,8 +68,8 @@ interface TestPlanCreate extends TestPlan {
   description: string
   test_cases: string[]
   parent: number | null
-  started_at: MomentInput
-  due_date: MomentInput
+  started_at: Dayjs
+  due_date: Dayjs
 }
 
 interface TestPlanStatistics {

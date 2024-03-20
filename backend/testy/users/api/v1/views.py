@@ -37,18 +37,22 @@ from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
-from users.api.v1.serializers import GroupSerializer, UserAvatarSerializer, UserSerializer
-from users.selectors.groups import GroupSelector
-from users.selectors.users import UserSelector
-from users.services.groups import GroupService
-from users.services.users import UserService
+
+from testy.users.api.v1.serializers import GroupSerializer, UserAvatarSerializer, UserSerializer
+from testy.users.selectors.groups import GroupSelector
+from testy.users.selectors.users import UserSelector
+from testy.users.services.groups import GroupService
+from testy.users.services.users import UserService
 
 UserModel = get_user_model()
+
+_ERRORS = 'errors'
 
 
 class GroupViewSet(ModelViewSet):
     queryset = GroupSelector().group_list()
     serializer_class = GroupSerializer
+    schema_tags = ['Groups']
 
     def perform_create(self, serializer: GroupSerializer):
         serializer.instance = GroupService().group_create(serializer.validated_data)
@@ -62,6 +66,7 @@ class UserViewSet(ModelViewSet):
     serializer_class = UserSerializer
     pagination_class = StandardSetPagination
     filterset_class = UserFilter
+    schema_tags = ['Users']
 
     def perform_create(self, serializer: UserSerializer):
         serializer.instance = UserService().user_create(serializer.validated_data)
@@ -71,7 +76,7 @@ class UserViewSet(ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         if request.user == self.get_object():
-            return Response({'errors': ['User cannot delete itself']}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({_ERRORS: ['User cannot delete itself']}, status=status.HTTP_400_BAD_REQUEST)
         return super().destroy(request, *args, **kwargs)
 
     @action(methods=['get', 'patch', 'put'], url_path='me', url_name='me', detail=False)
@@ -97,11 +102,11 @@ class UserViewSet(ModelViewSet):
         serializer.is_valid(raise_exception=True)
         if request.method == 'POST':
             if 'avatar' not in serializer.validated_data:
-                return Response(data={'errors': ['No avatar was provided in request']}, status=HTTPStatus.BAD_REQUEST)
+                return Response(data={_ERRORS: ['No avatar was provided in request']}, status=HTTPStatus.BAD_REQUEST)
             try:
                 serializer.instance = UserService().update_avatar(serializer.instance, serializer.validated_data)
             except OSError:
-                return Response(data={'errors': ['Invalid image was provided']}, status=HTTPStatus.BAD_REQUEST)
+                return Response(data={_ERRORS: ['Invalid image was provided']}, status=HTTPStatus.BAD_REQUEST)
             return Response(data={'detail': 'Avatar was updated successfully'}, status=HTTPStatus.OK)
         elif request.method == 'DELETE':
             serializer.instance = UserService().update_avatar(serializer.instance, {'avatar': None})

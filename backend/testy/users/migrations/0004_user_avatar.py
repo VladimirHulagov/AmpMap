@@ -2,7 +2,7 @@
 
 from django.db import migrations, models
 import functools
-import utils
+import testy.utils as utils
 
 
 class Migration(migrations.Migration):

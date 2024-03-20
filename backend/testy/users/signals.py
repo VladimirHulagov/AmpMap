@@ -32,11 +32,12 @@ import os
 from functools import partial
 from pathlib import Path
 
-from core.services.media import MediaService
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
+
+from testy.core.services.media import MediaService
 
 UserModel = get_user_model()
 
@@ -47,5 +48,5 @@ def auto_delete_file_on_delete(sender, instance, **kwargs):
         return False
     if os.path.isfile(instance.avatar.path):
         transaction.on_commit(
-            partial(MediaService.remove_media, src_file_path=Path(instance.avatar.path))
+            partial(MediaService.remove_media, src_file_path=Path(instance.avatar.path)),
         )

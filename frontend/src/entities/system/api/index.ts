@@ -10,7 +10,7 @@ export const systemApi = createApi({
   tagTypes: ["SystemMessages", "SystemStatistic"],
   endpoints: (builder) => ({
     getSystemMessages: builder.query<SystemMessage[], void>({
-      query: () => `${rootPath}/messages`,
+      query: () => `${rootPath}/messages/`,
       providesTags: (result) =>
         result
           ? [
@@ -23,7 +23,7 @@ export const systemApi = createApi({
           : [{ type: "SystemMessages", id: "LIST" }],
     }),
     getSystemStats: builder.query<SystemStatistic, void>({
-      query: () => `${rootPath}/statistics`,
+      query: () => `${rootPath}/statistics/`,
       providesTags: [{ type: "SystemStatistic", id: "LIST" }],
     }),
   }),

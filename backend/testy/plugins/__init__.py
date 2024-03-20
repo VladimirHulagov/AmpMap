@@ -28,11 +28,8 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
+# noqa: WPS412
 from django.apps import AppConfig
-
-__all__ = (
-    'TestyPluginConfig'
-)
 
 
 class TestyPluginConfig(AppConfig):

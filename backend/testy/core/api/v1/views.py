@@ -31,23 +31,6 @@
 from pathlib import Path
 
 import permissions
-from core.api.v1.serializers import (
-    AllProjectsStatisticSerializer,
-    AttachmentSerializer,
-    LabelSerializer,
-    ProjectRetrieveSerializer,
-    ProjectSerializer,
-    ProjectStatisticsSerializer,
-    SystemMessageSerializer,
-)
-from core.mixins import MediaViewMixin
-from core.models import Project, SystemMessage
-from core.selectors.attachments import AttachmentSelector
-from core.selectors.labels import LabelSelector
-from core.selectors.projects import ProjectSelector
-from core.services.attachments import AttachmentService
-from core.services.labels import LabelService
-from core.services.projects import ProjectService
 from django.shortcuts import get_object_or_404
 from filters import AttachmentFilter, LabelFilter, ProjectFilter, ProjectOrderingFilter, TestyFilterBackend
 from paginations import StandardSetPagination
@@ -56,16 +39,43 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
-from tests_representation.api.v1.serializers import (
+from swagger.projects import (
+    project_create_schema,
+    project_list_schema,
+    project_parameters_schema,
+    project_plans_schema,
+    project_progress_schema,
+    project_update_schema,
+)
+
+from testy.core.api.v1.serializers import (
+    AllProjectsStatisticSerializer,
+    AttachmentSerializer,
+    LabelSerializer,
+    ProjectRetrieveSerializer,
+    ProjectSerializer,
+    ProjectStatisticsSerializer,
+    SystemMessageSerializer,
+)
+from testy.core.mixins import MediaViewMixin
+from testy.core.models import Project, SystemMessage
+from testy.core.selectors.attachments import AttachmentSelector
+from testy.core.selectors.labels import LabelSelector
+from testy.core.selectors.projects import ProjectSelector
+from testy.core.services.attachments import AttachmentService
+from testy.core.services.labels import LabelService
+from testy.core.services.projects import ProjectService
+from testy.root.mixins import TestyArchiveMixin, TestyModelViewSet
+from testy.tests_representation.api.v1.serializers import (
     ParameterSerializer,
     TestPlanProgressSerializer,
     TestPlanTreeSerializer,
 )
-from tests_representation.selectors.parameters import ParameterSelector
-from tests_representation.selectors.testplan import TestPlanSelector
-from utilities.request import PeriodDateTime
+from testy.tests_representation.selectors.parameters import ParameterSelector
+from testy.tests_representation.selectors.testplan import TestPlanSelector
+from testy.utilities.request import PeriodDateTime
 
-from testy.mixins import TestyArchiveMixin, TestyModelViewSet
+_GET = 'get'
 
 
 class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin, MediaViewMixin):
@@ -76,6 +86,7 @@ class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin, MediaViewMixin):
     permission_classes = [permissions.IsAdminOrForbidArchiveUpdate, IsAuthenticated]
     ordering_fields = ['name', 'is_archive']
     pagination_class = StandardSetPagination
+    schema_tags = ['Projects']
 
     def get_queryset(self):
         if self.action in {'recovery_list', 'restore', 'delete_permanently'}:
@@ -87,33 +98,37 @@ class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin, MediaViewMixin):
             return ProjectRetrieveSerializer
         return ProjectSerializer
 
-    @action(methods=['get'], url_path='testplans', url_name='testplans', detail=True)
+    @project_plans_schema
+    @action(methods=[_GET], url_path='testplans', url_name='testplans', detail=True)
     def testplans_by_project(self, request, pk):
         qs = TestPlanSelector().testplan_project_root_list(project_id=pk)
-        serializer = TestPlanTreeSerializer(qs, many=True, context={'request': request})
+        serializer = TestPlanTreeSerializer(qs, many=True, context=self.get_serializer_context())
         return Response(serializer.data)
 
-    @action(methods=['get'], url_path='parameters', url_name='parameters', detail=True)
+    @project_parameters_schema
+    @action(methods=[_GET], url_path='parameters', url_name='parameters', detail=True)
     def parameters_by_project(self, request, pk):
         qs = ParameterSelector().parameter_project_list(project_id=pk)
-        serializer = ParameterSerializer(qs, many=True, context={'request': request})
+        serializer = ParameterSerializer(qs, many=True, context=self.get_serializer_context())
         return Response(serializer.data)
 
-    @action(methods=['get'], url_path='icon', url_name='icon', detail=True)
+    @action(methods=[_GET], url_path='icon', url_name='icon', detail=True)
     def icon(self, request, pk, *args, **kwargs):
         project = get_object_or_404(Project, pk=pk)
         if not project.icon or not project.icon.storage.exists(project.icon.path):
             return Response(status=status.HTTP_404_NOT_FOUND)
         return self.retrieve_filepath(project.icon, request, generate_thumbnail=False)
 
-    @action(methods=['get'], url_path='progress', url_name='progress', detail=True)
+    @project_progress_schema
+    @action(methods=[_GET], url_path='progress', url_name='progress', detail=True)
     def project_progress(self, request, pk):
         period = PeriodDateTime(request, 'start_date', 'end_date')
         plans = ProjectSelector().project_progress(
-            pk, period=period
+            pk, period=period,
         )
         return Response(TestPlanProgressSerializer(plans, many=True).data)
 
+    @project_list_schema
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(ProjectSelector.project_list_statistics())
 
@@ -123,25 +138,27 @@ class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin, MediaViewMixin):
             serializer = ProjectStatisticsSerializer(page, many=True, context={'request': request})
             return self.get_paginated_response(serializer.data)
 
-        serializer = ProjectStatisticsSerializer(queryset, many=True, context={'request': request})
+        serializer = ProjectStatisticsSerializer(queryset, many=True, context=self.get_serializer_context())
         return Response(serializer.data)
 
+    @project_create_schema
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         instance = ProjectService().project_create(serializer.validated_data)
         return Response(
             ProjectRetrieveSerializer(instance, context={'request': request}).data,
-            status=status.HTTP_201_CREATED
+            status=status.HTTP_201_CREATED,
         )
 
+    @project_update_schema
     def update(self, request, *args, **kwargs):
         partial = kwargs.get('partial', False)
         instance = self.get_object()
         serializer = self.get_serializer(data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         new_instance = ProjectService().project_update(instance, serializer.validated_data)
-        return Response(ProjectRetrieveSerializer(new_instance, context={'request': request}).data)
+        return Response(ProjectRetrieveSerializer(new_instance, context=self.get_serializer_context()).data)
 
     def partial_update(self, request, *args, **kwargs):
         kwargs['partial'] = True
@@ -154,8 +171,13 @@ class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin, MediaViewMixin):
         return super().destroy(request, pk, *args, **kwargs)
 
 
-class AttachmentViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, mixins.CreateModelMixin,
-                        mixins.DestroyModelMixin, GenericViewSet):
+class AttachmentViewSet(
+    mixins.RetrieveModelMixin,
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    mixins.DestroyModelMixin,
+    GenericViewSet,
+):
     queryset = AttachmentSelector().attachment_list()
     serializer_class = AttachmentSerializer
     filter_backends = [TestyFilterBackend]
@@ -165,7 +187,12 @@ class AttachmentViewSet(mixins.RetrieveModelMixin, mixins.ListModelMixin, mixins
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         attachments = AttachmentService().attachment_create(serializer.validated_data, request)
-        data = [self.get_serializer(attachment, context={'request': request}).data for attachment in attachments]
+        data = [
+            self.get_serializer(
+                attachment,
+                context=self.get_serializer_context(),
+            ).data for attachment in attachments
+        ]
         return Response(data, status=status.HTTP_201_CREATED)
 
 
@@ -174,6 +201,7 @@ class LabelViewSet(TestyModelViewSet):
     serializer_class = LabelSerializer
     filter_backends = [TestyFilterBackend]
     filterset_class = LabelFilter
+    schema_tags = ['Labels']
 
     def perform_create(self, serializer: ProjectSerializer):
         serializer.instance = LabelService().label_create(serializer.validated_data)
@@ -191,6 +219,10 @@ class SystemMessagesViewSet(mixins.ListModelMixin, GenericViewSet):
 
 
 class SystemStatisticViewSet(mixins.ListModelMixin, GenericViewSet):
+    queryset = Project.objects.none()
+    serializer_class = AllProjectsStatisticSerializer
+    schema_tags = ['statistics']
+
     def list(self, request, *args, **kwargs):
         statistic = ProjectSelector.all_projects_statistic()
         serializer = AllProjectsStatisticSerializer(statistic)

@@ -28,12 +28,6 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from comments.api.v1.serializers import CommentSerializer, InputCommentSerializer
-from comments.exceptions import ContentTypeDoesntExist, WrongObjectId
-from comments.models import Comment
-from comments.paginations import CommentSetPagination
-from comments.selectors.comments import CommentSelector
-from comments.services.comment import CommentService
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
 from django.shortcuts import get_object_or_404
@@ -42,6 +36,13 @@ from rest_framework import filters, status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from testy.comments.api.v1.serializers import CommentSerializer, InputCommentSerializer
+from testy.comments.exceptions import ContentTypeDoesntExist, WrongObjectId
+from testy.comments.models import Comment
+from testy.comments.paginations import CommentSetPagination
+from testy.comments.selectors.comments import CommentSelector
+from testy.comments.services.comment import CommentService
+
 
 class CommentsViewSet(viewsets.ModelViewSet):
     queryset = Comment.objects.none()
@@ -49,11 +50,12 @@ class CommentsViewSet(viewsets.ModelViewSet):
     pagination_class = CommentSetPagination
     filter_backends = [TestyFilterBackend, filters.OrderingFilter]
     permission_classes = [IsAuthenticated]
+    schema_tags = ['Comments']
 
     ordering = ('-created_at',)
 
     def get_serializer_class(self):
-        if self.action in ('create', 'update',):
+        if self.action in {'create', 'update'}:
             return InputCommentSerializer
         return super().get_serializer_class()
 
@@ -63,18 +65,18 @@ class CommentsViewSet(viewsets.ModelViewSet):
         try:
             model_id = int(request_data.get('object_id'))
         except (ValueError, TypeError):
-            raise WrongObjectId
+            raise WrongObjectId()
         try:
             ct_object = ContentType.objects.get(model=model_name)
         except ObjectDoesNotExist:
-            raise ContentTypeDoesntExist
+            raise ContentTypeDoesntExist()
 
         model_class = ct_object.model_class()
         obj = get_object_or_404(model_class, id=model_id)
         return obj, ct_object
 
     def get_queryset(self):
-        if self.action not in ('list', 'create',):
+        if self.action not in {'list', 'create'}:
             return Comment.objects.filter(user=self.request.user)
         if comment_id := self.request.query_params.get('comment_id'):
             return CommentSelector.get_same_comments(comment_id)
@@ -88,18 +90,18 @@ class CommentsViewSet(viewsets.ModelViewSet):
         data = {
             'content_type': ct_object,
             'object_id': obj.id,
-            **serializer.validated_data
+            **serializer.validated_data,
         }
         comment = CommentService().comment_create(
             data=data,
-            user=request.user
+            user=request.user,
         )
         return Response(
             CommentSerializer(comment, context={'request': request}).data,
-            status=status.HTTP_201_CREATED
+            status=status.HTTP_201_CREATED,
         )
 
     def perform_update(self, serializer):
         serializer.instance = CommentService().comment_update(
-            serializer.instance, serializer.validated_data
+            serializer.instance, serializer.validated_data,
         )

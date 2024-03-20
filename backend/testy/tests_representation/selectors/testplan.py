@@ -35,61 +35,67 @@ from typing import Any, Dict, List, Optional
 from django.db.models import Case, Count, DateTimeField, F, FloatField, OuterRef, Q, QuerySet, Sum, When, expressions
 from django.db.models.functions import Cast, Coalesce
 from mptt.querysets import TreeQuerySet
-from tests_representation.api.v1.serializers import TestPlanOutputSerializer
-from tests_representation.choices import TestStatuses
-from tests_representation.models import Parameter, Test, TestPlan
-from tests_representation.selectors.results import TestResultSelector
-from tests_representation.services.statistics import HistogramProcessor, StatisticProcessor
-from utilities.request import PeriodDateTime
-from utilities.sql import DateTrunc, SubCount
-from utilities.time import PERIODS_IN_SECONDS
-from utilities.tree import form_tree_prefetch_lookups, form_tree_prefetch_objects, get_breadcrumbs_treeview
 
-from testy.selectors import MPTTSelector
+from testy.root.selectors import MPTTSelector
+from testy.tests_representation.api.v1.serializers import TestPlanOutputSerializer
+from testy.tests_representation.choices import TestStatuses
+from testy.tests_representation.models import Parameter, Test, TestPlan
+from testy.tests_representation.selectors.results import TestResultSelector
+from testy.tests_representation.services.statistics import HistogramProcessor, StatisticProcessor
+from testy.utilities.request import PeriodDateTime
+from testy.utilities.sql import DateTrunc, SubCount
+from testy.utilities.time import PERIODS_IN_SECONDS
+from testy.utilities.tree import form_tree_prefetch_lookups, form_tree_prefetch_objects, get_breadcrumbs_treeview
 
 logger = logging.getLogger(__name__)
+
+_CHILD_TEST_PLANS = 'child_test_plans'
+_PARAMETERS = 'parameters'
+_STATUS = 'status'
+_ESTIMATES = 'estimates'
+_EMPTY_ESTIMATES = 'empty_estimates'
 
 
 class TestPlanSelector:
     def get_max_level(self) -> int:
         return MPTTSelector.model_max_level(TestPlan)
 
-    @staticmethod
-    def testplan_list_raw() -> QuerySet[TestPlan]:
+    @classmethod
+    def testplan_list_raw(cls) -> QuerySet[TestPlan]:
         return TestPlan.objects.all()
 
     def testplan_list(self, is_archive: bool = False) -> QuerySet[TestPlan]:
         max_level = self.get_max_level()
         testplan_prefetch_objects = form_tree_prefetch_objects(
-            nested_prefetch_field='child_test_plans',
-            prefetch_field='child_test_plans',
+            nested_prefetch_field=_CHILD_TEST_PLANS,
+            prefetch_field=_CHILD_TEST_PLANS,
             tree_depth=max_level,
             queryset_class=TestPlan,
-            queryset_filter=None if is_archive else {'is_archive': False}
+            queryset_filter=None if is_archive else {'is_archive': False},
         )
         testplan_prefetch_objects.extend(
             form_tree_prefetch_objects(
-                nested_prefetch_field='child_test_plans',
-                prefetch_field='parameters',
+                nested_prefetch_field=_CHILD_TEST_PLANS,
+                prefetch_field=_PARAMETERS,
                 tree_depth=max_level,
-                queryset_class=Parameter
-            )
+                queryset_class=Parameter,
+            ),
         )
         return TestPlan.objects.all().prefetch_related(
-            *testplan_prefetch_objects
+            *testplan_prefetch_objects,
         )
 
     def testplan_deleted_list(self):
         max_level = self.get_max_level()
         return TestPlan.deleted_objects.all().prefetch_related(
             *form_tree_prefetch_objects(
-                nested_prefetch_field='child_test_plans',
-                prefetch_field='child_test_plans',
+                nested_prefetch_field=_CHILD_TEST_PLANS,
+                prefetch_field=_CHILD_TEST_PLANS,
                 tree_depth=max_level,
                 queryset_class=TestPlan,
-                manager_name='deleted_objects'
+                manager_name='deleted_objects',
             ),
-            *form_tree_prefetch_lookups('child_test_plans', 'parameters', max_level)
+            *form_tree_prefetch_lookups(_CHILD_TEST_PLANS, _PARAMETERS, max_level),
         )
 
     def testplan_project_root_list(self, project_id: int) -> QuerySet[TestPlan]:
@@ -98,10 +104,10 @@ class TestPlanSelector:
     def testplan_get_by_pk(self, pk) -> Optional[TestPlan]:
         return TestPlan.objects.get(pk=pk)
 
-    @staticmethod
-    def testplan_breadcrumbs_by_ids(ids: List[int]) -> Dict[str, Dict[str, Any]]:
-        plans = TestPlan.objects.filter(pk__in=ids).prefetch_related('parameters')
-        ancestors = plans.get_ancestors(include_self=False).prefetch_related('parameters')
+    @classmethod
+    def testplan_breadcrumbs_by_ids(cls, ids: List[int]) -> Dict[str, Dict[str, Any]]:
+        plans = TestPlan.objects.filter(pk__in=ids).prefetch_related(_PARAMETERS)
+        ancestors = plans.get_ancestors(include_self=False).prefetch_related(_PARAMETERS)
         ids_to_breadcrumbs = {}
         for plan in plans:
             tree = [ancestor for ancestor in ancestors if ancestor.is_ancestor_of(plan)]
@@ -109,7 +115,7 @@ class TestPlanSelector:
             ids_to_breadcrumbs[plan.id] = get_breadcrumbs_treeview(
                 instances=tree,
                 depth=len(tree) - 1,
-                title_method=TestPlanOutputSerializer.get_title
+                title_method=TestPlanOutputSerializer.get_title,
             )
         return ids_to_breadcrumbs
 
@@ -117,40 +123,40 @@ class TestPlanSelector:
         self,
         is_archive: bool = False,
         children_ordering: str = None,
-        parent_id: int = None
+        parent_id: int = None,
     ) -> QuerySet[TestPlan]:
         max_level = self.get_max_level()
-        children_ordering = ['-started_at'] if not children_ordering else children_ordering.split(',')
+        children_ordering = children_ordering.split(',') if children_ordering else ['-started_at']
         testplan_prefetch_objects = form_tree_prefetch_objects(
-            nested_prefetch_field='child_test_plans',
-            prefetch_field='child_test_plans',
+            nested_prefetch_field=_CHILD_TEST_PLANS,
+            prefetch_field=_CHILD_TEST_PLANS,
             tree_depth=max_level,
             queryset_class=TestPlan,
             queryset_filter=None if is_archive else {'is_archive': False},
-            order_by_fields=children_ordering
+            order_by_fields=children_ordering,
         )
         testplan_prefetch_objects.extend(
             form_tree_prefetch_objects(
-                nested_prefetch_field='child_test_plans',
-                prefetch_field='parameters',
+                nested_prefetch_field=_CHILD_TEST_PLANS,
+                prefetch_field=_PARAMETERS,
                 tree_depth=max_level,
                 queryset_class=Parameter,
-            )
+            ),
         )
         return TestPlan.objects.filter(parent=parent_id).order_by('-created_at').prefetch_related(
             *testplan_prefetch_objects,
         )
 
-    @staticmethod
-    def testplan_list_ancestors(instance: TestPlan) -> TreeQuerySet[TestPlan]:
-        return instance.get_ancestors(include_self=True).prefetch_related('parameters')
+    @classmethod
+    def testplan_list_ancestors(cls, instance: TestPlan) -> TreeQuerySet[TestPlan]:
+        return instance.get_ancestors(include_self=True).prefetch_related(_PARAMETERS)
 
-    @staticmethod
-    def testplan_list_descendants(instance: TestPlan) -> TreeQuerySet[TestPlan]:
-        return instance.get_descendants(include_self=True).prefetch_related('parameters')
+    @classmethod
+    def testplan_list_descendants(cls, instance: TestPlan) -> TreeQuerySet[TestPlan]:
+        return instance.get_descendants(include_self=True).prefetch_related(_PARAMETERS)
 
-    @staticmethod
-    def get_testplan_descendants_ids_by_testplan(test_plan: TestPlan, include_self: bool = True):
+    @classmethod
+    def get_testplan_descendants_ids_by_testplan(cls, test_plan: TestPlan, include_self: bool = True):
         return test_plan.get_descendants(include_self=include_self).values_list('pk', flat=True)
 
     def testplan_statistics(
@@ -158,17 +164,17 @@ class TestPlanSelector:
         test_plan: TestPlan,
         filter_condition: Dict[str, Any],
         estimate_period: Optional[str] = None,
-        is_archive: bool = False
+        is_archive: bool = False,
     ):
         test_plan_child_ids = tuple(self.get_testplan_descendants_ids_by_testplan(test_plan))
         seconds = PERIODS_IN_SECONDS['minutes']
         if estimate_period:
             seconds = PERIODS_IN_SECONDS.get(estimate_period, seconds)
-        is_archive_condition = Q(is_archive=False) if not is_archive else Q()
+        is_archive_condition = Q() if is_archive else Q(is_archive=False)
         latest_status = TestResultSelector.get_last_status_subquery()
         total_estimate = Sum(
             Cast(F('case__estimate'), FloatField()) / seconds,
-            output_field=FloatField()
+            output_field=FloatField(),
         )
         tests = Test.objects.filter(
             is_archive_condition,
@@ -181,20 +187,20 @@ class TestPlanSelector:
                 When(Q(case__estimate__isnull=True), then=1),
                 default=0,
             ),
-            empty_estimates=Sum('is_empty_estimate')
+            empty_estimates=Sum('is_empty_estimate'),
         )
         statistic_processor = StatisticProcessor(filter_condition)
         if statistic_processor.labels or statistic_processor.not_labels:
             tests = statistic_processor.process_labels(tests)
 
         rows = tests.values(
-            'status', 'estimates', 'empty_estimates'
+            _STATUS, _ESTIMATES, _EMPTY_ESTIMATES,
         ).annotate(
-            count=Count('id', distinct=True)
-        ).order_by('status')
+            count=Count('id', distinct=True),
+        ).order_by(_STATUS)
 
         result = []
-        presented_statuses = [row['status'] for row in rows]
+        presented_statuses = [row[_STATUS] for row in rows]
         for status in TestStatuses:
             if status.value in presented_statuses:
                 continue
@@ -202,32 +208,32 @@ class TestPlanSelector:
                 {
                     'label': status.label.upper(),
                     'value': 0,
-                    'estimates': 0,
-                    'empty_estimates': 0
-                }
+                    _ESTIMATES: 0,
+                    _EMPTY_ESTIMATES: 0,
+                },
             )
 
         for row in rows:
             result.append(
                 {
-                    'label': TestStatuses(row['status']).name,
+                    'label': TestStatuses(row[_STATUS]).name,
                     'value': row['count'],
-                    'estimates': round(row['estimates'], 2),
-                    'empty_estimates': row['empty_estimates']
-                }
+                    'estimates': round(row[_ESTIMATES], 2),
+                    'empty_estimates': row[_EMPTY_ESTIMATES],
+                },
             )
-        return sorted(result, key=lambda d: d['value'], reverse=True)
+        return sorted(result, key=lambda elem: elem['value'], reverse=True)
 
     def get_plan_progress(self, plan_id: int, period: PeriodDateTime):
         last_status_period = TestResultSelector.get_last_status_subquery(
-            filters=[Q(created_at__gte=period.start) & Q(created_at__lte=period.end)]
+            filters=[Q(created_at__gte=period.start) & Q(created_at__lte=period.end)],
         )
         last_status_total = TestResultSelector.get_last_status_subquery()
         descendants_include_self_lookup = Q(
             plan__lft__gte=OuterRef('lft'),
             plan__rght__lte=OuterRef('rght'),
             plan__tree_id=OuterRef('tree_id'),
-            plan__is_archive=False
+            plan__is_archive=False,
         )
         tests_total_query = Test.objects.filter(descendants_include_self_lookup).values('pk')
         tests_progress_period = self._get_tests_subquery(last_status_period, descendants_include_self_lookup)
@@ -235,52 +241,45 @@ class TestPlanSelector:
         return (
             TestPlan.objects
             .filter(parent=plan_id, is_archive=False)
-            .prefetch_related('parameters')
+            .prefetch_related(_PARAMETERS)
             .annotate(
                 tests_total=SubCount(tests_total_query),
                 tests_progress_period=SubCount(tests_progress_period),
-                tests_progress_total=SubCount(tests_progress_total)
+                tests_progress_total=SubCount(tests_progress_total),
             )
         )
-
-    @staticmethod
-    def _get_tests_subquery(last_status_subquery, descendants_lookup):
-        return Test.objects.annotate(last_status=last_status_subquery).filter(
-            descendants_lookup,
-            last_status__isnull=False
-        ).values('pk')
 
     def testplan_histogram(
         self,
         test_plan: TestPlan,
         processor: HistogramProcessor,
-            filter_condition: Dict[str, Any],
-            is_archive: bool = False
+        filter_condition: Dict[str, Any],
+        is_archive: bool = False,
     ):
         test_plan_child_ids = tuple(self.get_testplan_descendants_ids_by_testplan(test_plan))
         annotate_condition = {}
         filters = {
-            'created_at__range': processor.period
+            'created_at__range': processor.period,
         }
         if not is_archive:
             filters['is_archive'] = False
         if processor.attribute:
             order_condition = expressions.RawSQL(
-                'attributes->>%s', (processor.attribute,)
+                'attributes->>%s', (processor.attribute,),
             )
-            values_list = (f'attributes__{processor.attribute}', 'status')
+            values_list = (f'attributes__{processor.attribute}', _STATUS)
             filters['attributes__has_key'] = processor.attribute
 
         else:
             annotate_condition = {
-                "period_day": DateTrunc(
+                'period_day': DateTrunc(
                     'day',
                     'created_at',
-                    output_field=DateTimeField()
-                )
+                    output_field=DateTimeField(),
+                ),
             }
             order_condition = 'period_day'
-            values_list = ('period_day', 'status')
+            values_list = ('period_day', _STATUS)
 
         test_results = (
             TestResultSelector()
@@ -293,8 +292,15 @@ class TestPlanSelector:
 
         test_results_formatted = (
             test_results.values(*values_list).distinct()
-            .annotate(status_count=Count('status'))
+            .annotate(status_count=Count(_STATUS))
             .order_by(order_condition)
         )
 
         return processor.process_statistic(test_results_formatted)
+
+    @classmethod
+    def _get_tests_subquery(cls, last_status_subquery, descendants_lookup):
+        return Test.objects.annotate(last_status=last_status_subquery).filter(
+            descendants_lookup,
+            last_status__isnull=False,
+        ).values('pk')

@@ -11,6 +11,7 @@ export const ProjectTabs = ({ projectId }: ProjectTabsProps) => {
       items={tabItems}
       onTabClick={onTabClick}
       onChange={onChange}
+      style={{ marginBottom: 0 }}
     />
   )
 }

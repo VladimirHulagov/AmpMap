@@ -7,6 +7,7 @@ interface SearchProps {
   search?: string
   page: number
   page_size: number
+  is_next_page_loading?: boolean
 }
 
 export const useTestSuiteSearch = () => {
@@ -17,7 +18,13 @@ export const useTestSuiteSearch = () => {
   const [isLastPage, setIsLastPage] = useState(false)
   const [data, setData] = useState<Suite[]>([])
 
-  const searchSuite = async ({ project, search, page, page_size }: SearchProps) => {
+  const searchSuite = async ({
+    project,
+    search,
+    page,
+    page_size,
+    is_next_page_loading = false,
+  }: SearchProps) => {
     try {
       setIsLastPage(false)
 
@@ -42,7 +49,7 @@ export const useTestSuiteSearch = () => {
         return
       }
 
-      setData(payload.data.results)
+      setData(is_next_page_loading ? [...data, ...payload.data.results] : payload.data.results)
       setIsLoading(false)
 
       if (!payload.data.pages.next) {

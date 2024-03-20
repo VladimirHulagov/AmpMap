@@ -37,11 +37,15 @@ from django.db import transaction
 from django.db.models import Q, QuerySet
 from django.shortcuts import get_object_or_404
 from rest_framework.serializers import ModelSerializer
-from tests_description.models import TestCase, TestSuite
-from tests_representation.models import Parameter, Test, TestPlan
-from tests_representation.selectors.tests import TestSelector
+
+from testy.tests_description.models import TestCase, TestSuite
+from testy.tests_representation.models import Parameter, Test, TestPlan
+from testy.tests_representation.selectors.tests import TestSelector
 
 logger = logging.getLogger(__name__)
+
+_PROJECT_ID = 'project_id'
+_ID = 'id'
 
 
 class ParameterCopySerializer(ModelSerializer):
@@ -72,7 +76,7 @@ class Command(BaseCommand):
             '--dst-plan-id',
             action='store',
             help='Plan where to copy plan',
-            type=int
+            type=int,
         )
         parser.add_argument(
             '--drop-results',
@@ -83,7 +87,7 @@ class Command(BaseCommand):
         parser.add_argument(
             '--included-statuses',
             nargs='+',
-            help='Copy only tests with certain statuses'
+            help='Copy only tests with certain statuses',
         )
 
     def handle(self, *args, **options) -> None:
@@ -101,17 +105,18 @@ class Command(BaseCommand):
         src_plan_id,
         dst_plan_id,
         drop_results: bool,
-        included_statuses: List[Union[int, str]]
+        included_statuses: List[Union[int, str]],
     ) -> None:
         plan_to_copy = get_object_or_404(TestPlan, pk=src_plan_id)
 
         tests_to_copy = TestSelector().test_list_with_last_status()
 
-        plans_to_copy = (
-            plan_to_copy
-            .get_descendants(include_self=True)
-            .prefetch_related('parameters')
-            .order_by('level')
+        plans_to_copy = plan_to_copy.get_descendants(
+            include_self=True,
+        ).prefetch_related(
+            'parameters',
+        ).order_by(
+            'level',
         )
 
         if included_statuses:
@@ -122,12 +127,14 @@ class Command(BaseCommand):
                 included_statuses.remove('null')
 
             tests_to_copy = self._exclude_statuses(tests_to_copy, plans_to_copy, included_statuses, is_null)
-            plans_to_copy = (
-                TestPlan.objects
-                .filter(pk__in=tests_to_copy.values_list('plan_id', flat=True))
-                .get_ancestors(include_self=True)
-                .prefetch_related('parameters')
-                .order_by('level')
+            plans_to_copy = TestPlan.objects.filter(
+                pk__in=tests_to_copy.values_list('plan_id', flat=True),
+            ).get_ancestors(
+                include_self=True,
+            ).prefetch_related(
+                'parameters',
+            ).order_by(
+                'level',
             )
         else:
             tests_to_copy = Test.objects.filter(plan__in=plans_to_copy)
@@ -136,11 +143,12 @@ class Command(BaseCommand):
 
         cases_to_copy = TestCase.objects.filter(pk__in=tests_to_copy.values_list('case__id', flat=True))
 
-        suites_to_copy = (
-            TestSuite.objects
-            .filter(pk__in=cases_to_copy.values_list('suite__id', flat=True))
-            .get_ancestors(include_self=True)
-            .order_by('level')
+        suites_to_copy = TestSuite.objects.filter(
+            pk__in=cases_to_copy.values_list('suite__id', flat=True),
+        ).get_ancestors(
+            include_self=True,
+        ).order_by(
+            'level',
         )
 
         suite_mappings = self._get_suites_mapping(same_project, dst_project_id, suites_to_copy)
@@ -156,9 +164,9 @@ class Command(BaseCommand):
                 copied_or_found_params.append(parameter)
             copied_plan = src_plan.model_clone(
                 attrs_to_change={
-                    'project_id': dst_project_id,
-                    'parent_id': dst_plan_id if plan_to_copy == src_plan else plan_mappings[src_plan.parent.id]
-                }
+                    _PROJECT_ID: dst_project_id,
+                    'parent_id': dst_plan_id if plan_to_copy == src_plan else plan_mappings[src_plan.parent.id],
+                },
             )
             copied_plan.parameters.set(copied_or_found_params)
             plan_mappings[src_plan.id] = copied_plan.id
@@ -169,11 +177,11 @@ class Command(BaseCommand):
                 related_managers=related_managers,
                 attrs_to_change={
                     'case_id': case_mappings[src_test.case_id],
-                    'plan_id': plan_mappings[src_test.plan_id]
+                    'plan_id': plan_mappings[src_test.plan_id],
                 },
                 common_attrs_to_change={
-                    'project_id': dst_project_id
-                }
+                    _PROJECT_ID: dst_project_id,
+                },
             )
         TestPlan.objects.rebuild()
         TestSuite.objects.rebuild()
@@ -195,20 +203,20 @@ class Command(BaseCommand):
         if same_project:
             return dict(
                 zip(
-                    suites_to_copy.values_list('id', flat=True),
-                    suites_to_copy.values_list('id', flat=True)
-                )
+                    suites_to_copy.values_list(_ID, flat=True),
+                    suites_to_copy.values_list(_ID, flat=True),
+                ),
             )
 
         suite_mappings = {}
 
         for src_suite in suites_to_copy:
-            attrs = {'project_id': dst_project_id}
+            attrs = {_PROJECT_ID: dst_project_id}
             if parent := src_suite.parent:
                 attrs['parent_id'] = suite_mappings[parent.id]
             copied_suite = src_suite.model_clone(
                 attrs_to_change=attrs,
-                related_managers=[]
+                related_managers=[],
             )
             suite_mappings[src_suite.id] = copied_suite.id
         return suite_mappings
@@ -219,18 +227,18 @@ class Command(BaseCommand):
         same_project: bool,
         dst_project_id: int,
         cases_to_copy: QuerySet[TestCase],
-        suite_mappings: Dict[int, int]
+        suite_mappings: Dict[int, int],
     ):
         if same_project:
             return dict(
                 zip(
-                    cases_to_copy.values_list('id', flat=True),
-                    cases_to_copy.values_list('id', flat=True)
-                )
+                    cases_to_copy.values_list(_ID, flat=True),
+                    cases_to_copy.values_list(_ID, flat=True),
+                ),
             )
         case_mappings = {}
         for src_case in cases_to_copy:
             case_mappings[src_case.id] = src_case.model_clone(
                 attrs_to_change={'suite_id': suite_mappings[src_case.suite_id]},
-                common_attrs_to_change={'project_id': dst_project_id}
+                common_attrs_to_change={_PROJECT_ID: dst_project_id},
             ).id

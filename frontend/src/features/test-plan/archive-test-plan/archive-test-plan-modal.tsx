@@ -1,4 +1,3 @@
-import { FetchBaseQueryError } from "@reduxjs/toolkit/dist/query"
 import { notification } from "antd"
 import { useNavigate } from "react-router-dom"
 
@@ -7,6 +6,7 @@ import {
   useGetTestPlanArchivePreviewQuery,
 } from "entities/test-plan/api"
 
+import { initInternalError } from "shared/libs"
 import { AlertSuccessChange } from "shared/ui/alert-success-change"
 
 import { ModalConfirmDeleteArchive } from "widgets/[ui]/modal-confirm-delete-archive"
@@ -40,13 +40,7 @@ export const ArchiveTestPlanModal = ({ isShow, setIsShow, testPlan }: Props) => 
         ),
       })
     } catch (err: unknown) {
-      const error = err as FetchBaseQueryError
-
-      console.error(error)
-      notification.error({
-        message: "Error!",
-        description: "Internal server error. Showing in console log.",
-      })
+      initInternalError(err)
     }
   }
 

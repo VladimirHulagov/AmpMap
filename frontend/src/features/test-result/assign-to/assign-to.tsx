@@ -44,7 +44,7 @@ export const AssignTo = () => {
                 icon={<UserAddOutlined style={{ fontSize: 14 }} />}
                 key="submit"
                 onClick={handleOpenAssignModal}
-                type="ghost"
+                type="text"
                 size="small"
               >
                 Assign To

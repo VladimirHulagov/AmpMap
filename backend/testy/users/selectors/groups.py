@@ -30,7 +30,8 @@
 # <http://www.gnu.org/licenses/>.
 
 from django.db.models import QuerySet
-from users.models import Group
+
+from testy.users.models import Group
 
 
 class GroupSelector:

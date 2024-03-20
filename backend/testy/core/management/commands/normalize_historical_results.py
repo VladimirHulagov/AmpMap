@@ -34,7 +34,10 @@ from typing import Optional
 
 from django.core.management import BaseCommand
 from django.db.models import F, OuterRef
-from tests_representation.models import TestPlan, TestResult
+
+from testy.tests_representation.models import TestPlan, TestResult
+
+_ID = 'id'
 
 
 class Command(BaseCommand):
@@ -69,18 +72,24 @@ class Command(BaseCommand):
         plan_id = options.get('plan_id')
         self.normalize_historical_results(project_id, timedelta_seconds, plan_id)
 
-    @staticmethod
-    def normalize_historical_results(project_id: int, timedelta_seconds: int, plan_id: Optional[int]) -> None:
+    @classmethod
+    def normalize_historical_results(cls, project_id: int, timedelta_seconds: int, plan_id: Optional[int]) -> None:
         delta_time = timedelta(seconds=timedelta_seconds)
         filter_conditions = {'project__pk': project_id}
         if plan_id:
-            plan_ids = TestPlan.objects.get(pk=plan_id).get_descendants(include_self=True).values_list('id', flat=True)
+            plan_ids = (
+                TestPlan.objects
+                .get(pk=plan_id)
+                .get_descendants(include_self=True)
+                .values_list(_ID, flat=True)
+            )
             filter_conditions['test__plan__id__in'] = plan_ids
 
-        results = TestResult.objects.filter(**filter_conditions).values_list('id', flat=True)
-        results_created_subquery = TestResult.objects.filter(pk=OuterRef('id')).values('created_at')[:1]
-        results_updated_subquery = TestResult.objects.filter(pk=OuterRef('id')).values('updated_at')[:1]
-        results_user_subquery = TestResult.objects.filter(pk=OuterRef('id')).values('user')[:1]
+        results = TestResult.objects.filter(**filter_conditions).values_list(_ID, flat=True)
+        outer_ref = OuterRef(_ID)
+        results_created_subquery = TestResult.objects.filter(pk=outer_ref).values('created_at')[:1]
+        results_updated_subquery = TestResult.objects.filter(pk=outer_ref).values('updated_at')[:1]
+        results_user_subquery = TestResult.objects.filter(pk=outer_ref).values('user')[:1]
         results_created = (
             TestResult.history
             .filter(id__in=results, history_type='+')
@@ -95,9 +104,10 @@ class Command(BaseCommand):
             .filter(time_diff__gt=delta_time)
             .prefetch_related('test', 'test__case')
         )
-        logging.info(f'Found creation history diffed by {delta_time.seconds}: {len(results_created)}')
-        logging.info(f'Found update history diffed by {delta_time.seconds}: {len(results_updated)}')
+        timedelta_in_seconds = delta_time.seconds
+        logging.info(f'Found creation history diffed by {timedelta_in_seconds}: {len(results_created)}')  # noqa: WPS237
+        logging.info(f'Found update history diffed by {timedelta_in_seconds}: {len(results_updated)}')  # noqa: WPS237
         logging.info('If you would like to proceed type UPDATE')
-        if input() == 'UPDATE':
+        if input() == 'UPDATE':  # noqa: WPS421
             results_created.update(history_date=results_created_subquery, history_user=results_user_subquery)
             results_updated.update(history_date=results_updated_subquery, history_user=results_user_subquery)

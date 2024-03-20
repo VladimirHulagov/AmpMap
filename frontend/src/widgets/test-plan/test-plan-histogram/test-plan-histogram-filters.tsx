@@ -1,7 +1,7 @@
 import { ClockCircleOutlined, UndoOutlined } from "@ant-design/icons"
 import { Button, DatePicker, Input, Segmented } from "antd"
 import { SegmentedValue } from "antd/lib/segmented"
-import moment from "moment"
+import dayjs, { Dayjs } from "dayjs"
 import { RangeValue } from "rc-picker/lib/interface"
 import { ChangeEvent, useState } from "react"
 
@@ -14,10 +14,10 @@ interface Props {
   testPlanId: string
   setAttribute: (attribute: string) => void
   dateHistogram: {
-    start: moment.Moment
-    end: moment.Moment
+    start: Dayjs
+    end: Dayjs
   }
-  setDateHistogram: (dateHistogram: { start: moment.Moment; end: moment.Moment }) => void
+  setDateHistogram: (dateHistogram: { start: Dayjs; end: Dayjs }) => void
   setBarType: (barType: SegmentedValue) => void
 }
 
@@ -50,7 +50,7 @@ export const TestPlanHistogramFilters = ({
     })
   }
 
-  const handleDatePickerChange = (values: RangeValue<moment.Moment>) => {
+  const handleDatePickerChange = (values: RangeValue<Dayjs>) => {
     if (!values) return
     const [start, end] = values
     if (!start || !end) return
@@ -88,8 +88,8 @@ export const TestPlanHistogramFilters = ({
 
   const handleResetUserDateConfig = async () => {
     setDateHistogram({
-      start: moment().subtract(6, "days"),
-      end: moment(),
+      start: dayjs().subtract(6, "days"),
+      end: dayjs(),
     })
     await updateConfig({
       ...userConfig,

@@ -7,7 +7,6 @@ import { LoginPage } from "pages/login"
 import { ProjectMainPage } from "pages/project/project-main-page"
 import { TestPlanActivityPage } from "pages/project/test-plan-activity"
 
-import "shared/styles/antd.less"
 import "shared/styles/global.css"
 
 import { RequireAuth } from "./entities/auth/ui/require-auth"

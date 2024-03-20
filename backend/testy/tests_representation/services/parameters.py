@@ -31,7 +31,7 @@
 
 from typing import Any, Dict
 
-from tests_representation.models import Parameter
+from testy.tests_representation.models import Parameter
 
 
 class ParameterService:

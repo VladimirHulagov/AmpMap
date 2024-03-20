@@ -1,4 +1,3 @@
-import { FetchBaseQueryError } from "@reduxjs/toolkit/dist/query"
 import { notification } from "antd"
 import { useUpdateCommentMutation } from "entities/comments/api"
 import { useEffect, useState } from "react"
@@ -6,6 +5,8 @@ import { useForm } from "react-hook-form"
 import { useParams } from "react-router-dom"
 
 import { useAttachments } from "entities/attachment/model"
+
+import { initInternalError } from "shared/libs"
 
 export const useEditComment = (comment: CommentType) => {
   const { projectId } = useParams<ParamProjectId>()
@@ -42,13 +43,7 @@ export const useEditComment = (comment: CommentType) => {
       })
       handleClose()
     } catch (err: unknown) {
-      const error = err as FetchBaseQueryError
-
-      console.error(error)
-      notification.error({
-        message: "Error!",
-        description: "Internal server error. Showing in console log.",
-      })
+      initInternalError(err)
     }
   }
 

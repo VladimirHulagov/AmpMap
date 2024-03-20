@@ -33,13 +33,19 @@ from typing import List
 from django.db.models import BooleanField, Case, F, OuterRef, Q, QuerySet, Subquery, Sum, When
 from django.db.models.functions import Floor
 from mptt.querysets import TreeQuerySet
-from tests_description.models import TestCase, TestSuite
-from tests_description.selectors.cases import TestCaseSelector
-from tests_representation.models import Test
-from utilities.sql import SubCount
-from utilities.tree import form_tree_prefetch_lookups, form_tree_prefetch_objects
 
-from testy.selectors import MPTTSelector
+from testy.root.selectors import MPTTSelector
+from testy.tests_description.models import TestCase, TestSuite
+from testy.tests_description.selectors.cases import TestCaseSelector
+from testy.tests_representation.models import Test
+from testy.utilities.sql import SubCount
+from testy.utilities.tree import form_tree_prefetch_lookups, form_tree_prefetch_objects
+
+_CHILD_TEST_SUITES = 'child_test_suites'
+_TEST_CASES = 'test_cases'
+_NAME = 'name'
+_LFT = 'lft'
+_RGHT = 'rght'
 
 
 class TestSuiteSelector:
@@ -47,19 +53,19 @@ class TestSuiteSelector:
     def get_max_level(cls) -> int:
         return MPTTSelector.model_max_level(TestSuite)
 
-    @staticmethod
-    def suite_list_raw() -> QuerySet[TestSuite]:
+    @classmethod
+    def suite_list_raw(cls) -> QuerySet[TestSuite]:
         return TestSuite.objects.all()
 
     def suite_deleted_list(self):
         max_level = self.get_max_level()
         return TestSuite.deleted_objects.all().prefetch_related(
             *form_tree_prefetch_objects(
-                nested_prefetch_field='child_test_suites',
-                prefetch_field='child_test_suites',
+                nested_prefetch_field=_CHILD_TEST_SUITES,
+                prefetch_field=_CHILD_TEST_SUITES,
                 tree_depth=max_level,
                 queryset_class=TestSuite,
-                manager_name='deleted_objects'
+                manager_name='deleted_objects',
             ),
         )
 
@@ -67,16 +73,16 @@ class TestSuiteSelector:
         max_level = self.get_max_level()
         return (
             TestSuite.objects.all()
-            .order_by("name")
+            .order_by(_NAME)
             .prefetch_related(
                 *self.suites_tree_prefetch_cases(max_level),
                 *form_tree_prefetch_lookups(
-                    'child_test_suites',
+                    _CHILD_TEST_SUITES,
                     'test_cases__attachments',
                     max_level,
                 ),
                 *form_tree_prefetch_lookups(
-                    'child_test_suites',
+                    _CHILD_TEST_SUITES,
                     'test_cases__labeled_items__label',
                     max_level,
                 ),
@@ -89,20 +95,19 @@ class TestSuiteSelector:
         annotation_condition = Case(
             When(id__in=suite_ids, then=True),
             output_field=BooleanField(),
-            default=False
+            default=False,
         )
         qs = TestSuite.objects.filter(id__in=suite_ids).get_ancestors(include_self=True)
 
-        root_suites = qs.filter(parent=None).prefetch_related(
+        return qs.filter(parent=None).prefetch_related(
             *form_tree_prefetch_objects(
-                'child_test_suites',
-                'child_test_suites',
+                _CHILD_TEST_SUITES,
+                _CHILD_TEST_SUITES,
                 tree_depth=max_level,
                 queryset=qs,
-                annotation={'is_used': annotation_condition}
+                annotation={'is_used': annotation_condition},
             ),
         ).annotate(is_used=annotation_condition)
-        return root_suites
 
     def suite_list_treeview(self, root_only: bool = True) -> QuerySet[TestSuite]:
         max_level = self.get_max_level()
@@ -110,7 +115,7 @@ class TestSuiteSelector:
         return (
             TestSuite.objects
             .filter(**parent)
-            .order_by('name')
+            .order_by(_NAME)
             .prefetch_related(
                 *self.suites_tree_prefetch_children(max_level),
             ).annotate(**self.cases_count_annotation())
@@ -122,15 +127,15 @@ class TestSuiteSelector:
         return (
             TestSuite.objects
             .filter(**parent)
-            .order_by('name')
+            .order_by(_NAME)
             .prefetch_related(
                 *self.suites_tree_prefetch_children(max_level),
                 *self.suites_tree_prefetch_cases(max_level),
             ).annotate(**self.cases_count_annotation())
         )
 
-    @staticmethod
-    def suite_list_ancestors(instance: TestSuite) -> TreeQuerySet[TestSuite]:
+    @classmethod
+    def suite_list_ancestors(cls, instance: TestSuite) -> TreeQuerySet[TestSuite]:
         return instance.get_ancestors(include_self=True)
 
     @classmethod
@@ -144,35 +149,35 @@ class TestSuiteSelector:
     @classmethod
     def cases_count_annotation(cls):
         return {
-            'descendant_count': Floor((F('rght') - F('lft') - 1) / 2),
+            'descendant_count': Floor((F(_RGHT) - F(_LFT) - 1) / 2),
             'estimates': cls._get_estimate_sum_subquery(),
             'total_estimates': cls._get_estimate_sum_subquery(sum_descendants=True),
             'cases_count': SubCount(TestCase.objects.filter(is_archive=False, suite_id=OuterRef('pk'))),
             'total_cases_count': SubCount(
                 TestCase.objects.filter(
                     Q(suite__tree_id=OuterRef('tree_id'))
-                    & Q(suite__lft__gte=OuterRef('lft'))
-                    & Q(suite__rght__lte=OuterRef('rght')),
+                    & Q(suite__lft__gte=OuterRef(_LFT))  # noqa: W503
+                    & Q(suite__rght__lte=OuterRef(_RGHT)),  # noqa: W503
                     is_archive=False,
-                )
-            )
+                ),
+            ),
         }
 
     @classmethod
     def suites_tree_prefetch_children(cls, max_level: int):
         return form_tree_prefetch_objects(
-            nested_prefetch_field='child_test_suites',
-            prefetch_field='child_test_suites',
+            nested_prefetch_field=_CHILD_TEST_SUITES,
+            prefetch_field=_CHILD_TEST_SUITES,
             tree_depth=max_level,
             queryset_class=TestSuite,
             annotation=cls.cases_count_annotation(),
-            order_by_fields=['name']
+            order_by_fields=['name'],
         )
 
     @classmethod
     def suites_tree_prefetch_cases(cls, max_level: int):
         return form_tree_prefetch_objects(
-            nested_prefetch_field='child_test_suites',
+            nested_prefetch_field=_CHILD_TEST_SUITES,
             prefetch_field='test_cases',
             tree_depth=max_level,
             queryset=TestCaseSelector().case_list(filter_condition={'is_archive': False}),
@@ -181,18 +186,21 @@ class TestSuiteSelector:
     @classmethod
     def _get_estimate_sum_subquery(cls, sum_descendants: bool = False):
         sum_condition = Q(test_cases__is_deleted=False) & Q(test_cases__is_archive=False)
-        if not sum_descendants:
-            filter_condition = Q(pk=OuterRef('pk'))
-        else:
+        if sum_descendants:
             filter_condition = (
-                Q(tree_id=OuterRef('tree_id'))
-                & Q(lft__gte=OuterRef('lft'))
-                & Q(rght__lte=OuterRef('rght'))
+                Q(tree_id=OuterRef('tree_id')) &  # noqa: W504
+                Q(lft__gte=OuterRef(_LFT)) &  # noqa: W504
+                Q(rght__lte=OuterRef(_RGHT))
             )
+        else:
+            filter_condition = Q(pk=OuterRef('pk'))
 
-        descendant_count_subquery = Subquery(
+        return Subquery(
             TestSuite.objects.filter(filter_condition)
-            .prefetch_related('test_cases').values('tree_id').annotate(
-                total=Sum('test_cases__estimate', filter=sum_condition)
-            ).values('total'))
-        return descendant_count_subquery
+            .prefetch_related('test_cases')
+            .values('tree_id')
+            .annotate(
+                total=Sum('test_cases__estimate', filter=sum_condition),
+            )
+            .values('total'),
+        )

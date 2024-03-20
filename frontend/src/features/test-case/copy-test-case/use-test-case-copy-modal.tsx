@@ -1,35 +1,18 @@
-import { FetchBaseQueryError } from "@reduxjs/toolkit/dist/query"
 import { notification } from "antd"
 import { useEffect, useState } from "react"
 import { useParams } from "react-router-dom"
 
-import { useGetTestSuitesQuery } from "entities/suite/api"
-
 import { useCopyTestCaseMutation } from "entities/test-case/api"
 
+import { initInternalError } from "shared/libs"
 import { AlertSuccessChange } from "shared/ui/alert-success-change"
 
-import { useSearchField } from "widgets/search-field"
-
 export const useTestCaseCopyModal = (testCase: TestCase) => {
-  const { projectId, testSuiteId } = useParams<ParamProjectId & ParamTestSuiteId>()
+  const { testSuiteId } = useParams<ParamProjectId & ParamTestSuiteId>()
   const [isShow, setIsShow] = useState(false)
   const [copyTestCase, { isLoading }] = useCopyTestCaseMutation()
   const [newName, setNewName] = useState(testCase.name)
   const [selectedSuite, setSelectedSuite] = useState<{ label: string; value: number } | null>(null)
-  const { search, paginationParams, handleSearch, handleLoadNextPageData } = useSearchField()
-  const { data: dataTestSuites, isLoading: isLoadingTestSuites } = useGetTestSuitesQuery(
-    {
-      search,
-      project: projectId,
-      page: paginationParams.page,
-      page_size: paginationParams.page_size,
-      is_flat: true,
-    },
-    {
-      skip: !projectId || search === undefined,
-    }
-  )
 
   const handleCancel = () => {
     setIsShow(false)
@@ -55,17 +38,11 @@ export const useTestCaseCopyModal = (testCase: TestCase) => {
       })
       handleCancel()
     } catch (err) {
-      const error = err as FetchBaseQueryError
-
-      console.error(error)
-      notification.error({
-        message: "Error!",
-        description: "Internal server error. Showing in console log.",
-      })
+      initInternalError(err)
     }
   }
 
-  const handleChange = (value?: { label: string; value: number }) => {
+  const handleSelectSuite = (value?: SelectData | null) => {
     if (value) {
       setSelectedSuite(value)
     }
@@ -75,7 +52,7 @@ export const useTestCaseCopyModal = (testCase: TestCase) => {
     setNewName(e.target.value)
   }
 
-  const handleClear = () => {
+  const handleClearSelected = () => {
     setSelectedSuite(null)
   }
 
@@ -89,13 +66,9 @@ export const useTestCaseCopyModal = (testCase: TestCase) => {
     isLoading,
     selectedSuite,
     newName,
-    dataTestSuites,
-    isLoadingTestSuites,
-    handleSearch,
-    handleLoadNextPageData,
     handleChangeName,
-    handleClear,
-    handleChange,
+    handleClearSelected,
+    handleSelectSuite,
     handleSave,
     handleShow,
     handleCancel,

@@ -31,7 +31,7 @@
 
 from typing import Any, Dict
 
-from users.models import Group
+from testy.users.models import Group
 
 
 class GroupService:
@@ -41,7 +41,7 @@ class GroupService:
         group = Group.model_create(
             fields=self.non_side_effect_fields,
             data=data,
-            commit=False
+            commit=False,
         )
         group.full_clean()
         group.save()
@@ -54,7 +54,7 @@ class GroupService:
         group, _ = group.model_update(
             fields=self.non_side_effect_fields,
             data=data,
-            commit=False
+            commit=False,
         )
         group.permissions.set(data.get('permissions', []))
         group.full_clean()

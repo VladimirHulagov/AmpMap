@@ -16,7 +16,7 @@ export const projectApi = createApi({
       QueryWithPagination<GetProjectsQuery>
     >({
       query: ({ favorites = false, ...params }) => ({
-        url: rootPath,
+        url: `${rootPath}/`,
         params: {
           favorites,
           ...params,
@@ -81,18 +81,18 @@ export const projectApi = createApi({
     }),
     getProjectDeletePreview: builder.query<DeletePreviewResponse[], string>({
       query: (id) => ({
-        url: `${rootPath}/${id}/delete/preview`,
+        url: `${rootPath}/${id}/delete/preview/`,
       }),
     }),
     getProjectArchivePreview: builder.query<DeletePreviewResponse[], string>({
       query: (id) => ({
-        url: `${rootPath}/${id}/archive/preview`,
+        url: `${rootPath}/${id}/archive/preview/`,
       }),
       providesTags: (result, error, id) => [{ type: "Project", id }],
     }),
     getProjectProgress: builder.query<ProjectsProgress[], ProjectProgressParams>({
       query: ({ projectId, period_date_end, period_date_start }) => ({
-        url: `v1/projects/${projectId}/progress`,
+        url: `v1/projects/${projectId}/progress/`,
         method: "GET",
         params: { end_date: period_date_end, start_date: period_date_start },
       }),

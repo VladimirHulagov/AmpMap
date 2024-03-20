@@ -30,31 +30,43 @@
 # <http://www.gnu.org/licenses/>.
 from django.db.models import OuterRef, QuerySet, Subquery
 from django.db.models.functions import Trunc
-from tests_representation.models import Test, TestPlan, TestResult
+
+from testy.tests_representation.models import Test, TestPlan, TestResult
+
+_TEST = 'test'
+_CREATED_AT_DESC = '-created_at'
+_ID = 'id'
 
 
 class TestResultSelector:
     def result_list(self) -> QuerySet[TestResult]:
-        return TestResult.objects.all().order_by('-created_at').prefetch_related('user', 'steps_results', 'attachments')
+        return TestResult.objects.all(
+        ).order_by(
+            _CREATED_AT_DESC,
+        ).prefetch_related(
+            'user', 'steps_results', 'attachments',
+        ).annotate(
+            latest_result_id=self.get_latest_result_by_test_subquery(),
+        )
 
     def result_list_by_test_id(self, test_id) -> QuerySet[TestResult]:
-        return TestResult.objects.select_related('test').filter(test_id=test_id).order_by('-created_at')
+        return TestResult.objects.select_related(_TEST).filter(test_id=test_id).order_by(_CREATED_AT_DESC)
 
     def last_result_by_test_id(self, test_id) -> TestResult:
-        return TestResult.objects.select_related('test').filter(test_id=test_id).order_by('-created_at').first()
+        return TestResult.objects.select_related(_TEST).filter(test_id=test_id).order_by(_CREATED_AT_DESC).first()
 
     def result_by_test_plan_ids(self, test_plan_ids, filters=None):
         if not filters:
             filters = {}
-        return TestResult.objects.select_related('test').filter(
+        return TestResult.objects.select_related(_TEST).filter(
             test__plan_id__in=test_plan_ids,
-            **filters
+            **filters,
         )
 
-    @staticmethod
-    def result_cascade_history_list_by_test_plan(instance: TestPlan):
-        instances = instance.get_descendants(include_self=True).values_list('id', flat=True)
-        tests = Test.objects.filter(plan__in=instances).values_list('id', flat=True)
+    @classmethod
+    def result_cascade_history_list_by_test_plan(cls, instance: TestPlan):
+        instances = instance.get_descendants(include_self=True).values_list(_ID, flat=True)
+        tests = Test.objects.filter(plan__in=instances).values_list(_ID, flat=True)
         return (
             TestResult.history
             .filter(test__in=tests)
@@ -65,12 +77,20 @@ class TestResultSelector:
             )
         )
 
-    @staticmethod
-    def get_last_status_subquery(filters=None, outer_ref_key: str = 'id'):
+    @classmethod
+    def get_last_status_subquery(cls, filters=None, outer_ref_key: str = _ID):
         if not filters:
             filters = []
         return Subquery(
             TestResult.objects.filter(
                 *filters, test_id=OuterRef(outer_ref_key),
-            ).order_by('-created_at').values('status')[:1]
+            ).order_by(_CREATED_AT_DESC).values('status')[:1],
+        )
+
+    @classmethod
+    def get_latest_result_by_test_subquery(cls, outer_ref_key: str = 'test_id'):
+        return Subquery(
+            TestResult.objects.filter(
+                test_id=OuterRef(outer_ref_key),
+            ).order_by(_CREATED_AT_DESC).values(_ID)[:1],
         )

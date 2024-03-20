@@ -32,31 +32,33 @@ from contextlib import nullcontext
 from typing import Union
 
 from mptt.models import MPTTModel
-from utilities.sql import lock_table
 
-from testy.models import DeletedQuerySet, DeletedTreeQuerySet, MPTTBaseModel
+from testy.root.models import DeletedQuerySet, DeletedTreeQuerySet, MPTTBaseModel
+from testy.utilities.sql import lock_table
+
+_INSTANCE_IDS = 'instance_ids'
 
 
 class RecoveryService:
 
-    @staticmethod
-    def restore_objects(queryset: Union[DeletedQuerySet, DeletedTreeQuerySet], data):
-        for instance in queryset.filter(id__in=data['instance_ids']):
+    @classmethod
+    def restore_objects(cls, queryset: Union[DeletedQuerySet, DeletedTreeQuerySet], data):
+        for instance in queryset.filter(id__in=data[_INSTANCE_IDS]):
             instance.restore()
 
-    @staticmethod
-    def delete_permanently(queryset: Union[DeletedQuerySet, DeletedTreeQuerySet], data):
+    @classmethod
+    def delete_permanently(cls, queryset: Union[DeletedQuerySet, DeletedTreeQuerySet], data):
         with lock_table(queryset.model) if issubclass(queryset.model, MPTTBaseModel) else nullcontext():
-            queryset.filter(id__in=data['instance_ids']).hard_delete()
+            queryset.filter(id__in=data[_INSTANCE_IDS]).hard_delete()
 
-    @staticmethod
-    def get_objects_by_ids(queryset, data):
+    @classmethod
+    def get_objects_by_ids(cls, queryset, data):
         if issubclass(queryset.model, MPTTModel):
-            return queryset.filter(id__in=data['instance_ids']).get_descendants(include_self=True)
-        return queryset.filter(id__in=data['instance_ids'])
+            return queryset.filter(id__in=data[_INSTANCE_IDS]).get_descendants(include_self=True)
+        return queryset.filter(id__in=data[_INSTANCE_IDS])
 
-    @staticmethod
-    def get_objects_by_instance(instance):
+    @classmethod
+    def get_objects_by_instance(cls, instance):
         queryset = instance._meta.model.objects.filter(pk=instance.pk)
         if issubclass(queryset.model, MPTTModel):
             return queryset.get_descendants(include_self=True)

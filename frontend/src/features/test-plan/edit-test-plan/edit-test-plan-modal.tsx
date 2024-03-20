@@ -1,12 +1,18 @@
-import { Button, Col, DatePicker, Form, Input, Modal, Row, Tree } from "antd"
+import { Button, Col, Form, Modal, Row, Tree } from "antd"
 import Search from "antd/lib/input/Search"
 import { Controller } from "react-hook-form"
 
 import { ErrorObj } from "shared/hooks/use-alert-error"
 import { TreeUtils } from "shared/libs"
-import { AlertError, ContainerLoader, HighLighterTesty } from "shared/ui"
-
-import { SearchField } from "widgets/search-field"
+import {
+  AlertError,
+  ContainerLoader,
+  DateFormItem,
+  HighLighterTesty,
+  InputFormItem,
+  SearchFormItemOld,
+  TextAreaFormItem,
+} from "shared/ui"
 
 import styles from "./styles.module.css"
 import { useTestPlanEditModal } from "./use-test-plan-edit-modal"
@@ -20,6 +26,7 @@ interface TestPlanEditModalProps {
 export const EditTestPlanModal = ({ isShow, setIsShow, testPlan }: TestPlanEditModalProps) => {
   const {
     errors,
+    formErrors,
     control,
     selectedParent,
     treeData,
@@ -79,105 +86,66 @@ export const EditTestPlanModal = ({ isShow, setIsShow, testPlan }: TestPlanEditM
       <Form id="test-plan-edit-form" layout="vertical" onFinish={handleSubmitForm}>
         <Row gutter={[32, 32]}>
           <Col span={12}>
-            <Form.Item
-              label="Name"
-              validateStatus={errors?.name ? "error" : ""}
-              help={errors?.name ? errors.name : ""}
-            >
-              <Controller
-                name="name"
-                control={control}
-                render={({ field }) => <Input {...field} />}
-              />
-            </Form.Item>
+            <InputFormItem
+              id="edit-test-plan-name"
+              control={control}
+              name="name"
+              maxLength={100}
+              required
+              formErrors={formErrors}
+              externalErrors={errors}
+            />
             <div className={styles.datesRow}>
-              <Form.Item
+              <DateFormItem
+                id="edit-test-plan-start-date"
+                control={control}
                 label="Start date"
-                validateStatus={errors?.started_at ? "error" : ""}
-                help={errors?.started_at ? errors.started_at : ""}
-                style={{ width: "100%" }}
-              >
-                <Controller
-                  name="started_at"
-                  control={control}
-                  render={(propsController) => (
-                    <DatePicker
-                      {...propsController}
-                      style={{ width: "100%" }}
-                      value={propsController.field.value}
-                      onChange={(e) => {
-                        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                        // @ts-ignore
-                        propsController.field.onChange(e)
-                        setDateFrom(e)
-                      }}
-                      disabledDate={disabledDateFrom}
-                    />
-                  )}
-                />
-              </Form.Item>
+                name="started_at"
+                setDate={setDateFrom}
+                disabledDate={disabledDateFrom}
+                formStyles={{ width: "100%" }}
+                formErrors={formErrors}
+                externalErrors={errors}
+              />
               <span>-</span>
-              <Form.Item
+              <DateFormItem
+                id="edit-test-plan-start-date"
+                control={control}
                 label="Due date"
-                validateStatus={errors?.due_date ? "error" : ""}
-                help={errors?.due_date ? errors.due_date : ""}
-                style={{ width: "100%" }}
-              >
-                <Controller
-                  name="due_date"
-                  control={control}
-                  render={(propsController) => (
-                    <DatePicker
-                      {...propsController}
-                      style={{ width: "100%" }}
-                      value={propsController.field.value}
-                      onChange={(e) => {
-                        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-                        // @ts-ignore
-                        propsController.field.onChange(e)
-                        setDateTo(e)
-                      }}
-                      disabledDate={disabledDateTo}
-                    />
-                  )}
-                />
-              </Form.Item>
+                name="due_date"
+                setDate={setDateTo}
+                disabledDate={disabledDateTo}
+                formStyles={{ width: "100%" }}
+                formErrors={formErrors}
+                externalErrors={errors}
+              />
             </div>
-            <Form.Item
-              label="Parent"
-              validateStatus={errors?.parent ? "error" : ""}
-              help={errors?.parent ? errors.parent : ""}
-            >
-              <Controller
-                name="parent"
-                control={control}
-                render={() => (
-                  <SearchField
-                    select={selectedParent}
-                    isLastPage={isLastPage}
-                    data={dataTestPlans}
-                    isLoading={isLoadingTestPlans}
-                    onClear={handleClearTestPlan}
-                    onSearch={handleSearchTestPlan}
-                    onChange={handleSelectTestPlan}
-                    handleLoadNextPageData={handleLoadNextPageData}
-                    placeholder="Search a test plan"
-                    valueKey="title"
-                  />
-                )}
-              />
-            </Form.Item>
-            <Form.Item
-              label="Description"
-              validateStatus={errors?.description ? "error" : ""}
-              help={errors?.description ? errors.description : ""}
-            >
-              <Controller
-                name="description"
-                control={control}
-                render={({ field }) => <Input.TextArea rows={4} {...field} />}
-              />
-            </Form.Item>
+            <SearchFormItemOld
+              id="edit-test-plan-parent"
+              name="parent"
+              placeholder="Search a test plan"
+              valueKey="title"
+              control={control}
+              formErrors={formErrors}
+              externalErrors={errors}
+              options={{
+                selectedParent,
+                isLastPage,
+                isLoading: isLoadingTestPlans,
+                data: dataTestPlans,
+                onClear: handleClearTestPlan,
+                onSearch: handleSearchTestPlan,
+                onChange: handleSelectTestPlan,
+                onLoadNextPageData: handleLoadNextPageData,
+              }}
+            />
+            <TextAreaFormItem
+              id="edit-test-plan-desc"
+              control={control}
+              name="description"
+              formErrors={formErrors}
+              externalErrors={errors}
+            />
           </Col>
           <Col span={12}>
             <Form.Item

@@ -1,7 +1,7 @@
 import { UploadOutlined } from "@ant-design/icons"
-import { Button, Input, Upload } from "antd"
+import { Alert, Button, Upload } from "antd"
 
-import { Attachment } from "shared/ui"
+import { Attachment, TextArea } from "shared/ui"
 
 import { useAddComment } from "./use-add-comment"
 
@@ -13,6 +13,7 @@ interface Props {
 
 export const AddComment = ({ model, object_id, setIsShowAdd }: Props) => {
   const {
+    errors,
     comment,
     attachments,
     isLoadingAddComment,
@@ -23,10 +24,9 @@ export const AddComment = ({ model, object_id, setIsShowAdd }: Props) => {
     handleLoadAttachmentChange,
     handleAttachmentLoad,
   } = useAddComment({ setIsShowAdd, model, object_id })
-
   return (
     <div style={{ marginTop: 12, gap: 12, display: "flex", flexDirection: "column" }}>
-      <Input.TextArea
+      <TextArea
         id="add-comments-text-area"
         style={{ fontSize: 13 }}
         rows={4}
@@ -35,6 +35,7 @@ export const AddComment = ({ model, object_id, setIsShowAdd }: Props) => {
         placeholder="Type a comment"
         autoFocus
       />
+      {!!errors?.errors?.length && <Alert description={errors.errors} type="error" />}
       <Attachment.List
         handleAttachmentRemove={handleAttachmentRemove}
         attachments={attachments}
@@ -58,7 +59,7 @@ export const AddComment = ({ model, object_id, setIsShowAdd }: Props) => {
           >
             Add
           </Button>
-          <Button id="cancel-comment-btn" onClick={() => setIsShowAdd(false)} type="ghost">
+          <Button id="cancel-comment-btn" onClick={() => setIsShowAdd(false)} type="text">
             Cancel
           </Button>
         </div>

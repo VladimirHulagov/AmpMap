@@ -4,7 +4,7 @@ import { Controller } from "react-hook-form"
 
 import { statusesWithoutUntested } from "shared/config"
 import { ErrorObj } from "shared/hooks/use-alert-error"
-import { AlertError, Attachment, Attribute, Steps, TextArea } from "shared/ui"
+import { AlertError, Attachment, Attribute, Status, Steps, TextAreaWithAttach } from "shared/ui"
 
 import { CreateResultModalProps, useCreateResultModal } from "./use-create-result-modal"
 
@@ -78,12 +78,13 @@ export const CreateResultModal = (props: CreateResultModalProps) => {
                 control={control}
                 defaultValue={"1"}
                 render={({ field }) => (
-                  <Select
-                    {...field}
-                    placeholder="Please select"
-                    style={{ width: "100%" }}
-                    options={statusesWithoutUntested}
-                  />
+                  <Select {...field} placeholder="Please select" style={{ width: "100%" }}>
+                    {statusesWithoutUntested.map((status) => (
+                      <Select.Option key={status.value} value={status.value}>
+                        <Status value={status.label} />
+                      </Select.Option>
+                    ))}
+                  </Select>
                 )}
               />
             </Form.Item>
@@ -96,7 +97,8 @@ export const CreateResultModal = (props: CreateResultModalProps) => {
                 name="comment"
                 control={control}
                 render={({ field }) => (
-                  <TextArea
+                  <TextAreaWithAttach
+                    textAreaId="create-result-comment"
                     fieldProps={field}
                     stateAttachments={{ attachments, setAttachments }}
                     customRequest={onLoad}

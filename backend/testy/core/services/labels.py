@@ -30,9 +30,10 @@
 # <http://www.gnu.org/licenses/>.
 from typing import Any, Dict
 
-from core.choices import LabelTypes
-from core.models import Label, LabeledItem
 from django.contrib.contenttypes.models import ContentType
+
+from testy.core.choices import LabelTypes
+from testy.core.models import Label, LabeledItem
 
 
 class LabelService:
@@ -58,11 +59,23 @@ class LabelService:
         lookup_kwargs = {
             'object_id': content_object.id,
             'content_type': ContentType.objects.get_for_model(content_object),
-            **labeled_item_kwargs
+            **labeled_item_kwargs,
         }
 
         for label in labels_objs:
             LabeledItem.objects.get_or_create(label=label, **lookup_kwargs, defaults=None)
+
+    def set(self, labels, content_object, label_kwargs=None, labeled_item_kwargs=None):
+        self.clear(content_object)
+        self.add(labels, content_object, label_kwargs, labeled_item_kwargs)
+
+    def clear(self, content_object):
+        lookup_kwargs = {
+            'object_id': content_object.id,
+            'content_type': ContentType.objects.get_for_model(content_object),
+        }
+
+        LabeledItem.objects.filter(**lookup_kwargs).delete()
 
     def _to_label_model_instances(self, labels, label_kwargs=None):
         label_objs = set()
@@ -87,19 +100,7 @@ class LabelService:
                 'type': LabelTypes.CUSTOM,
                 **label_kwargs,
             }
-            label, _ = Label.objects.get_or_create(**lookup, defaults={"name": new_label})
-            label_objs.add(label)
+            existing_or_created_label, _ = Label.objects.get_or_create(**lookup, defaults={'name': new_label})
+            label_objs.add(existing_or_created_label)
 
         return label_objs
-
-    def set(self, labels, content_object, label_kwargs=None, labeled_item_kwargs=None):
-        self.clear(content_object)
-        self.add(labels, content_object, label_kwargs, labeled_item_kwargs)
-
-    def clear(self, content_object):
-        lookup_kwargs = {
-            'object_id': content_object.id,
-            'content_type': ContentType.objects.get_for_model(content_object)
-        }
-
-        LabeledItem.objects.filter(**lookup_kwargs).delete()

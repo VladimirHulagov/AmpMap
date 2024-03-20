@@ -28,10 +28,7 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from core.api.v1.serializers import LabelSerializer
-from core.selectors.labels import LabelSelector
-from django.core.exceptions import ObjectDoesNotExist
-from django.http import Http404
+from django.shortcuts import get_object_or_404
 from drf_yasg.utils import swagger_auto_schema
 from filters import (
     ActivitySearchFilter,
@@ -55,10 +52,26 @@ from rest_framework.filters import OrderingFilter
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, ViewSet
-from tests_description.api.v1.serializers import TestSuiteTreeBreadcrumbsSerializer
-from tests_description.selectors.cases import TestCaseSelector
-from tests_description.selectors.suites import TestSuiteSelector
-from tests_representation.api.v1.serializers import (
+from swagger.results import result_list_schema
+from swagger.testplans import (
+    plan_activity_schema,
+    plan_case_ids_schema,
+    plan_create_schema,
+    plan_labels_schema,
+    plan_list_schema,
+    plan_progress_schema,
+    plan_update_schema,
+    plans_breadcrumbs_schema,
+)
+from swagger.tests import test_list_schema
+
+from testy.core.api.v1.serializers import LabelSerializer
+from testy.core.selectors.labels import LabelSelector
+from testy.root.mixins import TestyArchiveMixin, TestyModelViewSet
+from testy.tests_description.api.v1.serializers import TestSuiteTreeBreadcrumbsSerializer
+from testy.tests_description.selectors.cases import TestCaseSelector
+from testy.tests_description.selectors.suites import TestSuiteSelector
+from testy.tests_representation.api.v1.serializers import (
     ParameterSerializer,
     TestPlanInputSerializer,
     TestPlanOutputSerializer,
@@ -71,20 +84,24 @@ from tests_representation.api.v1.serializers import (
     TestResultSerializer,
     TestSerializer,
 )
-from tests_representation.models import TestPlan
-from tests_representation.selectors.parameters import ParameterSelector
-from tests_representation.selectors.results import TestResultSelector
-from tests_representation.selectors.testplan import TestPlanSelector
-from tests_representation.selectors.tests import TestSelector
-from tests_representation.services.parameters import ParameterService
-from tests_representation.services.results import TestResultService
-from tests_representation.services.statistics import HistogramProcessor
-from tests_representation.services.testplans import TestPlanService
-from tests_representation.services.tests import TestService
-from utilities.request import PeriodDateTime, get_boolean
-from utilities.tree import get_breadcrumbs_treeview
+from testy.tests_representation.models import TestPlan
+from testy.tests_representation.selectors.parameters import ParameterSelector
+from testy.tests_representation.selectors.results import TestResultSelector
+from testy.tests_representation.selectors.testplan import TestPlanSelector
+from testy.tests_representation.selectors.tests import TestSelector
+from testy.tests_representation.services.parameters import ParameterService
+from testy.tests_representation.services.results import TestResultService
+from testy.tests_representation.services.statistics import HistogramProcessor
+from testy.tests_representation.services.testplans import TestPlanService
+from testy.tests_representation.services.tests import TestService
+from testy.utilities.request import PeriodDateTime, get_boolean
+from testy.utilities.tree import get_breadcrumbs_treeview
 
-from testy.mixins import TestyArchiveMixin, TestyModelViewSet
+_LABELS = 'labels'
+_GET = 'get'
+_REQUEST = 'request'
+_LABELS_CONDITION = 'labels_condition'
+_IS_ARCHIVE = 'is_archive'
 
 
 class ParameterViewSet(TestyModelViewSet):
@@ -92,6 +109,7 @@ class ParameterViewSet(TestyModelViewSet):
     serializer_class = ParameterSerializer
     filter_backends = [TestyFilterBackend]
     filterset_class = ParameterFilter
+    schema_tags = ['Parameters']
 
     def perform_create(self, serializer: ParameterSerializer):
         serializer.instance = ParameterService().parameter_create(serializer.validated_data)
@@ -101,41 +119,40 @@ class ParameterViewSet(TestyModelViewSet):
 
 
 class TestPLanStatisticsView(ViewSet):
+    schema_tags = ['Test plans']
+
     def get_view_name(self):
-        return "Test Plan Statistics"
+        return 'Test Plan Statistics'
 
     def get_filter_condition(self, request):
         filter_condition = {}
 
-        for key in ('labels', 'not_labels'):
+        for key in (_LABELS, 'not_labels'):
             labels = request.query_params.get(key)
             filter_condition[key] = tuple(labels.split(',')) if labels else None
 
-        labels_condition = request.query_params.get('labels_condition')
+        labels_condition = request.query_params.get(_LABELS_CONDITION)
         if labels_condition == 'and':
-            filter_condition['labels_condition'] = labels_condition
+            filter_condition[_LABELS_CONDITION] = labels_condition
         return filter_condition
 
     def get_object(self, pk):
-        try:
-            return TestPlanSelector().testplan_get_by_pk(pk)
-        except ObjectDoesNotExist:
-            raise Http404
+        return get_object_or_404(TestPlan, pk=pk)
 
     @swagger_auto_schema(responses={200: TestPlanStatisticsSerializer(many=True)})
     def get(self, request, pk):
         filter_condition = self.get_filter_condition(request)
         test_plan = self.get_object(pk)
         estimate_period = request.query_params.get('estimate_period')
-        is_archive = get_boolean(request, 'is_archive')
+        is_archive = get_boolean(request, _IS_ARCHIVE)
 
         return Response(
             TestPlanSelector().testplan_statistics(
                 test_plan,
                 filter_condition,
                 estimate_period,
-                is_archive
-            )
+                is_archive,
+            ),
         )
 
     @action(detail=True)
@@ -143,11 +160,12 @@ class TestPLanStatisticsView(ViewSet):
         test_plan = self.get_object(pk)
         filter_condition = self.get_filter_condition(request)
         processor = HistogramProcessor(request_data=request.query_params)
-        is_archive = get_boolean(request, 'is_archive')
+        is_archive = get_boolean(request, _IS_ARCHIVE)
 
         return Response(TestPlanSelector().testplan_histogram(test_plan, processor, filter_condition, is_archive))
 
 
+@plan_list_schema
 class TestPlanViewSet(TestyModelViewSet, TestyArchiveMixin):
     serializer_class = TestPlanOutputSerializer
     queryset = TestPlan.objects.none()
@@ -157,21 +175,23 @@ class TestPlanViewSet(TestyModelViewSet, TestyArchiveMixin):
     pagination_class = StandardSetPagination
     ordering_fields = ['started_at', 'created_at', 'name']
     search_fields = ['title']
+    schema_tags = ['Test plans']
 
     def get_queryset(self):
-        if self.action in ['recovery_list', 'restore', 'delete_permanently']:
+        if self.action in {'recovery_list', 'restore', 'delete_permanently'}:
             return TestPlanSelector().testplan_deleted_list()
         if get_boolean(self.request, 'treeview') and self.action == 'list':
             return TestPlanSelector().testplan_treeview_list(
-                is_archive=get_boolean(self.request, 'is_archive'),
+                is_archive=get_boolean(self.request, _IS_ARCHIVE),
                 children_ordering=self.request.query_params.get('ordering'),
-                parent_id=self.request.query_params.get('parent')
+                parent_id=self.request.query_params.get('parent'),
             )
         if self.action == 'breadcrumbs_view':
             return TestPlanSelector.testplan_list_raw()
-        return TestPlanSelector().testplan_list(get_boolean(self.request, 'is_archive'))
+        return TestPlanSelector().testplan_list(get_boolean(self.request, _IS_ARCHIVE))
 
-    @action(methods=['get'], url_path='parents', url_name='breadcrumbs', detail=True)
+    @plans_breadcrumbs_schema
+    @action(methods=[_GET], url_path='parents', url_name='breadcrumbs', detail=True)
     def breadcrumbs_view(self, request, *args, **kwargs):
         instance = self.get_object()
         tree = TestPlanSelector.testplan_list_ancestors(instance)
@@ -179,27 +199,28 @@ class TestPlanViewSet(TestyModelViewSet, TestyArchiveMixin):
             get_breadcrumbs_treeview(
                 instances=tree,
                 depth=len(tree) - 1,
-                title_method=TestPlanOutputSerializer.get_title
-            )
+                title_method=TestPlanOutputSerializer.get_title,
+            ),
         )
 
-    @action(methods=['get'], url_path='activity', url_name='activity', detail=True)
+    @plan_activity_schema
+    @action(methods=[_GET], url_path='activity', url_name='activity', detail=True)
     def activity(self, request, pk, *args, **kwargs):
         instance = TestPlan.objects.get(pk=pk)
         history_records = TestResultSelector.result_cascade_history_list_by_test_plan(instance)
         history_records = CustomSearchFilter().filter_queryset(
             request,
             history_records,
-            ['history_user', 'status', 'history_type', 'test']
+            ['history_user', 'status', 'history_type', 'test'],
         )
 
-        for filter_class in [ActivitySearchFilter, CustomOrderingFilter]:
+        for filter_class in (ActivitySearchFilter, CustomOrderingFilter):
             history_records = filter_class().filter_queryset(request, history_records)
         paginator = StandardSetPagination()
         result_page = paginator.paginate_queryset(history_records, request)
-        serializer = TestResultActivitySerializer(result_page, many=True, context={'request': request})
+        serializer = TestResultActivitySerializer(result_page, many=True, context={_REQUEST: request})
         final_data = {}
-        plan_ids = set(test_result['plan_id'] for test_result in serializer.data)
+        plan_ids = {test_result['plan_id'] for test_result in serializer.data}
         ids_to_breadcrumbs = TestPlanSelector().testplan_breadcrumbs_by_ids(plan_ids)
         for result_dict in serializer.data:
             result_dict['breadcrumbs'] = ids_to_breadcrumbs[result_dict.pop('plan_id')]
@@ -210,18 +231,20 @@ class TestPlanViewSet(TestyModelViewSet, TestyArchiveMixin):
             final_data[action_day] = [result_dict]
         return paginator.get_paginated_response(final_data)
 
-    @action(methods=['get'], url_path='labels', url_name='labels', detail=True)
+    @plan_labels_schema
+    @action(methods=[_GET], url_path=_LABELS, url_name=_LABELS, detail=True)
     def labels_view(self, request, *args, **kwargs):
         instance = self.get_object()
         labels = LabelSelector().label_list_by_testplan(instance.id)
-        return Response(LabelSerializer(labels, many=True, context={'request': request}).data)
+        return Response(LabelSerializer(labels, many=True, context={_REQUEST: request}).data)
 
-    @action(methods=['get'], url_path='suites', url_name='suites', detail=True)
+    @action(methods=[_GET], url_path='suites', url_name='suites', detail=True)
     def suites_by_plan(self, request, pk):
         suites = TestSuiteSelector().suites_by_plan(pk)
-        return Response(TestSuiteTreeBreadcrumbsSerializer(suites, many=True, context={'request': self.request}).data)
+        return Response(TestSuiteTreeBreadcrumbsSerializer(suites, many=True, context={_REQUEST: self.request}).data)
 
-    @action(methods=['get'], url_path='cases', url_name='cases', detail=True)
+    @plan_case_ids_schema
+    @action(methods=[_GET], url_path='cases', url_name='cases', detail=True)
     def cases_by_plan(self, request, pk):
         case_ids = TestCaseSelector().case_ids_by_testplan_id(
             pk,
@@ -229,7 +252,8 @@ class TestPlanViewSet(TestyModelViewSet, TestyArchiveMixin):
         )
         return Response(data={'case_ids': case_ids})
 
-    @action(methods=['get'], url_path='progress', url_name='progress', detail=True)
+    @plan_progress_schema
+    @action(methods=[_GET], url_path='progress', url_name='progress', detail=True)
     def plan_progress(self, request, pk):
         period = PeriodDateTime(request, 'start_date', 'end_date')
         plans = TestPlanSelector().get_plan_progress(pk, period=period)
@@ -240,6 +264,7 @@ class TestPlanViewSet(TestyModelViewSet, TestyArchiveMixin):
             return TestPlanTreeSerializer
         return super().get_serializer_class()
 
+    @plan_create_schema
     def create(self, request, *args, **kwargs):
         serializer = TestPlanInputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -249,26 +274,32 @@ class TestPlanViewSet(TestyModelViewSet, TestyArchiveMixin):
         else:
             test_plans.append(TestPlanService().testplan_create(serializer.validated_data))
         return Response(
-            TestPlanOutputSerializer(test_plans, many=True, context={'request': request}).data,
+            TestPlanOutputSerializer(test_plans, many=True, context={_REQUEST: request}).data,
             status=status.HTTP_201_CREATED,
         )
 
+    @plan_update_schema
     def update(self, request, *args, **kwargs):
         test_plan = self.get_object()
         self.check_object_permissions(request, test_plan)
-        serializer = TestPlanUpdateSerializer(data=request.data, instance=test_plan, context={"request": request},
-                                              partial=True)
+        serializer = TestPlanUpdateSerializer(
+            data=request.data,
+            instance=test_plan,
+            context=self.get_serializer_context(),
+            partial=True,
+        )
         serializer.is_valid(raise_exception=True)
         try:
             test_plan = TestPlanService().testplan_update(test_plan=test_plan, data=serializer.validated_data)
         except InvalidMove as err:
             return Response({'errors': [str(err)]}, status=status.HTTP_400_BAD_REQUEST)
         return Response(
-            TestPlanOutputSerializer(test_plan, context={'request': request}).data,
+            TestPlanOutputSerializer(test_plan, context=self.get_serializer_context()).data,
             status=status.HTTP_200_OK,
         )
 
 
+@test_list_schema
 class TestViewSet(TestyModelViewSet, TestyArchiveMixin):
     queryset = TestSelector().test_list_with_last_status()
     serializer_class = TestSerializer
@@ -276,34 +307,37 @@ class TestViewSet(TestyModelViewSet, TestyArchiveMixin):
     filterset_class = TestFilter
     pagination_class = StandardSetPagination
     permission_classes = [IsAdminOrForbidArchiveUpdate, IsAuthenticated]
-    ordering_fields = ['id', 'case_name', 'is_archive', 'last_status', 'assignee']
+    ordering_fields = ['id', 'case_name', _IS_ARCHIVE, 'last_status', 'assignee']
     search_fields = ['case__name']
-    http_method_names = ['get', 'post', 'put', 'patch', 'head', 'options', 'trace']
+    http_method_names = [_GET, 'post', 'put', 'patch', 'head', 'options', 'trace']
+    schema_tags = ['Tests']
 
     def perform_update(self, serializer: TestSerializer):
         serializer.instance = TestService().test_update(serializer.instance, serializer.validated_data)
 
     def get_queryset(self):
-        if self.action in ['archive_preview', 'archive_objects', 'restore_archived']:
+        if self.action in {'archive_preview', 'archive_objects', 'restore_archived'}:
             return TestSelector().test_list()
         return TestSelector().test_list_with_last_status()
 
 
+@result_list_schema
 class TestResultViewSet(ModelViewSet, TestyArchiveMixin):
     queryset = TestResultSelector().result_list()
     permission_classes = [ForbidChangesOnArchivedProject, IsAuthenticated]
     serializer_class = TestResultSerializer
     filter_backends = [TestyFilterBackend]
     filterset_class = TestResultFilter
+    schema_tags = ['Test results']
 
     def perform_update(self, serializer: TestResultSerializer):
         serializer.instance = TestResultService().result_update(serializer.instance, serializer.validated_data)
 
     def perform_create(self, serializer: TestResultSerializer):
-        request = serializer.context.get('request')
+        request = serializer.context.get(_REQUEST)
         serializer.instance = TestResultService().result_create(serializer.validated_data, request.user)
 
     def get_serializer_class(self):
-        if self.action in ['create', 'partial_update']:
+        if self.action in {'create', 'partial_update'}:
             return TestResultInputSerializer
         return TestResultSerializer

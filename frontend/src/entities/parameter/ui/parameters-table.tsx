@@ -1,5 +1,4 @@
 import { DeleteOutlined, EditOutlined } from "@ant-design/icons"
-import { FetchBaseQueryError } from "@reduxjs/toolkit/dist/query"
 import { Button, Modal, Space, Table, TableProps, notification } from "antd"
 import { ColumnsType } from "antd/es/table"
 import type { FilterValue, TablePaginationConfig } from "antd/es/table/interface"
@@ -11,6 +10,7 @@ import { useDeleteParameterMutation, useGetParametersQuery } from "entities/para
 import { setParameter, showEditParameterModal } from "entities/parameter/model"
 
 import { useTableSearch } from "shared/hooks"
+import { initInternalError } from "shared/libs"
 import { ContainerLoader } from "shared/ui"
 
 export const ParametersTable = () => {
@@ -89,13 +89,7 @@ export const ParametersTable = () => {
                       description: "Parameter deleted successfully",
                     })
                   } catch (err: unknown) {
-                    const error = err as FetchBaseQueryError
-
-                    console.error(error)
-                    notification.error({
-                      message: "Error!",
-                      description: "Internal server error. Showing in console log.",
-                    })
+                    initInternalError(err)
                   }
                 },
               })

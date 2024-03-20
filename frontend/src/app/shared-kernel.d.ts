@@ -82,3 +82,7 @@ interface SelectData {
 }
 // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
 type DataWithKey<T> = T & BaseData & { key: string | Key }
+interface BaseResponse {
+  id: string | Id
+  name: string
+}

@@ -1,5 +1,5 @@
 import { LeftOutlined, RightOutlined } from "@ant-design/icons"
-import { Button, TableProps, Tag, notification } from "antd"
+import { Button, TableProps, Tag } from "antd"
 import { ColumnsType } from "antd/es/table"
 import type { FilterValue, TablePaginationConfig } from "antd/es/table/interface"
 import { Key, useEffect, useState } from "react"
@@ -14,12 +14,13 @@ import { useLazyGetTestsQuery } from "entities/test/api"
 import { useTestsTableParams } from "entities/test/model"
 import { selectTest, setTest } from "entities/test/model/slice"
 
-import { selectArchivedTestsIsShow, showArchivedTests } from "entities/test-plan/model"
+import { selectArchivedTestsIsShow, setTests, showArchivedTests } from "entities/test-plan/model"
 
 import { UserAvatar, UserUsername } from "entities/user/ui"
 
 import { colors } from "shared/config"
 import { useTableSearch } from "shared/hooks"
+import { initInternalError } from "shared/libs"
 import { HighLighterTesty, Status } from "shared/ui"
 
 import { AssigneeFiltersDrowdown } from "./filters/assignee-filters-dropdown"
@@ -38,6 +39,11 @@ export const useTestsTable = (testPlanId: Id) => {
   const { projectId } = useParams<ParamProjectId>()
   const [searchParams, setSearchParams] = useSearchParams()
   const test = useAppSelector(selectTest)
+
+  useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+    dispatch(setTests(tests?.results ?? []))
+  }, [tests])
 
   const [selectedSuites, setSelectedSuites] = useState<Key[]>([])
 
@@ -102,11 +108,7 @@ export const useTestsTable = (testPlanId: Id) => {
       })
       return request
     } catch (error) {
-      console.error(error)
-      notification.error({
-        message: "Error!",
-        description: "Internal server error. Showing in console log.",
-      })
+      initInternalError(error)
     }
   }
 
@@ -152,7 +154,10 @@ export const useTestsTable = (testPlanId: Id) => {
       sorter: true,
       ...getColumnSearch("name"),
       render: (text, record) => (
-        <Link to={`/projects/${record.project}/suites/${record.suite}/?test_case=${record.case}`}>
+        <Link
+          id={record.name}
+          to={`/projects/${record.project}/suites/${record.suite}/?test_case=${record.case}`}
+        >
           {/* eslint-disable-next-line @typescript-eslint/no-unsafe-assignment */}
           <HighLighterTesty searchWords={searchText} textToHighlight={text} />
         </Link>

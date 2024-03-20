@@ -1,8 +1,9 @@
 import { DeleteOutlined } from "@ant-design/icons"
-import { FetchBaseQueryError } from "@reduxjs/toolkit/query"
 import { Button, Modal, notification } from "antd"
 
 import { useDeleteUserMutation } from "entities/user/api"
+
+import { initInternalError } from "shared/libs"
 
 export const DeleteUser = ({ user }: { user: User }) => {
   const [deleteUser] = useDeleteUserMutation()
@@ -14,13 +15,7 @@ export const DeleteUser = ({ user }: { user: User }) => {
         description: "User deleted successfully",
       })
     } catch (err: unknown) {
-      const error = err as FetchBaseQueryError
-
-      console.error(error)
-      notification.error({
-        message: "Error!",
-        description: "Internal server error. Showing in console log.",
-      })
+      initInternalError(err)
     }
   }
 

@@ -30,8 +30,6 @@
 # <http://www.gnu.org/licenses/>.
 from typing import Any, Dict, List
 
-from comments.models import Comment
-from core.models import Attachment, Project
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericRelation
@@ -39,12 +37,14 @@ from django.core.validators import MinValueValidator
 from django.db import models
 from mptt.models import TreeForeignKey
 from simple_history.models import HistoricalRecords
-from tests_description.models import TestCase, TestCaseStep
-from tests_representation.choices import TestStatuses
-from users.models import User
 
-from testy.mixins import TestyArchiveMixin
-from testy.models import BaseModel, MPTTBaseModel
+from testy.comments.models import Comment
+from testy.core.models import Attachment, Project
+from testy.root.mixins import TestyArchiveMixin
+from testy.root.models import BaseModel, MPTTBaseModel
+from testy.tests_description.models import TestCase, TestCaseStep
+from testy.tests_representation.choices import TestStatuses
+from testy.users.models import User
 
 UserModel = get_user_model()
 
@@ -66,7 +66,7 @@ class TestPlan(MPTTBaseModel, TestyArchiveMixin):
     name = models.CharField(max_length=settings.CHAR_FIELD_MAX_LEN)
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
     parent = TreeForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='child_test_plans')
-    parameters = models.ManyToManyField(Parameter, blank=True, related_name="test_plans")
+    parameters = models.ManyToManyField(Parameter, blank=True, related_name='test_plans')
     started_at = models.DateTimeField()
     due_date = models.DateTimeField()
     finished_at = models.DateTimeField(null=True, blank=True)
@@ -101,12 +101,12 @@ class TestResult(BaseModel):
     test_case_version = models.IntegerField(
         null=True,
         blank=True,
-        validators=[MinValueValidator(settings.MIN_VALUE_POSITIVE_INTEGER)]
+        validators=[MinValueValidator(settings.MIN_VALUE_POSITIVE_INTEGER)],
     )
     execution_time = models.IntegerField(
         null=True,
         blank=True,
-        validators=[MinValueValidator(settings.MIN_VALUE_POSITIVE_INTEGER)]
+        validators=[MinValueValidator(settings.MIN_VALUE_POSITIVE_INTEGER)],
     )
     attachments = GenericRelation(Attachment)
     attributes = models.JSONField(default=dict, blank=True)
@@ -117,11 +117,11 @@ class TestResult(BaseModel):
         default_related_name = 'test_results'
 
     def model_clone(
-            self,
-            related_managers: List[str] = None,
-            attrs_to_change: Dict[str, Any] = None,
-            attachment_references_fields: List[str] = None,
-            common_attrs_to_change: Dict[str, Any] = None
+        self,
+        related_managers: List[str] = None,
+        attrs_to_change: Dict[str, Any] = None,
+        attachment_references_fields: List[str] = None,
+        common_attrs_to_change: Dict[str, Any] = None,
     ):
         if related_managers is None:
             related_managers = ['attachments', 'steps_results']
@@ -131,7 +131,7 @@ class TestResult(BaseModel):
             related_managers,
             attrs_to_change,
             attachment_references_fields,
-            common_attrs_to_change
+            common_attrs_to_change,
         )
 
 

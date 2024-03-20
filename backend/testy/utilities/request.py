@@ -35,7 +35,8 @@ from typing import List, Optional
 from django.conf import settings
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
-from utilities.string import parse_bool_from_str
+
+from testy.utilities.string import parse_bool_from_str
 
 
 def get_boolean(request, key, method='GET', *, default=False) -> bool:

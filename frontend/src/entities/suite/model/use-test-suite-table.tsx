@@ -67,7 +67,7 @@ export const useTestSuiteTable = ({ activeSuite, setCollapse }: UseTestSuiteTabl
       key: "name",
       sorter: true,
       render: (text, record) => (
-        <Link to={`/projects/${projectId}/suites/${record.id}`}>
+        <Link id={record.name} to={`/projects/${projectId}/suites/${record.id}`}>
           {/* eslint-disable-next-line @typescript-eslint/no-unsafe-assignment */}
           <HighLighterTesty searchWords={searchText} textToHighlight={text} />
         </Link>

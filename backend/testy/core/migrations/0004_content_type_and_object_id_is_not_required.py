@@ -2,7 +2,7 @@
 
 from django.db import migrations, models
 import django.db.models.deletion
-import validators
+import testy.validators as validators
 
 
 class Migration(migrations.Migration):

@@ -7,6 +7,8 @@ import { Control, FieldValues, useFieldArray } from "react-hook-form"
 
 import { useCreateAttachmentMutation } from "entities/attachment/api"
 
+import { initInternalError } from "shared/libs"
+
 const mutex = new Mutex()
 
 interface UploadFileExtend<T> extends UploadFile<T> {
@@ -62,11 +64,7 @@ export const useAttachments = <T, >(
       onSuccess("Ok")
     } catch (err) {
       const error = err as UploadRequestError
-      notification.error({
-        message: "Error!",
-        description: "Internal server error. Showing in console log.",
-      })
-      console.error(err)
+      initInternalError(err)
       onError(error)
     } finally {
       release()

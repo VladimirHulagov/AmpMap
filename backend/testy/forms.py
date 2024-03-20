@@ -29,7 +29,8 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 from django import forms
-from utilities.time import WorkTimeProcessor
+
+from testy.utilities.time import WorkTimeProcessor
 
 
 class EstimateFormField(forms.CharField):

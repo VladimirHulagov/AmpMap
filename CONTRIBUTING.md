@@ -11,7 +11,7 @@ ___
 * Create database or run it from docker-compose file
 * Set up your `.env.local` file. Use `.env.template` as an example  
   (In case your file could not be found you can provide full path to env file in `load_dotenv()` inside *local.py* file)
-* Run `export DJANGO_SETTINGS_MODULE=testy.settings.local`
+* Run `export DJANGO_SETTINGS_MODULE=root.settings.local`
 
 ### Get TestY running
 
@@ -27,7 +27,7 @@ Run in terminal:
 Run in PyCharm:
 
 * Edit configurations -> Add New Configuration -> Django Server
-  -> Add `DJANGO_SETTINGS_MODULE=testy.settings.local`to Environment variables
+  -> Add `DJANGO_SETTINGS_MODULE=root.settings.local`to Environment variables
 
 ___
 

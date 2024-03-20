@@ -1,7 +1,7 @@
 import { Space, Tag, Typography } from "antd"
 import classNames from "classnames"
+import dayjs from "dayjs"
 import { EditResult } from "features/test-result"
-import moment from "moment"
 import { useEffect } from "react"
 import { Link, useLocation, useParams } from "react-router-dom"
 import { HashLink } from "react-router-hash-link"
@@ -104,7 +104,7 @@ export const ResultList = ({ testId, testCase, isProjectArchive }: ResultListPro
                 className={styles.link}
                 to={`/projects/${result.project}/plans/${testPlanId}/?test=${testId}#result-${result.id}`}
               >
-                {moment(result.created_at).format("LLL")}
+                {dayjs(result.created_at).format("YYYY-MM-DD HH:mm")}
               </HashLink>
               <span className={styles.divider}>|</span>
               {result.test_case_version && (

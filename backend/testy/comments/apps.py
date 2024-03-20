@@ -28,10 +28,9 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-
 from django.apps import AppConfig
 
 
 class CommentsConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'comments'
+    name = 'testy.comments'

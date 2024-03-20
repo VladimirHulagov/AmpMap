@@ -13,7 +13,7 @@ export const suiteApi = createApi({
   endpoints: (builder) => ({
     getTestSuites: builder.query<PaginationResponse<Suite[]>, GetTestSuitesTreeViewQuery>({
       query: ({ project, parent, search, ...params }) => ({
-        url: rootPath,
+        url: `${rootPath}/`,
         params: { project, parent, search, ...params },
       }),
       providesTags: (result) =>
@@ -29,7 +29,7 @@ export const suiteApi = createApi({
     }),
     getTestSuitesTreeView: builder.query<PaginationResponse<Suite[]>, GetTestSuitesTreeViewQuery>({
       query: ({ project, treeview = true, parent, search, ...params }) => ({
-        url: rootPath,
+        url: `${rootPath}/`,
         params: { project, treeview, parent, search, ...params },
       }),
       providesTags: (result) =>
@@ -48,7 +48,7 @@ export const suiteApi = createApi({
       GetTestSuitesTreeViewQuery
     >({
       query: ({ project, treeview = true, show_cases = true, parent, ...params }) => ({
-        url: rootPath,
+        url: `${rootPath}/`,
         params: { project, treeview, parent, show_cases, ...params },
       }),
       providesTags: (result) =>
@@ -128,14 +128,14 @@ export const suiteApi = createApi({
     }),
     getSuiteDeletePreview: builder.query<DeletePreviewResponse[], string>({
       query: (id) => ({
-        url: `${rootPath}/${id}/delete/preview`,
+        url: `${rootPath}/${id}/delete/preview/`,
       }),
       providesTags: (result, error, id) => [
         { type: "TestSuiteDeletePreview", id },
         { type: "TestSuiteDeletePreview", id: "LIST" },
       ],
     }),
-    copySuite: builder.mutation<void, SuiteCopyBody>({
+    copySuite: builder.mutation<CopySuiteResponse[], SuiteCopyBody>({
       query: (body) => ({
         url: `${rootPath}/copy/`,
         method: "POST",

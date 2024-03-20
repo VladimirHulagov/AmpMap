@@ -29,12 +29,13 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 from rest_framework import permissions
-from tests_representation.models import Test
+
+from testy.tests_representation.models import Test
 
 
 class IsAdminOrForbidArchiveUpdate(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
-        if request.method in ['PUT', 'PATCH'] and obj.is_archive and not request.user.is_staff:
+        if request.method in {'PUT', 'PATCH'} and obj.is_archive and not request.user.is_staff:
             return False
         return True
 
@@ -43,7 +44,7 @@ class ForbidChangesOnArchivedProject(permissions.BasePermission):
     def has_permission(self, request, view):
         if not request.data:
             return True
-        if view.action == 'create' and Test.objects.get(pk=request.data['test']).project.is_archive:
+        if view.action == 'create' and Test.objects.get(pk=request.data['test']).project.is_archive:  # noqa: WPS221
             return False
         return True
 

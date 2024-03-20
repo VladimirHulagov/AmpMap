@@ -39,6 +39,8 @@ from PIL import Image
 from rest_framework import status
 from rest_framework.response import Response
 
+suffix_properties = Union[Tuple[str, str, str], Tuple[str, int, int]]  # noqa: WPS221
+
 
 class MediaViewMixin:
     def retrieve_filepath(
@@ -46,7 +48,7 @@ class MediaViewMixin:
         file: FieldFile,
         request,
         generate_thumbnail: bool = True,
-        source_filename: Optional[str] = None
+        source_filename: Optional[str] = None,
     ) -> Union[Response, FileResponse]:
         """
         Get filename to return in response, taking size from query parameters into account.
@@ -62,9 +64,11 @@ class MediaViewMixin:
         """
         try:
             if source_filename:
-                content_type, _ = mimetypes.guess_type(source_filename, strict=True)
+                content_type, _ = mimetypes.guess_type(source_filename, strict=False)
             else:
-                content_type, _ = mimetypes.guess_type(file.path, strict=True)
+                content_type, _ = mimetypes.guess_type(file.path, strict=False)
+            if not content_type:
+                content_type = 'text/plain'
             is_attachment = 'image/' not in content_type
             old_path = Path(file.path)
             old_file_name = old_path.name
@@ -72,7 +76,7 @@ class MediaViewMixin:
                 file.path,
                 request,
                 generate_thumbnail,
-                is_attachment
+                is_attachment,
             )
             return self.get_formatted_response(
                 file,
@@ -80,13 +84,14 @@ class MediaViewMixin:
                 old_file_name != new_file_name,
                 new_file_name,
                 content_type,
-                source_filename
+                source_filename,
             )
         except IOError:
             return Response(status=status.HTTP_404_NOT_FOUND)
 
-    @staticmethod
+    @classmethod
     def get_formatted_response(
+        cls,
         file: FieldFile,
         is_attachment: bool,
         is_modified: bool,
@@ -126,19 +131,23 @@ class MediaViewMixin:
         if not is_modified:
             response['X-Accel-Redirect'] = file.url
             return response
-        new_url = Path(*Path(file.url).parts[:-1] + (new_file_name,))
+        new_url = Path(
+            *Path(file.url).parts[:-1] + (new_file_name,),
+        )
         response['X-Accel-Redirect'] = new_url
         return response
 
     def get_filename(self, filepath: str, request, generate_thumbnail: bool, is_attachment: bool) -> str:
         """
-        Get filename depending on parameters provided in user request, if file with provided files does not exist
-        creates one if generate_thumbnail is set to True.
+        Get filename depending on parameters provided in user request.
+
+        If file with provided files does not exist creates one if generate_thumbnail is set to True.
 
         Args:
             filepath: path to source file.
             request: user request.
             generate_thumbnail: defines if thumbnail with not existing parameters should be created or not.
+            is_attachment: defines if file should be returned as attachment or as render.
 
         Returns:
             Filename including extension as str.
@@ -166,13 +175,14 @@ class MediaViewMixin:
             thumbnail.save(new_path)
         return new_path.name
 
-    @staticmethod
-    def get_modification_suffix_with_params(request) -> Union[Tuple[str, str, str], Tuple[str, int, int]]:
+    @classmethod
+    def get_modification_suffix_with_params(cls, request) -> suffix_properties:
         """
         Get file suffix and image parameters based on size from request parameters.
 
         Args:
             request: user request
+
         Returns:
             Suffix to add at the end of src file name to find or create file and size parameters.
         """

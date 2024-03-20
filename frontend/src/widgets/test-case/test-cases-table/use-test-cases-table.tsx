@@ -135,7 +135,10 @@ export const useTestCasesTable = () => {
       ...getColumnSearch("name"),
       onFilter: (value, record) => record.name.toLowerCase().includes(String(value).toLowerCase()),
       render: (text, record) => (
-        <Link to={`/projects/${record.project}/suites/${record.suite}?test_case=${record.id}`}>
+        <Link
+          id={record.name}
+          to={`/projects/${record.project}/suites/${record.suite}?test_case=${record.id}`}
+        >
           {/* eslint-disable-next-line @typescript-eslint/no-unsafe-assignment */}
           <HighLighterTesty searchWords={searchText} textToHighlight={text} />
         </Link>

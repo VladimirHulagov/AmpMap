@@ -30,16 +30,17 @@
 # <http://www.gnu.org/licenses/>.
 from functools import partial
 
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser, Group
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-from validators import CaseInsensitiveUsernameValidator
 
-from testy.models import ServiceModelMixin
-from utils import get_media_file_path
+from testy.root.models import ServiceModelMixin
+from testy.utils import get_media_file_path
+from testy.validators import CaseInsensitiveUsernameValidator
 
 
-class Group(Group, ServiceModelMixin):
+class Group(Group, ServiceModelMixin):  # noqa: WPS440
     class Meta:
         verbose_name = 'Group'
         verbose_name_plural = 'Groups'
@@ -50,19 +51,19 @@ class User(AbstractUser, ServiceModelMixin):
     config = models.JSONField(default=dict, blank=True)
     username = models.CharField(
         _('username'),
-        max_length=150,
+        max_length=settings.FILEPATH_MAX_LEN,
         unique=True,
         help_text=_('Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.'),
         validators=[AbstractUser.username_validator, CaseInsensitiveUsernameValidator()],
         error_messages={
-            'unique': _("A user with that username already exists."),
+            'unique': _('A user with that username already exists.'),
         },
     )
     avatar = models.ImageField(
         null=True,
         blank=True,
-        max_length=150,
-        upload_to=partial(get_media_file_path, media_name='avatars')
+        max_length=settings.FILEPATH_MAX_LEN,
+        upload_to=partial(get_media_file_path, media_name='avatars'),
     )
 
     class Meta:

@@ -2,7 +2,7 @@ import { TableProps } from "antd"
 import { TablePaginationConfig } from "antd/es/table"
 import { ColumnsType } from "antd/lib/table"
 import { FilterValue } from "antd/lib/table/interface"
-import moment from "moment"
+import dayjs from "dayjs"
 import { useEffect, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 
@@ -48,8 +48,8 @@ export const useTestPlanActivity = () => {
       dataIndex: "action_timestamp",
       key: "action_timestamp",
       width: "100px",
-      sorter: (a, b) => moment(a.action_timestamp).diff(b.action_timestamp),
-      render: (value: string) => moment(value).format("HH:MM:ss"),
+      sorter: (a, b) => dayjs(a.action_timestamp).diff(b.action_timestamp),
+      render: (value: string) => dayjs(value).format("HH:MM:ss"),
     },
     {
       title: "Test",

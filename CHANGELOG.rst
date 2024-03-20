@@ -1,3 +1,14 @@
+Version 1.2.14
+--------------
+*Status: General availability*
+
+*Released: 15-03-2024*
+
+- Generalized import policy to start all imports from *testy*
+- Changed plugin system to use pluggy to simplify plugin development
+- Made testy installable for more convenient plugin development
+- Remade all existing plugins to work with new plugin system
+- Added production configuration based on Nginx
 
 Version 1.2.13
 --------------

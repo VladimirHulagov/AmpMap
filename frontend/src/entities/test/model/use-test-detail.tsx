@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useParams, useSearchParams } from "react-router-dom"
 
 import { useAppDispatch, useAppSelector } from "app/hooks"
@@ -7,7 +7,11 @@ import { useGetProjectQuery } from "entities/project/api"
 
 import { useGetTestCaseByIdQuery } from "entities/test-case/api"
 
-import { selectArchivedResultsIsShow, showArchivedResults } from "entities/test-plan/model"
+import {
+  selectArchivedResultsIsShow,
+  selectTests,
+  showArchivedResults,
+} from "entities/test-plan/model"
 
 import { setTest } from "./slice"
 
@@ -18,6 +22,8 @@ export const useTestDetail = (test: Test | null) => {
   const [tab, setTab] = useState<TabTypes>("results")
   const [commentOrdering, setCommentOrdering] = useState<"asc" | "desc">("desc")
   const { projectId } = useParams<ParamProjectId>()
+  const tests = useAppSelector(selectTests)
+  const [testCaseData, setTestCaseData] = useState<TestCase | null>(null)
 
   const { data: testCase, isLoading: isLoadingTestCase } = useGetTestCaseByIdQuery(
     { testCaseId: String(test?.case) },
@@ -30,6 +36,20 @@ export const useTestDetail = (test: Test | null) => {
   })
   const showArchive = useAppSelector(selectArchivedResultsIsShow)
   const [searchParams, setSearchParams] = useSearchParams()
+
+  useEffect(() => {
+    const selectedCase = tests.find((t) => t.case === testCase?.id)
+
+    if (selectedCase && testCase) {
+      const updated = {
+        ...testCase,
+        test_suite_description: selectedCase.test_suite_description,
+      }
+      setTestCaseData(updated)
+      return
+    }
+    setTestCaseData(testCase ?? null)
+  }, [testCase, tests])
 
   const handleShowArchived = () => {
     dispatch(showArchivedResults())
@@ -50,7 +70,7 @@ export const useTestDetail = (test: Test | null) => {
   }
 
   return {
-    testCase,
+    testCase: testCaseData,
     isLoadingTestCase,
     project,
     isLoadingProject,

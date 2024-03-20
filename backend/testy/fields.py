@@ -34,7 +34,8 @@ import pytimeparse
 from django.core import exceptions
 from django.db import models
 from forms import EstimateFormField
-from utilities.time import WorkTimeProcessor
+
+from testy.utilities.time import WorkTimeProcessor
 
 
 class BaseEstimateField(models.Field):
@@ -56,10 +57,12 @@ class BaseEstimateField(models.Field):
         raise exceptions.ValidationError(str(err) if err else self.default_error_message)
 
     def formfield(self, **kwargs):
-        return super().formfield(**{
-            'form_class': EstimateFormField,
-            **kwargs,
-        })
+        return super().formfield(
+            **{
+                'form_class': EstimateFormField,
+                **kwargs,
+            },
+        )
 
     @classmethod
     def get_value_in_seconds(cls, value):
@@ -69,7 +72,7 @@ class BaseEstimateField(models.Field):
             return None, exceptions.ValidationError('Estimate value must be positive')
 
         if value.isnumeric():
-            value += 'm'
+            value = f'{value}m'
 
         seconds = pytimeparse.parse(value)
 
@@ -79,7 +82,7 @@ class BaseEstimateField(models.Field):
             return None, None
 
         try:
-            datetime.timedelta(seconds=seconds_by_wd), None
+            datetime.timedelta(seconds=seconds_by_wd)
         except OverflowError:
             return None, exceptions.ValidationError('Estimate value is too big')
         return seconds_by_wd, None
@@ -98,7 +101,7 @@ class EstimateField(BaseEstimateField):
         return datetime.timedelta(seconds=seconds), err
 
     def get_internal_type(self):
-        return "DurationField"
+        return 'DurationField'
 
 
 class IntegerEstimateField(BaseEstimateField):
@@ -109,4 +112,4 @@ class IntegerEstimateField(BaseEstimateField):
         return cls.get_value_in_seconds(value)
 
     def get_internal_type(self):
-        return "IntegerField"
+        return 'IntegerField'

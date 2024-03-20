@@ -1,7 +1,8 @@
 *.pyc
 __pycache__/
 /htmlcov/
-/venv/
+*/venv/
+*/.venv/
 static/
 testy-static/
 media/
@@ -21,3 +22,4 @@ node_modules/
 testy_static/dist/*.html
 *.egg-info/
 *.egg
+volumes/

@@ -7,3 +7,11 @@
 .testCaseDetailDrawer .ant-drawer-header-title {
   flex: auto;
 }
+
+.testCaseDetailDrawer .ant-drawer-header {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  width: 100%;
+  gap: 14px;
+}

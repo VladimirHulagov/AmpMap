@@ -32,18 +32,18 @@
 from django.contrib import admin
 from mptt.admin import MPTTModelAdmin
 from simple_history.admin import SimpleHistoryAdmin
-from tests_description.models import TestCase, TestSuite
 
-from testy.admin import BaseAdmin
+from testy.root.admin import BaseAdmin
+from testy.tests_description.models import TestCase, TestSuite
 
 
 @admin.register(TestSuite)
 class TestSuiteAdmin(BaseAdmin, MPTTModelAdmin):
-    list_display = ('name', 'project', 'parent',)
+    list_display = ('name', 'project', 'parent')
     search_fields = ('name',)
 
 
 @admin.register(TestCase)
 class TestCaseAdmin(SimpleHistoryAdmin):
-    list_display = ('name', 'project', 'suite',)
+    list_display = ('name', 'project', 'suite')
     search_fields = ('name',)

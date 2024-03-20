@@ -1,20 +1,16 @@
-import { PictureOutlined } from "@ant-design/icons"
-import { Button, Checkbox, Space, Tooltip, Upload } from "antd"
-import Input, { TextAreaProps } from "antd/lib/input"
-import { UploadChangeParam, UploadFile } from "antd/lib/upload"
+import { Checkbox, Space } from "antd"
+import { TextAreaProps } from "antd/lib/input"
 import type { UploadRequestOption } from "rc-upload/lib/interface"
 import { useEffect } from "react"
-import { Control, UseFormSetValue, useWatch } from "react-hook-form"
+import { Control, UseFormClearErrors, UseFormSetValue, useWatch } from "react-hook-form"
+
+import { TextAreaWithAttach } from "shared/ui"
 
 import { TestCaseStepsBlock } from "./block"
 import styles from "./styles.module.css"
 
 interface TextAreaPropsExtend extends TextAreaProps {
   name: "scenario"
-}
-
-interface UploadFileExtend<T> extends UploadFile<T> {
-  link?: string
 }
 
 interface TestCaseStepsProps {
@@ -27,6 +23,7 @@ interface TestCaseStepsProps {
     setSteps: React.Dispatch<React.SetStateAction<Step[]>>
   }
   setValue: UseFormSetValue<TestCaseFormData>
+  clearErrors: UseFormClearErrors<TestCaseFormData>
   control: Control<TestCaseFormData>
   customRequest: (options: UploadRequestOption<unknown>) => Promise<void>
   fieldProps: TextAreaPropsExtend
@@ -40,6 +37,7 @@ export const TestCaseStepsWrapper = ({
   stateSteps,
   customRequest,
   setValue,
+  clearErrors,
   fieldProps,
   control,
   isSteps,
@@ -51,17 +49,8 @@ export const TestCaseStepsWrapper = ({
     name: "is_steps",
   })
 
-  const onChange = (info: UploadChangeParam<UploadFileExtend<IAttachmentWithUid[]>>) => {
-    const fileList = info.fileList as IAttachmentWithUid[]
-    stateAttachments.setAttachments(fileList)
-
-    if (info.file.status === "done") {
-      // eslint-disable-next-line @typescript-eslint/restrict-plus-operands
-      setValue(fieldProps.name ?? "", fieldProps.value + `![](${info.file.link})`)
-    }
-  }
-
   const toggleStepsClick = () => {
+    clearErrors(isSteps ? "steps" : "scenario")
     setIsSteps(!isSteps)
     setValue("is_steps", !isSteps)
   }
@@ -73,23 +62,7 @@ export const TestCaseStepsWrapper = ({
   return (
     <>
       <div className={styles.row}>
-        <Space.Compact id={`${isEditMode ? "edit" : "create"}-scenario-upload-attachment`}>
-          {!isSteps && (
-            <Tooltip title="Attachment">
-              <Upload
-                fileList={stateAttachments.attachments}
-                customRequest={customRequest}
-                onChange={onChange}
-                name="file"
-                multiple
-                showUploadList={false}
-              >
-                <Button icon={<PictureOutlined />} size={"small"} type="link" />
-              </Upload>
-            </Tooltip>
-          )}
-        </Space.Compact>
-        <Space.Compact style={{ marginLeft: "auto", marginBottom: 8 }}>
+        <Space.Compact style={{ marginLeft: "auto", marginBottom: 8 }} className={styles.checkbox}>
           <Checkbox
             id={`${isEditMode ? "edit" : "create"}-steps-checkbox`}
             checked={isSteps}
@@ -100,10 +73,16 @@ export const TestCaseStepsWrapper = ({
         </Space.Compact>
       </div>
       {!isSteps && (
-        <Input.TextArea
-          id={`${isEditMode ? "edit" : "create"}-scenario-textarea`}
-          style={{ fontSize: 13 }}
-          rows={4}
+        <TextAreaWithAttach
+          uploadId={`${isEditMode ? "edit" : "create"}-scenario`}
+          textAreaId={`${isEditMode ? "edit" : "create"}-scenario-textarea`}
+          customRequest={customRequest}
+          fieldProps={fieldProps}
+          stateAttachments={{
+            attachments: stateAttachments.attachments,
+            setAttachments: stateAttachments.setAttachments,
+          }}
+          setValue={setValue}
           {...fieldProps}
         />
       )}

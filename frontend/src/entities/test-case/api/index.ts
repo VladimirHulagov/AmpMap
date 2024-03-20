@@ -21,7 +21,7 @@ export const testCaseApi = createApi({
   endpoints: (builder) => ({
     getTestCases: builder.query<PaginationResponse<TestCase[]>, GetTestCasesQuery>({
       query: (params) => ({
-        url: rootPath,
+        url: `${rootPath}/`,
         params,
       }),
       providesTags: (result) =>
@@ -37,7 +37,7 @@ export const testCaseApi = createApi({
     }),
     searchTestCases: builder.query<SuiteWithCases[], GetTestCasesQuery>({
       query: (params) => ({
-        url: `${rootPath}/search`,
+        url: `${rootPath}/search/`,
         params,
       }),
     }),
@@ -127,12 +127,12 @@ export const testCaseApi = createApi({
     }),
     getTestCaseDeletePreview: builder.query<DeletePreviewResponse[], string>({
       query: (id) => ({
-        url: `${rootPath}/${id}/delete/preview`,
+        url: `${rootPath}/${id}/delete/preview/`,
       }),
     }),
     getTestCaseArchivePreview: builder.query<DeletePreviewResponse[], string>({
       query: (id) => ({
-        url: `${rootPath}/${id}/archive/preview`,
+        url: `${rootPath}/${id}/archive/preview/`,
       }),
     }),
     copyTestCase: builder.mutation<void, TestCaseCopyBody>({

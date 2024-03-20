@@ -39,6 +39,7 @@ from django.core.management.base import BaseCommand
 from django.core.validators import validate_email
 
 logger = logging.getLogger(__name__)
+UserModel = get_user_model()
 
 
 class Command(BaseCommand):
@@ -47,19 +48,14 @@ class Command(BaseCommand):
     def handle(self, *args, **options) -> None:
         self.create_default_superuser()
 
-    @staticmethod
-    def create_default_superuser() -> None:
-        username = os.environ.get("SUPERUSER_USERNAME", "")
-        if not username:
-            raise ImproperlyConfigured('Required parameter SUPERUSER_USERNAME is missing.')
-
-        password = os.environ.get("SUPERUSER_PASSWORD", "")
-        if not password:
-            raise ImproperlyConfigured('Required parameter SUPERUSER_PASSWORD is missing.')
-
+    @classmethod
+    def create_default_superuser(cls) -> None:
+        username = os.environ.get('SUPERUSER_USERNAME', '')
+        password = os.environ.get('SUPERUSER_PASSWORD', '')
         company_domain = settings.COMPANY_DOMAIN
-        if not company_domain:
-            raise ImproperlyConfigured('Required parameter COMPANY_DOMAIN is missing.')
+
+        if not all([username, password, company_domain]):
+            raise ImproperlyConfigured('Some of required parameters were not provided.')
 
         email = '{0}@{1}'.format(username, company_domain)
         try:
@@ -67,16 +63,9 @@ class Command(BaseCommand):
         except ValidationError as err:
             raise ImproperlyConfigured(str(err))
 
-        User = get_user_model()
-        if not User.objects.exists():
-            logger.info("Creating default superuser")
-            User.objects.create_superuser(username, email, password)
-            logger.info(
-                """
-                Default superuser created:
-                username: '{0}'
-                email: '{1}'
-                """.format(username, email)
-            )
+        if UserModel.objects.exists():
+            logger.info('Not creating default superuser')
         else:
-            logger.info("Not creating default superuser")
+            logger.info('Creating default superuser')
+            UserModel.objects.create_superuser(username, email, password)
+            logger.info(f'Default superuser created:\nusername:{username}\nemail: {email}\n')

@@ -30,8 +30,6 @@
 # <http://www.gnu.org/licenses/>.
 from typing import Any, Dict, List
 
-from comments.models import Comment
-from core.models import Attachment, LabeledItem, Project
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
@@ -39,7 +37,9 @@ from fields import IntegerEstimateField
 from mptt.models import TreeForeignKey
 from simple_history.models import HistoricalRecords
 
-from testy.models import BaseModel, MPTTBaseModel
+from testy.comments.models import Comment
+from testy.core.models import Attachment, LabeledItem, Project
+from testy.root.models import BaseModel, MPTTBaseModel
 
 
 class TestSuite(MPTTBaseModel):
@@ -63,7 +63,7 @@ class TestSuite(MPTTBaseModel):
         related_managers: List[str] = None,
         attrs_to_change: Dict[str, Any] = None,
         attachment_references_fields: List[str] = None,
-        common_attrs_to_change: Dict[str, Any] = None
+        common_attrs_to_change: Dict[str, Any] = None,
     ):
         if related_managers is None:
             related_managers = ['child_test_suites', 'test_cases']
@@ -71,7 +71,7 @@ class TestSuite(MPTTBaseModel):
             related_managers,
             attrs_to_change,
             attachment_references_fields,
-            common_attrs_to_change
+            common_attrs_to_change,
         )
 
 
@@ -100,11 +100,11 @@ class TestCase(BaseModel):
         return self.name
 
     def model_clone(
-            self,
-            related_managers: List[str] = None,
-            attrs_to_change: Dict[str, Any] = None,
-            attachment_references_fields: List[str] = None,
-            common_attrs_to_change: Dict[str, Any] = None
+        self,
+        related_managers: List[str] = None,
+        attrs_to_change: Dict[str, Any] = None,
+        attachment_references_fields: List[str] = None,
+        common_attrs_to_change: Dict[str, Any] = None,
     ):
         if related_managers is None:
             related_managers = ['steps', 'attachments', 'labeled_items']
@@ -114,7 +114,7 @@ class TestCase(BaseModel):
             related_managers,
             attrs_to_change,
             attachment_references_fields,
-            common_attrs_to_change
+            common_attrs_to_change,
         )
 
 
@@ -130,14 +130,14 @@ class TestCaseStep(BaseModel):
     sort_order = models.PositiveIntegerField(default=0, blank=False, null=False)
 
     class Meta:
-        ordering = ('sort_order', 'id',)
+        ordering = ('sort_order', 'id')
 
     def model_clone(
-            self,
-            related_managers: List[str] = None,
-            attrs_to_change: Dict[str, Any] = None,
-            attachment_references_fields: List[str] = None,
-            common_attrs_to_change: Dict[str, Any] = None
+        self,
+        related_managers: List[str] = None,
+        attrs_to_change: Dict[str, Any] = None,
+        attachment_references_fields: List[str] = None,
+        common_attrs_to_change: Dict[str, Any] = None,
     ):
         if related_managers is None:
             related_managers = ['attachments']
@@ -147,5 +147,5 @@ class TestCaseStep(BaseModel):
             related_managers,
             attrs_to_change,
             attachment_references_fields,
-            common_attrs_to_change
+            common_attrs_to_change,
         )

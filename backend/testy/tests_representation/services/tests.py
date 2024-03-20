@@ -33,25 +33,19 @@ from typing import Any, Dict
 
 from django.db import transaction
 from django.db.models import QuerySet
-from tests_description.models import TestCase
-from tests_representation.models import Test, TestPlan
+
+from testy.tests_description.models import TestCase
+from testy.tests_representation.models import Test, TestPlan
 
 
 class TestService:
     non_side_effect_fields = ['case', 'plan', 'assignee', 'is_archive', 'project']
 
-    def _make_test_model(self, data):
-        return Test.model_create(
-            fields=self.non_side_effect_fields,
-            data=data,
-            commit=False
-        )
-
     def test_create(self, data: Dict[str, Any]) -> Test:
         test = Test.model_create(
             fields=self.non_side_effect_fields,
             data=data,
-            commit=False
+            commit=False,
         )
         test.project = test.case.project
         test.full_clean()
@@ -64,8 +58,10 @@ class TestService:
 
     @transaction.atomic
     def bulk_test_create(self, test_plans: list[TestPlan], cases: list[TestCase]):
-        test_objects = [self._make_test_model({'case': case, 'plan': tp, 'project': tp.project}) for tp in test_plans
-                        for case in cases]
+        test_objects = [  # noqa: WPS361
+            self._make_test_model({'case': case, 'plan': tp, 'project': tp.project}) for tp in test_plans
+            for case in cases
+        ]
         return Test.objects.bulk_create(test_objects)
 
     def test_update(self, test: Test, data: Dict[str, Any]) -> Test:
@@ -77,3 +73,10 @@ class TestService:
 
     def get_testcase_ids_by_testplan(self, test_plan: TestPlan) -> QuerySet[int]:
         return test_plan.tests.values_list('case', flat=True)
+
+    def _make_test_model(self, data):
+        return Test.model_create(
+            fields=self.non_side_effect_fields,
+            data=data,
+            commit=False,
+        )

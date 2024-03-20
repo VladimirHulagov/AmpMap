@@ -2,8 +2,8 @@
 
 from django.db import migrations, models
 import functools
-import utils
-import validators
+import testy.utils as utils
+import testy.validators as validators
 
 
 class Migration(migrations.Migration):
