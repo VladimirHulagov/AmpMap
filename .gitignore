@@ -23,3 +23,5 @@ testy_static/dist/*.html
 *.egg-info/
 *.egg
 volumes/
+nginx/*.crt
+nginx/*.key
