@@ -27,3 +27,19 @@ export const initInternalError = (err: unknown) => {
 }
 
 export const capitalizeFirstLetter = (str: string) => str.charAt(0).toUpperCase() + str.slice(1)
+
+export const sortEstimate = (a?: string, b?: string) => {
+  if (!a || !b) return 0
+
+  const aNumber = Number(a?.slice(0, -1))
+  const bNumber = Number(b?.slice(0, -1))
+  const aLetter = a?.slice(-1)
+  const bLetter = b?.slice(-1)
+
+  if (aLetter === bLetter) {
+    return aNumber - bNumber
+  }
+
+  const order = ["m", "h", "d"]
+  return order.indexOf(aLetter) - order.indexOf(bLetter)
+}

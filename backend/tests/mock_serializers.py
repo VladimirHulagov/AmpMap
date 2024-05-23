@@ -29,16 +29,35 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 from rest_framework.fields import SerializerMethodField
-from tests_description.api.v1.serializers import TestSuiteBaseSerializer, TestSuiteTreeSerializer
-from tests_description.models import TestSuite
-from tests_representation.api.v1.serializers import TestSerializer
+from rest_framework.reverse import reverse
+from utilities.time import WorkTimeProcessor
+
+from testy.core.api.v1.serializers import ProjectStatisticsSerializer
+from testy.tests_description.api.v1.serializers import (
+    TestCaseRetrieveSerializer,
+    TestSuiteBaseSerializer,
+    TestSuiteTreeSerializer,
+)
+from testy.tests_description.models import TestCase, TestSuite
+from testy.tests_representation.api.v1.serializers import TestSerializer
+from testy.tests_representation.models import Test, TestPlan
 
 
 class TestMockSerializer(TestSerializer):
     suite_path = SerializerMethodField(read_only=True)
+    test_suite_description = SerializerMethodField(read_only=True)
+    estimate = SerializerMethodField()
 
     def get_suite_path(self, instance):
         return '/'.join([elem.name for elem in instance.case.suite.get_ancestors(include_self=True)])
+
+    def get_test_suite_description(self, instance):
+        return instance.case.suite.description
+
+    def get_estimate(self, instance):
+        if not instance.case.estimate:
+            return None
+        return WorkTimeProcessor.format_duration(instance.case.estimate)
 
 
 class TestSuiteMockTreeSerializer(TestSuiteTreeSerializer):
@@ -47,8 +66,42 @@ class TestSuiteMockTreeSerializer(TestSuiteTreeSerializer):
     class Meta:
         model = TestSuite
         fields = TestSuiteBaseSerializer.Meta.fields + (
-            'children', 'key', 'value', 'title', 'descendant_count'
+            'children', 'title', 'descendant_count',
         )
 
     def get_descendant_count(self, instance):
         return instance.get_descendant_count()
+
+
+class ProjectStatisticsMockSerializer(ProjectStatisticsSerializer):
+    cases_count = SerializerMethodField()
+    suites_count = SerializerMethodField()
+    plans_count = SerializerMethodField()
+    tests_count = SerializerMethodField()
+
+    def get_icon(self, instance):
+        if not instance.icon:
+            return ''
+        return self.context['request'].build_absolute_uri(
+            reverse('api:v1:project-icon', kwargs={'pk': instance.id}),
+        )
+
+    @classmethod
+    def get_cases_count(cls, instance):
+        return TestCase.objects.filter(project=instance).count()
+
+    @classmethod
+    def get_suites_count(cls, instance):
+        return TestSuite.objects.filter(project=instance).count()
+
+    @classmethod
+    def get_plans_count(cls, instance):
+        return TestPlan.objects.filter(project=instance).count()
+
+    @classmethod
+    def get_tests_count(cls, instance):
+        return Test.objects.filter(project=instance).count()
+
+
+class TestCaseMockSerializer(TestCaseRetrieveSerializer):
+    """Test case mock serializer to avoid prefetching in tests."""

@@ -46,7 +46,7 @@ app.autodiscover_tasks()
 
 app.conf.beat_schedule = {
     'delete-expired-tokens-daily': {
-        'task': 'root.tasks.delete_expired_tokens',
+        'task': 'testy.root.tasks.delete_expired_tokens',
         'schedule': crontab(hour=0, minute=0),
     },
 }

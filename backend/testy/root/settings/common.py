@@ -59,7 +59,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
-VERSION = '1.2.14'
+VERSION = '1.2.15'
 
 loaded_hosts = os.environ.get('ALLOWED_HOSTS', [])
 

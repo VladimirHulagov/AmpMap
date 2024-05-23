@@ -32,7 +32,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='testy',
-    version='1.2.14',
+    version='1.2.15',
     python_requires='==3.9.13',
     description='Test management system',
     packages=find_packages(

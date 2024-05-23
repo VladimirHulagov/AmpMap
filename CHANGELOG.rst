@@ -1,3 +1,12 @@
+Version 1.2.15
+--------------
+*Status: General availability*
+
+*Released: 11-04-2024*
+
+- Added estimates to tests (TMS-745)
+- Fixed duplicate test case history record that caused 500
+
 Version 1.2.14
 --------------
 *Status: General availability*

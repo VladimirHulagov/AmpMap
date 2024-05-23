@@ -23,6 +23,8 @@ interface Test {
   assignee_username: string | null
   avatar_link: string | null
   test_suite_description?: string | null
+  estimate: string
+  labels: Pick<Label, "id" | "name">[]
 }
 
 interface ITestGet {

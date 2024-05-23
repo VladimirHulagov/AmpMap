@@ -32,11 +32,12 @@ from rest_framework.fields import CharField, ChoiceField, DateTimeField, FloatFi
 from rest_framework.relations import HyperlinkedIdentityField, PrimaryKeyRelatedField
 from rest_framework.reverse import reverse
 from rest_framework.serializers import ModelSerializer, Serializer
+from serializer_fields import EstimateField
 
 from testy.core.api.v1.serializers import AttachmentSerializer
 from testy.core.selectors.attachments import AttachmentSelector
 from testy.tests_description.api.v1.serializers import TestCaseLabelOutputSerializer, TestCaseListSerializer
-from testy.tests_description.selectors.cases import TestCaseSelector
+from testy.tests_description.selectors.cases import TestCaseSelector, TestCaseStepSelector
 from testy.tests_representation.choices import TestStatuses
 from testy.tests_representation.models import Parameter, Test, TestPlan, TestResult, TestStepResult
 from testy.tests_representation.selectors.parameters import ParameterSelector
@@ -81,13 +82,14 @@ class TestSerializer(ModelSerializer):
     assignee_username = SerializerMethodField(read_only=True)
     avatar_link = SerializerMethodField(read_only=True)
     test_suite_description = CharField(read_only=True)
+    estimate = EstimateField(read_only=True, allow_null=True, allow_blank=True)
 
     class Meta:
         model = Test
         fields = (
             'id', 'project', 'case', 'suite', 'name', 'last_status', 'plan', 'assignee',
             'assignee_username', 'is_archive', 'created_at', 'updated_at', 'url', 'labels', 'suite_path', 'avatar_link',
-            'test_suite_description',
+            'test_suite_description', 'estimate',
         )
         read_only_fields = ('project',)
 
@@ -129,12 +131,12 @@ class TestStepResultSerializer(ModelSerializer):
         fields = ('id', 'step', 'name', 'status', 'sort_order')
 
     def get_name(self, instance):
-        step = instance.step.history.get(test_case_history_id=instance.test_result.test_case_version).instance
-        return step.name
+        step = TestCaseStepSelector().get_step_by_step_result(instance)
+        return step.name if step else '-'
 
     def get_sort_order(self, instance):
-        step = instance.step.history.get(test_case_history_id=instance.test_result.test_case_version).instance
-        return step.sort_order
+        step = TestCaseStepSelector().get_step_by_step_result(instance)
+        return step.sort_order if step else 0
 
 
 class TestResultSerializer(ModelSerializer):

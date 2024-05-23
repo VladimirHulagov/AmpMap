@@ -31,12 +31,12 @@
 from rest_framework import serializers
 from rest_framework.fields import BooleanField, IntegerField, ListField, SerializerMethodField, empty
 from rest_framework.relations import HyperlinkedIdentityField, PrimaryKeyRelatedField
-from serializer_fields import EstimateField
 
 from testy.core.api.v1.serializers import AttachmentSerializer
 from testy.core.models import Label, LabeledItem
 from testy.core.selectors.attachments import AttachmentSelector
 from testy.core.selectors.projects import ProjectSelector
+from testy.serializer_fields import EstimateField
 from testy.tests_description.models import TestCase, TestCaseStep, TestSuite
 from testy.tests_description.selectors.cases import TestCaseSelector, TestCaseStepSelector
 from testy.tests_description.selectors.suites import TestSuiteSelector
