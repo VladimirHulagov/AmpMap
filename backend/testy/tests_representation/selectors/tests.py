@@ -77,6 +77,7 @@ class TestSelector:
                     output_field=CharField(max_length=settings.CHAR_FIELD_MAX_LEN),
                 ),
                 test_suite_description=F('case__suite__description'),
+                estimate=F('case__estimate'),
             )
             .order_by('case__suite')
         )

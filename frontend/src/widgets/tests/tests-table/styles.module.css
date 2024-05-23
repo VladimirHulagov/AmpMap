@@ -8,10 +8,20 @@
 .btnShowArchive {
   margin-bottom: 14px;
   margin-top: 34px;
+  margin-left: auto;
 }
 
-.btnClear {
+.btnsRow {
   margin-bottom: 16px;
   display: flex;
   justify-content: right;
+}
+
+.list {
+  margin-top: 8px;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px;
 }

@@ -1,5 +1,6 @@
 import { LeftOutlined, RightOutlined } from "@ant-design/icons"
-import { Button, TableProps, Tag } from "antd"
+import { Button, TableProps, Tag, Tooltip } from "antd"
+import { CheckboxValueType } from "antd/es/checkbox/Group"
 import { ColumnsType } from "antd/es/table"
 import type { FilterValue, TablePaginationConfig } from "antd/es/table/interface"
 import { Key, useEffect, useState } from "react"
@@ -9,6 +10,7 @@ import { Link, useParams, useSearchParams } from "react-router-dom"
 import { useAppSelector } from "app/hooks"
 
 import { selectSelectedLabels } from "entities/label/model"
+import { Label } from "entities/label/ui"
 
 import { useLazyGetTestsQuery } from "entities/test/api"
 import { useTestsTableParams } from "entities/test/model"
@@ -16,15 +18,17 @@ import { selectTest, setTest } from "entities/test/model/slice"
 
 import { selectArchivedTestsIsShow, setTests, showArchivedTests } from "entities/test-plan/model"
 
+import { useUserConfig } from "entities/user/model"
 import { UserAvatar, UserUsername } from "entities/user/ui"
 
 import { colors } from "shared/config"
 import { useTableSearch } from "shared/hooks"
-import { initInternalError } from "shared/libs"
+import { initInternalError, sortEstimate } from "shared/libs"
 import { HighLighterTesty, Status } from "shared/ui"
 
 import { AssigneeFiltersDrowdown } from "./filters/assignee-filters-dropdown"
 import { SuiteFiltersDrowdown } from "./filters/suite-filters-dropdown"
+import styles from "./styles.module.css"
 
 // TODO need refacroting
 export const useTestsTable = (testPlanId: Id) => {
@@ -32,6 +36,7 @@ export const useTestsTable = (testPlanId: Id) => {
   const showArchive = useAppSelector(selectArchivedTestsIsShow)
   const [getTests, { data: tests, isLoading }] = useLazyGetTestsQuery()
   const selectedLabels = useAppSelector(selectSelectedLabels)
+  const { userConfig, updateConfig } = useUserConfig()
 
   const { setSearchText, getColumnSearch, searchText } = useTableSearch()
   const { tableParams, setTableParams, reset } = useTestsTableParams()
@@ -39,6 +44,14 @@ export const useTestsTable = (testPlanId: Id) => {
   const { projectId } = useParams<ParamProjectId>()
   const [searchParams, setSearchParams] = useSearchParams()
   const test = useAppSelector(selectTest)
+  const [shownColumns, setShownColumns] = useState<string[]>(
+    userConfig.test_plans?.shown_columns ?? []
+  )
+
+  useEffect(() => {
+    if (!userConfig.test_plans?.shown_columns) return
+    setShownColumns(userConfig.test_plans.shown_columns)
+  }, [userConfig, testPlanId])
 
   useEffect(() => {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call
@@ -154,13 +167,20 @@ export const useTestsTable = (testPlanId: Id) => {
       sorter: true,
       ...getColumnSearch("name"),
       render: (text, record) => (
-        <Link
-          id={record.name}
-          to={`/projects/${record.project}/suites/${record.suite}/?test_case=${record.case}`}
-        >
-          {/* eslint-disable-next-line @typescript-eslint/no-unsafe-assignment */}
-          <HighLighterTesty searchWords={searchText} textToHighlight={text} />
-        </Link>
+        <>
+          {record.is_archive && (
+            <Tooltip title="Archived">
+              <Tag color={colors.error}>A</Tag>
+            </Tooltip>
+          )}
+          <Link
+            id={record.name}
+            to={`/projects/${record.project}/suites/${record.suite}/?test_case=${record.case}`}
+          >
+            {/* eslint-disable-next-line @typescript-eslint/no-unsafe-assignment */}
+            <HighLighterTesty searchWords={searchText} textToHighlight={text} />
+          </Link>
+        </>
       ),
     },
     {
@@ -176,20 +196,25 @@ export const useTestsTable = (testPlanId: Id) => {
         }),
     },
     {
-      title: "Tags",
-      dataIndex: "tags",
-      key: "is_archive",
+      title: "Estimate",
+      dataIndex: "estimate",
+      key: "estimate",
       width: "100px",
-      filters: [
-        {
-          text: "Archived",
-          value: true,
-        },
-      ],
-      onFilter: (_, record) => record.is_archive,
-      render: (_, record) => {
-        return record.is_archive ? <Tag color={colors.error}>Archived</Tag> : null
-      },
+      sorter: (a, b) => sortEstimate(a.estimate, b.estimate),
+    },
+    {
+      title: "Labels",
+      dataIndex: "labels",
+      key: "labels",
+      render: (labels: Test["labels"]) => (
+        <ul className={styles.list}>
+          {labels.map((label) => (
+            <li key={label.id}>
+              <Label content={label.name} color={colors.accent} />
+            </li>
+          ))}
+        </ul>
+      ),
     },
     {
       title: "Last status",
@@ -315,12 +340,37 @@ export const useTestsTable = (testPlanId: Id) => {
     }
   }
 
+  const filteredColumns = columns.filter(
+    (column) => column.key === "action" || shownColumns.includes(column.title as string)
+  )
+  const columnNames = columns
+    .filter((column) => !!column.title)
+    .map((column) => column.title as string)
+
+  useEffect(() => {
+    setShownColumns(columnNames)
+  }, [])
+
+  const handleChangeShownColumns = (data: CheckboxValueType[]) => {
+    if (data.length === 0) return
+    setShownColumns(data as string[])
+    updateConfig({
+      test_plans: {
+        ...userConfig.test_plans,
+        shown_columns: data as string[],
+      },
+    })
+  }
+
   return {
     clearAll,
     onShowArchived,
     onChange,
     handleRowClick,
-    columns,
+    columns: filteredColumns,
+    columnNames,
+    shownColumns,
+    handleChangeShownColumns,
     test,
     tests,
     isLoading,

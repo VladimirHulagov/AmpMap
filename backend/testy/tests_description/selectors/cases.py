@@ -29,6 +29,7 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 
+import logging
 from typing import Any, Dict, List, Optional, Tuple
 
 from django.contrib.postgres.aggregates import ArrayAgg
@@ -38,8 +39,11 @@ from rest_framework.exceptions import ValidationError
 
 from testy.core.selectors.attachments import AttachmentSelector
 from testy.tests_description.models import TestCase, TestCaseStep
-from testy.tests_representation.models import TestPlan
+from testy.tests_representation.models import TestPlan, TestStepResult
 from testy.tests_representation.selectors.tests import TestSelector
+
+logger = logging.getLogger(__name__)
+
 
 _ID = 'id'
 
@@ -163,3 +167,15 @@ class TestCaseStepSelector:
         return AttachmentSelector.attachment_list_by_parent_object_and_history_ids(
             type(step), step.id, step_versions,
         )
+
+    @classmethod
+    def get_step_by_step_result(cls, step_result: TestStepResult) -> Optional[TestCaseStep]:
+        test_case_history_id = step_result.test_result.test_case_version
+        step = step_result.step
+        steps = step.history.filter(test_case_history_id=test_case_history_id)
+        # TODO: research and fix the problem creating double historical records with same test case version id
+        if len(steps) > 1:
+            logger.warning(
+                f'case step {step.id} has one more history records with same case history id {test_case_history_id}',
+            )
+        return steps.first()

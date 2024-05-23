@@ -55,6 +55,7 @@ interface UserConfig {
   }
   test_plans: {
     is_show_archived: boolean
+    shown_columns?: string[]
   }
   test_cases: {
     is_show_archived: boolean

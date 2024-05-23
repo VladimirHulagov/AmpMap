@@ -34,7 +34,7 @@ import multiprocessing
 bind = '0.0.0.0:8000'
 workers = multiprocessing.cpu_count() * 2 + 1
 worker_class = 'gevent'
-timeout = 0
+timeout = 60 * 2
 capture_output = True
 accesslog = '-'
 enable_stdio_inheritance = True

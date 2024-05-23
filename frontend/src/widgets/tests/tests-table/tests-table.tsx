@@ -1,4 +1,5 @@
-import { Button, Checkbox, Col, Row, Space, Table, Typography } from "antd"
+import { TableOutlined } from "@ant-design/icons"
+import { Button, Checkbox, Col, Popover, Row, Space, Table, Typography } from "antd"
 import { TablePaginationConfig } from "antd/es/table"
 
 import { ContainerLoader } from "shared/ui"
@@ -24,6 +25,9 @@ export const TestsTable = ({ testPlanId }: TestsTableProps) => {
     onShowArchived,
     clearAll,
     handleRowClick,
+    columnNames,
+    shownColumns,
+    handleChangeShownColumns,
   } = useTestsTable(testPlanId)
 
   if (isLoading) return <ContainerLoader />
@@ -40,10 +44,24 @@ export const TestsTable = ({ testPlanId }: TestsTableProps) => {
               Show Archived
             </Checkbox>
           </Space>
-          <Space className={styles.btnClear}>
+          <Space className={styles.btnsRow}>
             <Button id="clear-filters-and-sorters" onClick={clearAll}>
               Clear filters and sorters
             </Button>
+            <Popover
+              content={
+                <Checkbox.Group
+                  options={columnNames}
+                  value={shownColumns}
+                  onChange={handleChangeShownColumns}
+                />
+              }
+              title="Shown columns"
+              trigger="click"
+              placement="bottomRight"
+            >
+              <Button id="columns-settings" icon={<TableOutlined />} />
+            </Popover>
           </Space>
         </Col>
       </Row>

@@ -19,6 +19,7 @@ export const ProjectFields = ({ project }: { project: Project }) => {
       <Field
         title="Status"
         value={<TagBoolean value={!project?.is_archive} trueText="ACTIVE" falseText="ARCHIVED" />}
+        id="project-status"
       />
     </>
   )
