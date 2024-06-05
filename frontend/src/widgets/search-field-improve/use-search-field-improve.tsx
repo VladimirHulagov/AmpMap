@@ -59,12 +59,18 @@ export const useSearchFieldImprove = <T extends BaseResponse>({
 
     try {
       setIsLoading(true)
-      const res = getData({
+      const reqParams = {
         ...dataParams,
         page,
         page_size,
-        [searchKey]: search,
-      })
+      }
+
+      if (search) {
+        // @ts-ignore
+        reqParams[searchKey] = search
+      }
+
+      const res = getData(reqParams)
       setActiveRequest(res)
       const { data: resData } = await res
       if (!resData) {
@@ -74,7 +80,7 @@ export const useSearchFieldImprove = <T extends BaseResponse>({
       setData((prevState) => (!is_search ? [...prevState, ...resData.results] : resData.results))
       setIsLastPage(!resData.pages.next)
     } catch (err) {
-      //
+      console.error(err)
     } finally {
       setIsLoading(false)
     }
@@ -82,12 +88,16 @@ export const useSearchFieldImprove = <T extends BaseResponse>({
 
   useEffect(() => {
     if (!inView || isLoading || isLastPage) return
-    setParams((prevState) => ({ page: prevState.page + 1, page_size: prevState.page_size }))
     fetchData({
       page: params.page + 1,
       page_size: params.page_size,
       search: params.search,
     })
+    setParams((prevState) => ({
+      ...prevState,
+      page: prevState.page + 1,
+      page_size: prevState.page_size,
+    }))
   }, [inView, isLoading, isLastPage])
 
   useEffect(() => {

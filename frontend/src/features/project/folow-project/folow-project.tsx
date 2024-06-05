@@ -8,6 +8,9 @@ export const FolowProject = ({ project }: { project: Project }) => {
   const { userConfig, updateConfig } = useUserConfig()
 
   const handleFavoriteClick = async () => {
+    if (!project.is_visible) {
+      return
+    }
     const isNew = !userConfig.projects.favorite.some((i) => i === project.id)
 
     const newProjectIds = isNew

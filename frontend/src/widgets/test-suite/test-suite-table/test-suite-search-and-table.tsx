@@ -11,15 +11,16 @@ import { TreeUtils } from "shared/libs"
 interface TestSuiteSearchAndTableProps {
   isLoading: boolean
   padding?: number
-  treeSuites: Suite[]
+  treeSuites: SuiteTree[]
   expandedRowKeys: string[]
   onSearch: (searchText: string) => void
   onSearchFieldClick: (e: React.MouseEvent<HTMLElement, MouseEvent>) => void
-  columns: ColumnsType<Suite>
+  columns: ColumnsType<SuiteTree>
   onRowExpand: (expandedRows: string[], recordKey: string) => void
-  onHandleRowClick: (testPlan: Suite) => void
+  onHandleRowClick: (testPlan: SuiteTree) => void
   paginationTable: TablePaginationConfig
-  handleSorter: (sorter: SorterResult<Suite> | SorterResult<Suite>[]) => void
+  handleSorter: (sorter: SorterResult<SuiteTree> | SorterResult<SuiteTree>[]) => void
+  onListChange: () => void
 }
 
 export const TestSuiteSearchAndTable = ({
@@ -34,6 +35,7 @@ export const TestSuiteSearchAndTable = ({
   onHandleRowClick,
   paginationTable,
   handleSorter,
+  onListChange,
 }: TestSuiteSearchAndTableProps) => {
   return (
     <>
@@ -45,13 +47,13 @@ export const TestSuiteSearchAndTable = ({
               onChange={(e) => onSearch(e.target.value)}
               onClick={onSearchFieldClick}
             />
-            <CreateSuite />
+            <CreateSuite onSubmit={onListChange} />
           </div>
           <Table
             rowKey="id"
             style={{ cursor: "pointer" }}
             // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-            dataSource={TreeUtils.deleteChildren<Suite>(JSON.parse(JSON.stringify(treeSuites)))}
+            dataSource={TreeUtils.deleteChildren<SuiteTree>(JSON.parse(JSON.stringify(treeSuites)))}
             columns={columns}
             pagination={paginationTable}
             expandable={{

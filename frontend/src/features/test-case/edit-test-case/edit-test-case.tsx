@@ -1,25 +1,25 @@
 import { EditOutlined } from "@ant-design/icons"
 import { Button } from "antd"
+import { useNavigate, useParams } from "react-router-dom"
 
 import { useAppDispatch } from "app/hooks"
 
-import { showEditModal } from "entities/test-case/model"
-
-import { EditTestCaseModal } from "./edit-test-case-modal"
+import { clearDrawerTestCase, setEditingTestCase } from "entities/test-case/model"
 
 export const EditTestCase = ({ testCase }: { testCase: TestCase }) => {
+  const { projectId, testSuiteId } = useParams<ParamProjectId | ParamTestSuiteId>()
   const dispatch = useAppDispatch()
+  const navigate = useNavigate()
 
   const handleEdit = () => {
-    dispatch(showEditModal())
+    dispatch(clearDrawerTestCase())
+    dispatch(setEditingTestCase(testCase))
+    navigate(`/projects/${projectId}/suites/${testSuiteId}/edit-test-case?test_case=${testCase.id}`)
   }
 
   return (
-    <>
-      <Button id="edit-test-case-detail" icon={<EditOutlined />} onClick={handleEdit}>
-        Edit
-      </Button>
-      <EditTestCaseModal testCase={testCase} />
-    </>
+    <Button id="edit-test-case-detail" icon={<EditOutlined />} onClick={handleEdit}>
+      Edit
+    </Button>
   )
 }

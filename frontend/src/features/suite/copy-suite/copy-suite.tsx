@@ -3,6 +3,7 @@ import { Alert, Button, Form, Input, Modal, Select } from "antd"
 import { Controller } from "react-hook-form"
 
 import { useLazyGetTestSuitesQuery } from "entities/suite/api"
+import { testSuiteSearchValueFormat } from "entities/suite/lib/utils"
 
 import { SearchFormItem } from "shared/ui"
 
@@ -117,6 +118,7 @@ export const CopySuite = ({ suite }: { suite: Suite }) => {
               placeholder: "Search a test suite",
               searchKey: "search",
               disabled: !selectedProject,
+              valueFormat: testSuiteSearchValueFormat,
             }}
           />
         </Form>

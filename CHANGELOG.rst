@@ -1,3 +1,72 @@
+Version 1.3.1
+--------------
+*Status: General availability*
+
+*Released: 05-06-2024*
+
+- Added custom attributes and their project based configuration (TMS-666)
+
+  - Valid targets for custom attributes are: Test-Case, Test-Result, Test-Suite
+
+- Test-Case creation is now in separate window (TMS-670)
+- Test result edit time is now configurable per project (TMS-742):
+
+  - Test-Result is editable in time gap
+  - Test-Result is forever editable
+  - Test-Result is not editable
+
+- Added role based access per project (TMS-712)
+- Added Test-Plan copying
+
+  - Plan can only be copied to project of its source
+  - Test assignee can be copied or dropped
+
+- Test-Suite copying destination suite select is more readable now (TMS-728)
+- Test-Copying copying destination suite select is more readable now (TMS-748)
+- Contact email added (TMS-766)
+- Added filtering tests by labels in Test-Plan creation window (TMS-706)
+- Test-Suite filter in Test-Plan table view improved (TMS-731)
+- The behavior of the filter by labels on the Test-Plans tab has been changed.
+- Now the filter is applied to the table view of tests (TMS-788).
+
+**Bug fixes**:
+
+- Incorrect sorting by result attribute is incorrect (TMS-719) 
+- Cannot create a label if there was already a label with the same name (TMS-734)
+- Cannot update comment in Test result if test or project changed (TMS-736)
+- Incorrect suite path in tests (TMS-741)
+- Problem with displaying data with markdown in the Expected field (TMS-759)
+- (Activity) Incorrect time for result in Activity table (TMS-762)
+- It's possible to edit archived test-result (TMS-763)
+- It's possible to add new result to archived test (TMS-764)
+- Via API you can create a test result with the status UNTESTED (TMS-772)
+- Filtering is not working for suites if there are sub suites in the project (TMS-731)
+- Delete preview for testcases/testsuites pickling error (TMS-771)
+- Redirecting to 404 after using of search with pagination on TestSuites/Cases (TMS-773)
+- Archived test cases are imported to test plan (TMS-774)
+- HTTP 404 during search and navigation in Test Suites & Cases (TMS-776)
+- When updating the result with steps, an error occurred (TMS-777)
+- Unable to load allure report (TMS-778)
+- 504 Gateway Time-out when creating testplans in bulk (TMS-782)
+- Error when using parent query parameter with search on tree structures (TMS-783)
+- Labels on TestPlan view are broken (TMS-785)
+- Incorrect behavior of "not the latest version" warning on cancel of Test-Case edit (TMS-786)
+- 400 on Test-Plans when filtering by Test-Suites (TMS-796)
+- Extra confirmation to close the test (TMS-798) 
+- After editing a test, the test version is not displayed correctly (TMS-800)
+- External User must not see statistics for projects on the Dashboard (TMS-804)
+- no way to enter test results (TMS-815)
+- bash lines formatting for already written tests (TMS-816)
+- Formatting as code (```) in markddown fields broke in already written tests (TMS-820)
+- When saving the result, it requires filling in an NOT mandatory attribute (TMS-826)
+- When refreshing the test case editing page, it redirects to information about it (TMS-827)
+- It's possible to delete required custom attribute on case/result edit screen (TMS-828)
+- Error when Restore version test case (TMS-830)
+- When creating a case, we have a disable button (TMS-833) 
+- Performance issues with cases search when labels are applied (TMS-834) 
+- Page layout breaks after test-case editing (TMS-836) 
+- 404 when loading pagination (TMS-839) 
+
 Version 1.2.15
 --------------
 *Status: General availability*

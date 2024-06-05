@@ -4,6 +4,10 @@ import { Breadcrumb, Button, Layout, Space } from "antd"
 import { useContext, useEffect } from "react"
 import { useDispatch } from "react-redux"
 
+import { useAppSelector } from "app/hooks"
+
+import { selectUser } from "entities/auth/model"
+
 import { showCreateUserModal } from "entities/user/model"
 
 import { MenuContext } from "widgets/[ui]/main"
@@ -18,6 +22,7 @@ export const UsersPage = () => {
     setOpenSubMenu(["administration"])
     setActiveMenu(["administration.users"])
   }, [])
+  const user = useAppSelector(selectUser)
 
   const breadcrumbItems = [
     <Breadcrumb.Item key="administration">Administration</Breadcrumb.Item>,
@@ -41,15 +46,17 @@ export const UsersPage = () => {
 
         <div className="site-layout-background" style={{ padding: 24, minHeight: 360 }}>
           <Space style={{ display: "flex", justifyContent: "right" }}>
-            <Button
-              id="create-user"
-              onClick={handleClick}
-              type={"primary"}
-              icon={<PlusOutlined />}
-              style={{ marginBottom: 16, float: "right" }}
-            >
-              Create user
-            </Button>
+            {user?.is_superuser && (
+              <Button
+                id="create-user"
+                onClick={handleClick}
+                type={"primary"}
+                icon={<PlusOutlined />}
+                style={{ marginBottom: 16, float: "right" }}
+              >
+                Create user
+              </Button>
+            )}
           </Space>
           <UsersTable />
         </div>

@@ -1,6 +1,6 @@
 import { FileDoneOutlined, FolderOpenOutlined } from "@ant-design/icons"
 
-export const makeTestSuitesForTreeView = (
+export const makeTestSuitesWithCasesForTreeView = (
   items: SuiteWithCases[],
   testCases: TestCase[] = []
 ): DataWithKey<SuiteWithCases[]> => {
@@ -10,7 +10,7 @@ export const makeTestSuitesForTreeView = (
       key: `TS${item.id}`,
       title: item.title,
       icon: <FolderOpenOutlined />,
-      children: makeTestSuitesForTreeView(item.children, item.test_cases),
+      children: makeTestSuitesWithCasesForTreeView(item.children, item.test_cases),
     }
   })
 
@@ -19,12 +19,22 @@ export const makeTestSuitesForTreeView = (
       key: String(item.id),
       title: item.name,
       icon: <FileDoneOutlined />,
+      labels: item.labels,
     }
   })
 
   // @ts-expect-error
   return testSuitesTreeView.concat(testCasesTreeView)
 }
+
+export const makeTestSuitesForTreeView = (items: SuiteTree[]): DataWithKey<Suite>[] =>
+  items.map((item) => ({
+    ...item,
+    key: item.id,
+    title: item.title,
+    icon: <FolderOpenOutlined />,
+    children: makeTestSuitesForTreeView(item.children),
+  }))
 
 export const makeParametersForTreeView = (items: IParameter[]): IParameterTreeView[] => {
   const result: IParameterTreeView[] = []

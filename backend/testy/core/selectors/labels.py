@@ -31,6 +31,7 @@
 from typing import List
 
 from django.db.models import QuerySet
+from django.db.models.functions import Lower
 
 from testy.core.models import Label
 from testy.tests_representation.selectors.testplan import TestPlanSelector
@@ -38,7 +39,7 @@ from testy.tests_representation.selectors.testplan import TestPlanSelector
 
 class LabelSelector:
     def label_list(self) -> QuerySet[Label]:
-        return Label.objects.all().select_related('user')
+        return Label.objects.all().select_related('user').order_by(Lower('name'))
 
     def label_list_by_testplan(self, testplan_id: int) -> QuerySet[Label]:
         testplan = TestPlanSelector().testplan_get_by_pk(testplan_id)

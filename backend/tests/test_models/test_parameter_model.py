@@ -31,9 +31,9 @@
 
 import pytest
 from django.db import IntegrityError
-from tests_representation.models import Parameter
 
 from tests.error_messages import MODEL_VALUE_ERR_MSG, NOT_NULL_ERR_MSG
+from testy.tests_representation.models import Parameter
 
 
 @pytest.mark.django_db
@@ -52,8 +52,10 @@ class TestParameterModel:
         invalid_value = 'abc'
         with pytest.raises(ValueError) as err:
             parameter_factory(project=invalid_value)
-        assert MODEL_VALUE_ERR_MSG.format(value=invalid_value, model_name='Parameter', column_name='project',
-                                          column_model='Project') == str(err.value)
+        assert MODEL_VALUE_ERR_MSG.format(
+            value=invalid_value, model_name='Parameter', column_name='project',
+            column_model='Project',
+        ) == str(err.value)
 
     def test_valid_model_creation(self, parameter):
         assert Parameter.objects.count() == 1

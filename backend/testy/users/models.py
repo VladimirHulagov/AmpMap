@@ -31,11 +31,14 @@
 from functools import partial
 
 from django.conf import settings
-from django.contrib.auth.models import AbstractUser, Group
+from django.contrib.auth.models import AbstractUser, Group, Permission
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from simple_history.models import HistoricalRecords
 
-from testy.root.models import ServiceModelMixin
+from testy.root.models import BaseModel, ServiceModelMixin
+from testy.users.choices import RoleTypes
+from testy.utilities.sql import unique_soft_delete_constraint
 from testy.utils import get_media_file_path
 from testy.validators import CaseInsensitiveUsernameValidator
 
@@ -69,3 +72,28 @@ class User(AbstractUser, ServiceModelMixin):
     class Meta:
         verbose_name = 'User'
         verbose_name_plural = 'Users'
+
+
+class Role(BaseModel):
+    name = models.CharField(max_length=settings.CHAR_FIELD_MAX_LEN)
+    permissions = models.ManyToManyField(Permission, blank=True)
+    type = models.IntegerField(choices=RoleTypes.choices, default=RoleTypes.CUSTOM)
+    history = HistoricalRecords(related_name='history_roles')
+
+    class Meta:
+        default_related_name = 'roles'
+        constraints = [
+            unique_soft_delete_constraint('name', 'role'),
+        ]
+
+    def __str__(self):
+        return self.name
+
+
+class Membership(BaseModel):
+    project = models.ForeignKey('core.Project', on_delete=models.CASCADE, null=True, blank=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    role = models.ForeignKey(Role, on_delete=models.CASCADE)
+
+    class Meta:
+        default_related_name = 'memberships'

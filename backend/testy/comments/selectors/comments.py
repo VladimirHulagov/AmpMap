@@ -28,6 +28,7 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
+from django.db.models import QuerySet
 from rest_framework.exceptions import NotFound
 
 from testy.comments.models import Comment
@@ -35,7 +36,7 @@ from testy.comments.models import Comment
 
 class CommentSelector:
     @classmethod
-    def get_same_comments(cls, comment_id):
+    def get_same_comments(cls, comment_id) -> QuerySet[Comment]:
         comment = Comment.objects.filter(pk=comment_id).first()
         if not comment:
             raise NotFound

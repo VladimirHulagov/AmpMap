@@ -25,3 +25,8 @@ testy_static/dist/*.html
 volumes/
 nginx/*.crt
 nginx/*.key
+/.env.prod
+/.gitlab-ci.yml
+/.gitleaks.toml
+/.gitleaksignore
+/backend/user_activity.log

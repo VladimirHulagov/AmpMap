@@ -1,22 +1,29 @@
-import { useState } from "react"
+import { useAttributesTestResult } from "entities/custom-attribute/model"
+import { useEffect, useState } from "react"
 import { UseFormSetValue } from "react-hook-form"
 
+import { makeRandomId } from "shared/libs"
+
 interface UseAttributesProps {
+  mode: "create" | "edit"
   setValue: UseFormSetValue<ResultFormData>
 }
 
-export const useAttributes = ({ setValue }: UseAttributesProps) => {
+export const useAttributes = ({ mode, setValue }: UseAttributesProps) => {
   const [attributes, setAttributes] = useState<Attribute[]>([])
-  const [attributeCounter, setAttributeCounter] = useState(0)
 
-  const addAttribute = (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault()
+  const attributesTestResult = useAttributesTestResult()
 
-    setAttributeCounter(attributeCounter + 1)
+  useEffect(() => {
+    if (mode === "create" && attributesTestResult) {
+      setAttributes(attributesTestResult)
+    }
+  }, [mode, attributesTestResult])
 
+  const addAttribute = () => {
     const newAttributes = [
       ...attributes,
-      { id: String(attributeCounter + 1), name: "", value: "", type: "txt" },
+      { id: makeRandomId(), name: "", value: "", type: "Text" },
     ] as Attribute[]
     setAttributes(newAttributes)
     setValue("attributes", newAttributes, { shouldDirty: true })
@@ -52,7 +59,7 @@ export const useAttributes = ({ setValue }: UseAttributesProps) => {
     setValue("attributes", newAttributes, { shouldDirty: true })
   }
 
-  const onAttributeChangeType = (attributeId: string, type: "txt" | "list" | "json") => {
+  const onAttributeChangeType = (attributeId: string, type: AttributeType) => {
     const newAttributes = attributes.map((attribute) => {
       if (attribute.id !== attributeId) return attribute
       return {
@@ -64,13 +71,64 @@ export const useAttributes = ({ setValue }: UseAttributesProps) => {
     setValue("attributes", newAttributes, { shouldDirty: true })
   }
 
+  const resetAttributes = () => {
+    setAttributes(mode === "create" ? attributesTestResult : [])
+  }
+
+  const loadAttributeJson = (attributesJson: AttributesObject) => {
+    const newAttributes: Attribute[] = []
+
+    Object.keys(attributesJson).map((key: string) => {
+      if (typeof attributesJson[key] === "string") {
+        newAttributes.push({
+          id: makeRandomId(),
+          name: key,
+          type: "Text",
+          value: attributesJson[key],
+        })
+      } else if (Array.isArray(attributesJson[key])) {
+        const array: string[] = attributesJson[key] as string[]
+        newAttributes.push({
+          id: makeRandomId(),
+          name: key,
+          type: "List",
+          value: array.join("\r\n"),
+        })
+      } else if (typeof attributesJson[key] === "object") {
+        newAttributes.push({
+          id: makeRandomId(),
+          name: key,
+          type: "JSON",
+          value: JSON.stringify(attributesJson[key], null, 2),
+        })
+      }
+    })
+
+    // add missing custom attributes
+    attributesTestResult.forEach((resultAttribute) => {
+      const existingAttribute = newAttributes.find((attr) => attr.name === resultAttribute.name)
+      if (!existingAttribute) {
+        newAttributes.push(resultAttribute)
+      } else if (resultAttribute.type !== existingAttribute.type) {
+        existingAttribute.type = resultAttribute.type
+      } else if (resultAttribute.required && !existingAttribute.required) {
+        existingAttribute.required = resultAttribute.required as boolean
+      }
+    })
+
+    setAttributes(newAttributes)
+    setValue("attributes", newAttributes, { shouldDirty: true })
+  }
+
   return {
+    attributes,
+    setAttributes,
+    resetAttributes,
+    addAttribute,
     onAttributeChangeType,
     onAttributeChangeValue,
     onAttributeChangeName,
     onAttributeRemove,
-    addAttribute,
-    setAttributes,
-    attributes,
+    loadAttributeJson,
   }
 }

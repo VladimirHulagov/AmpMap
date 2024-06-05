@@ -29,19 +29,26 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 
-import json
 from http import HTTPStatus
 
 import pytest
-from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
-from tests_representation.api.v1.serializers import TestResultSerializer
-from tests_representation.choices import TestStatuses
-from tests_representation.models import TestResult
 
-from tests import constants
+from tests import constants, error_messages
 from tests.commons import RequestType, model_to_dict_via_serializer
-from tests.error_messages import PERMISSION_ERR_MSG
+from tests.error_messages import (
+    CREATE_RESULT_IN_ARCHIVE_TEST,
+    FOUND_EMPTY_REQUIRED_CUSTOM_ATTRIBUTES_ERR_MSG,
+    MISSING_REQUIRED_CUSTOM_ATTRIBUTES_ERR_MSG,
+    PERMISSION_ERR_MSG,
+    UPDATE_ARCHIVE_RESULT,
+)
+from testy.tests_representation.api.v1.serializers import TestResultSerializer
+from testy.tests_representation.choices import TestStatuses
+from testy.tests_representation.models import TestResult
+
+_ERRORS = 'errors'
 
 
 @pytest.mark.django_db(reset_sequences=True)
@@ -55,18 +62,19 @@ class TestResultEndpoints:
         expected_instances = model_to_dict_via_serializer(
             [test_result_factory(project=project) for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE)],
             TestResultSerializer,
-            many=True
+            many=True,
+            fields_to_add={'latest': True},
         )
 
         response = api_client.send_request(self.view_name_list, query_params={'project': project.id})
 
-        for instance_dict in json.loads(response.content):
+        for instance_dict in response.json():
             assert instance_dict in expected_instances, f'{instance_dict} was not found in expected instances.'
 
     def test_retrieve(self, api_client, authorized_superuser, test_result):
-        expected_dict = model_to_dict_via_serializer(test_result, TestResultSerializer)
+        expected_dict = model_to_dict_via_serializer(test_result, TestResultSerializer, fields_to_add={'latest': True})
         response = api_client.send_request(self.view_name_detail, reverse_kwargs={'pk': test_result.pk})
-        actual_dict = json.loads(response.content)
+        actual_dict = response.json()
         assert actual_dict == expected_dict, 'Actual model dict is different from expected'
 
     def test_partial_update(self, api_client, authorized_superuser, test_result, user):
@@ -79,7 +87,7 @@ class TestResultEndpoints:
             self.view_name_detail,
             update_dict,
             request_type=RequestType.PATCH,
-            reverse_kwargs={'pk': test_result.pk}
+            reverse_kwargs={'pk': test_result.pk},
         )
         actual_dict = model_to_dict_via_serializer(TestResult.objects.get(pk=test_result.id), TestResultSerializer)
         for key in update_dict.keys():
@@ -92,14 +100,13 @@ class TestResultEndpoints:
             'user': user.id,
             'status': 3,
             'comment': 'new_comment',
-
         }
         api_client.send_request(
             self.view_name_detail,
             reverse_kwargs={'pk': test_result.pk},
             request_type=RequestType.PUT,
             expected_status=HTTPStatus.OK,
-            data=update_dict
+            data=update_dict,
         )
         actual_dict = model_to_dict_via_serializer(TestResult.objects.get(pk=test_result.id), TestResultSerializer)
         for key in update_dict.keys():
@@ -109,10 +116,10 @@ class TestResultEndpoints:
         tests = [test_factory(), test_factory()]
         for test in tests:
             result_dict = {
-                'status': TestStatuses.UNTESTED,
+                'status': TestStatuses.FAILED,
                 'user': user.id,
                 'comment': constants.TEST_COMMENT,
-                'test': test.id
+                'test': test.id,
             }
             api_client.send_request(
                 'api:v1:testresult-list',
@@ -124,35 +131,106 @@ class TestResultEndpoints:
         assert TestResult.objects.filter(test=tests[0]).count() == 1, f'Only 1 result should be on a test "{tests[0]}"'
         assert TestResult.objects.filter(test=tests[1]).count() == 1, f'Only 1 result should be on a test "{tests[1]}"'
 
+    def test_untested_status_forbidden(self, user, api_client, authorized_superuser, test, test_result):
+        result_dict = {
+            'status': TestStatuses.UNTESTED,
+            'user': user.id,
+            'comment': constants.TEST_COMMENT,
+            'test': test.id,
+        }
+        api_client.send_request(
+            self.view_name_list,
+            expected_status=HTTPStatus.BAD_REQUEST,
+            request_type=RequestType.POST,
+            data=result_dict,
+        )
+        for update_type in (RequestType.PATCH, RequestType.PUT):
+            api_client.send_request(
+                self.view_name_detail,
+                reverse_kwargs={'pk': test_result.pk},
+                expected_status=HTTPStatus.BAD_REQUEST,
+                request_type=update_type,
+                data=result_dict,
+            )
+
+    def test_null_status_not_allowed(self, user, api_client, authorized_superuser, test, test_result):
+        result_dict = {
+            'user': user.id,
+            'comment': constants.TEST_COMMENT,
+            'test': test.id,
+            'status': None,
+        }
+        api_client.send_request(
+            self.view_name_list,
+            expected_status=HTTPStatus.BAD_REQUEST,
+            request_type=RequestType.POST,
+            data=result_dict,
+        )
+        for update_type in (RequestType.PATCH, RequestType.PUT):
+            api_client.send_request(
+                self.view_name_detail,
+                reverse_kwargs={'pk': test_result.pk},
+                expected_status=HTTPStatus.BAD_REQUEST,
+                request_type=update_type,
+                data=result_dict,
+            )
+
+    def test_blank_status_not_allowed(self, user, api_client, authorized_superuser, test, test_result):
+        result_dict = {
+            'user': user.id,
+            'comment': constants.TEST_COMMENT,
+            'test': test.id,
+        }
+        api_client.send_request(
+            self.view_name_list,
+            expected_status=HTTPStatus.BAD_REQUEST,
+            request_type=RequestType.POST,
+            data=result_dict,
+        )
+        api_client.send_request(
+            self.view_name_detail,
+            reverse_kwargs={'pk': test_result.pk},
+            expected_status=HTTPStatus.BAD_REQUEST,
+            request_type=RequestType.PUT,
+            data=result_dict,
+        )
+
     def test_get_results_by_test(self, api_client, test_result_factory, test_factory, authorized_superuser, project):
         test1 = test_factory()
         test2 = test_factory()
-
-        dicts_test1 = model_to_dict_via_serializer(
-            [test_result_factory(test=test1, project=project) for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE)],
-            TestResultSerializer,
-            many=True
-        )
-        dicts_test2 = model_to_dict_via_serializer(
-            [test_result_factory(test=test2, project=project) for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE)],
-            TestResultSerializer,
-            many=True
-        )
+        dicts_test1 = []
+        dicts_test2 = []
+        for idx in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
+            latest = idx == constants.NUMBER_OF_OBJECTS_TO_CREATE - 1
+            dicts_test1.append(
+                model_to_dict_via_serializer(
+                    test_result_factory(test=test1, project=project),
+                    TestResultSerializer,
+                    fields_to_add={'latest': latest},
+                ),
+            )
+            dicts_test2.append(
+                model_to_dict_via_serializer(
+                    test_result_factory(test=test2, project=project),
+                    TestResultSerializer,
+                    fields_to_add={'latest': latest},
+                ),
+            )
 
         response_test1 = api_client.send_request(
             'api:v1:testresult-list',
             expected_status=HTTPStatus.OK,
             request_type=RequestType.GET,
-            query_params={'test': test1.id, 'project': project.id}
+            query_params={'test': test1.id, 'project': project.id},
         )
         response_test2 = api_client.send_request(
             'api:v1:testresult-list',
             expected_status=HTTPStatus.OK,
             request_type=RequestType.GET,
-            query_params={'test': test2.id, 'project': project.id}
+            query_params={'test': test2.id, 'project': project.id},
         )
-        actual_results1 = json.loads(response_test1.content)
-        actual_results2 = json.loads(response_test2.content)
+        actual_results1 = response_test1.json()
+        actual_results2 = response_test2.json()
         assert actual_results1 and actual_results2
         assert len(actual_results1) == len(actual_results2)
         for result_test1, result_test2 in zip(actual_results1, actual_results2):
@@ -160,19 +238,13 @@ class TestResultEndpoints:
             assert result_test2 in dicts_test2, 'Response is different from expected one'
 
     @pytest.mark.parametrize('request_type', [RequestType.PATCH, RequestType.PUT, RequestType.DELETE, RequestType.POST])
-    def test_result_permissions(self, api_client, authorized_superuser, test_result_factory, user,
-                                request_type, project_factory, test_factory):
+    def test_result_permissions(
+        self, api_client, authorized_superuser, test_result_factory, user,
+        request_type, project_factory, test_factory,
+    ):
         api_client.force_login(user)
         result = test_result_factory(project=project_factory(is_archive=True))
-        if request_type != RequestType.POST:
-            response = api_client.send_request(
-                self.view_name_detail,
-                reverse_kwargs={'pk': result.pk},
-                request_type=request_type,
-                expected_status=HTTPStatus.FORBIDDEN,
-                data={}
-            )
-        else:
+        if request_type == RequestType.POST:
             test = test_factory(project=project_factory(is_archive=True))
             response = api_client.send_request(
                 self.view_name_list,
@@ -182,36 +254,48 @@ class TestResultEndpoints:
                     'status': TestStatuses.UNTESTED,
                     'user': user.id,
                     'comment': constants.TEST_COMMENT,
-                    'test': test.id
-                }
+                    'test': test.id,
+                },
             )
-        assert json.loads(response.content)['detail'] == PERMISSION_ERR_MSG
+        else:
+            response = api_client.send_request(
+                self.view_name_detail,
+                reverse_kwargs={'pk': result.pk},
+                request_type=request_type,
+                expected_status=HTTPStatus.FORBIDDEN,
+                data={},
+            )
+
+        assert response.json()['detail'] == PERMISSION_ERR_MSG
 
     @pytest.mark.parametrize('request_type', [RequestType.PATCH, RequestType.PUT])
     @pytest.mark.parametrize('invalid_by', ['time', 'version'])
-    def test_result_update_constraints(self, api_client, authorized_superuser, test_case, test_factory, invalid_by,
-                                       request_type):
+    def test_result_update_constraints(
+        self, api_client, authorized_superuser, test_case, test_factory, invalid_by,
+        request_type,
+    ):
         test = test_factory(case=test_case)
         update_dict = {
             'status': 3,
             'comment': 'new_comment',
         }
-        result_id = json.loads(
-            api_client.send_request(
-                self.view_name_list,
-                data={
-                    'project': test.project.id,
-                    'test': test.id,
-                    'status': 0,
-                    'comment': 'Src comment',
-                },
-                request_type=RequestType.POST,
-                expected_status=HTTPStatus.CREATED
-            ).content)['id']
+        result_id = api_client.send_request(
+            self.view_name_list,
+            data={
+                'project': test.project.id,
+                'test': test.id,
+                'status': 0,
+                'comment': 'Src comment',
+            },
+            request_type=RequestType.POST,
+            expected_status=HTTPStatus.CREATED,
+        ).json()['id']
 
         if invalid_by == 'time':
             result = TestResult.objects.get(pk=result_id)
-            result.created_at = timezone.now() - timezone.timedelta(hours=settings.TEST_RESULT_UPDATE_GAP, minutes=1)
+            result.created_at = timezone.now() - timezone.timedelta(
+                hours=test.project.settings.get('result_edit_limit'), minutes=1,
+            )
             result.save()
         else:
             old_version = test_case.history.first().history_id
@@ -221,11 +305,11 @@ class TestResultEndpoints:
                     'project': test.case.project.id,
                     'suite': test.case.suite.id,
                     'name': test.case.name,
-                    'scenario': 'new_scenario'
+                    'scenario': 'new_scenario',
                 },
                 request_type=RequestType.PUT,
                 reverse_kwargs={'pk': test_case.pk},
-                expected_status=HTTPStatus.OK
+                expected_status=HTTPStatus.OK,
             )
             assert old_version != test_case.history.first().history_id, 'Test case version did not change'
 
@@ -234,28 +318,65 @@ class TestResultEndpoints:
             data=update_dict,
             reverse_kwargs={'pk': result_id},
             request_type=RequestType.PATCH,
-            expected_status=HTTPStatus.BAD_REQUEST
+            expected_status=HTTPStatus.BAD_REQUEST,
+        )
+
+    def test_result_related_instance_change_allows_update(
+        self,
+        api_client,
+        authorized_superuser,
+        test_case,
+        test_factory,
+        project,
+        user,
+    ):
+        test = test_factory(case=test_case, project=project)
+        result_id = api_client.send_request(
+            self.view_name_list,
+            data={
+                'project': test.project.id,
+                'test': test.id,
+                'status': 0,
+                'comment': 'Src comment',
+            },
+            request_type=RequestType.POST,
+            expected_status=HTTPStatus.CREATED,
+        ).json()['id']
+        project.name = 'New project name'
+        project.save()
+        test.assignee = user
+        test.save()
+        api_client.send_request(
+            self.view_name_detail,
+            data={
+                'comment': 'new_comment',
+            },
+            reverse_kwargs={'pk': result_id},
+            request_type=RequestType.PATCH,
+            expected_status=HTTPStatus.OK,
         )
 
     @pytest.mark.parametrize(
         'view_name, query_param_key', [
             (project_view_name_detail, 'project'),
             (plan_view_name_detail, 'test_plan'),
-        ]
+        ],
     )
-    def test_soft_delete(self, api_client, authorized_superuser, test_result_factory, project, test_factory, test_plan,
-                         view_name, query_param_key):
+    def test_soft_delete(
+        self, api_client, authorized_superuser, test_result_factory, project, test_factory, test_plan,
+        view_name, query_param_key,
+    ):
         test = test_factory(project=project, plan=test_plan)
         parent_id = locals()[query_param_key].id
         for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
             test_result_factory(test=test, project=project)
         response = api_client.send_request(self.view_name_list, query_params={'project': project.id})
-        assert len(json.loads(response.content)) == constants.NUMBER_OF_OBJECTS_TO_CREATE
+        assert len(response.json()) == constants.NUMBER_OF_OBJECTS_TO_CREATE
         api_client.send_request(
             view_name,
             reverse_kwargs={'pk': parent_id},
             request_type=RequestType.DELETE,
-            expected_status=HTTPStatus.NO_CONTENT
+            expected_status=HTTPStatus.NO_CONTENT,
         )
         assert not len(TestResult.objects.all()), 'Test results were not cascade deleted'
         assert len(TestResult.deleted_objects.all()) == constants.NUMBER_OF_OBJECTS_TO_CREATE
@@ -264,21 +385,244 @@ class TestResultEndpoints:
         'view_name, query_param_key', [
             (project_view_name_detail, 'project'),
             (plan_view_name_detail, 'test_plan'),
-        ]
+        ],
     )
-    def test_restore(self, api_client, authorized_superuser, test_result_factory, project, test_factory, test_plan,
-                     view_name, query_param_key):
+    def test_restore(
+        self, api_client, authorized_superuser, test_result_factory, project, test_factory, test_plan,
+        view_name, query_param_key,
+    ):
         test = test_factory(project=project, plan=test_plan)
         parent_id = locals()[query_param_key].id
         for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
             test_result_factory(test=test, project=project)
         response = api_client.send_request(self.view_name_list, query_params={'project': project.id})
-        assert len(json.loads(response.content)) == constants.NUMBER_OF_OBJECTS_TO_CREATE
+        assert len(response.json()) == constants.NUMBER_OF_OBJECTS_TO_CREATE
         api_client.send_request(
             view_name,
             reverse_kwargs={'pk': parent_id},
             request_type=RequestType.DELETE,
-            expected_status=HTTPStatus.NO_CONTENT
+            expected_status=HTTPStatus.NO_CONTENT,
         )
         assert not len(TestResult.objects.all()), 'Test results were not cascade deleted'
         assert len(TestResult.deleted_objects.all()) == constants.NUMBER_OF_OBJECTS_TO_CREATE
+
+    def test_test_result_created_if_all_required_custom_attributes_are_filled(
+        self, api_client, authorized_superuser, custom_attribute_factory, project, user, test_factory,
+    ):
+        custom_attribute_name = 'awesome_attribute'
+        custom_attribute_value = 'some_value'
+        expected_number_of_results = 1
+        custom_attribute_factory(project=project, name=custom_attribute_name, is_required=True)
+        test = test_factory(project=project)
+
+        result_dict = {
+            'status': TestStatuses.PASSED,
+            'user': user.id,
+            'comment': constants.TEST_COMMENT,
+            'test': test.id,
+            'attributes': {custom_attribute_name: custom_attribute_value},
+        }
+
+        api_client.send_request(
+            self.view_name_list, expected_status=HTTPStatus.CREATED, request_type=RequestType.POST, data=result_dict,
+        )
+
+        assert TestResult.objects.count() == expected_number_of_results, f'Expected number of cases ' \
+                                                                         f'"{expected_number_of_results}" ' \
+                                                                         f'actual: "{TestResult.objects.count()}"'
+
+    def test_test_result_is_not_created_if_required_attribute_exists_but_is_empty(
+        self, api_client, authorized_superuser, custom_attribute_factory, project, user, test_factory,
+    ):
+        custom_attribute_name = 'awesome_attribute'
+        custom_attribute_factory(project=project, name=custom_attribute_name, is_required=True)
+        test = test_factory(project=project)
+        result_dict = {
+            'status': TestStatuses.PASSED,
+            'user': user.id,
+            'comment': constants.TEST_COMMENT,
+            'test': test.id,
+            'attributes': {custom_attribute_name: ''},
+        }
+        response = api_client.send_request(self.view_name_list, result_dict, HTTPStatus.BAD_REQUEST, RequestType.POST)
+        assert response.json()[_ERRORS][0] == FOUND_EMPTY_REQUIRED_CUSTOM_ATTRIBUTES_ERR_MSG.format(
+            [custom_attribute_name],
+        )
+
+    def test_test_result_not_created_if_required_custom_attribute_missing(
+        self, api_client, authorized_superuser, custom_attribute_factory, project, user, test_factory,
+    ):
+        custom_attribute = custom_attribute_factory(project=project, is_required=True)
+        test = test_factory(project=project)
+        result_dict = {
+            'status': TestStatuses.PASSED,
+            'user': user.id,
+            'comment': constants.TEST_COMMENT,
+            'test': test.id,
+            'attributes': {},
+        }
+        response = api_client.send_request(self.view_name_list, result_dict, HTTPStatus.BAD_REQUEST, RequestType.POST)
+        assert response.json()[_ERRORS][0] == MISSING_REQUIRED_CUSTOM_ATTRIBUTES_ERR_MSG.format([custom_attribute.name])
+
+    def test_test_result_is_created_if_the_required_custom_attribute_is_not_test_result_specific(
+        self, api_client, authorized_superuser, custom_attribute_factory, project, user, test_factory,
+        allowed_content_types,
+    ):
+        expected_number_of_results = 1
+        test_result_content_type_id = ContentType.objects.get_for_model(TestResult).id
+        allowed_content_types.remove(test_result_content_type_id)
+        custom_attribute_factory(project=project, is_required=True, content_types=allowed_content_types)
+        test = test_factory(project=project)
+        result_dict = {
+            'status': TestStatuses.PASSED,
+            'user': user.id,
+            'comment': constants.TEST_COMMENT,
+            'test': test.id,
+            'attributes': {},
+        }
+        api_client.send_request(self.view_name_list, result_dict, HTTPStatus.CREATED, RequestType.POST)
+        assert TestResult.objects.count() == expected_number_of_results, f'Expected number of cases ' \
+                                                                         f'"{expected_number_of_results}" ' \
+                                                                         f'actual: "{TestResult.objects.count()}"'
+
+    def test_creation_in_archive_test(self, api_client, authorized_superuser, test_factory, user):
+        test = test_factory(is_archive=True)
+        result_dict = {
+            'status': TestStatuses.PASSED,
+            'user': user.id,
+            'comment': constants.TEST_COMMENT,
+            'test': test.id,
+        }
+        response = api_client.send_request(
+            'api:v1:testresult-list',
+            expected_status=HTTPStatus.BAD_REQUEST,
+            request_type=RequestType.POST,
+            data=result_dict,
+        )
+        assert response.json()['errors'][0] == CREATE_RESULT_IN_ARCHIVE_TEST
+
+    @pytest.mark.parametrize('request_type', [RequestType.PATCH, RequestType.PUT])
+    @pytest.mark.parametrize(
+        'is_test_archive, is_result_archive',
+        [(True, False), (False, True), (True, True)],
+    )
+    def test_update_archive_result(
+        self,
+        api_client,
+        authorized_superuser,
+        test_factory,
+        test_result_factory,
+        user,
+        request_type,
+        is_test_archive,
+        is_result_archive,
+    ):
+        test = test_factory(is_archive=is_test_archive)
+        test_result = test_result_factory(is_archive=is_result_archive, test=test)
+        update_dict = {
+            'id': test_result.id,
+            'test': test.id,
+            'user': user.id,
+            'status': 3,
+            'comment': 'new_comment',
+        }
+        response = api_client.send_request(
+            self.view_name_detail,
+            reverse_kwargs={'pk': test_result.pk},
+            request_type=request_type,
+            expected_status=HTTPStatus.BAD_REQUEST,
+            data=update_dict,
+        )
+        assert response.json()['errors'][0] == UPDATE_ARCHIVE_RESULT
+
+    @pytest.mark.parametrize('request_type', [RequestType.PATCH, RequestType.PUT])
+    def test_result_update_forbidden(
+        self,
+        api_client,
+        authorized_superuser,
+        test_case,
+        test_factory,
+        request_type,
+        project_factory,
+        test_result_factory,
+    ):
+        update_dict = {
+            'status': 3,
+            'comment': 'new_comment',
+        }
+        project = project_factory(settings={'is_result_editable': False})
+        test = test_factory(case=test_case, project=project)
+        result = test_result_factory(project=project, test=test)
+        response = api_client.send_request(
+            self.view_name_detail,
+            data=update_dict,
+            reverse_kwargs={'pk': result.id},
+            request_type=RequestType.PATCH,
+            expected_status=HTTPStatus.BAD_REQUEST,
+        )
+        assert response.json()['errors'][0] == error_messages.RESULTS_ARE_NOT_EDITABLE
+
+    @pytest.mark.parametrize('request_type', [RequestType.PATCH, RequestType.PUT])
+    def test_result_with_steps_update_forbidden(
+        self,
+        api_client,
+        authorized_superuser,
+        test_case,
+        test_factory,
+        request_type,
+        project_factory,
+        test_result_with_steps_factory,
+    ):
+        project = project_factory(settings={'is_result_editable': False})
+        test = test_factory(case=test_case, project=project)
+        result = test_result_with_steps_factory(project=project, test=test)
+        step_to_update = result.steps_results.first()
+        update_dict = {
+            'steps_results': [
+                {
+                    'id': step_to_update.id,
+                    'status': TestStatuses.BROKEN.value,
+                },
+            ],
+        }
+        response = api_client.send_request(
+            self.view_name_detail,
+            data=update_dict,
+            reverse_kwargs={'pk': result.id},
+            request_type=RequestType.PATCH,
+            expected_status=HTTPStatus.BAD_REQUEST,
+        )
+        assert response.json()['errors'][0] == error_messages.RESULTS_ARE_NOT_EDITABLE
+
+    @pytest.mark.parametrize('request_type', [RequestType.PATCH, RequestType.PUT])
+    @pytest.mark.parametrize('hours_for_editing', [3600, 7200, 14400])
+    def test_result_update_with_any_hours(
+        self,
+        api_client,
+        authorized_superuser,
+        test_case,
+        test_factory,
+        request_type,
+        project_factory,
+        test_result_factory,
+        hours_for_editing,
+    ):
+        update_dict = {
+            'status': 3,
+            'comment': 'new_comment',
+        }
+        project = project_factory(settings={'is_result_editable': True, 'result_edit_limit': hours_for_editing})
+        test = test_factory(case=test_case, project=project)
+        now = timezone.now()
+        created_at = now - timezone.timedelta(seconds=hours_for_editing) + timezone.timedelta(minutes=1)
+        result = test_result_factory(project=project, test=test, created_at=created_at)
+        api_client.send_request(
+            self.view_name_detail,
+            data=update_dict,
+            reverse_kwargs={'pk': result.id},
+            request_type=RequestType.PATCH,
+            expected_status=HTTPStatus.OK,
+        )
+        result.refresh_from_db()
+        assert result.status == update_dict['status']
+        assert result.comment == update_dict['comment']

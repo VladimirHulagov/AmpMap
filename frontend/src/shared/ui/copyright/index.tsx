@@ -8,9 +8,10 @@ export const Copyright = () => {
       <a href={config.repoUrl}>TestY TMS version {packageJson.version}</a>. Released under the
       AGPL-v3 License.
       <br />
-      Found a bug or have a comment?&nbsp;
-      <a href={config.bugReportUrl}>Please, let us know</a>
-      .
+      Found a bug or have a comment?&nbsp; Please report an <a href={config.bugReportUrl}>
+        issue
+      </a>{" "}
+      or <a href="mailto:testy@yadro.com">email</a> us.
       <br />
       Copyright © {new Date().getFullYear()} KNS Group LLC (YADRO).
     </p>

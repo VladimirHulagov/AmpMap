@@ -1,4 +1,4 @@
-import { Button, Form, Input, Modal, Upload, notification } from "antd"
+import { Button, Form, Input, Modal, Switch, Upload, notification } from "antd"
 import { RcFile, UploadChangeParam, UploadFile } from "antd/lib/upload"
 import { useState } from "react"
 import { Controller, SubmitHandler, useForm } from "react-hook-form"
@@ -17,6 +17,7 @@ interface ErrorData {
   name?: string
   description?: string
   is_archive?: string
+  is_private?: string
 }
 
 interface Props {
@@ -39,12 +40,14 @@ export const CreateProjectModal = ({ isShow, setIsShow }: Props) => {
       description: "",
       icon: "",
       is_archive: false,
+      is_private: false,
     },
   })
   const [createProject, { isLoading }] = useCreateProjectMutation()
   const { onHandleError } = useErrors<ErrorData>(setErrors)
   const [localIcon, setLocalIcon] = useState<string | null>(null)
   const nameWatch = watch("name")
+  const isPrivate = watch("is_private")
 
   const onSubmit: SubmitHandler<Project> = async (data) => {
     setErrors(null)
@@ -56,6 +59,7 @@ export const CreateProjectModal = ({ isShow, setIsShow }: Props) => {
       fmData.append("description", data.description)
       fmData.append("is_archive", String(data.is_archive))
       fmData.append("icon", data.icon ?? "")
+      fmData.append("is_private", String(data.is_private))
       const newProject = await createProject(fmData).unwrap()
 
       onCloseModal()
@@ -148,7 +152,7 @@ export const CreateProjectModal = ({ isShow, setIsShow }: Props) => {
         {errors ? (
           <AlertError
             error={errors as ErrorObj}
-            skipFields={["name", "description", "is_archive"]}
+            skipFields={["name", "description", "is_archive", "is_private"]}
           />
         ) : null}
 
@@ -203,6 +207,17 @@ export const CreateProjectModal = ({ isShow, setIsShow }: Props) => {
               name="description"
               control={control}
               render={({ field }) => <TextArea rows={4} {...field} />}
+            />
+          </Form.Item>
+          <Form.Item
+            label="Private"
+            validateStatus={errors?.is_private ? "error" : ""}
+            help={errors?.is_private ? errors.is_private : ""}
+          >
+            <Controller
+              name="is_private"
+              control={control}
+              render={({ field }) => <Switch checked={isPrivate} {...field} />}
             />
           </Form.Item>
         </Form>

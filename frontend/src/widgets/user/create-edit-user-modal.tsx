@@ -13,28 +13,29 @@ export const CreateEditUserModal = () => {
     isShow,
     isLoading,
     isActive,
-    isStaff,
+    isAdmin,
     isDirty,
     errors,
     control,
     handleCancel,
     handleSubmitForm,
   } = useUserModal()
+  const formType = isEditMode ? "edit" : "create"
 
   return (
     <Modal
-      className="create-edit-user-modal"
+      className={`${formType}-user-modal`}
       title={title}
       open={isShow}
       onCancel={handleCancel}
       width="600px"
       centered
       footer={[
-        <Button id="close-create-edit-user" key="back" onClick={handleCancel}>
+        <Button id={`close-${formType}-user`} key="back" onClick={handleCancel}>
           Close
         </Button>,
         <Button
-          id="create-edit-user"
+          id={`${formType}-user-btn`}
           loading={isLoading}
           key="submit"
           onClick={handleSubmitForm}
@@ -57,22 +58,24 @@ export const CreateEditUserModal = () => {
               "first_name",
               "last_name",
               "is_active",
-              "is_staff",
+              "is_superuser",
             ]}
           />
         ) : null}
 
-        <Form id="create-edit-user-form" layout="vertical" onFinish={handleSubmitForm}>
+        <Form id={`${formType}-user-form`} layout="vertical" onFinish={handleSubmitForm}>
           <Form.Item
             label="Username"
             validateStatus={errors?.username ? "error" : ""}
             help={errors?.username ? errors.username : ""}
-            required
+            required={!isEditMode}
           >
             <Controller
               name="username"
               control={control}
-              render={({ field }) => <Input {...field} />}
+              render={({ field }) => (
+                <Input id={`${formType}-username`} {...field} disabled={isEditMode} />
+              )}
             />
           </Form.Item>
           <Form.Item
@@ -84,35 +87,39 @@ export const CreateEditUserModal = () => {
             <Controller
               name="email"
               control={control}
-              render={({ field }) => <Input {...field} />}
+              render={({ field }) => <Input id={`${formType}-email`} {...field} />}
             />
           </Form.Item>
-          <Form.Item
-            label="Password"
-            validateStatus={errors?.password ? "error" : ""}
-            help={errors?.password ? errors.password : ""}
-            required={!isEditMode}
-          >
-            <Controller
-              name="password"
-              control={control}
-              render={({ field }) => <Input.Password {...field} />}
-            />
-          </Form.Item>
-          <Form.Item
-            name="confirm"
-            label="Confirm Password"
-            dependencies={["password"]}
-            validateStatus={errors?.confirm ? "error" : ""}
-            help={errors?.confirm ? errors.confirm : ""}
-            required={!isEditMode}
-          >
-            <Controller
-              name="confirm"
-              control={control}
-              render={({ field }) => <Input.Password {...field} />}
-            />
-          </Form.Item>
+          {!isEditMode && (
+            <>
+              <Form.Item
+                label="Password"
+                validateStatus={errors?.password ? "error" : ""}
+                help={errors?.password ? errors.password : ""}
+                required={!isEditMode}
+              >
+                <Controller
+                  name="password"
+                  control={control}
+                  render={({ field }) => <Input.Password id={`${formType}-password`} {...field} />}
+                />
+              </Form.Item>
+              <Form.Item
+                name="confirm"
+                label="Confirm Password"
+                dependencies={["password"]}
+                validateStatus={errors?.confirm ? "error" : ""}
+                help={errors?.confirm ? errors.confirm : ""}
+                required={!isEditMode}
+              >
+                <Controller
+                  name="confirm"
+                  control={control}
+                  render={({ field }) => <Input.Password id={`${formType}-confirm`} {...field} />}
+                />
+              </Form.Item>
+            </>
+          )}
           <Form.Item
             label="First Name"
             validateStatus={errors?.first_name ? "error" : ""}
@@ -121,7 +128,7 @@ export const CreateEditUserModal = () => {
             <Controller
               name="first_name"
               control={control}
-              render={({ field }) => <Input {...field} />}
+              render={({ field }) => <Input id={`${formType}-first-name`} {...field} />}
             />
           </Form.Item>
           <Form.Item
@@ -132,7 +139,7 @@ export const CreateEditUserModal = () => {
             <Controller
               name="last_name"
               control={control}
-              render={({ field }) => <Input {...field} />}
+              render={({ field }) => <Input id={`${formType}-last-name`} {...field} />}
             />
           </Form.Item>
           <Form.Item
@@ -143,18 +150,22 @@ export const CreateEditUserModal = () => {
             <Controller
               name="is_active"
               control={control}
-              render={({ field }) => <Switch checked={isActive} {...field} />}
+              render={({ field }) => (
+                <Switch id={`${formType}-is-active`} checked={isActive} {...field} />
+              )}
             />
           </Form.Item>
           <Form.Item
-            label="Staff"
-            validateStatus={errors?.is_staff ? "error" : ""}
-            help={errors?.is_staff ? errors.is_staff : ""}
+            label="Admin"
+            validateStatus={errors?.is_superuser ? "error" : ""}
+            help={errors?.is_superuser ? errors.is_superuser : ""}
           >
             <Controller
-              name="is_staff"
+              name="is_superuser"
               control={control}
-              render={({ field }) => <Switch checked={isStaff} {...field} />}
+              render={({ field }) => (
+                <Switch id={`${formType}-is-admin`} checked={isAdmin} {...field} />
+              )}
             />
           </Form.Item>
         </Form>

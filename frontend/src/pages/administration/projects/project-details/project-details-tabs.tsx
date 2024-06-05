@@ -6,9 +6,13 @@ import { ProjectDetailsActiveTabContext } from "./project-details-main"
 
 interface ProjectDetailsTabsProps {
   projectId: string
+  showAccessManagement?: boolean
 }
 
-const ProjectDetailsTabs = ({ projectId }: ProjectDetailsTabsProps) => {
+const ProjectDetailsTabs = ({
+  projectId,
+  showAccessManagement = true,
+}: ProjectDetailsTabsProps) => {
   const navigate = useNavigate()
   const { projectDetailsActiveTab } = useContext(ProjectDetailsActiveTabContext)!
 
@@ -24,7 +28,25 @@ const ProjectDetailsTabs = ({ projectId }: ProjectDetailsTabsProps) => {
       key: "labels",
       path: `/administration/projects/${projectId}/labels`,
     },
+    {
+      label: "Custom Attributes",
+      key: "attributes",
+      path: `/administration/projects/${projectId}/attributes`,
+    },
+    {
+      label: "Settings",
+      key: "settings",
+      path: `/administration/projects/${projectId}/settings`,
+    },
   ]
+
+  if (showAccessManagement) {
+    tabItems.push({
+      label: "Access Management",
+      key: "access-management",
+      path: `/administration/projects/${projectId}/access-management`,
+    })
+  }
 
   const onChange = (key: string) => {
     const activeTabItem = tabItems.find((i) => i.key === key)

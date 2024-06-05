@@ -36,27 +36,71 @@ from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from tests import constants
+from tests.test_api.v1.test_project_endpoints import TestProjectEndpoints
 
 
 @pytest.mark.django_db
 class TestNumberOfQueries:
-    max_num_of_queries_treeview = 40
-    max_num_of_queries = 30
+    max_num_of_queries = 35
     max_num_of_queries_detailed = 20
 
-    @pytest.mark.parametrize('treeview', [0, 1], ids=['treeview disabled', 'treeview enabled'])
-    def test_list_views_queries_num(self, api_client, authorized_superuser, treeview, generate_objects, project):
+    # TODO: add separated more complex tests to catch n+1 for nested objects
+    @pytest.mark.parametrize(
+        'model_name, treeview_exists, factory_name',
+        [
+            ('test', False, 'test_factory'),
+            ('testplan', True, 'test_plan_factory'),
+            ('testsuite', True, 'test_suite_factory'),
+            ('testcase', False, 'test_case_factory'),
+            ('user', False, 'user_factory'),
+            ('parameter', False, 'parameter_factory'),
+        ],
+    )
+    def test_list_views_queries_num(
+        self,
+        request,
+        authorized_superuser_client,
+        project,
+        model_name,
+        treeview_exists,
+        factory_name,
+    ):
+        err_msg = 'Number of queries increased for {model_name}, treeview {treeview_state}, look for n+1'
+        view_name_list = f'api:v1:{model_name}-list'
+        factory = request.getfixturevalue(factory_name)
+        for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
+            factory(project=project)
+
         query_params = {
-            'treeview': treeview,
-            'project': project.id
+            'project': project.id,
         }
-        for view_name in constants.LIST_VIEW_NAMES.values():
+        for treeview in range(2 if treeview_exists else 1):
             with CaptureQueriesContext(connection) as context:
-                api_client.send_request(view_name, query_params=None if 'project' in view_name else query_params)
-                num_of_queries = len(context.captured_queries)
-                assert num_of_queries <= self.max_num_of_queries_treeview if treeview else self.max_num_of_queries, \
-                    f'Number of queries in {view_name} is exceeding allowed maximum.\n' \
-                    f'Number of queries: "{num_of_queries}"'
+                authorized_superuser_client.send_request(view_name_list, query_params=query_params)
+                num_of_queries_initial = len(context.captured_queries)
+            factory(project=project)
+
+            with CaptureQueriesContext(connection) as context:
+                authorized_superuser_client.send_request(view_name_list, query_params=query_params)
+                num_of_queries_after = len(context.captured_queries)
+
+            assert num_of_queries_initial >= num_of_queries_after, err_msg.format(
+                model_name=model_name,
+                treeview_state='enabled' if treeview else 'disabled',
+            )
+
+    def test_number_of_queries_projects(self, authorized_superuser_client, project_factory):
+        for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
+            project_factory()
+        view_name_list = TestProjectEndpoints.view_name_list
+        with CaptureQueriesContext(connection) as context:
+            authorized_superuser_client.send_request(view_name_list)
+            num_of_queries_initial = len(context.captured_queries)
+        project_factory()
+        with CaptureQueriesContext(connection) as context:
+            authorized_superuser_client.send_request(view_name_list)
+            num_of_queries_after = len(context.captured_queries)
+        assert num_of_queries_initial == num_of_queries_after, 'Number of queries increased, look for n+1'
 
     @pytest.mark.django_db(reset_sequences=True)
     def test_detail_views_queries_num(self, api_client, authorized_superuser, generate_objects):
@@ -68,12 +112,14 @@ class TestNumberOfQueries:
                                                                            f'is exceeding allowed maximum.\n' \
                                                                            f'Number of queries: "{num_of_queries}"'
 
-    def test_project_progress_queries(self, api_client, project, authorized_superuser, test_factory,
-                                      test_result_factory, test_plan_factory):
+    def test_project_progress_queries(
+        self, api_client, project, authorized_superuser, test_factory,
+        test_result_factory, test_plan_factory,
+    ):
         plan = test_plan_factory(project=project, parent=test_plan_factory(project=project))
         with mock.patch(
-                'django.utils.timezone.now',
-                return_value=timezone.make_aware(timezone.datetime(2000, 1, 2), timezone.utc)
+            'django.utils.timezone.now',
+            return_value=timezone.make_aware(timezone.datetime(2000, 1, 2), timezone.utc),
         ):
             for _ in range(5):
                 test_result_factory(test=test_factory(plan=plan), project=project)
@@ -92,8 +138,8 @@ class TestNumberOfQueries:
             first_num_of_queries = len(context.captured_queries)
         plan = test_plan_factory(project=project, parent=test_plan_factory(project=project))
         with mock.patch(
-                'django.utils.timezone.now',
-                return_value=timezone.make_aware(timezone.datetime(2000, 1, 2), timezone.utc)
+            'django.utils.timezone.now',
+            return_value=timezone.make_aware(timezone.datetime(2000, 1, 2), timezone.utc),
         ):
             for _ in range(5):
                 test_result_factory(test=test_factory(plan=plan), project=project)

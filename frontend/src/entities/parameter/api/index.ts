@@ -2,6 +2,8 @@ import { createApi } from "@reduxjs/toolkit/dist/query/react"
 
 import { baseQueryWithLogout } from "app/apiSlice"
 
+import { invalidatesList, providesList } from "shared/libs"
+
 export const parameterApi = createApi({
   reducerPath: "parameterApi",
   baseQuery: baseQueryWithLogout,
@@ -12,16 +14,7 @@ export const parameterApi = createApi({
         url: "v1/parameters/",
         params: { project: projectId, treeview: true },
       }),
-      providesTags: (result) =>
-        result
-          ? [
-              ...result.map(({ id }) => ({
-                type: "Parameter" as const,
-                id,
-              })),
-              { type: "Parameter", id: "LIST" },
-            ]
-          : [{ type: "Parameter", id: "LIST" }],
+      providesTags: (result) => providesList(result, "Parameter"),
     }),
     createParameter: builder.mutation<IParameter, IParameterUpdate>({
       query: (body) => ({
@@ -37,13 +30,7 @@ export const parameterApi = createApi({
         method: "PATCH",
         body,
       }),
-      invalidatesTags: (result, error, { id }) =>
-        result
-          ? [
-              { type: "Parameter", id },
-              { type: "Parameter", id: "LIST" },
-            ]
-          : [{ type: "Parameter", id: "LIST" }],
+      invalidatesTags: (result) => invalidatesList(result, "Parameter"),
     }),
     deleteParameter: builder.mutation<void, Id>({
       query: (id) => ({

@@ -4,7 +4,7 @@ import { Link } from "react-router-dom"
 
 import { ContainerLoader } from "shared/ui"
 
-import { useGetTestPlanParentsQuery } from "../../api"
+import { useGetTestPlanQuery } from "../../api"
 import { useTestPlanActivity } from "../../model"
 import { TestPlanActivityFilers } from "./test-plan-activity-filters"
 import { TestPlanActivityTable } from "./test-plan-activity-table"
@@ -12,9 +12,12 @@ import { TestPlanActivityTable } from "./test-plan-activity-table"
 export const TestPlanActivityWrapper = () => {
   const testPlanActivity = useTestPlanActivity()
   const { testPlanId, projectId } = useParams<ParamTestPlanId & ParamProjectId>()
-  const { data: testPlan, isLoading } = useGetTestPlanParentsQuery(testPlanId ?? "", {
-    skip: !testPlanId,
-  })
+  const { data: testPlan, isLoading } = useGetTestPlanQuery(
+    { testPlanId: String(testPlanId) },
+    {
+      skip: !testPlanId,
+    }
+  )
 
   if (isLoading || !testPlan || !projectId || !testPlanId) return <ContainerLoader />
 

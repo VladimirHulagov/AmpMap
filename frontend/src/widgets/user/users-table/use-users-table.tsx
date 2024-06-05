@@ -4,6 +4,10 @@ import { FilterValue } from "antd/lib/table/interface"
 import { DeleteUser, EditUser } from "features/user"
 import { useState } from "react"
 
+import { useAppSelector } from "app/hooks"
+
+import { selectUser } from "entities/auth/model"
+
 import { useGetUsersQuery } from "entities/user/api"
 import { UserAvatar } from "entities/user/ui/user-avatar/user-avatar"
 
@@ -17,6 +21,7 @@ export const useUsersTable = () => {
   })
   const [filteredInfo, setFilteredInfo] = useState<Record<string, FilterValue | null>>({})
   const [filterInfoRequest, setFilteredInfoRequest] = useState<GetUsersQuery>({})
+  const user = useAppSelector(selectUser)
 
   const { data: users, isLoading } = useGetUsersQuery({
     ...paginationParams,
@@ -37,7 +42,7 @@ export const useUsersTable = () => {
       first_name: filters?.first_name ? String(filters.first_name[0]) : undefined,
       last_name: filters?.last_name ? String(filters.last_name[0]) : undefined,
       is_active: filters?.is_active ? Boolean(filters.is_active[0]) : undefined,
-      is_staff: filters?.is_staff ? Boolean(filters.is_staff[0]) : undefined,
+      is_superuser: filters?.is_superuser ? Boolean(filters.is_superuser[0]) : undefined,
     }))
   }
 
@@ -105,30 +110,32 @@ export const useUsersTable = () => {
       render: (is_active: boolean) => <CheckedIcon value={is_active} />,
     },
     {
-      title: "Staff",
-      dataIndex: "is_staff",
-      key: "is_staff",
+      title: "Admin",
+      dataIndex: "is_superuser",
+      key: "is_superuser",
       width: 100,
       filters: [
         {
-          text: "Staff",
+          text: "Admin",
           value: true,
         },
       ],
-      filteredValue: filteredInfo.is_staff ?? null,
-      onFilter: (_, record) => record.is_staff,
-      render: (is_staff: boolean) => <CheckedIcon value={is_staff} />,
+      filteredValue: filteredInfo.is_superuser ?? null,
+      onFilter: (_, record) => record.is_superuser,
+      render: (is_superuser: boolean) => <CheckedIcon value={is_superuser} />,
     },
     {
       title: "Action",
       key: "action",
       width: 110,
-      render: (_, record) => (
-        <Space>
-          <EditUser user={record} />
-          <DeleteUser user={record} />
-        </Space>
-      ),
+      render: (_, record) => {
+        return user?.is_superuser ? (
+          <Space>
+            <EditUser user={record} />
+            <DeleteUser user={record} />
+          </Space>
+        ) : null
+      },
     },
   ]
 

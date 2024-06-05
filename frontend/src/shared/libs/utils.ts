@@ -43,3 +43,38 @@ export const sortEstimate = (a?: string, b?: string) => {
   const order = ["m", "h", "d"]
   return order.indexOf(aLetter) - order.indexOf(bLetter)
 }
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function providesList<R extends Record<string, any>[], T extends string>(
+  results: R | undefined,
+  tagType: T,
+  field = "id"
+) {
+  return results
+    ? [
+        { type: tagType, id: "LIST" },
+        // @ts-ignore
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        ...results.map((data) => ({ type: tagType, id: data[field] })),
+      ]
+    : [{ type: tagType, id: "LIST" }]
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function invalidatesList<R extends Record<string, any>, T extends string>(
+  result: R | undefined | void,
+  tagType: T,
+  field = "id"
+): {
+  type: T
+  id: number | string
+}[] {
+  return result
+    ? [
+        { type: tagType, id: "LIST" },
+        // @ts-ignore
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        { type: tagType, id: result[field] },
+      ]
+    : [{ type: tagType, id: "LIST" }]
+}

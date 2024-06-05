@@ -34,9 +34,15 @@ import os
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.management.base import BaseCommand
 from django.core.validators import validate_email
+
+from testy.core.models import Project
+from testy.users.choices import RoleTypes, UserAllowedPermissionCodenames
+from testy.users.models import Role
 
 logger = logging.getLogger(__name__)
 UserModel = get_user_model()
@@ -47,6 +53,8 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options) -> None:
         self.create_default_superuser()
+        self.create_custom_permissions()
+        self.create_default_roles()
 
     @classmethod
     def create_default_superuser(cls) -> None:
@@ -69,3 +77,78 @@ class Command(BaseCommand):
             logger.info('Creating default superuser')
             UserModel.objects.create_superuser(username, email, password)
             logger.info(f'Default superuser created:\nusername:{username}\nemail: {email}\n')
+
+    @classmethod
+    def create_custom_permissions(cls) -> None:
+        permissions_to_create = [
+            ('Restricted project view', 'project_restricted', ContentType.objects.get_for_model(Project)),
+        ]
+        for name, codename, ct in permissions_to_create:
+            created_role, is_created = Permission.objects.get_or_create(name=name, codename=codename, content_type=ct)
+            if not is_created:
+                logger.warning(f'Skipping creating permission: {created_role.name}')
+                continue
+            logger.info(f'Successfully created permission: {created_role.name}')
+
+    @classmethod
+    def create_default_roles(cls) -> None:
+        default_roles = [
+            (
+                'User',
+                [
+                    UserAllowedPermissionCodenames.VIEW_PROJECT,
+                    UserAllowedPermissionCodenames.ADD_CASE,
+                    UserAllowedPermissionCodenames.ADD_SUITE,
+                    UserAllowedPermissionCodenames.CHANGE_CASE,
+                    UserAllowedPermissionCodenames.CHANGE_SUITE,
+                    UserAllowedPermissionCodenames.ADD_PLAN,
+                    UserAllowedPermissionCodenames.CHANGE_PLAN,
+                    UserAllowedPermissionCodenames.DELETE_PLAN,
+                    UserAllowedPermissionCodenames.DELETE_SUITE,
+                    UserAllowedPermissionCodenames.DELETE_CASE,
+                    UserAllowedPermissionCodenames.ADD_RESULT,
+                    UserAllowedPermissionCodenames.CHANGE_RESULT,
+                    UserAllowedPermissionCodenames.DELETE_RESULT,
+                    UserAllowedPermissionCodenames.ADD_LABEL,
+                    UserAllowedPermissionCodenames.CHANGE_LABEL,
+                    UserAllowedPermissionCodenames.DELETE_LABEL,
+                ],
+            ),
+            (
+                'Admin', [
+                    UserAllowedPermissionCodenames.CHANGE_PROJECT,
+                    UserAllowedPermissionCodenames.VIEW_PROJECT,
+                    UserAllowedPermissionCodenames.CHANGE_CASE,
+                    UserAllowedPermissionCodenames.CHANGE_SUITE,
+                    UserAllowedPermissionCodenames.CHANGE_PLAN,
+                    UserAllowedPermissionCodenames.CHANGE_RESULT,
+                    UserAllowedPermissionCodenames.ADD_PLAN,
+                    UserAllowedPermissionCodenames.ADD_SUITE,
+                    UserAllowedPermissionCodenames.ADD_CASE,
+                    UserAllowedPermissionCodenames.ADD_ROLE,
+                    UserAllowedPermissionCodenames.ADD_RESULT,
+                    UserAllowedPermissionCodenames.DELETE_PLAN,
+                    UserAllowedPermissionCodenames.DELETE_SUITE,
+                    UserAllowedPermissionCodenames.DELETE_CASE,
+                    UserAllowedPermissionCodenames.DELETE_PROJECT,
+                    UserAllowedPermissionCodenames.DELETE_RESULT,
+                    UserAllowedPermissionCodenames.ADD_LABEL,
+                    UserAllowedPermissionCodenames.CHANGE_LABEL,
+                    UserAllowedPermissionCodenames.DELETE_LABEL,
+                ],
+            ),
+            (
+                'External user', [
+                    UserAllowedPermissionCodenames.VIEW_PROJECT_RESTRICTION,
+                ],
+            ),
+        ]
+        for name, codenames in default_roles:
+            permissions = Permission.objects.filter(codename__in=codenames)
+            role_type = RoleTypes.SUPERUSER_ONLY if name == 'External user' else RoleTypes.SYSTEM
+            created_role, is_created = Role.objects.get_or_create(name=name, type=role_type)
+            if not is_created:
+                logger.warning(f'Skipping creating role: {created_role.name}')
+                continue
+            created_role.permissions.set(permissions)
+            logger.info(f'Successfully created role: {created_role.name}')

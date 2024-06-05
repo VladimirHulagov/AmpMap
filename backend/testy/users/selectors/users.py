@@ -29,12 +29,21 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 
+from typing import Optional
+
 from django.contrib.auth import get_user_model
 from django.db.models import QuerySet
+
+from testy.users.models import User
+from testy.users.selectors.roles import RoleSelector
 
 UserModel = get_user_model()
 
 
 class UserSelector:
-    def user_list(self) -> QuerySet[UserModel]:
-        return UserModel.objects.prefetch_related('groups').order_by('username')
+    def user_list(self, user: Optional[User] = None) -> QuerySet[User]:
+        if user and RoleSelector.restricted_project_access(user):
+            qs = UserModel.objects.filter(project__in=user.project_set.all()).distinct()
+        else:
+            qs = UserModel.objects.all()
+        return qs.prefetch_related('groups').order_by('username')

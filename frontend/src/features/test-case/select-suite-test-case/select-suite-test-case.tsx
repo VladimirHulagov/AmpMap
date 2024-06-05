@@ -7,7 +7,7 @@ interface Props {
   suiteName: string
   selectedSuiteId: number
   onChange: (event: number | React.ChangeEvent<Element>) => void
-  treeSuites: Suite[]
+  treeSuites: SuiteTree[]
 }
 
 export const SelectSuiteTestCase = ({

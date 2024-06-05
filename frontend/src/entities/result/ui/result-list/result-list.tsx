@@ -16,8 +16,8 @@ import { UserAvatar } from "entities/user/ui/user-avatar/user-avatar"
 
 import { colors } from "shared/config"
 import { Attachment, ContainerLoader, Status } from "shared/ui"
+import { AttributesObjectView } from "shared/ui/attributes"
 
-import { TestResultAttributes } from "../attributes"
 import { TestResultComment } from "../comment"
 import { TestResultSteps } from "../steps"
 import styles from "./styles.module.css"
@@ -95,7 +95,7 @@ export const ResultList = ({ testId, testCase, isProjectArchive }: ResultListPro
             {!!result.steps_results.length && (
               <TestResultSteps stepsResult={result.steps_results} />
             )}
-            <TestResultAttributes attributes={result.attributes} />
+            <AttributesObjectView attributes={result.attributes} />
             {!!result.attachments.length && <Attachment.Field attachments={result.attachments} />}
           </div>
           <div className={styles.resultListFooter}>

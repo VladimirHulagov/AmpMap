@@ -3,6 +3,8 @@ import { useState } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
 import { useLocation, useNavigate } from "react-router-dom"
 
+import { persistor } from "app/store"
+
 import { useLoginMutation } from "entities/auth/api"
 
 import { useLazyGetConfigQuery, useLazyGetMeQuery } from "entities/user/api"
@@ -43,6 +45,7 @@ export const useAuthLogic = () => {
     setIsLoading(true)
 
     try {
+      await persistor.purge()
       await login(data).unwrap()
       await getMe().unwrap()
       await getUserConfig().unwrap()

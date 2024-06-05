@@ -31,7 +31,7 @@
 import operator
 from datetime import datetime
 from itertools import groupby
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import F, Func, OuterRef, Q, QuerySet, Subquery
@@ -43,12 +43,14 @@ from testy.tests_representation.choices import TestStatuses
 from testy.tests_representation.exceptions import DateRangeIsAbsent
 from testy.tests_representation.models import Test, TestResult
 
+_POINT = 'point'
+
 
 class StatisticProcessor:
     def __init__(
         self,
         filter_condition: Dict[str, Any],
-        outer_ref_prefix: str = 'case',
+        outer_ref_prefix: Optional[str] = 'case',
     ):
         self.labels = filter_condition.get('labels') or []
         self.not_labels = filter_condition.get('not_labels') or []
@@ -59,7 +61,7 @@ class StatisticProcessor:
 
     @property
     def label_subquery(self):
-        outer_ref_lookup = f'{self.outer_ref_prefix}_id'
+        outer_ref_lookup = f'{self.outer_ref_prefix}_id' if self.outer_ref_prefix else 'id'
         return Subquery(
             LabeledItem.objects.filter(
                 object_id=OuterRef(outer_ref_lookup),
@@ -74,7 +76,7 @@ class StatisticProcessor:
     @property
     def not_condition(self):
         not_condition = Q()
-        labeled_item_outer_ref = f'{self.outer_ref_prefix}__labeled_items'
+        labeled_item_outer_ref = f'{self.outer_ref_prefix}__labeled_items' if self.outer_ref_prefix else 'labeled_items'
         for label in self.not_labels:
             condition_dict = {
                 f'{labeled_item_outer_ref}__label_id': label,
@@ -84,7 +86,10 @@ class StatisticProcessor:
             not_condition = self.operation(not_condition, ~Q(**condition_dict))
         return not_condition
 
-    def process_labels(self, tests: QuerySet[Union[Test, TestResult]]) -> QuerySet[Test]:
+    def process_labels(
+        self,
+        instances: QuerySet[Union[Test, TestResult, TestCase]],
+    ) -> QuerySet[Union[Test, TestResult, TestCase]]:
         if self.labels_condition == 'and' and self.labels:
             having_condition = Q(label_count=len(self.labels))
         elif self.labels:
@@ -93,7 +98,7 @@ class StatisticProcessor:
             having_condition = Q()
 
         final_condition = self.operation(self.not_condition, having_condition)
-        return tests.annotate(label_count=self.label_subquery).filter(final_condition)
+        return instances.annotate(label_count=self.label_subquery).filter(final_condition)
 
 
 class HistogramProcessor:
@@ -119,7 +124,7 @@ class HistogramProcessor:
 
     def fill_empty_points(self, result: List[Dict[str, Any]]):
         for unused_date in self.all_dates:
-            item = {'point': unused_date.date()}
+            item = {_POINT: unused_date.date()}
             item.update(
                 {status.label.lower(): 0 for status in TestStatuses if status != TestStatuses.UNTESTED},
             )
@@ -150,9 +155,13 @@ class HistogramProcessor:
             histogram_bar_data.update({
                 TestStatuses(obj['status']).label.lower(): obj['status_count'] for obj in group_values
             })
-            histogram_bar_data['point'] = group_key if self.attribute else group_key.date()
+            histogram_bar_data[_POINT] = group_key if self.attribute else group_key.date()
             result.append(histogram_bar_data)
 
         if not self.attribute:
             result = self.fill_empty_points(result)
-        return sorted(result, key=lambda obj: str(obj['point']))
+
+        if self.attribute and all(isinstance(obj[_POINT], int) for obj in result):
+            return sorted(result, key=lambda obj: obj[_POINT])
+
+        return sorted(result, key=lambda obj: str(obj[_POINT]))

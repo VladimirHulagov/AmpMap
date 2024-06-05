@@ -92,6 +92,7 @@ export const useTestsTable = (testPlanId: Id) => {
         unassigned: tableParams.filters?.unassigned,
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         ordering: tableParams.sorter ? tableParams.sorter : undefined,
+        nested_search: true,
       }
 
       const requestDataWithNonce = { ...requestData, nonce: tableParams.nonce }
@@ -176,6 +177,7 @@ export const useTestsTable = (testPlanId: Id) => {
           <Link
             id={record.name}
             to={`/projects/${record.project}/suites/${record.suite}/?test_case=${record.case}`}
+            onClick={(e) => e.stopPropagation()}
           >
             {/* eslint-disable-next-line @typescript-eslint/no-unsafe-assignment */}
             <HighLighterTesty searchWords={searchText} textToHighlight={text} />

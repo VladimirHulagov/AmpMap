@@ -21,10 +21,8 @@
 
 .content {
   margin-left: 14px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  padding-bottom: 2px;
+  text-wrap: wrap;
+  word-break: normal;
 }
 
 .actions {

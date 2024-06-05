@@ -100,3 +100,4 @@ LOGGING = {
         'propagate': True,
     },
 }
+EMAIL_USE_TLS = False

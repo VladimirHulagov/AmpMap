@@ -31,7 +31,8 @@
 from contextlib import contextmanager
 
 from django.db import transaction
-from django.db.models import Func, IntegerField, Subquery, Value
+from django.db.models import Func, IntegerField, Max, Model, Q, Subquery, UniqueConstraint, Value, fields
+from mptt.models import MPTTModel
 
 
 class SubCount(Subquery):
@@ -46,6 +47,21 @@ class DateTrunc(Func):
         super().__init__(Value(trunc_type), field_expression, **extra)
 
 
+class ConcatSubquery(Subquery):
+    template = 'ARRAY_TO_STRING(ARRAY(%(subquery)s), %(separator)s)'  # noqa: WPS323
+    output_field = fields.CharField()
+
+    def __init__(self, *args, separator=', ', **kwargs):
+        self.separator = separator
+        super().__init__(*args, **kwargs)
+
+    def as_sql(self, compiler, connection, template=None, **extra_context):
+        extra_context['separator'] = '%s'  # noqa: WPS323
+        sql, sql_params = super().as_sql(compiler, connection, template, **extra_context)  # type: ignore
+        sql_params = sql_params + (self.separator,)  # type: ignore
+        return sql, sql_params
+
+
 @contextmanager
 def lock_table(model):
     with transaction.atomic():
@@ -55,3 +71,23 @@ def lock_table(model):
             yield
         finally:
             cursor.close()
+
+
+def rebuild_mptt(model: type[MPTTModel], tree_id: int):
+    try:
+        model.objects.partial_rebuild(tree_id)
+    except RuntimeError:
+        model.objects.rebuild()
+
+
+def get_next_max_int_value(model: type[Model], field: str) -> int:
+    max_val = model.objects.aggregate(Max(field))[f'{field}__max']
+    return 1 if max_val is None else max_val + 1
+
+
+def unique_soft_delete_constraint(field: str, model_name: str) -> UniqueConstraint:
+    return UniqueConstraint(
+        fields=[field],
+        condition=Q(is_deleted=False),
+        name=f'unique_{field}_value_on_{model_name}_for_soft_delete',
+    )

@@ -35,7 +35,7 @@ from testy.tests_representation.models import Test
 
 class IsAdminOrForbidArchiveUpdate(permissions.BasePermission):
     def has_object_permission(self, request, view, obj):
-        if request.method in {'PUT', 'PATCH'} and obj.is_archive and not request.user.is_staff:
+        if request.method in {'PUT', 'PATCH'} and obj.is_archive and not request.user.is_superuser:
             return False
         return True
 

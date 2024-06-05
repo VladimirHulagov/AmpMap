@@ -28,17 +28,18 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from typing import List
+from typing import Iterable
 
 from django.db.models import BooleanField, Case, F, OuterRef, Q, QuerySet, Subquery, Sum, When
 from django.db.models.functions import Floor
+from django.shortcuts import get_object_or_404
 from mptt.querysets import TreeQuerySet
 
 from testy.root.selectors import MPTTSelector
 from testy.tests_description.models import TestCase, TestSuite
 from testy.tests_description.selectors.cases import TestCaseSelector
 from testy.tests_representation.models import Test
-from testy.utilities.sql import SubCount
+from testy.utilities.sql import ConcatSubquery, SubCount
 from testy.utilities.tree import form_tree_prefetch_lookups, form_tree_prefetch_objects
 
 _CHILD_TEST_SUITES = 'child_test_suites'
@@ -46,9 +47,10 @@ _TEST_CASES = 'test_cases'
 _NAME = 'name'
 _LFT = 'lft'
 _RGHT = 'rght'
+_TREE_ID = 'tree_id'
 
 
-class TestSuiteSelector:
+class TestSuiteSelector:  # noqa: WPS214
     @classmethod
     def get_max_level(cls) -> int:
         return MPTTSelector.model_max_level(TestSuite)
@@ -56,6 +58,10 @@ class TestSuiteSelector:
     @classmethod
     def suite_list_raw(cls) -> QuerySet[TestSuite]:
         return TestSuite.objects.all()
+
+    @classmethod
+    def suite_by_id(cls, suite_id: int) -> TestSuite:
+        return get_object_or_404(TestSuite, pk=suite_id)
 
     def suite_deleted_list(self):
         max_level = self.get_max_level()
@@ -87,6 +93,7 @@ class TestSuiteSelector:
                     max_level,
                 ),
             )
+            .annotate(**self.path_annotation())
         )
 
     def suites_by_plan(self, plan_id):
@@ -121,17 +128,11 @@ class TestSuiteSelector:
             ).annotate(**self.cases_count_annotation())
         )
 
-    def suite_list_treeview_with_cases(self, root_only: bool = True) -> QuerySet[TestSuite]:
-        max_level = self.get_max_level()
-        parent = {'parent': None} if root_only else {}
-        return (
-            TestSuite.objects
-            .filter(**parent)
-            .order_by(_NAME)
-            .prefetch_related(
-                *self.suites_tree_prefetch_children(max_level),
-                *self.suites_tree_prefetch_cases(max_level),
-            ).annotate(**self.cases_count_annotation())
+    @classmethod
+    def suite_list_retrieve(cls):
+        return TestSuite.objects.filter().order_by(_NAME).annotate(
+            **cls.cases_count_annotation(),
+            **cls.path_annotation(),
         )
 
     @classmethod
@@ -139,7 +140,7 @@ class TestSuiteSelector:
         return instance.get_ancestors(include_self=True)
 
     @classmethod
-    def suites_by_ids_list(cls, ids: List[int], field_name: str) -> TreeQuerySet[TestSuite]:
+    def suites_by_ids(cls, ids: Iterable[int], field_name: str) -> TreeQuerySet[TestSuite]:
         return TestSuite.objects.filter(**{f'{field_name}__in': ids}).order_by('id')
 
     @classmethod
@@ -155,7 +156,7 @@ class TestSuiteSelector:
             'cases_count': SubCount(TestCase.objects.filter(is_archive=False, suite_id=OuterRef('pk'))),
             'total_cases_count': SubCount(
                 TestCase.objects.filter(
-                    Q(suite__tree_id=OuterRef('tree_id'))
+                    Q(suite__tree_id=OuterRef(_TREE_ID))
                     & Q(suite__lft__gte=OuterRef(_LFT))  # noqa: W503
                     & Q(suite__rght__lte=OuterRef(_RGHT)),  # noqa: W503
                     is_archive=False,
@@ -184,11 +185,23 @@ class TestSuiteSelector:
         )
 
     @classmethod
+    def path_annotation(cls):
+        ancestor_paths = TestSuite.objects.filter(
+            lft__lte=OuterRef(_LFT),
+            rght__gte=OuterRef(_RGHT),
+            tree_id=OuterRef(_TREE_ID),
+        ).order_by('id').values(_NAME)
+
+        return {
+            'path': ConcatSubquery(ancestor_paths, separator='/'),
+        }
+
+    @classmethod
     def _get_estimate_sum_subquery(cls, sum_descendants: bool = False):
         sum_condition = Q(test_cases__is_deleted=False) & Q(test_cases__is_archive=False)
         if sum_descendants:
             filter_condition = (
-                Q(tree_id=OuterRef('tree_id')) &  # noqa: W504
+                Q(tree_id=OuterRef(_TREE_ID)) &  # noqa: W504
                 Q(lft__gte=OuterRef(_LFT)) &  # noqa: W504
                 Q(rght__lte=OuterRef(_RGHT))
             )
@@ -198,7 +211,7 @@ class TestSuiteSelector:
         return Subquery(
             TestSuite.objects.filter(filter_condition)
             .prefetch_related('test_cases')
-            .values('tree_id')
+            .values(_TREE_ID)
             .annotate(
                 total=Sum('test_cases__estimate', filter=sum_condition),
             )

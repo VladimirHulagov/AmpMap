@@ -1,7 +1,7 @@
 import { ActionFormSuite } from ".."
 import { useSuiteCreateModal } from "./use-suite-create-modal"
 
-export const CreateSuite = ({ suite }: { suite?: Suite }) => {
+export const CreateSuite = ({ suite, onSubmit }: { suite?: Suite; onSubmit: () => void }) => {
   const {
     isShow,
     control,
@@ -15,7 +15,7 @@ export const CreateSuite = ({ suite }: { suite?: Suite }) => {
     handleSubmitForm,
     handleCancel,
     handleShowCreate,
-  } = useSuiteCreateModal(suite)
+  } = useSuiteCreateModal(onSubmit, suite)
 
   return (
     <ActionFormSuite

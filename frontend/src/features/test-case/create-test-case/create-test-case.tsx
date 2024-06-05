@@ -1,28 +1,21 @@
 import { PlusOutlined } from "@ant-design/icons"
 import { Button } from "antd"
-
-import { useAppDispatch } from "app/hooks"
-
-import { showCreateModal } from "entities/test-case/model"
-
-import { CreateTestCaseModal } from "./create-test-case-modal"
+import { useNavigate, useParams } from "react-router-dom"
 
 export const CreateTestCase = () => {
-  const dispatch = useAppDispatch()
+  const { projectId, testSuiteId } = useParams<ParamProjectId | ParamTestSuiteId>()
+  const navigate = useNavigate()
 
   return (
-    <>
-      <Button
-        id="create-test-case"
-        type="primary"
-        icon={<PlusOutlined />}
-        onClick={() => {
-          dispatch(showCreateModal())
-        }}
-      >
-        Create Test Case
-      </Button>
-      <CreateTestCaseModal />
-    </>
+    <Button
+      id="create-test-case"
+      type="primary"
+      icon={<PlusOutlined />}
+      onClick={() => {
+        navigate(`/projects/${projectId}/suites/${testSuiteId}/new-test-case`)
+      }}
+    >
+      Create Test Case
+    </Button>
   )
 }

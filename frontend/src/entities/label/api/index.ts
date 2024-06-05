@@ -2,6 +2,8 @@ import { createApi } from "@reduxjs/toolkit/dist/query/react"
 
 import { baseQueryWithLogout } from "app/apiSlice"
 
+import { invalidatesList, providesList } from "shared/libs"
+
 const rootPath = "v1/labels"
 
 export const labelApi = createApi({
@@ -14,16 +16,7 @@ export const labelApi = createApi({
         url: `${rootPath}/`,
         params: { project },
       }),
-      providesTags: (result) =>
-        result
-          ? [
-              ...result.map(({ id }) => ({
-                type: "Label" as const,
-                id,
-              })),
-              { type: "Label", id: "LIST" },
-            ]
-          : [{ type: "Label", id: "LIST" }],
+      providesTags: (result) => providesList(result, "Label"),
     }),
     createLabel: builder.mutation<Label, LabelUpdate>({
       query: (body) => ({
@@ -39,13 +32,7 @@ export const labelApi = createApi({
         method: "PATCH",
         body,
       }),
-      invalidatesTags: (result, _, { id }) =>
-        result
-          ? [
-              { type: "Label", id },
-              { type: "Label", id: "LIST" },
-            ]
-          : [{ type: "Label", id: "LIST" }],
+      invalidatesTags: (result) => invalidatesList(result, "Label"),
     }),
     deleteLabel: builder.mutation<void, Id>({
       query: (id) => ({

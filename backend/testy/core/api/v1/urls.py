@@ -38,6 +38,7 @@ router = routers.SimpleRouter()
 router.register('attachments', views.AttachmentViewSet)
 router.register('labels', views.LabelViewSet)
 router.register('projects', views.ProjectViewSet)
+router.register('custom-attributes', views.CustomAttributeViewSet)
 
 urlpatterns = [
     path('system/messages/', views.SystemMessagesViewSet.as_view({'get': 'list'}), name='system-messages'),

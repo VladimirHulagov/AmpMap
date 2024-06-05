@@ -28,35 +28,63 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from typing import Set, Union
+from typing import Any, Optional, Set, TypedDict, Union
+from uuid import uuid4
 
+from django.apps import apps
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
 from django.core.exceptions import FieldDoesNotExist
-from django.db.models import CASCADE, ManyToManyRel, ManyToOneRel
-from django.utils import timezone
+from django.db.models import CASCADE, ManyToManyRel, ManyToOneRel, Model
+from django.db.models.sql import Query
 from mptt.models import MPTTModel
-from paginations import StandardSetPagination
 from rest_framework import mixins, status
 from rest_framework.decorators import action
+from rest_framework.generics import QuerySet
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
 from testy.core.api.v1.serializers import RecoveryInputSerializer
 from testy.core.services.recovery import RecoveryService
-from testy.utilities.string import get_sha256_from_value
+from testy.paginations import StandardSetPagination
+from testy.root.models import DeletedQuerySet, SoftDeleteQuerySet
 
 UniqueRelationSet = Set[Union[ManyToOneRel, GenericRelation, ManyToManyRel]]
 
 _TARGET_OBJECT = 'target_object'
-_QUERYSET = 'queryset'
 _POST = 'post'
 
 
+class TargetObject(TypedDict):
+    app_label: str
+    model: str
+    pk: Any
+
+
+class QuerySetMeta(TypedDict):
+    app_label: str
+    model: str
+    query: Query
+
+
+class QuerySetInfo(TypedDict):
+    verbose_name: str
+    verbose_name_related_model: str
+    count: int
+
+
+class MetaForCaching(TypedDict):
+    target_object: TargetObject
+    querysets_meta: list[QuerySetMeta]
+
+
+CacheReadyQuerySet = tuple[list[QuerySetMeta], list[QuerySetInfo]]
+
+
 class RelationTreeMixin:
-    def build_relation_tree(self, model, tree: list = None) -> UniqueRelationSet:  # noqa: WPS231
+    def build_relation_tree(self, model, tree: Optional[list] = None) -> UniqueRelationSet:  # noqa: WPS231
         """
         Build tree of relations by model to prevent duplicate recursive queries gathering.
 
@@ -87,18 +115,20 @@ class RelationTreeMixin:
         self,
         qs,
         model,
-        result_list=None,
+        qs_info_list: Optional[list[QuerySetInfo]] = None,
+        qs_meta_list: Optional[list[QuerySetMeta]] = None,
         deleted: bool = False,
         relation_tree=None,
         ignore_on_delete_property: bool = False,
-    ):
+    ) -> CacheReadyQuerySet:
         """
         Recursive function to get all related objects of instance as list of querysets.
 
         Args:
             qs: queryset or instance to find related objects for.
             model: model in which we are looking for relations.
-            result_list: list to gather querysets in.
+            qs_info_list: list of descriptions of elements to be deleted.
+            qs_meta_list: meta information to restore querysets from cache.
             deleted: defines which manager to use for getting querysets.
             relation_tree: List of relations to avoid duplicate querysets.
             ignore_on_delete_property: ignore on_delete property in gathering related querysets.
@@ -107,8 +137,10 @@ class RelationTreeMixin:
             List of querysets.
         """
         manager = 'deleted_objects' if deleted else 'objects'
-        if result_list is None:
-            result_list = []
+        if qs_info_list is None:
+            qs_info_list = []
+        if qs_meta_list is None:
+            qs_meta_list = []
         related_objects = list(model._meta.related_objects)
         related_objects.extend(model._meta.private_fields)
         for single_object in related_objects:
@@ -133,24 +165,32 @@ class RelationTreeMixin:
                 )
             else:
                 new_qs = getattr(single_object.related_model, manager).filter(**filter_option)
-            result_list.append(
-                {
-                    _QUERYSET: new_qs,
-                    'verbose_name': single_object.related_model._meta.verbose_name_plural,
-                    'verbose_name_related_model': single_object.model._meta.verbose_name_plural,
-                    'count': new_qs.count(),
-                },
+            model_meta_data = single_object.related_model._meta
+            qs_info_list.append(
+                QuerySetInfo(
+                    verbose_name=model_meta_data.verbose_name,
+                    verbose_name_related_model=single_object.model._meta.verbose_name_plural,
+                    count=new_qs.count(),
+                ),
+            )
+            qs_meta_list.append(
+                QuerySetMeta(
+                    app_label=model_meta_data.app_label,
+                    model=model_meta_data.model_name,
+                    query=new_qs.query,
+                ),
             )
             if single_object.related_model._meta.related_objects:
                 self.get_all_related_querysets(
-                    new_qs,
-                    single_object.related_model,
-                    result_list,
-                    deleted,
-                    relation_tree,
-                    ignore_on_delete_property,
+                    qs=new_qs,
+                    model=single_object.related_model,
+                    qs_info_list=qs_info_list,
+                    qs_meta_list=qs_meta_list,
+                    deleted=deleted,
+                    relation_tree=relation_tree,
+                    ignore_on_delete_property=ignore_on_delete_property,
                 )
-        return result_list
+        return qs_meta_list, qs_info_list
 
     @classmethod
     def _check_for_relation(cls, new_relation: Union[GenericRelation, ManyToManyRel, ManyToOneRel], relations):
@@ -173,10 +213,20 @@ class RelationTreeMixin:
                 relations[idx] = new_relation
         relations.append(new_relation)
 
+    @classmethod
+    def _get_instance_from_metadata(cls, meta_data: TargetObject) -> Model:
+        model = apps.get_model(app_label=meta_data.get('app_label'), model_name=meta_data.get('model'))
+        return model.objects.get(pk=meta_data.get('pk'))
+
+    @classmethod
+    def _get_qs_from_meta_data(cls, meta_data: QuerySetMeta, qs_class: type[QuerySet]) -> QuerySet[Model]:
+        model = apps.get_model(app_label=meta_data.get('app_label'), model_name=meta_data.get('model'))
+        return qs_class(model=model, query=meta_data.get('query'))
+
 
 class TestyDestroyModelMixin(RelationTreeMixin):
 
-    def destroy(self, request, pk, *args, **kwargs):
+    def destroy(self, request, pk, *args, **kwargs):  # noqa: WPS231
         """
         Replace default destroy method.
 
@@ -192,17 +242,23 @@ class TestyDestroyModelMixin(RelationTreeMixin):
         Returns:
             Response with no content status code
         """
-        querysets_to_delete = None
+        querysets_to_delete: list[QuerySet] = []
         target_object = self.get_object()
         tree_id = target_object.tree_id if isinstance(target_object, MPTTModel) else None
         model_class = type(target_object)
-        if cache_key := request.COOKIES.get('delete_cache'):
-            objects_to_delete = cache.get(cache_key, {})
-            if objects_to_delete.get(_TARGET_OBJECT) == target_object:
-                querysets_to_delete = objects_to_delete['querysets_to_delete']
+        cache_key = request.COOKIES.get('delete_cache')
+        if cache_key and cache.get(cache_key):
+            meta_to_delete: MetaForCaching = cache.get(cache_key)
+            if self._get_instance_from_metadata(meta_to_delete.get(_TARGET_OBJECT)) == target_object:
+                for elem in meta_to_delete['querysets_meta']:
+                    querysets_to_delete.append(
+                        self._get_qs_from_meta_data(elem, qs_class=SoftDeleteQuerySet),
+                    )
             cache.delete(cache_key)
         if not querysets_to_delete:
-            querysets_to_delete, _ = self.get_deleted_objects()
+            meta_querysets, _ = self.get_deleted_objects()
+            for meta_data in meta_querysets:
+                querysets_to_delete.append(self._get_qs_from_meta_data(meta_data, SoftDeleteQuerySet))
         for related_qs in querysets_to_delete:
             related_qs.delete()
         if tree_id:
@@ -226,14 +282,19 @@ class TestyDestroyModelMixin(RelationTreeMixin):
         Returns:
             Tuple of querysets to be deleted and response info
         """
-        related_querysets, objects_info = self.get_deleted_objects()
-        objects_to_delete = {
-            _TARGET_OBJECT: self.get_object(),
-            'querysets_to_delete': related_querysets,
-        }
-        cache_key = get_sha256_from_value(str(related_querysets) + str(timezone.now()))
-        cache.set(cache_key, objects_to_delete)
-        response = Response(data=objects_info)
+        qs_meta_list, qs_info_list = self.get_deleted_objects()
+        target_object = self.get_object()
+        meta_for_deletion = MetaForCaching(
+            target_object=TargetObject(
+                model=target_object._meta.model_name,
+                app_label=target_object._meta.app_label,
+                pk=target_object.pk,
+            ),
+            querysets_meta=qs_meta_list,
+        )
+        cache_key = uuid4().hex
+        cache.set(cache_key, meta_for_deletion)
+        response = Response(data=qs_info_list)
         response.set_cookie('delete_cache', cache_key, max_age=settings.CACHE_TTL)
         return response
 
@@ -249,27 +310,31 @@ class TestyDestroyModelMixin(RelationTreeMixin):
         RecoveryService.delete_permanently(self.get_queryset(), serializer.validated_data)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    def get_deleted_objects(self):
+    def get_deleted_objects(self) -> CacheReadyQuerySet:
         instance = self.get_object()
         qs = RecoveryService.get_objects_by_instance(instance)
         relation_tree = self.build_relation_tree(qs.model)
-        related_querysets_info = self.get_all_related_querysets(
+        qs_meta_list, qs_info_list = self.get_all_related_querysets(
             qs,
             qs.model,
             relation_tree=relation_tree,
         )
-        related_querysets_info.append(
-            {
-                _QUERYSET: qs,
-                'verbose_name': 'source model',
-                'verbose_name_related_model': qs.model()._meta.verbose_name_plural,
-                'count': qs.count(),
-            },
+        model_meta_data = qs.model()._meta
+        qs_meta_list.append(
+            QuerySetMeta(
+                app_label=model_meta_data.app_label,
+                model=model_meta_data.model_name,
+                query=qs.query,
+            ),
         )
-        related_querysets = []
-        for info in related_querysets_info:
-            related_querysets.append(info.pop(_QUERYSET))
-        return related_querysets, related_querysets_info
+        qs_info_list.append(
+            QuerySetInfo(
+                verbose_name='source model',
+                verbose_name_related_model=model_meta_data.verbose_name_plural,
+                count=qs.count(),
+            ),
+        )
+        return qs_meta_list, qs_info_list
 
 
 class TestyArchiveMixin(RelationTreeMixin):
@@ -281,14 +346,19 @@ class TestyArchiveMixin(RelationTreeMixin):
         detail=True,
     )
     def archive_preview(self, request, pk):
-        related_querysets, objects_info = self.get_objects_to_archive()
-        objects_to_archive = {
-            _TARGET_OBJECT: self.get_object(),
-            'querysets_to_archive': related_querysets,
-        }
-        cache_key = get_sha256_from_value(str(related_querysets) + str(timezone.now()))
-        cache.set(cache_key, objects_to_archive)
-        response = Response(data=objects_info)
+        target_object = self.get_object()
+        qs_meta_list, qs_info_list = self.get_objects_to_archive()
+        meta_for_caching = MetaForCaching(
+            target_object=TargetObject(
+                model=target_object._meta.model_name,
+                app_label=target_object._meta.app_label,
+                pk=target_object.pk,
+            ),
+            querysets_meta=qs_meta_list,
+        )
+        cache_key = uuid4().hex
+        cache.set(cache_key, meta_for_caching)
+        response = Response(data=qs_info_list)
         response.set_cookie('archive_cache', cache_key, max_age=settings.CACHE_TTL)
         return response
 
@@ -299,14 +369,20 @@ class TestyArchiveMixin(RelationTreeMixin):
         detail=True,
     )
     def archive_objects(self, request, pk):
-        querysets_to_archive = None
-        if cache_key := request.COOKIES.get('archive_cache'):
-            objects_to_delete = cache.get(cache_key, {})
-            if objects_to_delete.get(_TARGET_OBJECT) == self.get_object():
-                querysets_to_archive = objects_to_delete['querysets_to_archive']
+        querysets_to_archive: list[QuerySet[Model]] = []
+        target_object = self.get_object()
+        cache_key = request.COOKIES.get('archive_cache')
+        if cache_key and cache.get(cache_key):
+            meta_to_archive: MetaForCaching = cache.get(cache_key, {})
+            if self._get_instance_from_metadata(meta_to_archive.get(_TARGET_OBJECT)) == target_object:
+                querysets_to_archive = [
+                    self._get_qs_from_meta_data(elem, SoftDeleteQuerySet) for elem in meta_to_archive['querysets_meta']
+                ]
             cache.delete(cache_key)
         if not querysets_to_archive:
-            querysets_to_archive, _ = self.get_objects_to_archive()
+            meta_objects, _ = self.get_objects_to_archive()
+            for meta_data in meta_objects:
+                querysets_to_archive.append(self._get_qs_from_meta_data(meta_data, SoftDeleteQuerySet))
         for related_qs in querysets_to_archive:
             related_qs.update(is_archive=True)
         return Response(status=status.HTTP_200_OK)
@@ -323,54 +399,61 @@ class TestyArchiveMixin(RelationTreeMixin):
         qs = RecoveryService.get_objects_by_ids(self.get_queryset(), serializer.validated_data)
         model_class = qs.model()
         relation_tree = self.build_relation_tree(model_class)
-        related_querysets_info = [
-            elem[_QUERYSET] for elem in self.get_all_related_querysets(
-                qs,
-                model_class,
-                relation_tree=relation_tree,
-                ignore_on_delete_property=True,
-            )
-        ]
-        related_querysets_info.append(qs)
-        for queryset in related_querysets_info:
+        qs_meta_list, qs_info_list = self.get_all_related_querysets(
+            qs,
+            model_class,
+            relation_tree=relation_tree,
+            ignore_on_delete_property=True,
+        )
+        for meta in qs_meta_list:
             try:
+                queryset = self._get_qs_from_meta_data(meta, SoftDeleteQuerySet)
                 queryset.model()._meta.get_field('is_archive')
             except FieldDoesNotExist:
                 continue
             queryset.update(is_archive=False)
+        qs.update(is_archive=False)
         return Response(status=status.HTTP_200_OK)
 
-    def get_objects_to_archive(self):
+    def get_objects_to_archive(self) -> CacheReadyQuerySet:
         instance = self.get_object()
         qs = RecoveryService.get_objects_by_instance(instance)
         relation_tree = self.build_relation_tree(qs.model)
-        related_querysets_info = self.get_all_related_querysets(
+        qs_meta_list, qs_info_list = self.get_all_related_querysets(
             qs,
             qs.model,
             relation_tree=relation_tree,
             ignore_on_delete_property=True,
         )
-        related_querysets_info.append(
-            {
-                _QUERYSET: qs,
-                'verbose_name': 'source model',
-                'verbose_name_related_model': qs.model()._meta.verbose_name_plural,
-                'count': qs.count(),
-            },
+        model_meta_data = qs.model()._meta
+        qs_meta_list.append(
+            QuerySetMeta(
+                app_label=model_meta_data.app_label,
+                model=model_meta_data.model_name,
+                query=qs.query,
+            ),
         )
-        related_querysets_with_archived = []
-        for info in related_querysets_info:
+        qs_info_list.append(
+            QuerySetInfo(
+                verbose_name='source model',
+                verbose_name_related_model=model_meta_data.verbose_name_plural,
+                count=qs.count(),
+            ),
+        )
+
+        result_meta_list = []
+        result_info_list = []
+        for meta, info in zip(qs_meta_list, qs_info_list):
             try:
-                archive_exists = info[_QUERYSET].model()._meta.get_field('is_archive')
+                apps.get_model(
+                    meta.get('app_label'),
+                    meta.get('model'),
+                )._meta.get_field('is_archive')
             except FieldDoesNotExist:
-                archive_exists = None
-            if archive_exists is None:
                 continue
-            related_querysets_with_archived.append(info)
-        related_querysets = []
-        for info in related_querysets_with_archived:
-            related_querysets.append(info.pop(_QUERYSET))
-        return related_querysets, related_querysets_with_archived
+            result_meta_list.append(meta)
+            result_info_list.append(info)
+        return result_meta_list, result_info_list
 
 
 class TestyRestoreModelMixin(RelationTreeMixin):
@@ -387,14 +470,10 @@ class TestyRestoreModelMixin(RelationTreeMixin):
         qs = RecoveryService.get_objects_by_ids(self.get_queryset(), serializer.validated_data)
         model_class = qs.model()
         relation_tree = self.build_relation_tree(model_class)
-        related_querysets = [
-            elem[_QUERYSET] for elem in self.get_all_related_querysets(
-                qs,
-                model_class,
-                deleted=True,
-                relation_tree=relation_tree,
-            )
-        ]
+        qs_meta_data, _ = self.get_all_related_querysets(qs, model_class, deleted=True, relation_tree=relation_tree)
+        related_querysets = []
+        for meta_data in qs_meta_data:
+            related_querysets.append(self._get_qs_from_meta_data(meta_data, DeletedQuerySet))
         related_querysets.append(qs)
         for related_qs in related_querysets:
             related_qs.restore()

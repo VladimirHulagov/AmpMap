@@ -28,8 +28,6 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-import datetime
-import json
 from http import HTTPStatus
 
 import pytest
@@ -37,7 +35,7 @@ from django.utils import timezone
 
 from tests import constants
 from tests.commons import RequestType
-from testy.auth.models import TTLToken
+from testy.root.auth.models import TTLToken
 
 
 @pytest.mark.django_db
@@ -45,13 +43,13 @@ class TestTokens:
     def test_ttl(self, api_client, user):
         self.get_token(api_client, user.username, constants.PASSWORD)
         token = TTLToken.objects.get(user=user)
-        token.expiration_date = timezone.make_aware(datetime.datetime(2009, 1, 1), timezone.utc)
+        token.expiration_date = timezone.make_aware(timezone.datetime(2009, 1, 1), timezone.utc)
         token.save()
         api_client.send_request(
             'api:v1:test-list',
             expected_status=HTTPStatus.UNAUTHORIZED,
             request_type=RequestType.GET,
-            headers={'HTTP_AUTHORIZATION': f'Token {token}'}
+            headers={'HTTP_AUTHORIZATION': f'Token {token}'},
         )
 
     def test_new_token_generated(self, api_client, user):
@@ -59,7 +57,7 @@ class TestTokens:
         obtained_tokens = []
         for _ in range(obtain_count):
             obtained_tokens.append(
-                self.get_token(api_client, user.username, constants.PASSWORD)
+                self.get_token(api_client, user.username, constants.PASSWORD),
             )
         assert obtain_count == len(set(obtained_tokens)), 'Duplicate tokens were obtained'
 
@@ -79,7 +77,7 @@ class TestTokens:
             expected_status=HTTPStatus.OK,
             request_type=RequestType.POST,
         )
-        assert json.loads(token_list1.content) != json.loads(token_list2.content)
+        assert token_list1.json() != token_list2.json()
         assert tokens_user1 != tokens_user2
 
     def test_unauthorized_token_access(self, api_client, user):
@@ -88,7 +86,7 @@ class TestTokens:
             data={'username': user.username, 'password': constants.PASSWORD},
             expected_status=HTTPStatus.UNAUTHORIZED,
             request_type=RequestType.GET,
-            additional_error_msg='Unauthorized user can see tokens list'
+            additional_error_msg='Unauthorized user can see tokens list',
         )
 
     def test_detailed_token_view_access(self, api_client, user, user_factory):
@@ -100,7 +98,7 @@ class TestTokens:
             expected_status=HTTPStatus.OK,
             request_type=RequestType.GET,
             headers={'HTTP_AUTHORIZATION': f'Token {tokens_user1[0]}'},
-            additional_error_msg='Could not access token info with valid user/token'
+            additional_error_msg='Could not access token info with valid user/token',
         )
         api_client.force_login(user2)
         api_client.send_request(
@@ -108,15 +106,15 @@ class TestTokens:
             reverse_kwargs={'key': tokens_user1[0]},
             expected_status=HTTPStatus.NOT_FOUND,
             request_type=RequestType.GET,
-            additional_error_msg='User could get private token info'
+            additional_error_msg='User could get private token info',
         )
 
-    @staticmethod
-    def get_token(api_client, username, password):
+    @classmethod
+    def get_token(cls, api_client, username, password):
         response = api_client.send_request(
             'ttltoken-list',
             data={'username': username, 'password': password},
             expected_status=HTTPStatus.OK,
             request_type=RequestType.POST,
         )
-        return json.loads(response.content)['token']
+        return response.json()['token']

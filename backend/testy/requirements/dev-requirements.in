@@ -9,3 +9,4 @@ django-test-migrations==1.2.0
 pytest-cov==4.0.0
 wemake-python-styleguide==0.18.0
 pytest-freezegun==0.4.2
+allure-pytest==2.13.2

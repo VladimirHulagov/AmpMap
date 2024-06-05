@@ -30,13 +30,16 @@
 # <http://www.gnu.org/licenses/>.
 from enum import Enum
 from http import HTTPStatus
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
+import allure
 from django.db.models import QuerySet
-from django.forms import model_to_dict
 from django.test.client import RequestFactory
+from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.test import APIClient
+
+from testy.users.models import User
 
 
 class RequestType(Enum):
@@ -50,64 +53,61 @@ class RequestType(Enum):
 class RequestMock(RequestFactory):
     GET = {}
 
-    @staticmethod
-    def build_absolute_uri(url):
+    @classmethod
+    def build_absolute_uri(cls, url):
         return f'http://testserver{url}'
 
 
 class CustomAPIClient(APIClient):
     def send_request(
-            self,
-            view_name: str,
-            data: Dict[str, Any] = None,
-            expected_status: HTTPStatus = HTTPStatus.OK,
-            request_type: RequestType = RequestType.GET,
-            reverse_kwargs: Dict[str, Any] = None,
-            format='json',
-            query_params: Dict[str, Any] = None,
-            additional_error_msg: str = None,
-            headers: Dict[str, Any] = None,
-    ):
-        url = reverse(view_name, kwargs=reverse_kwargs)
-        if query_params:
-            url = f'{url}?{"&".join([f"{field}={field_value}" for field, field_value in query_params.items()])}'
-        http_request = getattr(self, request_type.value, None)
-        if not http_request:
-            raise TypeError('Request type is not known')
-        if headers:
-            response = http_request(url, data=data, format=format, **headers)
-        else:
-            response = http_request(url, data=data, format=format)
+        self,
+        view_name: str,
+        data: Dict[str, Any] = None,
+        expected_status: HTTPStatus = HTTPStatus.OK,
+        request_type: RequestType = RequestType.GET,
+        reverse_kwargs: Dict[str, Any] = None,
+        format='json',  # noqa: WPS125
+        query_params: Dict[str, Any] = None,
+        additional_error_msg: str = None,
+        headers: Dict[str, Any] = None,
+        validate_status: bool = True,
+    ) -> Response:
+        with allure.step(f'Send {request_type.value} to {view_name}'):
+            url = reverse(view_name, kwargs=reverse_kwargs)
+            if query_params:
+                url = f'{url}?{"&".join([f"{field}={field_value}" for field, field_value in query_params.items()])}'
+            http_request = getattr(self, request_type.value, None)
+            if not http_request:
+                raise TypeError('Request type is not known')
+            if headers:
+                response = http_request(url, data=data, format=format, **headers)
+            else:
+                response = http_request(url, data=data, format=format)
 
-        additional_info = f'\nAdditional info: {additional_error_msg}' if additional_error_msg else ''
-        err_msg = f'Expected response code "{expected_status}", actual: "{response.status_code}"' \
-                  f'Response content: {getattr(response, "content", "No content")}{additional_info}'
-
-        assert response.status_code == expected_status, err_msg
-        return response
-
-
-def model_with_base_to_dict(instance) -> Dict[str, Any]:
-    instance_dict = model_to_dict(instance)
-    instance_dict['created_at'] = instance.created_at.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-    instance_dict['updated_at'] = instance.updated_at.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-    return instance_dict
+            additional_info = f'\nAdditional info: {additional_error_msg}' if additional_error_msg else ''
+            err_msg = f'Expected response code "{expected_status}", actual: "{response.status_code}"' \
+                      f'Response content: {getattr(response, "content", "No content")}{additional_info}'
+            if validate_status:
+                assert response.status_code == expected_status, err_msg
+            return response
 
 
 def model_to_dict_via_serializer(
-        instances: Union[QuerySet, Any],
-        serializer_class,
-        many=False,
-        nested_fields: List[str] = None,
-        nested_fields_simple_list: List[str] = None,
-        fields_to_add: Dict[str, Any] = None
+    instances: Union[QuerySet, Any],
+    serializer_class,
+    many=False,
+    nested_fields: List[str] = None,
+    nested_fields_simple_list: List[str] = None,
+    fields_to_add: Dict[str, Any] = None,
+    requested_user: Optional[User] = None,
 ) -> Union[List[dict], Dict[str, str]]:
     if not nested_fields:
         nested_fields = []
     if not nested_fields_simple_list:
         nested_fields_simple_list = []
-
-    serializer = serializer_class(instances, many=many, context={'request': RequestMock()})
+    request = RequestMock()
+    setattr(request, 'user', requested_user)
+    serializer = serializer_class(instances, many=many, context={'request': request})
     result_dicts = [dict(elem) for elem in serializer.data] if many else [serializer.data]
 
     if fields_to_add:

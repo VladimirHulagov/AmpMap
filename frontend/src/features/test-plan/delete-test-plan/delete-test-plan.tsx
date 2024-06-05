@@ -5,7 +5,7 @@ import { useState } from "react"
 import { DeleteTestPlanModal } from "./delete-test-plan-modal"
 
 interface Props {
-  testPlan: TestPlanTreeView
+  testPlan: TestPlan
 }
 
 export const DeleteTestPlan = ({ testPlan }: Props) => {

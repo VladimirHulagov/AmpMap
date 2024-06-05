@@ -29,16 +29,16 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 import pytest
-from comments.models import Comment
 from django.db import IntegrityError
 
 from tests.error_messages import NOT_NULL_ERR_MSG
+from testy.comments.models import Comment
 
 
 @pytest.mark.django_db
 @pytest.mark.usefixtures('media_directory')
 class TestCommentModel:
-    @pytest.mark.parametrize('parameter_name', ['content', 'object_id', 'content_type_id'])
+    @pytest.mark.parametrize('parameter_name', ['object_id', 'content_type_id'])
     def test_not_null_constraint(self, parameter_name, comment_test_factory):
         with pytest.raises(IntegrityError) as err:
             comment_test_factory(**{parameter_name: None})
@@ -48,8 +48,8 @@ class TestCommentModel:
     @pytest.mark.parametrize(
         'factory_name', [
             'comment_test_factory', 'comment_test_case_factory', 'comment_test_result_factory',
-            'comment_test_suite_factory', 'comment_test_plan_factory'
-        ]
+            'comment_test_suite_factory', 'comment_test_plan_factory',
+        ],
     )
     def test_valid_model_creation(self, factory_name, request):
         factory = request.getfixturevalue(factory_name)
@@ -60,8 +60,8 @@ class TestCommentModel:
     @pytest.mark.parametrize(
         'factory_name', [
             'comment_test_factory', 'comment_test_case_factory', 'comment_test_result_factory',
-            'comment_test_suite_factory', 'comment_test_plan_factory'
-        ]
+            'comment_test_suite_factory', 'comment_test_plan_factory',
+        ],
     )
     def test_cascade_deletion(self, factory_name, request):
         factory = request.getfixturevalue(factory_name)

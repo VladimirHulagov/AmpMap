@@ -16,13 +16,11 @@ import { showModalCloseConfirm } from "shared/libs"
 import { AlertError } from "shared/ui"
 
 interface Inputs {
-  email: string
   first_name: string
   last_name: string
 }
 
 interface ErrorData {
-  email?: string
   first_name?: string
   last_name?: string
 }
@@ -44,11 +42,10 @@ export const EditProfileModal = () => {
 
   useEffect(() => {
     if (isShow && user) {
-      setValue("email", user.email)
       setValue("first_name", user.first_name)
       setValue("last_name", user.last_name)
     }
-  }, [isShow])
+  }, [isShow, user])
 
   const onCloseModal = () => {
     dispatch(hideEditProfileModal())
@@ -107,24 +104,10 @@ export const EditProfileModal = () => {
     >
       <>
         {errors ? (
-          <AlertError
-            error={errors as ErrorObj}
-            skipFields={["email", "first_name", "last_name"]}
-          />
+          <AlertError error={errors as ErrorObj} skipFields={["first_name", "last_name"]} />
         ) : null}
 
         <Form id="edit-profile-form" layout="vertical" onFinish={handleSubmit(onSubmit)}>
-          <Form.Item
-            label="E-mail"
-            validateStatus={errors?.email ? "error" : ""}
-            help={errors?.email ? errors.email : ""}
-          >
-            <Controller
-              name="email"
-              control={control}
-              render={({ field }) => <Input {...field} />}
-            />
-          </Form.Item>
           <Form.Item
             label="First Name"
             validateStatus={errors?.first_name ? "error" : ""}

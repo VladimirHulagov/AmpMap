@@ -11,7 +11,7 @@ import { ModalConfirmDeleteArchive } from "widgets/[ui]/modal-confirm-delete-arc
 interface Props {
   isShow: boolean
   setIsShow: (toggle: boolean) => void
-  testPlan: TestPlanTreeView
+  testPlan: TestPlan
 }
 
 export const DeleteTestPlanModal = ({ isShow, setIsShow, testPlan }: Props) => {

@@ -9,7 +9,7 @@ export interface SelectSuiteModalProps {
   opened: boolean
   onCancel: () => void
   onSubmit: (suiteId: number) => void
-  treeSuites: Suite[]
+  treeSuites: SuiteTree[]
   selectedSuiteId: number
 }
 

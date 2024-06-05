@@ -30,8 +30,9 @@
 # <http://www.gnu.org/licenses/>.
 
 from django.contrib import admin
+from django.contrib.auth.models import Permission
 
-from testy.core.models import Attachment, Project, SystemMessage
+from testy.core.models import AccessRequest, Attachment, Project, SystemMessage
 from testy.root.admin import BaseAdmin
 
 
@@ -54,3 +55,15 @@ class AttachmentAdmin(BaseAdmin):
 class SystemMessageAdmin(BaseAdmin):
     list_display = ('content', 'is_active')
     search_fields = ('content',)
+
+
+@admin.register(AccessRequest)
+class AccessRequestAdmin(admin.ModelAdmin):
+    list_display = ['project', 'user', 'reason', 'status']
+    list_filter = ('project', 'user', 'status')
+
+
+@admin.register(Permission)
+class PermissionAdmin(admin.ModelAdmin):
+    fields = ('name', 'codename')
+    search_fields = ('name', 'codename')

@@ -8,7 +8,7 @@ import { TestPlanSearchAndTable } from "./test-plan-search-and-table"
 interface TestPlanTableProps {
   collapse: boolean
   setCollapse: React.Dispatch<React.SetStateAction<boolean>>
-  activePlan?: TestPlanTreeView
+  activePlan?: TestPlan
 }
 
 // TODO this component looks like same test suite table, need refactoring

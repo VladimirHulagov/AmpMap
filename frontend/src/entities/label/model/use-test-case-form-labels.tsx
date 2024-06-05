@@ -22,6 +22,7 @@ interface UseTestCaseFormLabelsParams {
   testCase: TestCase | null
   isShow: boolean
   isEditMode: boolean
+  defaultLabels?: number[]
 }
 
 export const useTestCaseFormLabels = ({
@@ -29,6 +30,7 @@ export const useTestCaseFormLabels = ({
   testCase,
   isShow,
   isEditMode,
+  defaultLabels = [],
 }: UseTestCaseFormLabelsParams): UseFormLabelsProps => {
   const { projectId } = useParams<ParamProjectId>()
   const [labels, setLabels] = useState<LabelInForm[]>([])
@@ -40,8 +42,9 @@ export const useTestCaseFormLabels = ({
   )
   const handleAddLabel = (label: string) => {
     const filtered = labels.filter((item) => item.name.toLowerCase() !== label.toLowerCase())
-    const newLabels = [...filtered, { name: label }]
+    const labelData = labelsData?.find((item) => item.name.toLowerCase() === label.toLowerCase())
 
+    const newLabels = [...filtered, { name: label, id: labelData?.id }]
     setLabels(newLabels)
     setSearchValue("")
     setIsShowPopup(false)
@@ -77,6 +80,18 @@ export const useTestCaseFormLabels = ({
       ({ name: name1 }) => !labels.some(({ name: name2 }) => name1 === name2)
     )
   }, [labels, labelsData])
+
+  useEffect(() => {
+    if (!labelsData) return
+
+    setLabels(
+      labelsData.filter(
+        (label) =>
+          label.id &&
+          defaultLabels.includes(typeof label.id === "number" ? label.id : parseInt(label.id))
+      )
+    )
+  }, [labelsData])
 
   const searchingLabels = useMemo(() => {
     return withoutDublicateLabels.filter((label) =>

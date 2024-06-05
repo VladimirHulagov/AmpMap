@@ -42,6 +42,7 @@ class V1RootView(APIRootView):
         return Response({
             'projects': reverse('api:v1:project-list', request=request, format=format),
             'labels': reverse('api:v1:label-list', request=request, format=format),
+            'custom-attributes': reverse('api:v1:customattribute-list', request=request, format=format),
             'suites': reverse('api:v1:testsuite-list', request=request, format=format),
             'cases': reverse('api:v1:testcase-list', request=request, format=format),
             'tests': reverse('api:v1:test-list', request=request, format=format),

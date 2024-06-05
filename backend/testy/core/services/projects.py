@@ -31,20 +31,29 @@
 
 from typing import Any, Dict
 
+from django.db import transaction
+
 from testy.core.models import Project
 from testy.core.services.media import MediaService
+from testy.users.models import User
+from testy.users.selectors.roles import RoleSelector
+from testy.users.services.roles import RoleService
 
 
 class ProjectService(MediaService):
-    non_side_effect_fields = ['name', 'description', 'is_archive', 'icon']
+    non_side_effect_fields = ['name', 'description', 'is_archive', 'icon', 'settings', 'is_private']
 
-    def project_create(self, data: Dict[str, Any]) -> Project:
+    @transaction.atomic
+    def project_create(self, data: dict[str, Any], user: User) -> Project:
         project = Project.model_create(
             fields=self.non_side_effect_fields,
             data=data,
         )
         self.populate_image_thumbnails(project.icon)
         project.save()
+        if not user.is_superuser:
+            role = RoleSelector.admin_user_role()
+            RoleService.roles_assign(payload={'project': project, 'user': user, 'roles': [role]})
         return project
 
     def project_update(self, project: Project, data: Dict[str, Any]) -> Project:

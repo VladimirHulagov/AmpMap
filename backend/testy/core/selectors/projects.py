@@ -28,14 +28,19 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
+from typing import Optional
 
-from django.db.models import Case, IntegerField, OuterRef, Q, QuerySet, Value, When
+from django.db.models import Case, Exists, IntegerField, OuterRef, Q, QuerySet, Value, When
 from rest_framework.generics import get_object_or_404
 
+from testy.core.exceptions import UserMissingError
 from testy.core.models import Project
 from testy.tests_description.models import TestCase, TestSuite
 from testy.tests_representation.models import Test, TestPlan
 from testy.tests_representation.selectors.results import TestResultSelector
+from testy.users.choices import UserAllowedPermissionCodenames
+from testy.users.models import Membership, User
+from testy.users.selectors.roles import RoleSelector
 from testy.utilities.request import PeriodDateTime
 from testy.utilities.sql import SubCount
 
@@ -44,8 +49,15 @@ _PK = 'pk'
 
 class ProjectSelector:
 
+    def __init__(self, user: Optional[User] = None):
+        self._user = user
+
+    def project_list(self) -> QuerySet[Project]:
+        qs = self._user_project_qs()
+        return qs.order_by('name')
+
     @classmethod
-    def project_list(cls) -> QuerySet[Project]:
+    def project_list_raw(cls) -> QuerySet[Project]:
         return Project.objects.all().order_by('name')
 
     @classmethod
@@ -56,27 +68,45 @@ class ProjectSelector:
     def project_by_id(cls, project_id: int) -> Project:
         return get_object_or_404(Project, pk=project_id)
 
-    @classmethod
-    def project_list_statistics(cls):
-        cases_count = TestCase.objects.filter(project_id=OuterRef(_PK), is_archive=False).values(_PK)
+    def project_list_statistics(self):
+        cases_count = TestCase.objects.filter(project_id=OuterRef(_PK), is_archive=False).values(_PK)  # noqa: WPS204
         suites_count = TestSuite.objects.filter(project_id=OuterRef(_PK)).values(_PK)
         plans_count = TestPlan.objects.filter(project_id=OuterRef(_PK), is_archive=False).values(_PK)
         tests_count = Test.objects.filter(project_id=OuterRef(_PK), is_archive=False).values(_PK)
-        return Project.objects.annotate(
+        membership_exists = Exists(
+            Membership.objects.filter(user__pk=self._user.pk, project=OuterRef(_PK)),
+        )
+        visible_condition = Case(
+            When(
+                condition=membership_exists | Value(self._user.is_superuser) | Q(is_private=False),
+                then=True,
+            ),
+            default=False,
+        )
+        qs = self._user_project_qs()
+        return qs.annotate(
             cases_count=SubCount(cases_count),
             suites_count=SubCount(suites_count),
             plans_count=SubCount(plans_count),
             tests_count=SubCount(tests_count),
-        )
+            is_visible=visible_condition,
+            is_manageable=Value(True) if self._user.is_superuser else Exists(
+                Membership.objects.filter(
+                    user__pk=self._user.pk,
+                    project=OuterRef(_PK),
+                    role__permissions__codename=UserAllowedPermissionCodenames.CHANGE_PROJECT,
+                ),
+            ),
+        ).distinct()
 
-    @classmethod
-    def all_projects_statistic(cls):
+    def all_projects_statistic(self):
+        projects = self._user_project_qs().filter(is_archive=False)
         return {
-            'projects_count': Project.objects.filter(is_archive=False).count(),
-            'cases_count': TestCase.objects.filter(is_archive=False).count(),
-            'suites_count': TestSuite.objects.count(),
-            'plans_count': TestPlan.objects.filter(is_archive=False).count(),
-            'tests_count': Test.objects.filter(is_archive=False).count(),
+            'projects_count': projects.count(),
+            'cases_count': TestCase.objects.filter(is_archive=False, project__in=projects).count(),
+            'suites_count': TestSuite.objects.filter(project__in=projects).count(),
+            'plans_count': TestPlan.objects.filter(is_archive=False, project__in=projects).count(),
+            'tests_count': Test.objects.filter(is_archive=False, project__in=projects).count(),
         }
 
     def project_progress(self, project_id: int, period: PeriodDateTime):
@@ -111,3 +141,10 @@ class ProjectSelector:
             plan__tree_id=OuterRef('tree_id'),
             last_status__isnull=False,
         ).values(_PK)
+
+    def _user_project_qs(self, manager_name: str = 'objects') -> QuerySet[Project]:
+        if not self._user:
+            raise UserMissingError('User must be set to get queryset')
+        is_external = RoleSelector.restricted_project_access(self._user)
+        manager = getattr(Project, manager_name)
+        return manager.filter(members=self._user) if is_external else manager.all()

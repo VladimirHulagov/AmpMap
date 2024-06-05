@@ -29,6 +29,7 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 import datetime
+import re
 
 import pytimeparse
 from django.core import exceptions
@@ -40,6 +41,7 @@ from testy.utilities.time import WorkTimeProcessor
 
 class BaseEstimateField(models.Field):
     default_error_message = 'Invalid value for estimate.'
+    estimate_day_regexs = [r'.*\d+\s*(d|days).*', r'\d+:\d+:\d+:\d+(\.\d+)?']
     default_type = None
 
     def to_python(self, value):
@@ -74,12 +76,13 @@ class BaseEstimateField(models.Field):
         if value.isnumeric():
             value = f'{value}m'
 
-        seconds = pytimeparse.parse(value)
+        seconds_by_wd = pytimeparse.parse(value)
 
-        seconds_by_wd = WorkTimeProcessor.seconds_to_day(int(seconds))
-
-        if not seconds:
+        if not seconds_by_wd:
             return None, None
+
+        if any(re.match(regex, value) for regex in cls.estimate_day_regexs):
+            seconds_by_wd = WorkTimeProcessor.seconds_to_day(int(seconds_by_wd))
 
         try:
             datetime.timedelta(seconds=seconds_by_wd)

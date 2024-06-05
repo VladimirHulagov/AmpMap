@@ -1,14 +1,19 @@
 import { PieChartOutlined, SettingOutlined, TableOutlined, UserOutlined } from "@ant-design/icons"
-import { Layout, Menu, MenuProps } from "antd"
-import { Link, Outlet } from "react-router-dom"
+import { Layout, Menu, MenuProps, notification } from "antd"
+import { useEffect } from "react"
+import { Link, Outlet, useSearchParams } from "react-router-dom"
 import { FooterView as Footer, HeaderView, SystemMessages } from "widgets"
+
+import { useAppSelector } from "app/hooks"
+
+import { selectUser } from "entities/auth/model"
 
 import { MenuContext } from "."
 import { useMain } from "./model/use-main"
 
 const { Content, Sider } = Layout
 
-const menuProps: MenuProps = {
+const getMenuProps = (user: User | null): MenuProps => ({
   mode: "inline",
   items: [
     {
@@ -34,23 +39,39 @@ const menuProps: MenuProps = {
           icon: <TableOutlined />,
           key: "administration.projects",
         },
-        {
-          label: (
-            <Link to="/administration/users" id="sidebar-administration-users-btn">
-              Users
-            </Link>
-          ),
-          icon: <UserOutlined />,
-          key: "administration.users",
-        },
+        user?.is_superuser
+          ? {
+              label: (
+                <Link to="/administration/users" id="sidebar-administration-users-btn">
+                  Users
+                </Link>
+              ),
+              icon: <UserOutlined />,
+              key: "administration.users",
+            }
+          : null,
       ],
     },
   ],
-}
+})
 
 export const Main = () => {
   const { collapsed, activeMenu, openSubMenu, onHandleCollapsed, setActiveMenu, setOpenSubMenu } =
     useMain()
+  const user = useAppSelector(selectUser)
+
+  const [searchParams] = useSearchParams()
+  const { error, errorPage } = Object.fromEntries(searchParams)
+  useEffect(() => {
+    if (error === "403") {
+      notification.error({
+        message: "Error",
+        description: `You do not have permission to access ${errorPage ?? "this"} page`,
+      })
+      searchParams.delete("errorPage")
+      searchParams.delete("error")
+    }
+  }, [error])
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
@@ -61,7 +82,7 @@ export const Main = () => {
             {...{
               selectedKeys: activeMenu,
               onOpenChange: setOpenSubMenu,
-              ...menuProps,
+              ...getMenuProps(user),
             }}
           />
         </Sider>

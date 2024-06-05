@@ -29,10 +29,20 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 from hashlib import sha256
+from typing import Optional
 
 
 def parse_bool_from_str(value):
     return str(value).lower() in {'1', 'yes', 'true'}
+
+
+def parse_int(value: str) -> Optional[int]:
+    if not isinstance(value, str):
+        raise TypeError(f'Value "{value}" must be a str instance.')
+    try:
+        return int(value)
+    except ValueError:
+        return None
 
 
 def get_sha256_from_value(value: str) -> str:

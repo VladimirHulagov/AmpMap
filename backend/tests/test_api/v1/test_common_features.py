@@ -29,17 +29,20 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 
-import json
 import operator
 from http import HTTPStatus
 
 import pytest
-from tests_description.api.v1.serializers import TestCaseSerializer, TestSuiteSerializer
-from tests_representation.api.v1.serializers import ParameterSerializer, TestPlanOutputSerializer, TestResultSerializer
 
 from tests import constants
 from tests.commons import model_to_dict_via_serializer
-from tests.mock_serializers import TestMockSerializer
+from tests.mock_serializers import TestCaseMockSerializer, TestMockSerializer
+from testy.tests_description.api.v1.serializers import TestSuiteSerializer
+from testy.tests_representation.api.v1.serializers import (
+    ParameterSerializer,
+    TestPlanOutputSerializer,
+    TestResultSerializer,
+)
 
 
 @pytest.mark.django_db
@@ -49,16 +52,20 @@ class TestCommonFeatures:
     test_list_view = 'api:v1:test-list'
     result_list_view = 'api:v1:testresult-list'
 
-    @pytest.mark.parametrize('factory_name, view_name, serializer_class, is_paginated', [
-        ('test_case_factory', 'api:v1:testcase-list', TestCaseSerializer, True),
-        ('test_suite_factory', 'api:v1:testsuite-list', TestSuiteSerializer, True),
-        ('test_plan_factory', 'api:v1:testplan-list', TestPlanOutputSerializer, True),
-        ('test_factory', 'api:v1:test-list', TestMockSerializer, True),
-        ('parameter_factory', 'api:v1:parameter-list', ParameterSerializer, False),
-        ('test_result_factory', 'api:v1:testresult-list', TestResultSerializer, False),
-    ], ids=['Test case', 'Test suite', 'Test plan', 'Test', 'Parameter', 'Test result'])
-    def test_project_filter(self, api_client, authorized_superuser, factory_name, project_factory, view_name,
-                            serializer_class, request, is_paginated):
+    @pytest.mark.parametrize(
+        'factory_name, view_name, serializer_class, is_paginated', [
+            ('test_case_factory', 'api:v1:testcase-list', TestCaseMockSerializer, True),
+            ('test_suite_factory', 'api:v1:testsuite-list', TestSuiteSerializer, True),
+            ('test_plan_factory', 'api:v1:testplan-list', TestPlanOutputSerializer, True),
+            ('test_factory', 'api:v1:test-list', TestMockSerializer, True),
+            ('parameter_factory', 'api:v1:parameter-list', ParameterSerializer, False),
+            ('test_result_factory', 'api:v1:testresult-list', TestResultSerializer, False),
+        ], ids=['Test case', 'Test suite', 'Test plan', 'Test', 'Parameter', 'Test result'],
+    )
+    def test_project_filter(
+        self, api_client, authorized_superuser, factory_name, project_factory, view_name,
+        serializer_class, request, is_paginated,
+    ):
         factory = request.getfixturevalue(factory_name)
         project1 = project_factory()
         project2 = project_factory()
@@ -73,28 +80,29 @@ class TestCommonFeatures:
                 expected_status=HTTPStatus.OK,
                 query_params={
                     'project': project.id,
-                }
+                },
             )
             expected_dictionaries = (
                 model_to_dict_via_serializer(expected_instances, serializer_class, many=True)
                 .sort(key=operator.itemgetter('id'))
             )
-            data = json.loads(response.content)
+            data = response.json()
             actual_data = (data['results'] if is_paginated else data).sort(key=operator.itemgetter('id'))
             assert actual_data == expected_dictionaries
 
     @pytest.mark.parametrize(
         'factory_name, filter_name_factory_pair, view_name, serializer_class, is_paginated',
         [
-
-            ('test_case_factory', ('suite', 'test_suite_factory'), 'api:v1:testcase-{0}', TestCaseSerializer, True),
+            ('test_case_factory', ('suite', 'test_suite_factory'), 'api:v1:testcase-{0}', TestCaseMockSerializer, True),
             ('test_factory', ('plan', 'test_plan_factory'), 'api:v1:test-{0}', TestMockSerializer, True),
             ('test_result_factory', ('test', 'test_factory'), 'api:v1:testresult-{0}', TestResultSerializer, False),
         ],
-        ids=['Test case', 'Test suite', 'Test result']
+        ids=['Test case', 'Test suite', 'Test result'],
     )
-    def test_filter_classes(self, api_client, authorized_superuser, project, factory_name, filter_name_factory_pair,
-                            view_name, serializer_class, request, is_paginated):
+    def test_filter_classes(
+        self, api_client, authorized_superuser, project, factory_name, filter_name_factory_pair,
+        view_name, serializer_class, request, is_paginated,
+    ):
 
         filter_name, parent_factory_name = filter_name_factory_pair
         factory = request.getfixturevalue(factory_name)
@@ -108,26 +116,26 @@ class TestCommonFeatures:
 
         for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
             expected_instances_parent_1.append(
-                factory(project=project, **{filter_name: parent_object1})
+                factory(project=project, **{filter_name: parent_object1}),
             )
             expected_instances_parent_2.append(
-                factory(project=project, **{filter_name: parent_object2})
+                factory(project=project, **{filter_name: parent_object2}),
             )
         api_client.send_request(list_view_name, expected_status=HTTPStatus.NOT_FOUND)
 
         api_client.send_request(
             detail_view_name,
             expected_status=HTTPStatus.OK,
-            reverse_kwargs={'pk': expected_instances_parent_1[0].id}
+            reverse_kwargs={'pk': expected_instances_parent_1[0].id},
         )
         api_client.send_request(
             list_view_name,
             expected_status=HTTPStatus.NOT_FOUND,
-            query_params={filter_name: parent_object1.id}
+            query_params={filter_name: parent_object1.id},
         )
         parent_to_expected_list = [
             (parent_object1, expected_instances_parent_1),
-            (parent_object2, expected_instances_parent_2)
+            (parent_object2, expected_instances_parent_2),
         ]
         for parent_object, expected_instances in parent_to_expected_list:
             response = api_client.send_request(
@@ -135,14 +143,14 @@ class TestCommonFeatures:
                 expected_status=HTTPStatus.OK,
                 query_params={
                     'project': project.id,
-                    filter_name: parent_object.id
-                }
+                    filter_name: parent_object.id,
+                },
             )
             expected_dictionaries = (
                 model_to_dict_via_serializer(expected_instances, serializer_class, many=True)
                 .sort(key=operator.itemgetter('id'))
             )
-            data = json.loads(response.content)
+            data = response.json()
             actual_data = (data['results'] if is_paginated else data).sort(key=operator.itemgetter('id'))
             assert actual_data == expected_dictionaries
 
@@ -154,10 +162,12 @@ class TestCommonFeatures:
             ('test_plan_factory', plan_list_view),
             ('test_factory', test_list_view),
         ],
-        ids=['Project view', 'Test plan view', 'Test view']
+        ids=['Project view', 'Test plan view', 'Test view'],
     )
-    def test_archive_filter(self, api_client, authorized_superuser, factory_name, view, project, request,
-                            is_archive_flag):
+    def test_archive_filter(
+        self, api_client, authorized_superuser, factory_name, view, project, request,
+        is_archive_flag,
+    ):
         factory = request.getfixturevalue(factory_name)
 
         factory_args_archive = {'project': project}
@@ -172,20 +182,17 @@ class TestCommonFeatures:
             expected_number_of_objects += 1
         for idx in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
             factory(is_archive=bool(idx % 2), **factory_args_archive)
-        content = json.loads(
-            api_client.send_request(
-                view,
-                query_params=query_params
-            )
-            .content
-        )
+        content = api_client.send_request(
+            view,
+            query_params=query_params,
+        ).json()
         if isinstance(content, dict):
             content = content['results']
-        if not is_archive_flag:
+        if is_archive_flag:
+            assert len(content) == expected_number_of_objects, 'Not all objects were given with is_archive True.'
+        else:
             for elem in content:
                 assert not elem['is_archive'], 'Got archived instance when is_archive False or not provided.'
-        else:
-            assert len(content) == expected_number_of_objects, 'Not all objects were given with is_archive True.'
 
     @pytest.mark.parametrize('is_archive_flag', [None, 0, 1], ids=['No flag', 'Negative flag', 'Positive flag'])
     def test_archive_treeview(self, api_client, authorized_superuser, test_plan_factory, project, is_archive_flag):
@@ -205,14 +212,11 @@ class TestCommonFeatures:
         }
         if query_params is not None:
             query_params['is_archive'] = is_archive_flag
-        content = json.loads(
-            api_client.send_request(
-                self.plan_list_view,
-                query_params=query_params
-            )
-            .content
-        )['results']
-        if not is_archive_flag:
+        content = api_client.send_request(
+            self.plan_list_view,
+            query_params=query_params,
+        ).json()['results']
+        if not is_archive_flag:  # noqa: WPS504
             for plan_lvl_0 in content:
                 assert not plan_lvl_0['is_archive'], 'Not archived plan was found at 0 depth'
                 for plan_lvl_1 in plan_lvl_0['children']:

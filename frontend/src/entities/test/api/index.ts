@@ -2,6 +2,8 @@ import { createApi } from "@reduxjs/toolkit/dist/query/react"
 
 import { baseQueryWithLogout } from "app/apiSlice"
 
+import { invalidatesList } from "shared/libs"
+
 import { setTest } from "../model"
 
 const rootPath = "v1/tests"
@@ -46,16 +48,9 @@ export const testApi = createApi({
         method: "PATCH",
         body,
       }),
-      invalidatesTags: (result, _, { id }) =>
-        result
-          ? [
-              { type: "Test", id },
-              { type: "Test", id: "LIST" },
-            ]
-          : [{ type: "Test", id: "LIST" }],
+      invalidatesTags: (result) => invalidatesList(result, "Test"),
     }),
   }),
 })
 
-export const { useLazyGetTestsQuery, useGetTestQuery, useLazyGetTestQuery, useUpdateTestMutation } =
-  testApi
+export const { useLazyGetTestsQuery, useLazyGetTestQuery, useUpdateTestMutation } = testApi

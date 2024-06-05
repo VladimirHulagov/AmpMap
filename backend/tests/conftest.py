@@ -28,18 +28,17 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-import json
 import os
 import shutil
 from http import HTTPStatus
+from pathlib import Path
 from unittest import mock
 
 import pytest
+from django.contrib.auth.models import Permission
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
 from pytest_factoryboy import register
-from tests_representation.choices import TestStatuses
-from tests_representation.models import TestResult
 
 from tests import constants
 from tests.commons import CustomAPIClient, RequestType
@@ -52,11 +51,15 @@ from tests.factories import (
     CommentTestPlanFactory,
     CommentTestResultFactory,
     CommentTestSuiteFactory,
+    CustomAttributeFactory,
     GroupFactory,
     LabeledItemFactory,
     LabelFactory,
+    MembershipFactory,
     ParameterFactory,
+    PermissionFactory,
     ProjectFactory,
+    RoleFactory,
     SystemMessageFactory,
     TestCaseFactory,
     TestCaseWithStepsFactory,
@@ -64,9 +67,14 @@ from tests.factories import (
     TestPlanFactory,
     TestPlanWithParametersFactory,
     TestResultFactory,
+    TestResultWithStepsFactory,
     TestSuiteFactory,
     UserFactory,
 )
+from testy.core.selectors.custom_attribute import CustomAttributeSelector
+from testy.tests_representation.choices import TestStatuses
+from testy.tests_representation.models import TestResult
+from testy.users.choices import UserAllowedPermissionCodenames
 
 register(ParameterFactory)
 register(ProjectFactory)
@@ -90,6 +98,11 @@ register(CommentTestSuiteFactory)
 register(CommentTestPlanFactory)
 register(CommentTestResultFactory)
 register(SystemMessageFactory)
+register(RoleFactory)
+register(MembershipFactory)
+register(CustomAttributeFactory)
+register(PermissionFactory)
+register(TestResultWithStepsFactory)
 
 
 @pytest.fixture
@@ -113,9 +126,22 @@ def authorized_superuser(api_client, superuser):
 
 
 @pytest.fixture
+def authorized_client(api_client, user):
+    api_client.force_login(user)
+    return api_client
+
+
+@pytest.fixture
+def authorized_superuser_client(api_client, superuser):
+    user = superuser()
+    api_client.force_login(user)
+    return api_client
+
+
+@pytest.fixture
 def test_plan_from_api(api_client, authorized_superuser, test_plan):
     response = api_client.send_request('api:v1:testplan-detail', reverse_kwargs={'pk': test_plan.id})
-    return json.loads(response.content)
+    return response.json()
 
 
 @pytest.fixture
@@ -136,29 +162,30 @@ def several_test_plans_from_api(api_client, authorized_superuser, parameter_fact
     for _ in range(3):
         parameters.append(parameter_factory().id)
 
-    test_plans = []
+    test_plan_ids = []
     for idx in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
         testplan_dict = {
             'name': f'Test plan {idx}',
-            'due_date': constants.DATE,
+            'due_date': constants.END_DATE,
             'started_at': constants.DATE,
             'parameters': parameters,
-            'project': project.id
+            'project': project.id,
         }
         response = api_client.send_request('api:v1:testplan-list', testplan_dict, HTTPStatus.CREATED, RequestType.POST)
-        test_plans.append(json.loads(response.content)[0])
-
-    return test_plans, project.id
+        test_plan_ids.extend(plan['id'] for plan in response.json())
+    yield test_plan_ids
 
 
 @pytest.fixture
-def generate_objects(project, project_factory, test_plan_factory, test_result_factory, test_suite_factory,
-                     test_case_factory, parameter_factory, test_factory):
+def generate_objects(
+    project, project_factory, test_plan_factory, test_result_factory, test_suite_factory,
+    test_case_factory, parameter_factory, test_factory,
+):
     cases = []
     parameters = [parameter_factory(project=project) for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE)]
     for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
         parameter_factory(project=project)
-    for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
+    for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE + 5):
         project_factory()
     for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
         parent = test_suite_factory(project=project)
@@ -179,9 +206,10 @@ def generate_objects(project, project_factory, test_plan_factory, test_result_fa
 
 @pytest.fixture
 def create_file(extension, media_directory):
-    with open('tests/media_for_tests/test.png', 'rb') as file:
+    media_path = Path(__file__).resolve().parent
+    with open(media_path / 'media_for_tests' / 'test.png', 'rb') as file:
         png_bin = file.read()
-    with open('tests/media_for_tests/test.jpeg', 'rb') as file:
+    with open(media_path / 'media_for_tests' / 'test.jpeg', 'rb') as file:
         jpeg_bin = file.read()
     extension_to_content_type = {
         '.txt': ('text/plain', b'Test content'),
@@ -194,7 +222,7 @@ def create_file(extension, media_directory):
     file = SimpleUploadedFile(
         name,
         extension_to_content_type[extension][1],
-        content_type=extension_to_content_type[extension][0]
+        content_type=extension_to_content_type[extension][0],
     )
     yield file
 
@@ -209,8 +237,10 @@ def media_directory(settings):
 
 
 @pytest.fixture
-def data_for_cascade_tests_behaviour(project, test_plan_factory, test_suite_factory,
-                                     test_case_factory, test_factory, test_result_factory):
+def data_for_cascade_tests_behaviour(
+    project, test_plan_factory, test_suite_factory,
+    test_case_factory, test_factory, test_result_factory,
+):
     parent_plan = test_plan_factory(project=project)
     test_suite = test_suite_factory(project=project)
     test_case1 = test_case_factory(project=project, suite=test_suite)
@@ -218,10 +248,10 @@ def data_for_cascade_tests_behaviour(project, test_plan_factory, test_suite_fact
     expected_objects = {
         'project': [project],
         'testplan': [parent_plan],
-        'suite': [test_suite],
-        'case': [test_case1, test_case2],
+        'testsuite': [test_suite],
+        'testcase': [test_case1, test_case2],
         'test': [],
-        'result': []
+        'result': [],
     }
     child_test_plans = []
     for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
@@ -276,8 +306,8 @@ def generate_historical_objects(test_plan_factory, test_factory, test_result_fac
 def multiple_plans_data_project_statistics(project, test_plan_factory, test_result_factory, test_factory):
     root_plans = []
     with mock.patch(
-            'django.utils.timezone.now',
-            return_value=timezone.make_aware(timezone.datetime(2000, 1, 2), timezone.utc)
+        'django.utils.timezone.now',
+        return_value=timezone.make_aware(timezone.datetime(2000, 1, 2), timezone.utc),
     ):
         for _ in range(5):
             plan = test_plan_factory(project=project)
@@ -285,8 +315,8 @@ def multiple_plans_data_project_statistics(project, test_plan_factory, test_resu
             root_plans.append(plan)
     plans_depth_1 = []
     with mock.patch(
-            'django.utils.timezone.now',
-            return_value=timezone.make_aware(timezone.datetime(2000, 1, 4), timezone.utc)
+        'django.utils.timezone.now',
+        return_value=timezone.make_aware(timezone.datetime(2000, 1, 4), timezone.utc),
     ):
         for parent_plan in root_plans:
             plan = test_plan_factory(project=project, parent=parent_plan)
@@ -294,21 +324,21 @@ def multiple_plans_data_project_statistics(project, test_plan_factory, test_resu
             plans_depth_1.append(plan)
     plans_depth_2 = []
     with mock.patch(
-            'django.utils.timezone.now',
-            return_value=timezone.make_aware(timezone.datetime(2000, 1, 4), timezone.utc)
+        'django.utils.timezone.now',
+        return_value=timezone.make_aware(timezone.datetime(2000, 1, 4), timezone.utc),
     ):
         for parent_plan in plans_depth_1:
             plan = test_plan_factory(project=project, parent=parent_plan)
             test_result_factory(test=test_factory(plan=plan), project=project)
             plans_depth_2.append(plan)
     start_date = timezone.datetime(2000, 1, 1).isoformat()
-    end_date = timezone.datetime(2000, 1, 3).isoformat(),
+    end_date = timezone.datetime(2000, 1, 3).isoformat()
     expected = [
         {
             'id': plan.id,
             'tests_total': 3,
             'tests_progress_period': 1,
-            'tests_progress_total': 3
+            'tests_progress_total': 3,
         } for plan in root_plans
     ]
     return expected, start_date, end_date
@@ -319,25 +349,25 @@ def result_filter_data_project_statistics(project, test_plan_factory, test_resul
     root_plan = test_plan_factory(project=project)
     child_plan = test_plan_factory(project=project, parent=root_plan)
     with mock.patch(
-            'django.utils.timezone.now',
-            return_value=timezone.make_aware(timezone.datetime(2000, 1, 2), timezone.utc)
+        'django.utils.timezone.now',
+        return_value=timezone.make_aware(timezone.datetime(2000, 1, 2), timezone.utc),
     ):
         for _ in range(3):
             test_result_factory(test=test_factory(plan=child_plan), project=project)
     with mock.patch(
-            'django.utils.timezone.now',
-            return_value=timezone.make_aware(timezone.datetime(2000, 1, 4), timezone.utc)
+        'django.utils.timezone.now',
+        return_value=timezone.make_aware(timezone.datetime(2000, 1, 4), timezone.utc),
     ):
         test_result_factory(test=test_factory(plan=child_plan), project=project)
 
     start_date = timezone.datetime(2000, 1, 1).isoformat()
-    end_date = timezone.datetime(2000, 1, 3).isoformat(),
+    end_date = timezone.datetime(2000, 1, 3).isoformat()
     expected = [
         {
             'id': plan.id,
             'tests_total': 3,
             'tests_progress_period': 1,
-            'tests_progress_total': 3
+            'tests_progress_total': 3,
         } for plan in [root_plan, child_plan]
     ]
     return expected, start_date, end_date
@@ -349,13 +379,13 @@ def data_different_statuses_project_statistics(project, test_plan_factory, test_
     child_plan = test_plan_factory(project=project, parent=root_plan)
     for day, status in zip(range(2, 12, 2), TestStatuses.values):
         with mock.patch(
-                'django.utils.timezone.now',
-                return_value=timezone.make_aware(timezone.datetime(2000, 1, day), timezone.utc)
+            'django.utils.timezone.now',
+            return_value=timezone.make_aware(timezone.datetime(2000, 1, day), timezone.utc),
         ):
             test_result_factory(test=test_factory(plan=child_plan), project=project, status=status)
 
     start_date = timezone.datetime(2000, 1, 11).isoformat()
-    end_date = timezone.datetime(2000, 1, 13).isoformat(),
+    end_date = timezone.datetime(2000, 1, 13).isoformat()
     expected = [
         {
             'tests_total': 7,
@@ -372,8 +402,8 @@ def empty_plan_data_project_statistics(project, test_plan_factory, test_result_f
     root_plan = test_plan_factory(project=project)
     root_plan_2 = test_plan_factory(project=project, parent=root_plan)
     with mock.patch(
-            'django.utils.timezone.now',
-            return_value=timezone.make_aware(timezone.datetime(2000, 1, 2), timezone.utc)
+        'django.utils.timezone.now',
+        return_value=timezone.make_aware(timezone.datetime(2000, 1, 2), timezone.utc),
     ):
         test_result_factory(test=test_factory(plan=root_plan_2), project=project)
 
@@ -391,7 +421,7 @@ def empty_plan_data_project_statistics(project, test_plan_factory, test_result_f
             'id': root_plan_2.id,
             'tests_progress_period': 1,
             'tests_progress_total': 1,
-        }
+        },
     ]
     return expected, start_date, end_date
 
@@ -399,7 +429,79 @@ def empty_plan_data_project_statistics(project, test_plan_factory, test_result_f
 @pytest.fixture
 def use_dummy_cache_backend(settings):
     settings.CACHES = {
-        "default": {
-            "BACKEND": "django.core.cache.backends.dummy.DummyCache",
-        }
+        'default': {
+            'BACKEND': 'django.core.cache.backends.dummy.DummyCache',
+        },
     }
+
+
+@pytest.fixture
+def cases_with_labels(
+    label_factory,
+    test_plan_factory,
+    labeled_item_factory,
+    test_case_factory,
+    test_result_factory,
+    test_factory,
+    project,
+):
+    test_plan = test_plan_factory(project=project)
+    label_blue_bank = label_factory(name='blue_bank')
+    label_green_bank = label_factory(name='green_bank ')
+    label_red_bank = label_factory(name='red_bank')
+    test_cases = [test_case_factory(project=project) for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE)]
+    for idx in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
+        if not idx % 2:
+            labeled_item_factory(label=label_blue_bank, content_object=test_cases[idx])
+        if not idx % 3:
+            labeled_item_factory(label=label_green_bank, content_object=test_cases[idx])
+        if not idx % 5:
+            labeled_item_factory(label=label_red_bank, content_object=test_cases[idx])
+        test_result_factory(
+            test=test_factory(plan=test_plan, case=test_cases[idx], project=project),
+            status=TestStatuses.PASSED,
+            project=project,
+        )
+    return [label_blue_bank, label_green_bank, label_red_bank], test_cases, test_plan
+
+
+@pytest.fixture
+def test_suite_with_cases(test_suite, test_case_factory):
+    for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
+        test_case_factory(suite=test_suite)
+    return test_suite
+
+
+@pytest.fixture
+def member(role_factory):
+    yield role_factory(
+        name='Member',
+        permissions=Permission.objects.filter(
+            codename__in=[
+                UserAllowedPermissionCodenames.VIEW_PROJECT,
+                UserAllowedPermissionCodenames.ADD_RESULT,
+                UserAllowedPermissionCodenames.CHANGE_RESULT,
+            ],
+        ),
+    )
+
+
+@pytest.fixture
+def admin(role_factory):
+    yield role_factory(
+        name='Admin',
+        permissions=Permission.objects.filter(
+            codename__in=UserAllowedPermissionCodenames.values,
+        ),
+    )
+
+
+@pytest.fixture
+def allowed_content_types():
+    return list(CustomAttributeSelector.get_allowed_content_types().values_list('id', flat=True))
+
+
+@pytest.fixture(autouse=True, scope='session')
+def mock_project_access_email():
+    with mock.patch('testy.root.tasks.project_access_email.delay') as project_access_mock:
+        yield project_access_mock

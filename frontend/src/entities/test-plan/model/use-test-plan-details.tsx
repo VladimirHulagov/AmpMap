@@ -6,7 +6,7 @@ import { useAppDispatch, useAppSelector } from "app/hooks"
 import { useLazyGetTestQuery } from "entities/test/api"
 import { selectTest, setTest } from "entities/test/model"
 
-import { useGetTestPlanTreeViewQuery } from "entities/test-plan/api"
+import { useGetTestPlanQuery } from "entities/test-plan/api"
 
 import { useUserConfig } from "entities/user/model"
 
@@ -15,7 +15,7 @@ export const useTestPlanDetails = () => {
   const test = useAppSelector(selectTest)
   const { userConfig } = useUserConfig()
   const { projectId, testPlanId } = useParams<ParamProjectId & ParamTestPlanId>()
-  const { data: testPlan, isLoading } = useGetTestPlanTreeViewQuery(
+  const { data: testPlan, isLoading } = useGetTestPlanQuery(
     {
       testPlanId: testPlanId ?? "",
       is_archive: userConfig.test_plans.is_show_archived,

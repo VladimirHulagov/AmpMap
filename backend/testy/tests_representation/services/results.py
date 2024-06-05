@@ -36,6 +36,7 @@ from django.db import transaction
 from testy.core.services.attachments import AttachmentService
 from testy.tests_description.selectors.cases import TestCaseSelector
 from testy.tests_representation.models import TestResult, TestStepResult
+from testy.tests_representation.signals import pre_create_result
 from testy.users.models import User
 
 
@@ -48,6 +49,7 @@ class TestResultService:
 
     @transaction.atomic
     def result_create(self, data: Dict[str, Any], user: User) -> TestResult:
+        pre_create_result.send(sender=self.result_create, data=data)
         test_result: TestResult = TestResult.model_create(
             fields=self.non_side_effect_fields,
             data=data,

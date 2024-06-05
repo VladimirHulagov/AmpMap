@@ -59,7 +59,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
-VERSION = '1.2.15'
+VERSION = '1.3.1'
 
 loaded_hosts = os.environ.get('ALLOWED_HOSTS', [])
 
@@ -248,8 +248,6 @@ CORS_ALLOW_ALL_ORIGINS = True
 # Company
 COMPANY_DOMAIN = os.environ.get('COMPANY_DOMAIN')
 
-TEST_RESULT_UPDATE_GAP = 1  # hours otherwise may be None
-
 SESSION_COOKIE_AGE = 12 * 60 * 60  # 12 hours
 
 SESSION_COOKIE_AGE_REMEMBER_ME = 365 * 24 * 60 * 60  # 365 days
@@ -331,3 +329,16 @@ for config in PLUGIN_CONFIGS:
     INSTALLED_APPS.append(config.package_name)
     if config.middlewares:
         MIDDLEWARE.extend(config.middlewares)
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_USE_TLS = True
+EMAIL_HOST = os.getenv('EMAIL_HOST')
+EMAIL_PORT = os.getenv('EMAIL_PORT')
+DEFAULT_FROM_EMAIL = os.getenv('EMAIL_HOST_USER')
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+
+ADMIN_ROLE_NAME = 'Admin'
+
+IS_RESULT_EDITABLE = True
+RESULT_EDIT_LIMIT = 60 * 60

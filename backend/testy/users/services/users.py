@@ -41,7 +41,7 @@ _AVATAR = 'avatar'
 
 
 class UserService(MediaService):
-    non_side_effect_fields = ['username', 'first_name', 'last_name', 'email', 'is_staff', 'is_active', 'avatar']
+    non_side_effect_fields = ['username', 'first_name', 'last_name', 'email', 'is_superuser', 'is_active', 'avatar']
 
     def user_create(self, data: Dict[str, Any]) -> UserModel:
         user = UserModel.model_create(
@@ -55,7 +55,7 @@ class UserService(MediaService):
         self.populate_image_thumbnails(user.avatar)
         return user
 
-    def user_update(self, user: UserModel, data: Dict[str, Any]) -> UserModel:
+    def user_update(self, user: UserModel, data: dict[str, Any]) -> UserModel:
         user, _ = user.model_update(
             fields=self.non_side_effect_fields,
             data=data,

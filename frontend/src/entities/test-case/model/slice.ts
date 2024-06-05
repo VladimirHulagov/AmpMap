@@ -4,10 +4,7 @@ import { RootState } from "app/store"
 
 const initialState: TestCaseState = {
   drawerTestCase: null,
-  modal: {
-    isShow: false,
-    isEditMode: false,
-  },
+  editingTestCase: null,
 }
 
 export const testCaseSlice = createSlice({
@@ -25,20 +22,8 @@ export const testCaseSlice = createSlice({
     clearDrawerTestCase: (state) => {
       state.drawerTestCase = null
     },
-    showCreateModal: (state) => {
-      state.modal.isShow = true
-    },
-    showEditModal: (state) => {
-      state.modal = {
-        isShow: true,
-        isEditMode: true,
-      }
-    },
-    hideModal: (state) => {
-      state.modal = {
-        isShow: false,
-        isEditMode: false,
-      }
+    setEditingTestCase: (state, action: PayloadAction<TestCase | null>) => {
+      state.editingTestCase = action.payload
     },
   },
 })
@@ -46,14 +31,11 @@ export const testCaseSlice = createSlice({
 export const {
   setDrawerTestCase,
   clearDrawerTestCase,
-  showCreateModal,
-  showEditModal,
-  hideModal,
   setDrawerTestCaseIsArchive,
+  setEditingTestCase,
 } = testCaseSlice.actions
 
 export const testCaseReducer = testCaseSlice.reducer
 
 export const selectDrawerTestCase = (state: RootState) => state.testCase.drawerTestCase
-export const selectModalIsShow = (state: RootState) => state.testCase.modal.isShow
-export const selectModalIsEditMode = (state: RootState) => state.testCase.modal.isEditMode
+export const selectEditingTestCase = (state: RootState) => state.testCase.editingTestCase

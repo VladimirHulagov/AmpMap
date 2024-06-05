@@ -37,6 +37,7 @@ interface ITestGetWithFilters extends ITestGet {
   last_status?: string
   search?: string
   ordering?: string
+  nested_search?: boolean
 }
 
 interface TestTableParams {

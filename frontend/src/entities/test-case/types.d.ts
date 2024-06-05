@@ -1,9 +1,6 @@
 interface TestCaseState {
   drawerTestCase: TestCase | null
-  modal: {
-    isShow: boolean
-    isEditMode: boolean
-  }
+  editingTestCase: TestCase | null
 }
 
 interface TestCase {
@@ -26,6 +23,7 @@ interface TestCase {
   labels: LabelInForm[]
   is_archive: boolean
   test_suite_description?: string | null
+  attributes: AttributesObject
 }
 
 interface TestCaseCreate {
@@ -41,6 +39,7 @@ interface TestCaseCreate {
   estimate?: string
   description?: string
   attachments?: number[]
+  attributes?: AttributesObject
 }
 
 interface TestCaseUpdate extends TestCase {
@@ -84,6 +83,8 @@ interface GetTestCasesQuery {
   page_size?: number
   is_archive?: boolean
   treeview?: boolean
+  labels?: number[]
+  labels_condition?: "and" | "or"
 }
 
 interface SearchTestCasesQuery {
@@ -107,6 +108,7 @@ interface TestCaseFormData {
   steps?: Step[]
   is_steps?: boolean
   labels?: LabelInForm[]
+  attributes?: Attribute[]
 }
 
 interface TestCaseCopyBody {

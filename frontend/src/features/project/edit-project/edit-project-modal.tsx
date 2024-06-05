@@ -18,6 +18,7 @@ interface ErrorData {
   name?: string
   description?: string
   is_archive?: string
+  is_private?: string
 }
 
 interface Props {
@@ -40,6 +41,7 @@ export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
   const { onHandleError } = useErrors<ErrorData>(setErrors)
   const is_archive = watch("is_archive")
   const nameWatch = watch("name")
+  const isPrivate = watch("is_private")
   const [localIcon, setLocalIcon] = useState<string | null>(null)
 
   useEffect(() => {
@@ -47,6 +49,7 @@ export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
     setValue("description", project.description)
     setValue("is_archive", project.is_archive)
     setLocalIcon(project.icon ?? null)
+    setValue("is_private", project.is_private ?? false)
   }, [isShow, project])
 
   const onSubmit: SubmitHandler<Project> = async (data) => {
@@ -59,6 +62,9 @@ export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
       fmData.append("description", data.description)
       fmData.append("is_archive", String(data.is_archive))
       fmData.append("icon", data.icon ?? "")
+      if (project.is_manageable) {
+        fmData.append("is_private", String(data.is_private))
+      }
       const newProject = await updateProject({ id: project.id, body: fmData }).unwrap()
 
       onCloseModal()
@@ -151,7 +157,7 @@ export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
         {errors ? (
           <AlertError
             error={errors as ErrorObj}
-            skipFields={["name", "description", "is_archive"]}
+            skipFields={["name", "description", "is_archive", "is_private"]}
           />
         ) : null}
 
@@ -219,6 +225,19 @@ export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
               render={({ field }) => <Switch checked={is_archive} {...field} />}
             />
           </Form.Item>
+          {project.is_manageable && (
+            <Form.Item
+              label="Private"
+              validateStatus={errors?.is_private ? "error" : ""}
+              help={errors?.is_private ? errors.is_private : ""}
+            >
+              <Controller
+                name="is_private"
+                control={control}
+                render={({ field }) => <Switch checked={isPrivate} {...field} />}
+              />
+            </Form.Item>
+          )}
         </Form>
       </>
     </Modal>

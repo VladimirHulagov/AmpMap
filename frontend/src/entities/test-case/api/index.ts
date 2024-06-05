@@ -10,6 +10,8 @@ import { systemStatsInvalidate } from "entities/system/api"
 
 import { testPlanInvalidate } from "entities/test-plan/api"
 
+import { providesList } from "shared/libs"
+
 import { setDrawerTestCase, setDrawerTestCaseIsArchive } from "../model"
 
 const rootPath = "v1/cases"
@@ -24,16 +26,7 @@ export const testCaseApi = createApi({
         url: `${rootPath}/`,
         params,
       }),
-      providesTags: (result) =>
-        result
-          ? [
-              ...result.results.map(({ id }) => ({
-                type: "TestCase" as const,
-                id,
-              })),
-              { type: "TestCase", id: "LIST" },
-            ]
-          : [{ type: "TestCase", id: "LIST" }],
+      providesTags: (result) => providesList(result?.results, "TestCase"),
     }),
     searchTestCases: builder.query<SuiteWithCases[], GetTestCasesQuery>({
       query: (params) => ({
@@ -157,16 +150,7 @@ export const testCaseApi = createApi({
         url: `${rootPath}/${testCaseId}/history/`,
         params,
       }),
-      providesTags: (result) =>
-        result
-          ? [
-              ...result.results.map(({ version }) => ({
-                type: "TestCaseHistoryChanges" as const,
-                id: version,
-              })),
-              { type: "TestCaseHistoryChanges", id: "LIST" },
-            ]
-          : [{ type: "TestCaseHistoryChanges", id: "LIST" }],
+      providesTags: (result) => providesList(result?.results, "TestCaseHistoryChanges", "version"),
     }),
     getTestCaseTestsList: builder.query<
       PaginationResponse<TestsWithPlanBreadcrumbs[]>,
@@ -176,17 +160,7 @@ export const testCaseApi = createApi({
         url: `${rootPath}/${testCaseId}/tests/`,
         params,
       }),
-      providesTags: (result) =>
-        result
-          ? [
-              ...result.results.map(({ id }) => ({
-                type: "TestCaseTestsList" as const,
-                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                id,
-              })),
-              { type: "TestCaseTestsList", id: "LIST" },
-            ]
-          : [{ type: "TestCaseTestsList", id: "LIST" }],
+      providesTags: (result) => providesList(result?.results, "TestCaseTestsList"),
     }),
     restoreTestCase: builder.mutation<TestCase, { testCaseId: number; version: number }>({
       query: ({ testCaseId, ...body }) => ({
@@ -208,7 +182,6 @@ export const testCaseApi = createApi({
 
 export const {
   useGetTestCasesQuery,
-  useSearchTestCasesQuery,
   useLazySearchTestCasesQuery,
   useGetTestCaseByIdQuery,
   useLazyGetTestCaseByIdQuery,

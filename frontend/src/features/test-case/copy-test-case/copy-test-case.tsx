@@ -3,6 +3,7 @@ import { Button, Input, Modal } from "antd"
 import { useParams } from "react-router-dom"
 
 import { useLazyGetTestSuitesQuery } from "entities/suite/api"
+import { testSuiteSearchValueFormat } from "entities/suite/lib/utils"
 
 import { SearchFieldImprove } from "widgets/search-field-improve"
 
@@ -72,6 +73,7 @@ export const CopyTestCase = ({ testCase }: { testCase: TestCase }) => {
           selected={selectedSuite}
           placeholder="Search a test suite"
           searchKey="search"
+          valueFormat={testSuiteSearchValueFormat}
         />
       </Modal>
     </>

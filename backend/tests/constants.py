@@ -28,8 +28,6 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from datetime import timedelta
-
 from django.utils import timezone
 
 USERNAME = 'test_user'
@@ -43,6 +41,7 @@ LAST_NAME = 'TestLastName'
 TEST_SUITE_NAME = 'TestSuiteName'
 TEST_CASE_NAME = 'TestCaseName'
 ATTACHMENT_NAME = 'AttachmentName'
+CUSTOM_ATTRIBUTE_NAME = 'CustomAttributeName'
 FILE_NAME = 'Cute cats'
 FILE_EXTENSION = 'text/plain'
 FILE_SIZE = 400
@@ -52,10 +51,11 @@ SETUP = '1.Setup\n2.Setup'
 SCENARIO = '1.break\n2.break\n3.break'
 EXPECTED = 'Expected result text'
 TEARDOWN = '1.Teardown\n2.Teardown'
-ESTIMATE = timedelta(weeks=2, days=3, hours=2)
-INPUT_ESTIMATE = '2w 3d 2h'
+ESTIMATE = 381600
+INPUT_ESTIMATE = '10d 2h'
 EXECUTION_TIME = 1000000
 DATE = timezone.now()
+END_DATE = DATE + timezone.timedelta(days=1)
 STATUS_NAME = 'PASSED'
 STATUS_CODE = 1
 TEST_COMMENT = 'TestComment'
@@ -69,8 +69,14 @@ SYSTEM_MESSAGE = 'SystemMessage'
 SYSTEM_MESSAGE_TYPE = 0
 EXCEEDING_CHAR_FIELD = 't' * 256
 
+PERMISSION_NAME = 'PermissionCatView'
+PERMISSION_CODE_NAME = 'view_cat_allowed'
+
 NUMBER_OF_OBJECTS_TO_CREATE = 10
 NUMBER_OF_OBJECTS_TO_CREATE_PAGE = 100
+WORKDAY_IN_SECONDS = 60 * 60 * 8
+
+ROLE_NAME = 'Role'
 
 LIST_VIEW_NAMES = {
     'project-list': 'api:v1:project-list',
@@ -90,5 +96,5 @@ DETAIL_VIEW_NAMES = {
     'suite-list': 'api:v1:testsuite-detail',
     'case-list': 'api:v1:testcase-detail',
     'user-list': 'api:v1:user-detail',
-    'parameter-list': 'api:v1:parameter-detail'
+    'parameter-list': 'api:v1:parameter-detail',
 }

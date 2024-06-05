@@ -1,5 +1,4 @@
-import { Button, Col, Form, Modal, Row, Tree } from "antd"
-import Search from "antd/lib/input/Search"
+import { Button, Col, Form, Modal, Row, Tree, Typography } from "antd"
 import { Controller } from "react-hook-form"
 
 import { ErrorObj } from "shared/hooks/use-alert-error"
@@ -14,13 +13,15 @@ import {
   TextAreaFormItem,
 } from "shared/ui"
 
+import { TestCaseLabels } from "../test-case-labels/test-case-labels"
+import { useTestCasesFilter } from "../test-cases-filter/use-test-cases-filter"
 import styles from "./styles.module.css"
 import { useTestPlanEditModal } from "./use-test-plan-edit-modal"
 
 interface TestPlanEditModalProps {
   isShow: boolean
   setIsShow: (isShow: boolean) => void
-  testPlan: TestPlanTreeView
+  testPlan: TestPlan
 }
 
 export const EditTestPlanModal = ({ isShow, setIsShow, testPlan }: TestPlanEditModalProps) => {
@@ -51,7 +52,20 @@ export const EditTestPlanModal = ({ isShow, setIsShow, testPlan }: TestPlanEditM
     handleLoadNextPageData,
     handleSearchTestPlan,
     handleSelectTestPlan,
+    selectedLables,
+    labelProps,
+    lableCondition,
+    handleConditionClick,
   } = useTestPlanEditModal({ isShow, setIsShow, testPlan })
+
+  const { FilterButton, FilterForm } = useTestCasesFilter({
+    labelProps,
+    searchText,
+    handleSearch,
+    selectedLables,
+    lableCondition,
+    handleConditionClick,
+  })
 
   return (
     <Modal
@@ -149,7 +163,12 @@ export const EditTestPlanModal = ({ isShow, setIsShow, testPlan }: TestPlanEditM
           </Col>
           <Col span={12}>
             <Form.Item
-              label="Test Cases"
+              label={
+                <div style={{ display: "flex" }}>
+                  <Typography.Paragraph>Test Cases</Typography.Paragraph>
+                  {FilterButton}
+                </div>
+              }
               validateStatus={errors?.test_cases ? "error" : ""}
               help={errors?.test_cases ? errors.test_cases : ""}
             >
@@ -160,13 +179,7 @@ export const EditTestPlanModal = ({ isShow, setIsShow, testPlan }: TestPlanEditM
                   const onlyTestCases = field.value?.filter((tc) => !tc.startsWith("TS")) ?? []
                   return (
                     <>
-                      <Search
-                        placeholder="Search"
-                        onChange={(e) => handleSearch(e.target.value)}
-                        value={searchText}
-                        style={{ marginBottom: "8px" }}
-                      />
-
+                      {FilterForm}
                       {isLoadingSearch && <ContainerLoader />}
                       {!isLoadingSearch && (
                         <>
@@ -174,11 +187,14 @@ export const EditTestPlanModal = ({ isShow, setIsShow, testPlan }: TestPlanEditM
                             {...field}
                             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                             // @ts-ignore
-                            titleRender={(node: TestPlanTreeView | Suite) => (
-                              <HighLighterTesty
-                                searchWords={searchText}
-                                textToHighlight={String(node.title)}
-                              />
+                            titleRender={(node: TestPlanTreeView) => (
+                              <>
+                                <HighLighterTesty
+                                  searchWords={searchText}
+                                  textToHighlight={String(node.title)}
+                                />
+                                {node?.labels ? <TestCaseLabels labels={node.labels} /> : null}
+                              </>
                             )}
                             height={200}
                             virtual={false}

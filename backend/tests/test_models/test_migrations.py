@@ -35,6 +35,8 @@ from django.db.models import QuerySet
 from django.utils import timezone
 from mptt import register
 
+from tests.constants import WORKDAY_IN_SECONDS
+
 pytestmark = pytest.mark.django_db
 
 
@@ -59,7 +61,7 @@ def test_changed_testplan_parameters_m2m(migrator):
     parameters_list_id = [p.id for p in parameters]
 
     test_plan = test_plan_model.objects.create(
-        name="TestPlanTest",
+        name='TestPlanTest',
         project=project,
         parameters=parameters_list_id,
         started_at=timezone.now(),
@@ -85,8 +87,7 @@ def test_changed_testplan_parameters_m2m(migrator):
 
 def test_changed_testplan_parameters_list(migrator):
     """
-    Testing backwards migrations
-    0011_added_testplan_parameters_m2m...0014_rename_parameters_m2m_testplan_parameters
+    Testing backwards migrations 0011_added_testplan_parameters_m2m...0014_rename_parameters_m2m_testplan_parameters
     """
     old_state = migrator.apply_initial_migration(
         ('tests_representation', '0014_rename_parameters_m2m_testplan_parameters'),
@@ -105,7 +106,7 @@ def test_changed_testplan_parameters_list(migrator):
     ])
 
     test_plan = test_plan_model.objects.create(
-        name="TestPlanTest",
+        name='TestPlanTest',
         project=project,
         started_at=timezone.now(),
         due_date=timezone.now(),
@@ -154,5 +155,77 @@ def test_username_caseinsesitive(migrator):
     user = user_model(username='uSeR', password='pass')
     with pytest.raises(ValidationError):
         user.full_clean()
+
+    migrator.reset()
+
+
+def test_change_estimate_to_int(migrator):
+    """Testing migrations 0008_added_estimate_tmp...0011_altered_estimate_tmp_field"""
+    old_state = migrator.apply_initial_migration(
+        ('tests_description', '0007_added_is_deleted_to_suite_cases'),
+    )
+
+    project_model = old_state.apps.get_model('core', 'Project')
+    test_suite_model = old_state.apps.get_model('tests_description', 'TestSuite')
+    test_case_model = old_state.apps.get_model('tests_description', 'TestCase')
+
+    register(test_suite_model)
+
+    project = project_model.objects.create(name='ProjectTest')
+    suite = test_suite_model.objects.create(name='SuiteTest', project=project, lft=0, rght=0, tree_id=1)
+    test_case = test_case_model.objects.create(
+        project=project,
+        suite_id=suite.id,
+        scenario='TestScenario',
+        estimate=timezone.timedelta(days=1),
+    )
+
+    assert isinstance(test_case.estimate, timezone.timedelta)
+    assert test_case.estimate == timezone.timedelta(days=1)
+
+    new_state = migrator.apply_tested_migration(
+        ('tests_description', '0012_alter_historicaltestcase_estimate'),
+    )
+    test_case_model = new_state.apps.get_model('tests_description', 'TestCase')
+    new_test_case = test_case_model.objects.first()
+
+    assert isinstance(new_test_case.estimate, int)
+    assert new_test_case.estimate == WORKDAY_IN_SECONDS
+
+    migrator.reset()
+
+
+def test_rollback_change_estimate_to_int(migrator):
+    """Testing rollback migrations 0008_added_estimate_tmp...0011_altered_estimate_tmp_field"""
+    old_state = migrator.apply_initial_migration(
+        ('tests_description', '0012_alter_historicaltestcase_estimate'),
+    )
+
+    project_model = old_state.apps.get_model('core', 'Project')
+    test_suite_model = old_state.apps.get_model('tests_description', 'TestSuite')
+    test_case_model = old_state.apps.get_model('tests_description', 'TestCase')
+
+    register(test_suite_model)
+
+    project = project_model.objects.create(name='ProjectTest')
+    suite = test_suite_model.objects.create(name='SuiteTest', project=project, lft=0, rght=0, tree_id=1)
+    test_case = test_case_model.objects.create(
+        project=project,
+        suite_id=suite.id,
+        scenario='TestScenario',
+        estimate=WORKDAY_IN_SECONDS,
+    )
+
+    assert isinstance(test_case.estimate, int)
+    assert test_case.estimate == WORKDAY_IN_SECONDS
+
+    new_state = migrator.apply_tested_migration(
+        ('tests_description', '0007_added_is_deleted_to_suite_cases'),
+    )
+    test_case_model = new_state.apps.get_model('tests_description', 'TestCase')
+    new_test_case = test_case_model.objects.first()
+
+    assert isinstance(new_test_case.estimate, timezone.timedelta)
+    assert new_test_case.estimate == timezone.timedelta(days=1)
 
     migrator.reset()

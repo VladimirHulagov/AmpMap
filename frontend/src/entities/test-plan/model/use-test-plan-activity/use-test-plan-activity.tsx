@@ -49,7 +49,7 @@ export const useTestPlanActivity = () => {
       key: "action_timestamp",
       width: "100px",
       sorter: (a, b) => dayjs(a.action_timestamp).diff(b.action_timestamp),
-      render: (value: string) => dayjs(value).format("HH:MM:ss"),
+      render: (value: string) => dayjs(value).format("HH:mm:ss"),
     },
     {
       title: "Test",

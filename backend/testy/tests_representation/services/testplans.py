@@ -29,14 +29,13 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 from itertools import product
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, Iterable, List
 
 from django.db import transaction
 
 from testy.tests_representation.models import Parameter, TestPlan
-from testy.tests_representation.selectors.parameters import ParameterSelector
 from testy.tests_representation.services.tests import TestService
-from testy.utilities.sql import lock_table
+from testy.utilities.sql import get_next_max_int_value, lock_table, rebuild_mptt
 
 _TEST_CASES = 'test_cases'
 _PARENT = 'parent'
@@ -60,25 +59,41 @@ class TestPlanService:
     @transaction.atomic
     def testplan_bulk_create(self, data: Dict[str, Any]) -> List[TestPlan]:
         parameters = data.get('parameters')
-        test_plans: List[TestPlan] = []
-        with lock_table(TestPlan):
-            for combine_parameter in self._parameter_combinations(parameters):
-                test_plan_object: TestPlan = TestPlan.model_create(
-                    fields=self.non_side_effect_fields, data=data, commit=False,
-                )
-                test_plan_object.save()
-                test_plan_object.parameters.set(ParameterSelector().parameter_list_by_ids(combine_parameter))
-                test_plans.append(test_plan_object)
+        parameter_combinations = self._parameter_combinations(parameters)
+        created_plans = []
 
-            if parent := data.get(_PARENT):
-                TestPlan.objects.partial_rebuild(parent.tree_id)
+        parent_tree_id = None
+        if parent := data.get(_PARENT):
+            parent_tree_id = parent.tree_id
+
+        with lock_table(TestPlan):
+            num_of_combinations = len(parameter_combinations)
+            for _ in range(num_of_combinations):
+                test_plan_object: TestPlan = TestPlan.model_create(
+                    fields=self.non_side_effect_fields,
+                    data=data,
+                    commit=False,
+                )
+                test_plan_object.lft = 0
+                test_plan_object.rght = 0
+                test_plan_object.tree_id = parent_tree_id or get_next_max_int_value(TestPlan, 'tree_id')
+                test_plan_object.level = 0
+                created_plans.append(test_plan_object)
+
+            created_plans = TestPlan.objects.bulk_create(created_plans)
+
+            for plan, combined_parameters in zip(created_plans, parameter_combinations):
+                plan.parameters.set(combined_parameters)
+
+            if parent_tree_id:
+                rebuild_mptt(TestPlan, parent.tree_id)
             else:
-                for test_plan in test_plans:
-                    TestPlan.objects.partial_rebuild(test_plan.tree_id)
+                for test_plan in created_plans:
+                    rebuild_mptt(TestPlan, test_plan.tree_id)
 
         if test_cases := data.get('test_cases', []):
-            TestService().bulk_test_create(test_plans, test_cases)
-        return test_plans
+            TestService().bulk_test_create(created_plans, test_cases)
+        return created_plans
 
     @transaction.atomic
     def testplan_update(self, *, test_plan: TestPlan, data: dict[str, Any]) -> TestPlan:
@@ -107,7 +122,7 @@ class TestPlanService:
         test_plan.delete()
 
     @classmethod
-    def _parameter_combinations(cls, parameters: List[Parameter]) -> List[Tuple[int, ...]]:
+    def _parameter_combinations(cls, parameters: Iterable[Parameter]) -> list[tuple[Parameter, ...]]:
         """
         Return all possible combinations of parameters by group name.
 
@@ -120,6 +135,6 @@ class TestPlanService:
         group_parameters = {}
 
         for parameter in parameters:
-            group_parameters.setdefault(parameter.group_name, []).append(parameter.id)
+            group_parameters.setdefault(parameter.group_name, []).append(parameter)
 
         return list(product(*group_parameters.values()))

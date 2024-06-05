@@ -32,15 +32,17 @@ from rest_framework import serializers
 from rest_framework.fields import BooleanField, IntegerField, ListField, SerializerMethodField, empty
 from rest_framework.relations import HyperlinkedIdentityField, PrimaryKeyRelatedField
 
-from testy.core.api.v1.serializers import AttachmentSerializer
+from testy.core.api.v1.serializers import AttachmentSerializer, CopyDetailSerializer
 from testy.core.models import Label, LabeledItem
 from testy.core.selectors.attachments import AttachmentSelector
 from testy.core.selectors.projects import ProjectSelector
+from testy.core.validators import TestCaseCustomAttributeValuesValidator
 from testy.serializer_fields import EstimateField
 from testy.tests_description.models import TestCase, TestCaseStep, TestSuite
 from testy.tests_description.selectors.cases import TestCaseSelector, TestCaseStepSelector
 from testy.tests_description.selectors.suites import TestSuiteSelector
 from testy.users.api.v1.serializers import UserSerializer
+from testy.utilities.tree import get_breadcrumbs_treeview
 from testy.validators import EstimateValidator
 
 
@@ -94,9 +96,10 @@ class TestCaseBaseSerializer(serializers.ModelSerializer):
             'description',
             'is_steps',
             'is_archive',
+            'attributes',
         )
 
-    validators = [EstimateValidator()]
+    validators = [EstimateValidator(), TestCaseCustomAttributeValuesValidator()]
 
 
 class TestCaseLabelOutputSerializer(serializers.ModelSerializer):
@@ -132,6 +135,7 @@ class TestCaseInputBaseSerializer(TestCaseBaseSerializer):
             history_latest = TestCaseSelector.get_last_history(self.instance.pk)
             if request.user != history_latest.history_user:
                 raise serializers.ValidationError('You can not update version of Test Case')
+
         return attrs
 
 
@@ -225,10 +229,11 @@ class ParentSuiteSerializer(serializers.ModelSerializer):
 
 class TestSuiteBaseSerializer(serializers.ModelSerializer):
     url = HyperlinkedIdentityField(view_name='api:v1:testsuite-detail')
+    path = serializers.CharField(read_only=True)
 
     class Meta:
         model = TestSuite
-        fields = ('id', 'name', 'parent', 'project', 'url', 'description')
+        fields = ('id', 'name', 'parent', 'project', 'url', 'description', 'path')
 
 
 class TestSuiteSerializer(TestSuiteBaseSerializer):
@@ -275,22 +280,17 @@ class TestSuiteTreeCasesSerializer(TestSuiteTreeSerializer):
         fields = TestSuiteTreeSerializer.Meta.fields + ('test_cases',)
 
 
-class TestSuiteCopyDetailSerializer(serializers.Serializer):
-    id = serializers.IntegerField(required=True)
-    new_name = serializers.CharField(required=False)
-
-
 class TestCaseCopySerializer(serializers.Serializer):
-    cases = TestSuiteCopyDetailSerializer(many=True, required=True)
+    cases = CopyDetailSerializer(many=True, required=True)
     dst_suite_id = serializers.IntegerField(required=False)
 
 
 class TestSuiteCopySerializer(serializers.Serializer):
-    suites = TestSuiteCopyDetailSerializer(many=True, required=True)
+    suites = CopyDetailSerializer(many=True, required=True)
     dst_project_id = serializers.PrimaryKeyRelatedField(
         required=False,
         allow_null=True,
-        queryset=ProjectSelector.project_list(),
+        queryset=ProjectSelector.project_list_raw(),
     )
     dst_suite_id = serializers.PrimaryKeyRelatedField(
         queryset=TestSuiteSelector.suite_list_raw(),
@@ -326,3 +326,36 @@ class TestCaseRestoreSerializer(serializers.Serializer):
         if not TestCaseSelector.version_exists(version=version, pk=self.instance.id):
             raise serializers.ValidationError('Incorrect version')
         return version
+
+
+class TestSuiteRetrieveSerializer(TestSuiteBaseSerializer):
+    breadcrumbs = SerializerMethodField()
+    title = serializers.CharField(source='name')
+    descendant_count = IntegerField()
+    cases_count = IntegerField()
+    parent = ParentSuiteSerializer()
+    total_cases_count = IntegerField()
+    estimates = EstimateField()
+    total_estimates = EstimateField()
+    child_count = SerializerMethodField()
+
+    class Meta(TestSuiteBaseSerializer.Meta):
+        fields = TestSuiteBaseSerializer.Meta.fields + (
+            'breadcrumbs',
+            'title',
+            'descendant_count',
+            'cases_count',
+            'total_cases_count',
+            'estimates',
+            'total_estimates',
+            'child_count',
+        )
+
+    @classmethod
+    def get_breadcrumbs(cls, instance: TestSuite):
+        tree = TestSuiteSelector.suite_list_ancestors(instance)
+        return get_breadcrumbs_treeview(instances=tree, depth=len(tree) - 1)
+
+    @classmethod
+    def get_child_count(cls, instance: TestSuite):
+        return instance.child_test_suites.count()

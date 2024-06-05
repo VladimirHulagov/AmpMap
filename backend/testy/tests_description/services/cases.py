@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -28,6 +28,7 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
+from logging import getLogger
 from typing import Any, Dict, List
 
 from django.db import transaction
@@ -36,6 +37,7 @@ from testy.core.services.attachments import AttachmentService
 from testy.core.services.labels import LabelService
 from testy.tests_description.models import TestCase, TestCaseStep
 from testy.tests_description.selectors.cases import TestCaseSelector, TestCaseStepSelector
+from testy.tests_description.signals import pre_create_case
 
 _ATTACHMENTS = 'attachments'
 _USER = 'user'
@@ -43,12 +45,14 @@ _ID = 'id'
 _SKIP_HISTORY = 'skip_history'
 _TEST_CASE_HISTORY_ID = 'test_case_history_id'
 
+logger = getLogger(__name__)
+
 
 class TestCaseService:
     non_side_effect_fields = ['name', 'project', 'scenario', 'expected']
 
     case_non_side_effect_fields = [
-        'suite', 'setup', 'teardown', 'estimate', 'description', 'is_steps',
+        'suite', 'setup', 'teardown', 'estimate', 'description', 'is_steps', 'attributes',
         *non_side_effect_fields,
     ]
     step_non_side_effect_fields = [
@@ -100,7 +104,9 @@ class TestCaseService:
 
         return case
 
+    @transaction.atomic
     def case_create(self, data: Dict[str, Any]) -> TestCase:
+        pre_create_case.send(sender=self.case_create, data=data)
         user = data.pop(_USER)
         case: TestCase = TestCase.model_create(
             fields=self.case_non_side_effect_fields,
@@ -215,12 +221,15 @@ class TestCaseService:
             historical_step = (
                 TestCaseStepSelector
                 .get_steps_by_case_version_id(history_case.history_id)
-                .get(pk=instance_id)
+                .filter(pk=instance_id)
             )
+            if len(historical_step) > 1:
+                logger.warning(f'Found duplicate historical step for step with id: {instance_id}')
+            historical_step = historical_step.first()  # workaround for duplicate history ids, plugin may be an issue
             historical_step.test_case_history_id = latest_case_history_id
             historical_step.restore(commit=False)
             historical_step.save()
-            step_history = historical_step.history.get(test_case_history_id=history_case.history_id)
+            step_history = historical_step.history.filter(test_case_history_id=history_case.history_id).first()
             AttachmentService().restore_by_version(historical_step, step_history.history_id)
 
     @classmethod
