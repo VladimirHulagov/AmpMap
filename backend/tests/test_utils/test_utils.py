@@ -30,12 +30,14 @@
 # <http://www.gnu.org/licenses/>.
 import pytest
 from django.db.models import Count
-from tests_representation.models import Test
-from utilities.request import get_boolean
 
 from tests import constants
 from tests.commons import RequestMock
-from utils import form_tree_prefetch_lookups, form_tree_prefetch_objects
+from testy.tests_representation.models import Test
+from testy.utilities.request import get_boolean
+from testy.utilities.tree import form_tree_prefetch_lookups, form_tree_prefetch_objects
+
+_TREEVIEW = 'treeview'
 
 
 class TestTestyUtilities:
@@ -45,11 +47,11 @@ class TestTestyUtilities:
         valid_positive_yes = ['1', 'yes', 'true', 'True', 'YES', 1, 'TRue']
         invalid_yes = ['2', '0', 'ye', 'y', 't', 'truee', 0, '']
         for option in valid_positive_yes:
-            request.GET = {'treeview': option}
-            assert get_boolean(request, 'treeview'), f'Valid option "{option}" was recognised as invalid.'
+            request.GET = {_TREEVIEW: option}
+            assert get_boolean(request, _TREEVIEW), f'Valid option "{option}" was recognised as invalid.'
         for option in invalid_yes:
-            request.GET = {'treeview': option}
-            assert not get_boolean(request, 'treeview'), f'Invalid option "{option}" was recognised as valid.'
+            request.GET = {_TREEVIEW: option}
+            assert not get_boolean(request, _TREEVIEW), f'Invalid option "{option}" was recognised as valid.'
 
     def test_form_tree_prefetch_lookups(self):
         tree_depth = 4
@@ -85,13 +87,13 @@ class TestTestyUtilities:
             queryset_class=Test,
             queryset_filter={'is_archive': True},
             order_by_fields=['-id'],
-            annotation={'results_count': Count('results')}
+            annotation={'results_count': Count('results')},
         )
         for prefetch, prefetch_lookup in zip(prefetches, prefetch_lookups):
             assert len(prefetch.queryset) == constants.NUMBER_OF_OBJECTS_TO_CREATE / 2, 'Number of objects in ' \
                                                                                         'queryset is incorrect'
             assert prefetch.prefetch_through == prefetch_lookup, 'Expected lookup was not in prefetch object'
-            assert [prefetch_object.id for prefetch_object in prefetch.queryset] == archived_ids, 'Ordering was ' \
+            assert archived_ids == [prefetch_object.id for prefetch_object in prefetch.queryset], 'Ordering was ' \
                                                                                                   'not applied'
             for instance in prefetch.queryset:
                 assert instance.results_count == number_of_results, 'Annotation did not work properly'

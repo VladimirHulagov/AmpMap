@@ -45,25 +45,13 @@ from swagger.serializers import BreadcrumbsSerializer
 from testy.tests_description.api.v1.serializers import (
     TestSuiteBaseSerializer,
     TestSuiteSerializer,
-    TestSuiteTreeCasesSerializer,
     TestSuiteTreeSerializer,
 )
 
-show_cases_parameter = openapi.Parameter(
-    'show_cases',
-    openapi.IN_QUERY,
-    description='Display test cases associated with suite or not.',
-    type=openapi.TYPE_BOOLEAN,
-)
 treeview_response = openapi.Response(
     'Serializer for displaying tree structure of test suites.'
     'Children field is an list of instances of treeview serializer.',
     TestSuiteTreeSerializer(many=True),
-)
-treeview_with_cases_response = openapi.Response(
-    'Serializer for displaying tree structure of test suites with test cases associated with suites.'
-    'Children field is an list of instances of treeview serializer.',
-    TestSuiteTreeCasesSerializer(many=True),
 )
 suite_breadcrumbs_response = openapi.Response(
     'Serializer for displaying breadcrumbs recursively.',
@@ -77,14 +65,12 @@ suite_list_schema = method_decorator(
         manual_parameters=[
             project_param,
             treeview_param,
-            show_cases_parameter,
             is_flat,
             ordering_param_factory('name', 'descendant_count', 'total_estimates'),
             search_param_factory('name'),
         ],
         responses={
             ResponseCodeTuple(status.HTTP_200_OK, 'treeview'): treeview_response,
-            ResponseCodeTuple(status.HTTP_200_OK, 'treeview with cases'): treeview_with_cases_response,
             ResponseCodeTuple(status.HTTP_200_OK, 'No parameters provided'): TestSuiteSerializer,
         },
         paginator_inspectors=[TestyPaginatorInspector],
@@ -94,10 +80,9 @@ suite_retrieve_schema = method_decorator(
     name='retrieve',
     decorator=swagger_auto_schema(
         operation_description='Returns list of test suites in different formats, depending on parameters.',
-        manual_parameters=[treeview_param, show_cases_parameter],
+        manual_parameters=[treeview_param],
         responses={
             ResponseCodeTuple(status.HTTP_200_OK, 'treeview'): TestSuiteTreeSerializer,
-            ResponseCodeTuple(status.HTTP_200_OK, 'treeview with cases'): TestSuiteTreeCasesSerializer,
             ResponseCodeTuple(status.HTTP_200_OK, 'No parameters provided'): TestSuiteSerializer(many=True),
         },
     ),

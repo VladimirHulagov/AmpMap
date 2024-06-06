@@ -16,7 +16,7 @@ export const Step = ({ index, actions, step }: StepProps) => {
   return (
     <li className={styles.item} key={step.id}>
       <div className={styles.icon}>{index + 1}</div>
-      <div className={styles.content}>{step.name}</div>
+      <p className={styles.content}>{step.name}</p>
       {actions && (
         <div className={styles.actions}>
           <Button

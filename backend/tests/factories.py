@@ -29,19 +29,23 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 import factory
-from comments.models import Comment
-from core.models import Attachment, Label, LabeledItem, Project, SystemMessage
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
+from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
-from factory import Sequence, SubFactory
+from factory import LazyAttribute, Sequence, SubFactory, post_generation
 from factory.django import DjangoModelFactory
-from tests_description.models import TestCase, TestCaseStep, TestSuite
-from tests_representation.choices import TestStatuses
-from tests_representation.models import Parameter, Test, TestPlan, TestResult
-from users.models import Group
 
 import tests.constants as constants
+from testy.comments.models import Comment
+from testy.core.choices import CustomFieldType
+from testy.core.models import Attachment, CustomAttribute, Label, LabeledItem, Project, SystemMessage
+from testy.core.selectors.custom_attribute import CustomAttributeSelector
+from testy.tests_description.models import TestCase, TestCaseStep, TestSuite
+from testy.tests_representation.choices import TestStatuses
+from testy.tests_representation.models import Parameter, Test, TestPlan, TestResult, TestStepResult
+from testy.users.choices import RoleTypes
+from testy.users.models import Group, Membership, Role
 
 UserModel = get_user_model()
 
@@ -52,6 +56,7 @@ class ProjectFactory(DjangoModelFactory):
 
     name = Sequence(lambda n: f'{constants.PROJECT_NAME}{n}')
     description = constants.DESCRIPTION
+    settings = {'is_result_editable': True, 'result_edit_limit': 3600}
 
 
 class ParameterFactory(DjangoModelFactory):
@@ -73,7 +78,7 @@ class UserFactory(DjangoModelFactory):
     password = make_password(constants.PASSWORD)
     email = username
     is_active = True
-    is_staff = False
+    is_superuser = False
 
 
 class GroupFactory(DjangoModelFactory):
@@ -106,7 +111,7 @@ class TestPlanFactory(DjangoModelFactory):
 
     name = Sequence(lambda n: f'{constants.TEST_PLAN_NAME}{n}')
     started_at = constants.DATE
-    due_date = constants.DATE
+    due_date = constants.END_DATE
     finished_at = constants.DATE
     project = SubFactory(ProjectFactory)
     is_archive = False
@@ -121,11 +126,6 @@ class TestPlanWithParametersFactory(TestPlanFactory):
             return
         for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
             self.parameters.add(ParameterFactory(project=self.project))
-
-
-class TestResultsFactory(DjangoModelFactory):
-    class Meta:
-        model = TestResult
 
 
 class TestSuiteFactory(DjangoModelFactory):
@@ -209,11 +209,30 @@ class TestResultFactory(DjangoModelFactory):
     @classmethod
     def _create(cls, target_class, *args, **kwargs):
         created_at = kwargs.pop('created_at', None)
-        obj = super(TestResultFactory, cls)._create(target_class, *args, **kwargs)
+        obj = super()._create(target_class, *args, **kwargs)
         if created_at is not None:
             obj.created_at = created_at
             obj.save()
         return obj
+
+
+class TestStepResultFactory(DjangoModelFactory):
+    project = SubFactory(ProjectFactory)
+    test_result = SubFactory(TestResultFactory)
+    step = SubFactory(TestCaseStepFactory)
+    status = TestStatuses.PASSED
+
+    class Meta:
+        model = TestStepResult
+
+
+class TestResultWithStepsFactory(TestResultFactory):
+    @post_generation
+    def steps_results(self, create, extracted, **kwargs):
+        if extracted:
+            self.steps_results.add(*extracted)
+        for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
+            self.steps_results.add(TestStepResultFactory(project=self.project, test_result=self))
 
 
 class CommentBaseFactory(DjangoModelFactory):
@@ -311,3 +330,48 @@ class SystemMessageFactory(DjangoModelFactory):
 
     class Meta:
         model = SystemMessage
+
+
+class RoleFactory(DjangoModelFactory):
+    name = Sequence(lambda n: f'{constants.ROLE_NAME}{n}')
+    type = RoleTypes.CUSTOM
+
+    class Meta:
+        model = Role
+
+    @post_generation
+    def permissions(self, create, extracted, **kwargs):
+        if extracted:
+            self.permissions.add(*extracted)
+
+
+class MembershipFactory(DjangoModelFactory):
+    role = SubFactory(RoleFactory)
+    user = SubFactory(UserFactory)
+    project = SubFactory(ProjectFactory)
+
+    class Meta:
+        model = Membership
+
+
+class CustomAttributeFactory(DjangoModelFactory):
+    project = SubFactory(ProjectFactory)
+    name = Sequence(lambda n: f'{constants.CUSTOM_ATTRIBUTE_NAME}{n}')
+    type = CustomFieldType.TXT
+    is_required = False
+    is_suite_specific = False
+    suite_ids = []
+    content_types = LazyAttribute(
+        lambda _: list(CustomAttributeSelector.get_allowed_content_types().values_list('id', flat=True)),
+    )
+
+    class Meta:
+        model = CustomAttribute
+
+
+class PermissionFactory(DjangoModelFactory):
+    name = Sequence(lambda n: f'{constants.PERMISSION_NAME}{n}')
+    codename = Sequence(lambda n: f'{constants.PERMISSION_CODE_NAME}{n}')
+
+    class Meta:
+        model = Permission

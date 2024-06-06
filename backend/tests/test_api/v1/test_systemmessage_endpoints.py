@@ -29,35 +29,35 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 
-import json
 from http import HTTPStatus
 
 import pytest
-from core.api.v1.serializers import SystemMessageSerializer
 
 from tests import constants
 from tests.commons import model_to_dict_via_serializer
+from testy.core.api.v1.serializers import SystemMessageSerializer
 
 
 @pytest.mark.django_db(reset_sequences=True)
-class TestResultEndpoints:
+class TestSystemMessagesEndpoints:
     view_name_list = 'api:v1:system-messages'
 
     def test_list(self, api_client, system_message_factory):
         expected_instances = []
         for idx in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
-            if not idx % 2:
+            if idx % 2:
+                system_message_factory(is_active=False)
+            else:
                 expected_instances.append(
                     model_to_dict_via_serializer(
                         system_message_factory(is_active=True),
-                        SystemMessageSerializer
-                    )
+                        SystemMessageSerializer,
+                    ),
                 )
-            else:
-                system_message_factory(is_active=False)
+
         expected_instances.sort(key=lambda obj: obj['updated_at'], reverse=True)
         response = api_client.send_request(
             self.view_name_list,
-            expected_status=HTTPStatus.OK
+            expected_status=HTTPStatus.OK,
         )
-        assert json.loads(response.content) == expected_instances
+        assert response.json() == expected_instances

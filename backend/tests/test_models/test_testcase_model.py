@@ -31,9 +31,9 @@
 
 import pytest
 from django.db import IntegrityError
-from tests_description.models import TestCase
 
 from tests.error_messages import MODEL_VALUE_ERR_MSG, NOT_NULL_ERR_MSG
+from testy.tests_description.models import TestCase
 
 
 @pytest.mark.django_db
@@ -51,11 +51,19 @@ class TestCaseModel:
 
     @pytest.mark.parametrize(
         'parameter_name, incorrect_value, err_msg', [
-            ('project', 'abc', MODEL_VALUE_ERR_MSG.format(value='abc', model_name='TestCase', column_name='project',
-                                                          column_model='Project')),
-            ('suite', 'abc', MODEL_VALUE_ERR_MSG.format(value='abc', model_name='TestCase', column_name='suite',
-                                                        column_model='TestSuite'))
-        ]
+            (
+                'project', 'abc', MODEL_VALUE_ERR_MSG.format(
+                    value='abc', model_name='TestCase', column_name='project',
+                    column_model='Project',
+                ),
+            ),
+            (
+                'suite', 'abc', MODEL_VALUE_ERR_MSG.format(
+                    value='abc', model_name='TestCase', column_name='suite',
+                    column_model='TestSuite',
+                ),
+            ),
+        ],
     )
     def test_fields_type_constraint(self, parameter_name, incorrect_value, err_msg, test_case_factory):
         with pytest.raises(ValueError) as err:

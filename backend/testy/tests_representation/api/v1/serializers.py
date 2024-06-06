@@ -28,21 +28,40 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from rest_framework.fields import CharField, ChoiceField, DateTimeField, FloatField, IntegerField, SerializerMethodField
+from rest_framework.fields import (
+    BooleanField,
+    CharField,
+    ChoiceField,
+    DateTimeField,
+    FloatField,
+    IntegerField,
+    SerializerMethodField,
+)
 from rest_framework.relations import HyperlinkedIdentityField, PrimaryKeyRelatedField
 from rest_framework.reverse import reverse
 from rest_framework.serializers import ModelSerializer, Serializer
-from serializer_fields import EstimateField
 
 from testy.core.api.v1.serializers import AttachmentSerializer
 from testy.core.selectors.attachments import AttachmentSelector
+from testy.core.validators import TestResultCustomAttributeValuesValidator
+from testy.serializer_fields import EstimateField
 from testy.tests_description.api.v1.serializers import TestCaseLabelOutputSerializer, TestCaseListSerializer
 from testy.tests_description.selectors.cases import TestCaseSelector, TestCaseStepSelector
 from testy.tests_representation.choices import TestStatuses
 from testy.tests_representation.models import Parameter, Test, TestPlan, TestResult, TestStepResult
 from testy.tests_representation.selectors.parameters import ParameterSelector
 from testy.tests_representation.selectors.results import TestResultSelector
-from testy.validators import DateRangeValidator, TestPlanParentValidator, TestResultUpdateValidator
+from testy.tests_representation.selectors.testplan import TestPlanSelector
+from testy.utilities.tree import get_breadcrumbs_treeview
+from testy.validators import (
+    DateRangeValidator,
+    TestPlanParentValidator,
+    TestResultArchiveTestValidator,
+    TestResultStatusValidator,
+    TestResultUpdateValidator,
+    compare_related_manager,
+    compare_steps,
+)
 
 
 class ParameterSerializer(ModelSerializer):
@@ -157,6 +176,14 @@ class TestResultSerializer(ModelSerializer):
         )
 
         read_only_fields = ('test_case_version', 'project', 'user', 'id')
+        validators = [TestResultArchiveTestValidator()]
+        extra_kwargs = {
+            'status': {
+                'validators': [TestResultStatusValidator()],
+                'required': True,
+                'allow_null': False,
+            },
+        }
 
     def get_avatar_link(self, instance):
         if not instance.user:
@@ -243,13 +270,16 @@ class TestResultInputSerializer(TestResultSerializer):
     )
 
     class Meta(TestResultSerializer.Meta):
-        validators = [
+        validators = TestResultSerializer.Meta.validators + [
             TestResultUpdateValidator(
-                time_limited_fields=[
-                    'project', 'status', 'test', 'execution_time', 'attachments', 'attributes',
-                    'steps_results',
-                ],
+                fields_to_comparator=(
+                    (['status', 'execution_time', 'attributes'], lambda old_val, new_val: old_val == new_val),
+                    (['attachments'], compare_related_manager),
+                    (['steps_results'], compare_steps),
+                    (['test', 'project'], lambda old_val, new_val: old_val.pk == new_val.pk),
+                ),
             ),
+            TestResultCustomAttributeValuesValidator(),
         ]
 
 
@@ -319,6 +349,28 @@ class TestPlanOutputSerializer(ModelSerializer):
         return instance.name
 
 
+class TestPlanRetrieveSerializer(TestPlanOutputSerializer):
+    breadcrumbs = SerializerMethodField()
+    child_count = SerializerMethodField()
+    parent = ParentPlanSerializer(read_only=True)
+
+    class Meta(TestPlanOutputSerializer.Meta):
+        fields = TestPlanOutputSerializer.Meta.fields + ('breadcrumbs', 'child_count')
+
+    @classmethod
+    def get_breadcrumbs(cls, instance: TestPlan):
+        tree = TestPlanSelector.testplan_list_ancestors(instance)
+        return get_breadcrumbs_treeview(
+            instances=tree,
+            depth=len(tree) - 1,
+            title_method=cls.get_title,
+        )
+
+    @classmethod
+    def get_child_count(cls, instance: TestPlan):
+        return instance.child_test_plans.count()
+
+
 class TestPlanTreeSerializer(TestPlanOutputSerializer):
     children = SerializerMethodField()
     parent = ParentPlanSerializer()
@@ -351,3 +403,29 @@ class TestPlanProgressSerializer(Serializer):
         if parameters := instance.parameters.all():
             return '{0} [{1}]'.format(instance.name, ', '.join([parameter.data for parameter in parameters]))
         return instance.name
+
+
+class TestPlanDetailSerializer(Serializer):
+    plan = PrimaryKeyRelatedField(queryset=TestPlanSelector.testplan_list_raw(), required=True)
+    new_name = CharField(required=False)
+    started_at = DateTimeField(required=False)
+    due_date = DateTimeField(required=False)
+
+
+class TestPlanCopySerializer(Serializer):
+    plans = TestPlanDetailSerializer(many=True, required=True)
+    dst_plan = PrimaryKeyRelatedField(
+        queryset=TestPlanSelector.testplan_list_raw(),
+        required=False,
+        allow_null=True,
+        allow_empty=True,
+    )
+    keep_assignee = BooleanField(default=False)
+
+
+class TestPlanMinSerializer(ModelSerializer):
+    url = HyperlinkedIdentityField(view_name='api:v1:testplan-detail')
+
+    class Meta:
+        model = TestPlan
+        exclude = ('is_deleted', 'created_at', 'updated_at', 'lft', 'rght', 'tree_id', 'level')

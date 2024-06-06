@@ -22,6 +22,11 @@
   user-select: none;
 }
 
+.mdViewer *,
+.markdown * {
+  text-wrap: balance;
+}
+
 .markdown ul,
 .mdViewer ul {
   padding: 4px 0;

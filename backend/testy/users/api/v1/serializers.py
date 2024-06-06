@@ -30,11 +30,16 @@
 # <http://www.gnu.org/licenses/>.
 
 from django.contrib.auth import get_user_model
-from rest_framework.fields import JSONField, SerializerMethodField
+from django.contrib.auth.models import Permission
+from rest_framework.fields import CharField, IntegerField, JSONField, SerializerMethodField
+from rest_framework.relations import PrimaryKeyRelatedField
 from rest_framework.reverse import reverse
-from rest_framework.serializers import HyperlinkedIdentityField, ModelSerializer
+from rest_framework.serializers import HyperlinkedIdentityField, ModelSerializer, Serializer
 
-from testy.users.models import Group
+from testy.core.api.v1.serializers import ProjectSerializer
+from testy.users.models import Group, Membership, Role
+from testy.users.selectors.permissions import PermissionSelector
+from testy.users.selectors.roles import RoleSelector
 
 UserModel = get_user_model()
 
@@ -50,12 +55,13 @@ class GroupSerializer(ModelSerializer):
 class UserSerializer(ModelSerializer):
     url = HyperlinkedIdentityField(view_name='api:v1:user-detail')
     avatar_link = SerializerMethodField(read_only=True)
+    projects = ProjectSerializer(read_only=True, many=True)
 
     class Meta:
         model = UserModel
         fields = (
             'id', 'url', 'username', 'password', 'first_name', 'last_name', 'email', 'is_staff', 'is_active',
-            'date_joined', 'groups', 'avatar', 'avatar_link',
+            'date_joined', 'groups', 'avatar', 'avatar_link', 'is_superuser', 'projects',
         )
 
         read_only_fields = ('date_joined',)
@@ -72,9 +78,86 @@ class UserSerializer(ModelSerializer):
         )
 
 
+class UserUpdateSerializer(ModelSerializer):
+    class Meta:
+        model = UserModel
+        fields = (
+            'first_name',
+            'last_name',
+            'email',
+            'is_active',
+            'is_superuser',
+        )
+
+
+class RoleFromMembershipSerializer(Serializer):
+    id = IntegerField(source='role.id', read_only=True)
+    name = CharField(source='role.name', read_only=True)
+    type = IntegerField(source='role.type', read_only=True)
+    permissions = SerializerMethodField()
+
+    def get_permissions(self, instance):
+        return PermissionSerializer(instance.role.permissions.all(), many=True).data
+
+
+class UserRoleSerializer(UserSerializer):
+    roles = RoleFromMembershipSerializer(source='memberships', many=True)
+
+    class Meta(UserSerializer.Meta):
+        fields = UserSerializer.Meta.fields + ('roles',)
+
+
 class UserAvatarSerializer(UserSerializer):
     crop = JSONField(allow_null=True)
 
     class Meta:
         model = UserModel
         fields = ('avatar', 'crop')
+
+
+class RoleSerializer(ModelSerializer):
+    url = HyperlinkedIdentityField(view_name='api:v1:role-detail')
+    permissions = PrimaryKeyRelatedField(
+        many=True,
+        queryset=PermissionSelector.permission_list(),
+        allow_empty=True,
+        required=True,
+    )
+
+    class Meta:
+        model = Role
+        fields: tuple[str, ...] = ('id', 'name', 'permissions', 'type', 'url')
+
+
+class RoleAssignSerializer(ModelSerializer):
+    roles = PrimaryKeyRelatedField(
+        many=True,
+        queryset=RoleSelector.role_list(),
+    )
+
+    class Meta:
+        model = Membership
+        fields: tuple[str, ...] = ('project', 'user', 'roles')
+
+
+class RoleUnassignSerializer(ModelSerializer):
+    class Meta:
+        model = Membership
+        fields: tuple[str, ...] = ('project', 'user')
+
+
+class MembershipSerializer(ModelSerializer):
+    class Meta:
+        model = Membership
+        fields: tuple[str, ...] = ('project', 'user', 'role')
+        extra_kwargs = {
+            'project': {'required': True, 'allow_null': False},
+            'user': {'required': True, 'allow_null': False},
+            'role': {'required': True, 'allow_null': False},
+        }
+
+
+class PermissionSerializer(ModelSerializer):
+    class Meta:
+        model = Permission
+        fields: tuple[str, ...] = ('id', 'name', 'codename')

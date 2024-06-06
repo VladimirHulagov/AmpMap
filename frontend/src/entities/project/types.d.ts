@@ -3,6 +3,11 @@ interface ProjectState {
   isOnlyFavorites: boolean
 }
 
+interface ProjectSettings {
+  is_result_editable: boolean
+  result_edit_limit?: string | null
+}
+
 interface Project {
   id: Id
   url: string
@@ -14,6 +19,11 @@ interface Project {
   suites_count: number
   plans_count: number
   tests_count: number
+  is_private: boolean
+  is_manageable: boolean
+  is_member: boolean
+  settings: ProjectSettings
+  is_visible: boolean
 }
 
 interface ProjectUpdate {
@@ -21,6 +31,7 @@ interface ProjectUpdate {
   description: string
   is_archive: boolean
   icon?: RcFile
+  is_private?: boolean
 }
 
 interface ProjectsProgress {

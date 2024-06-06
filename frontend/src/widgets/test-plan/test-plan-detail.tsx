@@ -1,7 +1,13 @@
 import { HistoryOutlined } from "@ant-design/icons"
 import { Button, Card, Col, Descriptions, Empty, Row, Space, Tag } from "antd"
 import dayjs from "dayjs"
-import { ArchiveTestPlan, CreateTestPlan, DeleteTestPlan, EditTestPlan } from "features/test-plan"
+import {
+  ArchiveTestPlan,
+  CopyTestPlan,
+  CreateTestPlan,
+  DeleteTestPlan,
+  EditTestPlan,
+} from "features/test-plan"
 import React from "react"
 import { Link } from "react-router-dom"
 import { TestPlanStatistics } from "widgets"
@@ -27,19 +33,19 @@ export const TestPlanDetail = ({ collapse, setCollapse }: TestPlanDetailProps) =
 
   return (
     <>
-      {!!testPlan.children.length && (
+      {!!testPlan.child_count && (
         <TestPlanTableWrapper activePlan={testPlan} collapse={collapse} setCollapse={setCollapse} />
       )}
       <Row>
         <Col span={24}>
           <Card>
             <Row>
-              <Col flex={"auto"}>
+              <Col flex={"1 1 0"}>
                 <p style={{ margin: 0, fontSize: 22 }} id="test-plan-title">
                   {testPlan.title}
                 </p>
               </Col>
-              <Col flex={"none"}>
+              <Col flex={"none"} style={{ marginLeft: "auto" }}>
                 <Space size="middle">
                   <Button type="link" style={{ border: "1px solid" }}>
                     <Link
@@ -51,6 +57,7 @@ export const TestPlanDetail = ({ collapse, setCollapse }: TestPlanDetailProps) =
                     </Link>
                   </Button>
                   <CreateTestPlan testPlan={testPlan} />
+                  <CopyTestPlan testPlan={testPlan} />
                   <EditTestPlan testPlan={testPlan} />
                   {testPlan.is_archive ? (
                     <DeleteTestPlan testPlan={testPlan} />

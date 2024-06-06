@@ -120,7 +120,7 @@ export const SearchField = <T extends WorkData>({
         </Select.Option>
       )}
       {!isLastPage && !isLoading && (
-        <Select.Option value="">
+        <Select.Option value="" style={{ visibility: "hidden" }}>
           <div ref={ref} />
         </Select.Option>
       )}

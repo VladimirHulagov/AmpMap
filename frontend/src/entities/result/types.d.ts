@@ -15,7 +15,7 @@ interface IResult {
   url: string
   execution_time: number
   attachments: IAttachment[]
-  attributes: TestResultAttribute
+  attributes: AttributesObject
   steps_results: StepResult[]
 }
 
@@ -32,7 +32,7 @@ interface IResultCreate {
   is_archive?: boolean
   execution_time?: number
   attachments?: number[]
-  attributes?: TestResultAttribute
+  attributes?: AttributesObject
   steps_results?: StepResultCreate[]
 }
 
@@ -43,7 +43,7 @@ interface IResultUpdate {
   is_archive?: boolean
   execution_time?: number
   attachments?: number[]
-  attributes?: TestResultAttribute
+  attributes?: AttributesObject
   steps_results?: StepResultUpdate[]
 }
 
@@ -72,5 +72,3 @@ interface ResultFormData {
   steps?: Step[]
   attributes?: Attribute[]
 }
-
-type TestResultAttribute = Record<string, string[] | string | object>

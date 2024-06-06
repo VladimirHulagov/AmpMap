@@ -4,6 +4,8 @@ import { baseQueryWithLogout } from "app/apiSlice"
 
 import { setUser } from "entities/auth/model"
 
+import { invalidatesList } from "shared/libs"
+
 import { setUserConfig } from "../model"
 
 const rootPath = "v1/users"
@@ -74,13 +76,7 @@ export const usersApi = createApi({
         method: "PATCH",
         body,
       }),
-      invalidatesTags: (result, _, { id }) =>
-        result
-          ? [
-              { type: "User", id },
-              { type: "User", id: "LIST" },
-            ]
-          : [{ type: "User", id: "LIST" }],
+      invalidatesTags: (result) => invalidatesList(result, "User"),
     }),
     deleteUser: builder.mutation<void, number>({
       query: (id) => ({
@@ -110,7 +106,6 @@ export const usersApi = createApi({
 export const {
   useGetUsersQuery,
   useLazyGetUsersQuery,
-  useGetConfigQuery,
   useCreateUserMutation,
   useUpdateUserMutation,
   useDeleteUserMutation,

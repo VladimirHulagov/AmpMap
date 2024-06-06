@@ -59,10 +59,12 @@ export const baseQueryWithLogout: BaseQueryFn<
     window.location.href = "/404"
   }
 
-  if (
-    (result?.error?.status === 401 || result?.error?.status === 403) &&
-    window.location.pathname !== "/login"
-  ) {
+  if (result?.error?.status === 403) {
+    const currentHref = window.location.href
+    window.location.href = "/?error=403&errorPage=" + currentHref
+  }
+
+  if (result?.error?.status === 401 && window.location.pathname !== "/login") {
     if (!mutex.isLocked()) {
       const release = await mutex.acquire()
       try {

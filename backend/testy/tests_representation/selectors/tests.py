@@ -56,13 +56,13 @@ class TestSelector:
             TestSuite.objects
             .filter(
                 Q(
-                    lft__lt=OuterRef('case__suite__lft'),
-                    rght__gt=OuterRef('case__suite__rght'),
+                    lft__lte=OuterRef('case__suite__lft'),
+                    rght__gte=OuterRef('case__suite__rght'),
                     tree_id=OuterRef('case__suite__tree_id'),
-                ) | Q(id=OuterRef('case__suite__id')),
+                ),
             )
             .values('tree_id')
-            .annotate(concatenated_name=StringAgg('name', delimiter='/'))
+            .annotate(concatenated_name=StringAgg('name', delimiter='/', ordering='id'))
             .values('concatenated_name')
         )
         return (

@@ -47,7 +47,7 @@ export const useSelectSuiteModal = ({
   }
 
   const treeData = useMemo(() => {
-    const buildBranch = (data: Suite[]): DataNode[] =>
+    const buildBranch = (data: SuiteTree[]): DataNode[] =>
       data
         .map((item) => {
           const isSelected = selectedSuiteId === item.id

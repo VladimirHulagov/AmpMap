@@ -39,11 +39,11 @@ export const TestResultEditModal = ({
     setValue,
     handleCancel,
     handleSubmitForm,
-    handleAddAttribute,
-    handleAttributeChangeName,
-    handleAttributeChangeType,
-    handleAttributeChangeValue,
-    handleAttributeRemove,
+    addAttribute,
+    onAttributeChangeType,
+    onAttributeChangeValue,
+    onAttributeChangeName,
+    onAttributeRemove,
     handleAttachmentsChange,
     handleAttachmentsRemove,
     register,
@@ -172,14 +172,14 @@ export const TestResultEditModal = ({
                   <Attribute.List
                     fieldProps={field}
                     attributes={attributes}
-                    handleAttributeRemove={handleAttributeRemove}
-                    handleAttributeChangeName={handleAttributeChangeName}
-                    handleAttributeChangeValue={handleAttributeChangeValue}
-                    handleAttributeChangeType={handleAttributeChangeType}
+                    handleAttributeRemove={onAttributeRemove}
+                    handleAttributeChangeName={onAttributeChangeName}
+                    handleAttributeChangeValue={onAttributeChangeValue}
+                    handleAttributeChangeType={onAttributeChangeType}
                   />
 
                   <div style={{ marginTop: 8 }}>
-                    <Button type="dashed" block onClick={handleAddAttribute}>
+                    <Button type="dashed" block onClick={addAttribute}>
                       <PlusOutlined /> Add attribute
                     </Button>
                   </div>

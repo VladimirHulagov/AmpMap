@@ -50,7 +50,7 @@ export const useSuiteEditModal = (suite?: Suite) => {
     setValue("description", suite.description)
 
     if (suite.parent) {
-      setSelectedParent({ value: Number(suite.parent.id), label: suite.parent.name })
+      setSelectedParent({ value: suite.parent.id, label: suite.parent.name })
       setValue("parent", String(suite.parent.id))
     }
   }, [isShow, suite])

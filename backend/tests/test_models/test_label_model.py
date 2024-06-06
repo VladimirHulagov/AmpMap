@@ -30,10 +30,10 @@
 # <http://www.gnu.org/licenses/>.
 
 import pytest
-from core.models import Label
 from django.db import IntegrityError
 
 from tests.error_messages import NOT_NULL_ERR_MSG
+from testy.core.models import Label
 
 
 @pytest.mark.django_db
@@ -56,3 +56,9 @@ class TestLabelModel:
     def test_valid_model_creation(self, label):
         assert Label.objects.count() == 1
         assert Label.objects.get(id=label.id) == label
+
+    def test_unique_together_constraint_for_deleted(self, label_factory, project):
+        label = label_factory(is_deleted=True)
+        label_factory(name=label.name, project=project)
+        assert Label.objects.count() == 1
+        assert Label.deleted_objects.count() == 1

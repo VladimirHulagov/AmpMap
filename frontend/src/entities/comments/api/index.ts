@@ -2,6 +2,8 @@ import { createApi } from "@reduxjs/toolkit/dist/query/react"
 
 import { baseQueryWithLogout } from "app/apiSlice"
 
+import { invalidatesList } from "shared/libs"
+
 const rootPath = "v1/comments"
 
 export const commentsApi = createApi({
@@ -37,13 +39,7 @@ export const commentsApi = createApi({
         method: "PUT",
         body,
       }),
-      invalidatesTags: (result, error, { comment_id }) =>
-        result
-          ? [
-              { type: "Comments", id: comment_id },
-              { type: "Comments", id: "LIST" },
-            ]
-          : [{ type: "Comments", id: "LIST" }],
+      invalidatesTags: (result) => invalidatesList(result, "Comments"),
     }),
     deleteComment: builder.mutation<void, number>({
       query: (id) => ({

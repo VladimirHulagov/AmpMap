@@ -34,14 +34,15 @@ from typing import Callable, List
 
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.aggregates import StringAgg
-from django.db.models import F, OuterRef, Prefetch, Q, Subquery, TextField, Value
+from django.db.models import F, Model, OuterRef, Prefetch, Q, QuerySet, Subquery, TextField, Value
 from django.db.models.functions import Concat
+from django_filters import BaseCSVFilter
 from django_filters import rest_framework as filters
 from rest_framework.compat import distinct
 from rest_framework.exceptions import NotFound
 from rest_framework.filters import OrderingFilter, SearchFilter
 
-from testy.core.models import Attachment, Label, Project
+from testy.core.models import Attachment, CustomAttribute, Label, Project
 from testy.core.selectors.projects import ProjectSelector
 from testy.tests_description.models import TestCase, TestSuite
 from testy.tests_description.selectors.suites import TestSuiteSelector
@@ -50,10 +51,33 @@ from testy.tests_representation.selectors.results import TestResultSelector
 from testy.tests_representation.selectors.testplan import TestPlanSelector
 from testy.tests_representation.services.statistics import StatisticProcessor
 from testy.utilities.request import get_boolean, get_user_favorites
-from testy.utilities.string import parse_bool_from_str
+from testy.utilities.string import parse_bool_from_str, parse_int
 from testy.utilities.tree import form_tree_prefetch_lookups
 
 UserModel = get_user_model()
+
+
+class FilterListMixin:
+    @classmethod
+    def filter_by_list(cls, queryset: QuerySet[Model], field_name: str, values_list: list[str]) -> QuerySet[Model]:
+        lookup = Q(**{f'{field_name}__in': values_list})
+        if 'null' in values_list:
+            values_list.remove('null')
+            lookup |= Q(**{f'{field_name}__isnull': True})
+        return queryset.filter(lookup)
+
+
+class FlatFilterMixin:
+    @classmethod
+    def filter_queryset_flat(cls: filters.FilterSet, queryset: QuerySet[Model], request) -> QuerySet[Model]:
+        for param_name, param_value in request.query_params.items():
+            filter_instance = cls.base_filters.get(param_name)
+            if not filter_instance:
+                continue
+            if isinstance(filter_instance, OrderingFilter):
+                param_value = param_value.split(',')
+            queryset = filter_instance.filter(queryset, param_value)
+        return queryset
 
 
 class TestyFilterBackend(filters.DjangoFilterBackend):
@@ -135,12 +159,29 @@ class ProjectFilter(ProjectArchiveFilter):
         )
 
 
-class TestCaseFilter(BaseProjectFilter):
+class TestCaseFilter(BaseProjectFilter, FlatFilterMixin):
     name = filters.CharFilter(lookup_expr='icontains')
+    labels = filters.BaseInFilter(method='filter_by_labels')
+
+    def filter_by_labels(self, queryset, field_name, label_ids: list[int]):
+        if self.action == 'cases_search':
+            return self._filter_search(queryset, label_ids)
+        filter_condition = {
+            'labels': label_ids,
+            'labels_condition': self.request.query_params.get('labels_condition', 'or'),
+        }
+        processor = StatisticProcessor(filter_condition, outer_ref_prefix=None)
+        return processor.process_labels(queryset)
+
+    def _filter_search(self, queryset, label_ids: list[int]):
+        oper = operator.or_ if self.request.query_params.get('labels_condition') == 'or' else operator.and_
+        lookups = [Q(label_ids__contains=[label_id]) for label_id in label_ids]
+        lookup = reduce(oper, lookups)
+        return queryset.filter(lookup)
 
     class Meta:
         model = TestCase
-        fields = ('id', 'project', 'suite', 'name')
+        fields = ('id', 'project', 'suite', 'name', 'labels')
 
 
 class ParameterFilter(BaseProjectFilter):
@@ -161,6 +202,20 @@ class LabelFilter(BaseProjectFilter):
         fields = ('project',)
 
 
+class CustomAttributeFilter(BaseProjectFilter):
+    suite = filters.NumberFilter(field_name='suite_ids', method='filter_by_suite')
+
+    @classmethod
+    def filter_by_suite(cls, queryset, field_name, val):
+        non_suite_specific = queryset.filter(is_suite_specific__exact=False)
+        suite_specific = queryset.filter(**{f'{field_name}__icontains': val})
+        return non_suite_specific | suite_specific
+
+    class Meta:
+        model = CustomAttribute
+        fields = ('project', 'suite')
+
+
 class TestPlanFilter(ArchiveFilter):
     def filter_queryset(self, queryset):
         if parameters_str := self.data.get('parameters'):
@@ -176,33 +231,37 @@ class TestPlanFilter(ArchiveFilter):
 class TestFilter(ArchiveFilter):
     assignee = filters.NumberFilter()
     unassigned = filters.BooleanFilter(field_name='assignee', lookup_expr='isnull')
+    suite = filters.BaseCSVFilter('case__suite_id', method='filter_by_suite')
+    labels = BaseCSVFilter(method='filter_by_labels')
+    not_labels = BaseCSVFilter(method='filter_by_labels')
+    last_status = BaseCSVFilter(field_name='last_status', method='filter_by_last_status')
 
-    def filter_queryset(self, queryset):
+    def filter_by_suite(self, queryset, field_name, suite_ids):
+        filter_conditons = {f'{field_name}__in': suite_ids}
+        if get_boolean(self.request, 'nested_search'):
+            suites = TestSuiteSelector.suites_by_ids(suite_ids, 'pk')
+            suite_ids = suites.get_descendants(include_self=True).values_list('id', flat=True)
+            filter_conditons = {f'{field_name}__in': suite_ids}
+        return queryset.filter(**filter_conditons)
+
+    def filter_by_labels(self, queryset, *args):
         filter_condition = {}
         for key in ('labels', 'not_labels'):
             labels = self.data.get(key)
             filter_condition[key] = tuple(labels.split(',')) if labels else None
-
         filter_condition['labels_condition'] = self.data.get('labels_condition')
-
         statistic_processor = StatisticProcessor(filter_condition)
         if statistic_processor.labels or statistic_processor.not_labels:
             queryset = statistic_processor.process_labels(queryset)
+        return queryset
 
-        last_status = self.data.get('last_status')
-        if last_status:
-            last_status = last_status.split(',')
-            q_lookup = Q(last_status__in=last_status)
-            if 'null' in last_status:
-                last_status.remove('null')
-                q_lookup = Q(last_status__in=last_status) | Q(last_status__isnull=True)
-
-            queryset = queryset.annotate(
-                last_status=TestResultSelector.get_last_status_subquery(),
-            ).filter(q_lookup)
-        if suites := self.data.get('suite'):
-            queryset = queryset.filter(case__suite__id__in=suites.split(','))
-        return super().filter_queryset(queryset)
+    @classmethod
+    def filter_by_last_status(cls, queryset, field_name: str, statuses):
+        filter_conditions = Q(**{f'{field_name}__in': statuses})
+        if 'null' in statuses:
+            statuses.remove('null')
+            filter_conditions |= Q(**{f'{field_name}__isnull': True})
+        return queryset.filter(filter_conditions)
 
     class Meta:
         model = Test
@@ -303,7 +362,11 @@ class TreeSearchBaseFilter(TestyBaseSearchFilter):
         prefetch_objects = []
         for lookup in lookups:
             prefetch_objects.append(Prefetch(lookup, queryset=ancestors))
-        return ancestors.filter(parent_id=request.query_params.get('parent')).prefetch_related(*prefetch_objects)
+
+        parent_id = parse_int(request.query_params.get('parent', ''))
+        parent_lookup = {'parent_id': parent_id} if parent_id else {'parent_id__isnull': True}
+
+        return ancestors.filter(**parent_lookup).prefetch_related(*prefetch_objects)
 
 
 class TestSuiteSearchFilter(TreeSearchBaseFilter):
@@ -317,13 +380,14 @@ class TestSuiteSearchFilter(TreeSearchBaseFilter):
     def custom_filter(self, queryset, filter_conditions, request):
         valid_options = self.get_valid_options(filter_conditions, request)
         if get_boolean(request, 'is_flat'):
-            return valid_options
+            return valid_options.annotate(**TestSuiteSelector.path_annotation())
         max_level = self.max_level_method()
         ancestors = self.get_ancestors(valid_options)
-        return ancestors.filter(parent_id=request.query_params.get('parent')).prefetch_related(
+        parent_id = parse_int(request.query_params.get('parent', ''))
+        parent_lookup = {'parent_id': parent_id} if parent_id else {'parent_id__isnull': True}
+        return ancestors.filter(**parent_lookup).prefetch_related(
             *TestSuiteSelector.suites_tree_prefetch_children(max_level),
-            *TestSuiteSelector.suites_tree_prefetch_cases(max_level),
-        )
+        ).annotate(**TestSuiteSelector.cases_count_annotation())
 
 
 class TestPlanSearchFilter(TreeSearchBaseFilter):
@@ -400,12 +464,13 @@ class CustomSearchFilter(SearchFilter):
         return queryset.filter(**filter_lookup)
 
 
-class UserFilter(filters.FilterSet):
+class UserFilter(filters.FilterSet, FilterListMixin, FlatFilterMixin):
     username = filters.CharFilter(lookup_expr='icontains')
     email = filters.CharFilter(lookup_expr='icontains')
     first_name = filters.CharFilter(lookup_expr='icontains')
     last_name = filters.CharFilter(lookup_expr='icontains')
+    project = BaseCSVFilter(field_name='memberships__project', method='filter_by_list')
 
     class Meta:
         model = UserModel
-        fields = ('username', 'email', 'first_name', 'last_name', 'is_active', 'is_staff')
+        fields = ('username', 'email', 'first_name', 'last_name', 'is_active', 'is_superuser')

@@ -28,19 +28,24 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
+from django.db.models import Q, Sum
 from rest_framework.fields import SerializerMethodField
 from rest_framework.reverse import reverse
-from utilities.time import WorkTimeProcessor
 
-from testy.core.api.v1.serializers import ProjectStatisticsSerializer
+from testy.core.api.v1.serializers import ProjectRetrieveSerializer, ProjectStatisticsSerializer
 from testy.tests_description.api.v1.serializers import (
     TestCaseRetrieveSerializer,
     TestSuiteBaseSerializer,
+    TestSuiteRetrieveSerializer,
+    TestSuiteSerializer,
     TestSuiteTreeSerializer,
 )
 from testy.tests_description.models import TestCase, TestSuite
 from testy.tests_representation.api.v1.serializers import TestSerializer
 from testy.tests_representation.models import Test, TestPlan
+from testy.users.models import Membership
+from testy.users.selectors.roles import RoleSelector
+from testy.utilities.time import WorkTimeProcessor
 
 
 class TestMockSerializer(TestSerializer):
@@ -73,11 +78,24 @@ class TestSuiteMockTreeSerializer(TestSuiteTreeSerializer):
         return instance.get_descendant_count()
 
 
-class ProjectStatisticsMockSerializer(ProjectStatisticsSerializer):
+class ProjectRetrieveMockSerializer(ProjectRetrieveSerializer):
+    is_manageable = SerializerMethodField()
+
+    def get_is_manageable(self, instance):
+        user = self.context.get('request').user
+        return RoleSelector.can_assign_role(user, instance.pk) or user.is_superuser
+
+
+class ProjectStatisticsMockSerializer(ProjectRetrieveMockSerializer):
     cases_count = SerializerMethodField()
     suites_count = SerializerMethodField()
     plans_count = SerializerMethodField()
     tests_count = SerializerMethodField()
+    is_visible = SerializerMethodField()
+
+    def __init__(self, user, **kwargs):
+        super().__init__(**kwargs)
+        self._user = user
 
     def get_icon(self, instance):
         if not instance.icon:
@@ -102,6 +120,76 @@ class ProjectStatisticsMockSerializer(ProjectStatisticsSerializer):
     def get_tests_count(cls, instance):
         return Test.objects.filter(project=instance).count()
 
+    def get_is_visible(self, instance):
+        user = self.context.get('request').user
+        membership_exists = Membership.objects.filter(user__pk=user.pk, project=instance).exists()
+        not_private = instance.is_private and not RoleSelector.restricted_project_access(user)
+        return membership_exists or not_private or user.is_superuser
+
+    class Meta(ProjectStatisticsSerializer.Meta):
+        """Get fields configuration."""
+
 
 class TestCaseMockSerializer(TestCaseRetrieveSerializer):
     """Test case mock serializer to avoid prefetching in tests."""
+
+
+class PathRetrieveMixin:
+    def get_path(self, instance):
+        return '/'.join(suite.name for suite in instance.get_ancestors(include_self=True))
+
+
+class TestSuiteBaseMockSerializer(TestSuiteBaseSerializer, PathRetrieveMixin):
+    path = SerializerMethodField()
+
+
+class TestSuiteMockSerializer(TestSuiteSerializer, PathRetrieveMixin):
+    path = SerializerMethodField()
+
+
+class TestSuiteRetrieveMockSerializer(TestSuiteRetrieveSerializer, PathRetrieveMixin):
+    path = SerializerMethodField()
+    descendant_count = SerializerMethodField()
+    cases_count = SerializerMethodField()
+    total_cases_count = SerializerMethodField()
+    estimates = SerializerMethodField()
+    total_estimates = SerializerMethodField()
+
+    @classmethod
+    def get_descendant_count(cls, instance):
+        return instance.get_descendant_count()
+
+    @classmethod
+    def get_cases_count(cls, instance):
+        return TestCase.objects.filter(suite=instance).count()
+
+    @classmethod
+    def get_total_cases_count(cls, instance):
+        return TestCase.objects.filter(suite__in=instance.get_descendants(include_self=True)).count()
+
+    @classmethod
+    def get_estimates(cls, instance):
+        sum_condition = Q(test_cases__is_deleted=False) & Q(test_cases__is_archive=False)
+        return (
+            TestSuite.objects.filter(pk=instance.pk)
+            .prefetch_related('test_cases')
+            .values('tree_id')
+            .annotate(
+                total=Sum('test_cases__estimate', filter=sum_condition),
+            )
+            .values_list('total', flat=True)[0]
+        )
+
+    @classmethod
+    def get_total_estimates(cls, instance):
+        sum_condition = Q(test_cases__is_deleted=False) & Q(test_cases__is_archive=False)
+        filter_condition = Q(tree_id=instance.tree_id) & Q(lft__gte=instance.lft) & Q(rght__lte=instance.rght)
+        return (
+            TestSuite.objects.filter(filter_condition)
+            .prefetch_related('test_cases')
+            .values('tree_id')
+            .annotate(
+                total=Sum('test_cases__estimate', filter=sum_condition),
+            )
+            .values_list('total', flat=True)[0]
+        )

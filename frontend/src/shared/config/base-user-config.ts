@@ -16,6 +16,7 @@ export const userConfig: UserConfig = {
   },
   test_plans: {
     is_show_archived: false,
+    is_cases_filter_open: false,
   },
   test_cases: {
     is_show_archived: false,

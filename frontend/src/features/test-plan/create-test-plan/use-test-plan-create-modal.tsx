@@ -4,6 +4,8 @@ import React, { useEffect, useState } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
 import { useParams } from "react-router-dom"
 
+import { useTestCaseFormLabels } from "entities/label/model"
+
 import { useGetParametersQuery } from "entities/parameter/api"
 
 import { useTestCasesSearch } from "entities/test-case/model"
@@ -39,7 +41,7 @@ type IForm = Modify<
 interface UseTestPlanCreateModalProps {
   isShow: boolean
   setIsShow: React.Dispatch<React.SetStateAction<boolean>>
-  testPlan?: TestPlanTreeView
+  testPlan?: TestPlan
 }
 
 export const useTestPlanCreateModal = ({
@@ -70,6 +72,31 @@ export const useTestPlanCreateModal = ({
   const testCasesWatch = watch("test_cases")
 
   const [parametersTreeView, setParametersTreeView] = useState<IParameterTreeView[]>([])
+
+  const [selectedLables, setSelectedLabels] = useState<number[]>([])
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
+  const setLables = (_: string, values: any, data: any) => {
+    const v = values as { name: string; id?: number }[]
+    setSelectedLabels(v.map((i) => i.id).filter((i) => i !== undefined) as number[])
+  }
+
+  const labelProps = useTestCaseFormLabels({
+    setValue: setLables,
+    testCase: null,
+    isShow: true,
+    isEditMode: false,
+    defaultLabels: selectedLables,
+  })
+
+  const [lableCondition, setLableCondition] = useState<"and" | "or">("and")
+
+  const handleConditionClick = () => {
+    setLableCondition(lableCondition === "and" ? "or" : "and")
+  }
+
+  useEffect(() => {
+    onSearch(searchText, selectedLables, lableCondition)
+  }, [selectedLables, lableCondition])
 
   const {
     searchText,
@@ -190,7 +217,7 @@ export const useTestPlanCreateModal = ({
     }
   }
 
-  const handleSelectTestPlan = (value?: { label: string; value: number }) => {
+  const handleSelectTestPlan = (value?: SelectData) => {
     setErrors({ parent: "" })
     if (Number(value?.value) === Number(testPlan?.id)) {
       setErrors({ parent: "Test Plan не может быть родителем для самого себя." })
@@ -199,7 +226,7 @@ export const useTestPlanCreateModal = ({
 
     if (value) {
       setValue("parent", value.value, { shouldDirty: true })
-      setSelectedParent({ value: value.value, label: value.label })
+      setSelectedParent({ value: value.value, label: value.label?.toString() ?? "" })
     }
   }
 
@@ -242,5 +269,9 @@ export const useTestPlanCreateModal = ({
     handleSearchTestPlan,
     handleSelectTestPlan,
     handleLoadNextPageData,
+    selectedLables,
+    labelProps,
+    lableCondition,
+    handleConditionClick,
   }
 }

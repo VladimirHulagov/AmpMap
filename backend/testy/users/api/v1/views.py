@@ -31,17 +31,33 @@
 from http import HTTPStatus
 
 from django.contrib.auth import get_user_model
-from filters import UserFilter
-from paginations import StandardSetPagination
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status
 from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
-from testy.users.api.v1.serializers import GroupSerializer, UserAvatarSerializer, UserSerializer
+from testy.filters import UserFilter
+from testy.paginations import StandardSetPagination
+from testy.users.api.v1.serializers import (
+    GroupSerializer,
+    MembershipSerializer,
+    PermissionSerializer,
+    RoleAssignSerializer,
+    RoleSerializer,
+    RoleUnassignSerializer,
+    UserAvatarSerializer,
+    UserSerializer,
+    UserUpdateSerializer,
+)
+from testy.users.permissions import RolePermission, UserPermission
 from testy.users.selectors.groups import GroupSelector
+from testy.users.selectors.permissions import PermissionSelector
+from testy.users.selectors.roles import RoleSelector
 from testy.users.selectors.users import UserSelector
 from testy.users.services.groups import GroupService
+from testy.users.services.roles import RoleService
 from testy.users.services.users import UserService
 
 UserModel = get_user_model()
@@ -66,12 +82,21 @@ class UserViewSet(ModelViewSet):
     serializer_class = UserSerializer
     pagination_class = StandardSetPagination
     filterset_class = UserFilter
+    permission_classes = [IsAuthenticated, UserPermission]
     schema_tags = ['Users']
+
+    def get_serializer_class(self):
+        if self.action in {'update', 'partial_update'}:
+            return UserUpdateSerializer
+        return UserSerializer
+
+    def get_queryset(self):
+        return UserSelector().user_list(self.request.user)
 
     def perform_create(self, serializer: UserSerializer):
         serializer.instance = UserService().user_create(serializer.validated_data)
 
-    def perform_update(self, serializer: UserSerializer):
+    def perform_update(self, serializer: UserUpdateSerializer):
         serializer.instance = UserService().user_update(serializer.instance, serializer.validated_data)
 
     def destroy(self, request, *args, **kwargs):
@@ -112,3 +137,53 @@ class UserViewSet(ModelViewSet):
             serializer.instance = UserService().update_avatar(serializer.instance, {'avatar': None})
             return Response(data={'detail': 'Avatar was deleted successfully'}, status=HTTPStatus.OK)
         return Response(status=HTTPStatus.METHOD_NOT_ALLOWED)
+
+
+class RoleViewSet(ModelViewSet):
+    permission_classes = [RolePermission]
+    queryset = RoleSelector.role_list()
+    serializer_class = RoleSerializer
+    pagination_class = StandardSetPagination
+    filter_backends = [DjangoFilterBackend]
+
+    def get_serializer_class(self):
+        if self.action == 'unassign':
+            return RoleUnassignSerializer
+        if self.action in {'update_role', 'assign'}:
+            return RoleAssignSerializer
+        if self.action == 'permissions':
+            return PermissionSerializer
+        return RoleSerializer
+
+    def perform_create(self, serializer: RoleSerializer):
+        serializer.instance = RoleService.role_create(serializer.validated_data)
+
+    def get_queryset(self):
+        return RoleSelector.role_list_for_user(self.request.user, exclude_roles=True)
+
+    def perform_update(self, serializer: RoleSerializer):
+        serializer.instance = RoleService.role_update(
+            serializer.instance,
+            serializer.validated_data,
+        )
+
+    @action(methods=['post', 'put'], detail=False, url_path='assign', url_name='assign')
+    def assign(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        memberships = RoleService.roles_assign(serializer.validated_data)
+        return Response(MembershipSerializer(memberships, many=True).data)
+
+    @action(methods=['post'], detail=False, url_path='unassign', url_name='unassign')
+    def unassign(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        RoleService.roles_unassign(serializer.validated_data, request.user)
+        return Response(data={'Role removed successfully'})
+
+    @action(methods=['get'], detail=False, url_path='permissions', url_name='permissions')
+    def permissions(self, request):
+        permissions = PermissionSelector.permission_list()
+        return Response(
+            data=self.get_serializer(permissions, many=True).data,
+        )

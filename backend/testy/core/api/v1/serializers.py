@@ -31,12 +31,18 @@
 from typing import Optional
 
 import humanize
+from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from rest_framework.exceptions import ValidationError
-from rest_framework.fields import IntegerField, ListField, SerializerMethodField
+from rest_framework.fields import BooleanField, CharField, IntegerField, ListField, SerializerMethodField
+from rest_framework.relations import PrimaryKeyRelatedField
 from rest_framework.serializers import HyperlinkedIdentityField, ModelSerializer, Serializer
 
-from testy.core.models import Attachment, Label, Project, SystemMessage
+from testy.core.constants import CUSTOM_ATTRIBUTES_ALLOWED_APPS, CUSTOM_ATTRIBUTES_ALLOWED_MODELS
+from testy.core.models import Attachment, CustomAttribute, Label, Project, SystemMessage
+from testy.core.selectors.project_settings import ProjectSettings
+from testy.core.validators import CustomAttributeCreateValidator
+from testy.serializer_fields import EstimateField
 
 
 class LabelSerializer(ModelSerializer):
@@ -53,17 +59,72 @@ class LabelSerializer(ModelSerializer):
         return None
 
 
+class CustomAttributeBaseSerializer(ModelSerializer):
+    url = HyperlinkedIdentityField(view_name='api:v1:customattribute-detail')
+
+    class Meta:
+        model = CustomAttribute
+        fields = (
+            'id', 'url', 'project', 'name', 'is_required', 'is_suite_specific', 'type', 'is_deleted', 'suite_ids',
+        )
+
+
+class CustomAttributeInputSerializer(CustomAttributeBaseSerializer):
+    content_types = PrimaryKeyRelatedField(
+        queryset=ContentType.objects.filter(
+            app_label__in=CUSTOM_ATTRIBUTES_ALLOWED_APPS,
+            model__in=CUSTOM_ATTRIBUTES_ALLOWED_MODELS,
+        ),
+        many=True, allow_empty=False,
+    )
+
+    class Meta:
+        model = CustomAttribute
+        fields = CustomAttributeBaseSerializer.Meta.fields + ('content_types',)
+
+        validators = [CustomAttributeCreateValidator()]
+
+
+class CustomAttributeOutputSerializer(CustomAttributeBaseSerializer):
+    class Meta:
+        model = CustomAttribute
+        fields = CustomAttributeBaseSerializer.Meta.fields + ('content_types',)
+
+
+class ContentTypeSerializer(ModelSerializer):
+    class Meta:
+        model = ContentType
+        fields = ['id', 'app_label', 'model']
+
+
+class ProjectSettingsSerializer(Serializer):
+    is_result_editable = BooleanField(
+        allow_null=False,
+        default=ProjectSettings().is_result_editable,
+    )
+    result_edit_limit = EstimateField(
+        allow_null=True,
+        default=ProjectSettings().result_edit_limit,
+        to_workday=False,
+    )
+
+
 class ProjectSerializer(ModelSerializer):
     url = HyperlinkedIdentityField(view_name='api:v1:project-detail')
+    settings = ProjectSettingsSerializer(required=False)
 
     class Meta:
         model = Project
-        fields = ('id', 'url', 'name', 'description', 'is_archive', 'icon')
+        fields = ('id', 'url', 'name', 'description', 'is_archive', 'icon', 'settings', 'is_private')
 
 
 class ProjectRetrieveSerializer(ProjectSerializer):
     url = HyperlinkedIdentityField(view_name='api:v1:project-detail')
     icon = SerializerMethodField(read_only=True)
+    is_manageable = BooleanField(read_only=True)
+
+    class Meta(ProjectSerializer.Meta):
+        fields = ProjectSerializer.Meta.fields + ('is_manageable',)
 
     def get_icon(self, instance):
         if not instance.icon:
@@ -75,6 +136,7 @@ class ProjectRetrieveSerializer(ProjectSerializer):
 
 class ProjectStatisticsSerializer(ProjectRetrieveSerializer):
     url = HyperlinkedIdentityField(view_name='api:v1:project-detail')
+    is_visible = BooleanField(read_only=True)
     cases_count = IntegerField()
     suites_count = IntegerField()
     plans_count = IntegerField()
@@ -83,7 +145,7 @@ class ProjectStatisticsSerializer(ProjectRetrieveSerializer):
     class Meta:
         model = Project
         fields = ProjectRetrieveSerializer.Meta.fields + (
-            'cases_count', 'suites_count', 'plans_count', 'tests_count',
+            'cases_count', 'suites_count', 'plans_count', 'tests_count', 'is_visible',
         )
 
 
@@ -139,3 +201,12 @@ class SystemMessageSerializer(ModelSerializer):
     class Meta:
         model = SystemMessage
         fields = ('id', 'created_at', 'updated_at', 'content', 'level', 'is_closing')
+
+
+class CopyDetailSerializer(Serializer):
+    id = IntegerField(required=True)
+    new_name = CharField(required=False)
+
+
+class AccessRequestSerializer(Serializer):
+    reason = CharField(required=False, allow_blank=True, allow_null=True)

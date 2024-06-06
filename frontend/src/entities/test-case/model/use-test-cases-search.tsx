@@ -3,7 +3,7 @@ import { useParams } from "react-router"
 
 import { useLazySearchTestCasesQuery } from "entities/test-case/api"
 
-import { TreeUtils, makeTestSuitesForTreeView } from "shared/libs"
+import { TreeUtils, makeTestSuitesWithCasesForTreeView } from "shared/libs"
 
 export const useTestCasesSearch = ({ isShow }: { isShow: boolean }) => {
   const { projectId } = useParams<ParamProjectId>()
@@ -18,7 +18,7 @@ export const useTestCasesSearch = ({ isShow }: { isShow: boolean }) => {
     const fetch = async () => {
       setIsLoading(true)
       const res = await searchTestCases({ project: projectId }).unwrap()
-      const suitesWithKeys = makeTestSuitesForTreeView(res)
+      const suitesWithKeys = makeTestSuitesWithCasesForTreeView(res)
       setTreeData(suitesWithKeys as unknown as DataWithKey<Suite>[])
       setIsLoading(false)
     }
@@ -26,23 +26,21 @@ export const useTestCasesSearch = ({ isShow }: { isShow: boolean }) => {
     fetch()
   }, [isShow, projectId])
 
-  const onSearch = async (value: string) => {
+  const onSearch = async (value: string, labels: number[], labels_condition: "and" | "or") => {
     if (!projectId) return
-    setSearchText(value)
-
-    if (!value.trim().length) {
-      setTreeData(treeData)
-      setExpandedRowKeys([])
-      return
+    if (value !== searchText) {
+      setSearchText(value)
     }
 
     setIsLoading(true)
     const res = await searchTestCases({
       project: projectId,
       search: value,
+      labels,
+      labels_condition: labels.length > 1 ? labels_condition : undefined,
     }).unwrap()
 
-    const suitesWithKeys = makeTestSuitesForTreeView(res)
+    const suitesWithKeys = makeTestSuitesWithCasesForTreeView(res)
 
     const [filteredRows, expandedRows] = TreeUtils.filterRows(
       suitesWithKeys as unknown as DataWithKey<Suite>[],
@@ -53,7 +51,11 @@ export const useTestCasesSearch = ({ isShow }: { isShow: boolean }) => {
       }
     )
 
-    setExpandedRowKeys(expandedRows.map((key) => key.toString()))
+    if (!value.trim().length && !labels.length) {
+      setExpandedRowKeys([])
+    } else {
+      setExpandedRowKeys(expandedRows.map((key) => key.toString()))
+    }
     setTreeData(filteredRows)
     setIsLoading(false)
   }

@@ -4,7 +4,7 @@ import { LazyGetTriggerType } from "app/export-types"
 
 import { useSearchFieldImprove } from "."
 
-interface Props<T> {
+interface Props<T extends BaseResponse> {
   id?: string
   getData: LazyGetTriggerType<T>
   searchKey: string
@@ -16,6 +16,8 @@ interface Props<T> {
   onClear?: () => void
   dataParams?: Record<string, unknown>
   disabled?: boolean
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  valueFormat?: (value: any) => React.ReactNode | string
 }
 
 export const SearchFieldImprove = <T extends BaseResponse>({
@@ -29,6 +31,7 @@ export const SearchFieldImprove = <T extends BaseResponse>({
   onSelect,
   onClear,
   disabled = false,
+  valueFormat,
 }: Props<T>) => {
   const {
     data,
@@ -61,9 +64,9 @@ export const SearchFieldImprove = <T extends BaseResponse>({
       disabled={disabled}
     >
       {data?.map((item) => (
-        <Select.Option key={item.id} value={item.id}>
+        <Select.Option key={item.id.toString()} value={item.id}>
           {/* @ts-ignore */}
-          {item[valueKey]}
+          {valueFormat ? valueFormat(item) : item[valueKey]}
         </Select.Option>
       ))}
       {isLoading && (

@@ -30,7 +30,18 @@
 # <http://www.gnu.org/licenses/>.
 from django.shortcuts import get_object_or_404
 from drf_yasg.utils import swagger_auto_schema
-from filters import (
+from mptt.exceptions import InvalidMove
+from rest_framework import status
+from rest_framework.decorators import action
+from rest_framework.filters import OrderingFilter
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.viewsets import ModelViewSet, ViewSet
+
+from testy.core.api.v1.serializers import LabelSerializer
+from testy.core.selectors.labels import LabelSelector
+from testy.core.services.copy import CopyService
+from testy.filters import (
     ActivitySearchFilter,
     CustomOrderingFilter,
     CustomSearchFilter,
@@ -43,17 +54,11 @@ from filters import (
     TestyBaseSearchFilter,
     TestyFilterBackend,
 )
-from mptt.exceptions import InvalidMove
-from paginations import StandardSetPagination
-from permissions import ForbidChangesOnArchivedProject, IsAdminOrForbidArchiveUpdate
-from rest_framework import status
-from rest_framework.decorators import action
-from rest_framework.filters import OrderingFilter
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
-from rest_framework.viewsets import ModelViewSet, ViewSet
-from swagger.results import result_list_schema
-from swagger.testplans import (
+from testy.paginations import StandardSetPagination
+from testy.permissions import ForbidChangesOnArchivedProject, IsAdminOrForbidArchiveUpdate
+from testy.root.mixins import TestyArchiveMixin, TestyModelViewSet
+from testy.swagger.results import result_list_schema
+from testy.swagger.testplans import (
     plan_activity_schema,
     plan_case_ids_schema,
     plan_create_schema,
@@ -61,21 +66,19 @@ from swagger.testplans import (
     plan_list_schema,
     plan_progress_schema,
     plan_update_schema,
-    plans_breadcrumbs_schema,
 )
-from swagger.tests import test_list_schema
-
-from testy.core.api.v1.serializers import LabelSerializer
-from testy.core.selectors.labels import LabelSelector
-from testy.root.mixins import TestyArchiveMixin, TestyModelViewSet
+from testy.swagger.tests import test_list_schema
 from testy.tests_description.api.v1.serializers import TestSuiteTreeBreadcrumbsSerializer
 from testy.tests_description.selectors.cases import TestCaseSelector
 from testy.tests_description.selectors.suites import TestSuiteSelector
 from testy.tests_representation.api.v1.serializers import (
     ParameterSerializer,
+    TestPlanCopySerializer,
     TestPlanInputSerializer,
+    TestPlanMinSerializer,
     TestPlanOutputSerializer,
     TestPlanProgressSerializer,
+    TestPlanRetrieveSerializer,
     TestPlanStatisticsSerializer,
     TestPlanTreeSerializer,
     TestPlanUpdateSerializer,
@@ -85,6 +88,7 @@ from testy.tests_representation.api.v1.serializers import (
     TestSerializer,
 )
 from testy.tests_representation.models import TestPlan
+from testy.tests_representation.permissions import TestPlanPermission, TestResultPermission
 from testy.tests_representation.selectors.parameters import ParameterSelector
 from testy.tests_representation.selectors.results import TestResultSelector
 from testy.tests_representation.selectors.testplan import TestPlanSelector
@@ -95,7 +99,6 @@ from testy.tests_representation.services.statistics import HistogramProcessor
 from testy.tests_representation.services.testplans import TestPlanService
 from testy.tests_representation.services.tests import TestService
 from testy.utilities.request import PeriodDateTime, get_boolean
-from testy.utilities.tree import get_breadcrumbs_treeview
 
 _LABELS = 'labels'
 _GET = 'get'
@@ -171,7 +174,7 @@ class TestPlanViewSet(TestyModelViewSet, TestyArchiveMixin):
     queryset = TestPlan.objects.none()
     filter_backends = [TestyFilterBackend, TestPlanSearchFilter, OrderingFilter]
     filterset_class = TestPlanFilter
-    permission_classes = [IsAdminOrForbidArchiveUpdate, IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminOrForbidArchiveUpdate, TestPlanPermission]
     pagination_class = StandardSetPagination
     ordering_fields = ['started_at', 'created_at', 'name']
     search_fields = ['title']
@@ -190,18 +193,14 @@ class TestPlanViewSet(TestyModelViewSet, TestyArchiveMixin):
             return TestPlanSelector.testplan_list_raw()
         return TestPlanSelector().testplan_list(get_boolean(self.request, _IS_ARCHIVE))
 
-    @plans_breadcrumbs_schema
-    @action(methods=[_GET], url_path='parents', url_name='breadcrumbs', detail=True)
-    def breadcrumbs_view(self, request, *args, **kwargs):
-        instance = self.get_object()
-        tree = TestPlanSelector.testplan_list_ancestors(instance)
-        return Response(
-            get_breadcrumbs_treeview(
-                instances=tree,
-                depth=len(tree) - 1,
-                title_method=TestPlanOutputSerializer.get_title,
-            ),
-        )
+    def get_serializer_class(self):
+        if self.action == 'retrieve':
+            return TestPlanRetrieveSerializer
+        if self.action == 'copy_plans':
+            return TestPlanCopySerializer
+        if get_boolean(self.request, 'treeview'):
+            return TestPlanTreeSerializer
+        return TestPlanOutputSerializer
 
     @plan_activity_schema
     @action(methods=[_GET], url_path='activity', url_name='activity', detail=True)
@@ -259,11 +258,6 @@ class TestPlanViewSet(TestyModelViewSet, TestyArchiveMixin):
         plans = TestPlanSelector().get_plan_progress(pk, period=period)
         return Response(TestPlanProgressSerializer(plans, many=True).data)
 
-    def get_serializer_class(self):
-        if get_boolean(self.request, 'treeview'):
-            return TestPlanTreeSerializer
-        return super().get_serializer_class()
-
     @plan_create_schema
     def create(self, request, *args, **kwargs):
         serializer = TestPlanInputSerializer(data=request.data)
@@ -274,7 +268,7 @@ class TestPlanViewSet(TestyModelViewSet, TestyArchiveMixin):
         else:
             test_plans.append(TestPlanService().testplan_create(serializer.validated_data))
         return Response(
-            TestPlanOutputSerializer(test_plans, many=True, context={_REQUEST: request}).data,
+            TestPlanMinSerializer(test_plans, many=True, context=self.get_serializer_context()).data,
             status=status.HTTP_201_CREATED,
         )
 
@@ -296,6 +290,19 @@ class TestPlanViewSet(TestyModelViewSet, TestyArchiveMixin):
         return Response(
             TestPlanOutputSerializer(test_plan, context=self.get_serializer_context()).data,
             status=status.HTTP_200_OK,
+        )
+
+    @action(methods=['post'], url_path='copy', url_name='copy', detail=False)
+    def copy_plans(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        plans = CopyService.plans_copy(serializer.validated_data)
+        return Response(
+            TestPlanOutputSerializer(
+                plans,
+                many=True,
+                context=self.get_serializer_context(),
+            ).data,
         )
 
 
@@ -324,7 +331,7 @@ class TestViewSet(TestyModelViewSet, TestyArchiveMixin):
 @result_list_schema
 class TestResultViewSet(ModelViewSet, TestyArchiveMixin):
     queryset = TestResultSelector().result_list()
-    permission_classes = [ForbidChangesOnArchivedProject, IsAuthenticated]
+    permission_classes = [IsAuthenticated, ForbidChangesOnArchivedProject, TestResultPermission]
     serializer_class = TestResultSerializer
     filter_backends = [TestyFilterBackend]
     filterset_class = TestResultFilter

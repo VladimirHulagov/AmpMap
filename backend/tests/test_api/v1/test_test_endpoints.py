@@ -29,18 +29,17 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 
-import json
 from http import HTTPStatus
 from operator import itemgetter
 
 import pytest
-from tests_representation.choices import TestStatuses
-from tests_representation.models import Test
 
 from tests import constants
 from tests.commons import RequestType, model_to_dict_via_serializer
 from tests.error_messages import PERMISSION_ERR_MSG, REQUIRED_FIELD_MSG
 from tests.mock_serializers import TestMockSerializer
+from testy.tests_representation.choices import TestStatuses
+from testy.tests_representation.models import Test
 
 
 @pytest.mark.django_db
@@ -52,28 +51,28 @@ class TestTestEndpoints:
         expected_instances = model_to_dict_via_serializer(
             [test_factory(project=project) for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE)],
             TestMockSerializer,
-            many=True
+            many=True,
         )
         response = api_client.send_request(self.view_name_list, query_params={'project': project.id})
-        for instance_dict in json.loads(response.content)['results']:
+        for instance_dict in response.json()['results']:
             assert instance_dict in expected_instances, f'{instance_dict} was not found in expected instances.'
 
     def test_retrieve(self, api_client, authorized_superuser, test):
         expected_dict = model_to_dict_via_serializer(test, TestMockSerializer)
         response = api_client.send_request(self.view_name_detail, reverse_kwargs={'pk': test.pk})
-        actual_dict = json.loads(response.content)
+        actual_dict = response.json()
         assert actual_dict == expected_dict, 'Actual model dict is different from expected'
 
     def test_partial_update(self, api_client, authorized_superuser, test, user):
         result_dict = {
             'id': test.id,
-            'assignee': user.id
+            'assignee': user.id,
         }
         api_client.send_request(
             self.view_name_detail,
             result_dict,
             request_type=RequestType.PATCH,
-            reverse_kwargs={'pk': test.pk}
+            reverse_kwargs={'pk': test.pk},
         )
         result_user = Test.objects.get(pk=test.id).assignee
         assert result_user == user, f'Test user does not match. Expected user "{user}", ' \
@@ -83,7 +82,7 @@ class TestTestEndpoints:
     def test_update(self, api_client, authorized_superuser, expected_status, test, user, test_case, test_plan):
         result_dict = {
             'id': test.id,
-            'assignee': user.id
+            'assignee': user.id,
         }
         if expected_status == HTTPStatus.OK:
             result_dict['case'] = test_case.id
@@ -94,15 +93,15 @@ class TestTestEndpoints:
             reverse_kwargs={'pk': test.pk},
             request_type=RequestType.PUT,
             expected_status=expected_status,
-            data=result_dict
+            data=result_dict,
         )
         if expected_status == HTTPStatus.OK:
             result_user = Test.objects.get(pk=test.id).assignee
             assert result_user == user, f'Test user does not match. Expected user "{user}", ' \
                                         f'actual: "{result_user}"'
         else:
-            assert json.loads(response.content)['case'][0] == REQUIRED_FIELD_MSG
-            assert json.loads(response.content)['plan'][0] == REQUIRED_FIELD_MSG
+            assert response.json()['case'][0] == REQUIRED_FIELD_MSG
+            assert response.json()['plan'][0] == REQUIRED_FIELD_MSG
 
     def test_test_cannot_be_deleted(self, api_client, authorized_superuser, test):
         assert Test.objects.count() == 1, 'Test was not created'
@@ -110,7 +109,7 @@ class TestTestEndpoints:
             self.view_name_detail,
             expected_status=HTTPStatus.METHOD_NOT_ALLOWED,
             request_type=RequestType.DELETE,
-            reverse_kwargs={'pk': test.pk}
+            reverse_kwargs={'pk': test.pk},
         )
         assert Test.objects.count(), f'Test with id "{test.id}" was not deleted.'
 
@@ -123,14 +122,16 @@ class TestTestEndpoints:
             reverse_kwargs={'pk': test.pk},
             request_type=request_type,
             expected_status=HTTPStatus.FORBIDDEN,
-            data={}
+            data={},
         )
-        assert json.loads(response.content)['detail'] == PERMISSION_ERR_MSG
+        assert response.json()['detail'] == PERMISSION_ERR_MSG
 
     @pytest.mark.parametrize('field_name', ['id', 'name', 'is_archive', 'last_status'])
     @pytest.mark.parametrize('descending', [True, False], ids=['desc', 'asc'])
-    def test_ordering_pagination(self, api_client, authorized_superuser, test_factory, test_result_factory, field_name,
-                                 descending, project):
+    def test_ordering_pagination(
+        self, api_client, authorized_superuser, test_factory, test_result_factory, field_name,
+        descending, project,
+    ):
         number_of_pages = 2
         number_of_objects = constants.NUMBER_OF_OBJECTS_TO_CREATE_PAGE * number_of_pages
         tests = [test_factory(is_archive=idx % 2, project=project) for idx in range(number_of_objects)]
@@ -147,31 +148,31 @@ class TestTestEndpoints:
         expected_instances = model_to_dict_via_serializer(
             tests,
             TestMockSerializer,
-            many=True
+            many=True,
         )
 
         expected_instances = sorted(
             expected_instances,
             key=itemgetter(field_name),
-            reverse=descending
+            reverse=descending,
         )
 
         for page_number in range(1, number_of_pages + 1):
             response = api_client.send_request(
                 self.view_name_list,
                 query_params={
-                    'ordering': f'{"-" if descending else ""}{field_name if field_name != "name" else "case_name"}',
+                    'ordering': f'{"-" if descending else ""}{"case_name" if field_name == "name" else field_name}',
                     'is_archive': True,
                     'page': page_number,
-                    'project': project.id
-                }
+                    'project': project.id,
+                },
             )
-            response_dict = json.loads(response.content)['results']
+            response_dict = response.json()['results']
 
             assert len(response_dict) == constants.NUMBER_OF_OBJECTS_TO_CREATE_PAGE
             for expected_instance, actual_instance in zip(
-                    expected_instances[:99] if page_number == 1 else expected_instances[100:],
-                    json.loads(response.content)['results']
+                expected_instances[:99] if page_number == 1 else expected_instances[100:],
+                response.json()['results'],
             ):
                 assert expected_instance[field_name] == actual_instance[field_name]
 
@@ -195,10 +196,10 @@ class TestTestEndpoints:
                 query_params={
                     'search': test_cases[idx].name,
                     'is_archive': True,
-                    'project': project.id
-                }
+                    'project': project.id,
+                },
             )
-            response_dict = json.loads(response.content)['results']
+            response_dict = response.json()['results']
             assert sorted(expected_instances[idx], key=itemgetter('id')) == sorted(response_dict, key=itemgetter('id'))
 
     def test_last_status_filter(self, api_client, authorized_superuser, test_factory, test_result_factory, project):
@@ -214,11 +215,10 @@ class TestTestEndpoints:
                 self.view_name_list,
                 query_params={
                     'last_status': status.value,
-                    'project': project.id
-                }
+                    'project': project.id,
+                },
             )
-            assert [expected_instance] == json.loads(response.content)['results'], f'Filter by {status.label} ' \
-                                                                                   f'unexpected json'
+            assert response.json()['results'] == [expected_instance], f'Filter by {status.label} unexpected json'
 
     @pytest.mark.parametrize('page_size', [1, 2, 5])
     def test_page_size(self, api_client, authorized_superuser, test_factory, page_size, project):
@@ -227,6 +227,66 @@ class TestTestEndpoints:
             test_factory(project=project)
         response = api_client.send_request(
             self.view_name_list,
-            query_params={'page_size': page_size, 'project': project.id}
+            query_params={'page_size': page_size, 'project': project.id},
         )
-        assert expected_number_of_pages == json.loads(response.content)['pages']['total']
+        assert expected_number_of_pages == response.json()['pages']['total']
+
+    def test_suite_path(
+        self,
+        api_client,
+        authorized_superuser,
+        test_factory,
+        test_suite_factory,
+        project,
+        test_case_factory,
+    ):
+        parent = None
+        expected_suites = []
+        for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
+            parent = test_suite_factory(parent=parent, project=project)
+            expected_suites.append(parent)
+        test_case = test_case_factory(suite=expected_suites[-1])
+        test = test_factory(case=test_case)
+        expected_dict = model_to_dict_via_serializer(test, TestMockSerializer)
+        response = api_client.send_request(self.view_name_detail, reverse_kwargs={'pk': test.pk})
+        actual_dict = response.json()
+        assert '/'.join(suite.name for suite in expected_suites) == actual_dict['suite_path'], 'Wrong suite path'
+        assert actual_dict == expected_dict, 'Actual model dict is different from expected'
+
+    @pytest.mark.parametrize(
+        'label_indexes, not_labels_indexes, labels_condition, number_of_items',
+        [
+            ((0, 1), None, 'or', 7),
+            ((0, 1), None, 'and', 2),
+            ((0,), (1,), 'or', 8),
+            ((0,), (1,), 'and', 3),
+            ((0, 2), (1,), 'or', 8),
+            ((0, 2), (1,), 'and', 0),
+            (None, (0,), 'or', 5),
+            (None, (0, 1), 'or', 8),
+            (None, (0, 1), 'and', 3),
+        ],
+    )
+    def test_list_with_labels(
+        self,
+        api_client,
+        authorized_superuser,
+        cases_with_labels,
+        label_indexes,
+        not_labels_indexes,
+        labels_condition,
+        number_of_items,
+        project,
+    ):
+        labels, cases, test_plan = cases_with_labels
+        query_params = {'plan': test_plan.id, 'project': project.id}
+        if label_indexes:
+            query_params['labels'] = ','.join([str(labels[i].id) for i in label_indexes])
+        if not_labels_indexes:
+            query_params['not_labels'] = ','.join([str(labels[i].id) for i in not_labels_indexes])
+        query_params['labels_condition'] = labels_condition
+        content = api_client.send_request(
+            self.view_name_list,
+            query_params=query_params,
+        ).json()
+        assert content.get('count') == number_of_items

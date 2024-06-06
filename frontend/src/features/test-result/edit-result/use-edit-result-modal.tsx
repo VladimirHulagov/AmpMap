@@ -6,10 +6,10 @@ import { useParams } from "react-router-dom"
 import { useAttachments } from "entities/attachment/model"
 
 import { useUpdateResultMutation } from "entities/result/api"
-import { makeAttributesJson } from "entities/result/lib"
+import { useAttributes } from "entities/result/model"
 
 import { useErrors } from "shared/hooks"
-import { makeRandomId, showModalCloseConfirm } from "shared/libs"
+import { makeAttributesJson, showModalCloseConfirm } from "shared/libs"
 import { AlertSuccessChange } from "shared/ui"
 
 interface ErrorData {
@@ -26,7 +26,6 @@ interface UseEditResultModalProps {
 
 export const useEditResultModal = ({ setIsShow, testResult, isShow }: UseEditResultModalProps) => {
   const [errors, setErrors] = useState<ErrorData | null>(null)
-  const [attributes, setAttributes] = useState<Attribute[]>([])
   const {
     handleSubmit,
     reset,
@@ -59,6 +58,17 @@ export const useEditResultModal = ({ setIsShow, testResult, isShow }: UseEditRes
   const { onHandleError } = useErrors<ErrorData>(setErrors)
   const [updatedTestResult, { isLoading: isLoadingUpdateTestResult }] = useUpdateResultMutation()
   const [stepsResult, setStepsResult] = useState<Record<string, string>>({})
+
+  const {
+    attributes,
+    setAttributes,
+    addAttribute,
+    onAttributeChangeType,
+    onAttributeChangeValue,
+    onAttributeChangeName,
+    onAttributeRemove,
+    loadAttributeJson,
+  } = useAttributes({ mode: "edit", setValue })
 
   useEffect(() => {
     const resultSteps: Record<string, string> = {}
@@ -104,39 +114,6 @@ export const useEditResultModal = ({ setIsShow, testResult, isShow }: UseEditRes
       loadAttributeJson(testResult.attributes)
     }
   }, [testResult, isShow])
-
-  const loadAttributeJson = (attributesJson: Record<string, string[] | string | object>) => {
-    const _attributes: Attribute[] = []
-
-    Object.keys(attributesJson).map((key: string) => {
-      if (typeof attributesJson[key] === "string") {
-        _attributes.push({
-          id: makeRandomId(),
-          name: key,
-          type: "txt",
-          value: attributesJson[key],
-        })
-      } else if (Array.isArray(attributesJson[key])) {
-        const array: string[] = attributesJson[key] as string[]
-        _attributes.push({
-          id: makeRandomId(),
-          name: key,
-          type: "list",
-          value: array.join("\r\n"),
-        })
-      } else if (typeof attributesJson[key] === "object") {
-        _attributes.push({
-          id: makeRandomId(),
-          name: key,
-          type: "json",
-          value: JSON.stringify(attributesJson[key], null, 2),
-        })
-      }
-    })
-
-    setAttributes(_attributes)
-    setValue("attributes", _attributes, { shouldDirty: true })
-  }
 
   const onSubmit: SubmitHandler<ResultFormData> = async (data) => {
     if (!testResult || !testPlanId) return // TODO check it
@@ -186,57 +163,6 @@ export const useEditResultModal = ({ setIsShow, testResult, isShow }: UseEditRes
     }
   }
 
-  const handleAddAttribute = () => {
-    const newAttribues = [
-      ...attributes,
-      { id: makeRandomId(), name: "", value: "", type: "txt" },
-    ] as Attribute[]
-    setAttributes(newAttribues)
-    setValue("attributes", newAttribues, { shouldDirty: true })
-  }
-
-  const handleAttributeRemove = (attributeId: string) => {
-    const newAttribues = attributes.filter((item: Attribute) => item.id !== attributeId)
-    setAttributes(newAttribues)
-    setValue("attributes", newAttribues, { shouldDirty: true })
-  }
-
-  const handleAttributeChangeName = (attributeId: string, name: string) => {
-    const newAttribues = attributes.map((attribute) => {
-      if (attribute.id !== attributeId) return attribute
-      return {
-        ...attribute,
-        name,
-      }
-    })
-    setAttributes(newAttribues)
-    setValue("attributes", newAttribues, { shouldDirty: true })
-  }
-
-  const handleAttributeChangeValue = (attributeId: string, value: string) => {
-    const newAttribues = attributes.map((attribute) => {
-      if (attribute.id !== attributeId) return attribute
-      return {
-        ...attribute,
-        value,
-      }
-    })
-    setAttributes(newAttribues)
-    setValue("attributes", newAttribues, { shouldDirty: true })
-  }
-
-  const handleAttributeChangeType = (attributeId: string, type: "txt" | "list" | "json") => {
-    const newAttribues = attributes.map((attribute) => {
-      if (attribute.id !== attributeId) return attribute
-      return {
-        ...attribute,
-        type,
-      }
-    })
-    setAttributes(newAttribues)
-    setValue("attributes", newAttribues, { shouldDirty: true })
-  }
-
   return {
     isLoadingCreateAttachment,
     isLoadingUpdateTestResult,
@@ -244,7 +170,6 @@ export const useEditResultModal = ({ setIsShow, testResult, isShow }: UseEditRes
     control,
     attachments,
     attachmentsIds,
-    attributes,
     stepsResult,
     isDirty,
     setAttachments,
@@ -255,11 +180,13 @@ export const useEditResultModal = ({ setIsShow, testResult, isShow }: UseEditRes
     setValue,
     handleCancel,
     register,
-    handleAttributeChangeName,
-    handleAttributeChangeType,
-    handleAttributeChangeValue,
-    handleAttributeRemove,
-    handleAddAttribute,
+    attributes,
+    setAttributes,
+    addAttribute,
+    onAttributeChangeType,
+    onAttributeChangeValue,
+    onAttributeChangeName,
+    onAttributeRemove,
     handleSubmitForm: handleSubmit(onSubmit),
   }
 }

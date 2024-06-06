@@ -1,0 +1,8 @@
+.testy-drawer .ant-drawer-header {
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.testy-drawer .ant-drawer-title {
+  overflow-wrap: anywhere;
+}

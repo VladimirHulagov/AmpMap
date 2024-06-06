@@ -37,10 +37,11 @@ from rest_framework.views import APIView
 
 from testy.core.mixins import MediaViewMixin
 from testy.core.models import Attachment
+from testy.core.permissions import AttachmentReadPermission
 
 
 class AttachmentView(APIView, MediaViewMixin):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, AttachmentReadPermission]
 
     def get(self, request, pk):
         attachment = get_object_or_404(Attachment, pk=pk)

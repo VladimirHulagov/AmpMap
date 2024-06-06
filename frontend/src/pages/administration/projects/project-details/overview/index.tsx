@@ -1,4 +1,4 @@
-import { Space } from "antd"
+import { Space, Tag } from "antd"
 import { ArchiveProject, DeleteProject, EditProject } from "features/project"
 import { useContext, useEffect } from "react"
 import { useParams } from "react-router-dom"
@@ -21,6 +21,11 @@ export const ProjectFields = ({ project }: { project: Project }) => {
         value={<TagBoolean value={!project?.is_archive} trueText="ACTIVE" falseText="ARCHIVED" />}
         id="project-status"
       />
+      <Field
+        title="Private"
+        value={<Tag color="default">{project.is_private ? "Yes" : "No"}</Tag>}
+        id="project-private"
+      />
     </>
   )
 }
@@ -41,10 +46,12 @@ export const ProjectDetailsOverviewPage = () => {
   return (
     <>
       <div className="site-layout-background" style={{ padding: 24, minHeight: 360 }}>
-        <Space style={{ marginBottom: "16px", float: "right" }}>
-          <EditProject project={data} />
-          {data.is_archive ? <DeleteProject project={data} /> : <ArchiveProject project={data} />}
-        </Space>
+        {data.is_manageable && (
+          <Space style={{ marginBottom: "16px", float: "right" }}>
+            <EditProject project={data} />
+            {data.is_archive ? <DeleteProject project={data} /> : <ArchiveProject project={data} />}
+          </Space>
+        )}
         <ProjectFields project={data} />
       </div>
     </>

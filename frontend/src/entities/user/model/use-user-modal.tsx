@@ -23,7 +23,7 @@ interface Inputs {
   password: string
   confirm: string
   is_active: boolean
-  is_staff: boolean
+  is_superuser: boolean
 }
 
 interface ErrorData {
@@ -34,7 +34,7 @@ interface ErrorData {
   first_name?: string
   last_name?: string
   is_active?: string
-  is_staff?: string
+  is_superuser?: string
 }
 
 export const useUserModal = () => {
@@ -53,14 +53,14 @@ export const useUserModal = () => {
     formState: { isDirty },
   } = useForm<Inputs>({
     defaultValues: {
-      email: "",
-      first_name: "",
-      last_name: "",
+      email: modalUser?.email,
+      first_name: modalUser?.first_name,
+      last_name: modalUser?.last_name,
       password: "",
       confirm: "",
-      username: "",
+      username: modalUser?.username,
       is_active: true,
-      is_staff: true,
+      is_superuser: false,
     },
   })
   const [createUser, { isLoading }] = useCreateUserMutation()
@@ -70,7 +70,7 @@ export const useUserModal = () => {
   const password = watch("password")
   const passwordConfirm = watch("confirm")
   const isActive = watch("is_active")
-  const isStaff = watch("is_staff")
+  const isAdmin = watch("is_superuser")
 
   useEffect(() => {
     const [password, passwordConfirm] = getValues(["password", "confirm"])
@@ -88,10 +88,10 @@ export const useUserModal = () => {
       setValue("first_name", modalUser.first_name)
       setValue("last_name", modalUser.last_name)
       setValue("is_active", modalUser.is_active)
-      setValue("is_staff", modalUser.is_staff)
+      setValue("is_superuser", modalUser.is_superuser)
     } else {
       setValue("is_active", true)
-      setValue("is_staff", true)
+      setValue("is_superuser", true)
     }
   }, [isEditMode, modalUser])
 
@@ -172,7 +172,7 @@ export const useUserModal = () => {
     isEditMode,
     isLoading,
     isActive,
-    isStaff,
+    isAdmin,
     isDirty,
     errors,
     control,

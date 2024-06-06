@@ -4,6 +4,8 @@ import { useEffect, useState } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
 import { useParams } from "react-router-dom"
 
+import { useTestCaseFormLabels } from "entities/label/model"
+
 import { useTestsTableParams } from "entities/test/model"
 
 import { useTestCasesSearch } from "entities/test-case/model"
@@ -40,7 +42,7 @@ type IForm = Modify<
 >
 
 interface UseTestPlanEditModalProps {
-  testPlan: TestPlanTreeView
+  testPlan: TestPlan
   isShow: boolean
   setIsShow: (isShow: boolean) => void
 }
@@ -98,6 +100,30 @@ export const useTestPlanEditModal = ({
   const [isLoadingTestPlans, setIsLoadingTestPlans] = useState(false)
   const [dataTestPlans, setDataTestPlans] = useState<TestPlan[]>([])
 
+  const [selectedLables, setSelectedLabels] = useState<number[]>([])
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
+  const setLables = (_: string, values: any, data: any) => {
+    const v = values as { name: string; id?: number }[]
+    setSelectedLabels(v.map((i) => i.id).filter((i) => i !== undefined) as number[])
+  }
+
+  const labelProps = useTestCaseFormLabels({
+    setValue: setLables,
+    testCase: null,
+    isShow: true,
+    isEditMode: false,
+  })
+
+  const [lableCondition, setLableCondition] = useState<"and" | "or">("and")
+
+  const handleConditionClick = () => {
+    setLableCondition(lableCondition === "and" ? "or" : "and")
+  }
+
+  useEffect(() => {
+    onSearch(searchText, selectedLables, lableCondition)
+  }, [selectedLables, lableCondition])
+
   const handleSearchTestPlan = (value?: string) => {
     setDataTestPlans([])
     setIsLastPage(false)
@@ -128,6 +154,12 @@ export const useTestPlanEditModal = ({
 
   useEffect(() => {
     if (!isShow || !tests) return
+    const ids = tests.case_ids.map((i) => String(i))
+    setValue("test_cases", ids)
+  }, [testPlan, isShow, tests])
+
+  useEffect(() => {
+    if (!isShow) return
     setValue("name", testPlan.name)
     setValue("description", testPlan.description)
     setValue("started_at", dayjs(testPlan.started_at))
@@ -139,10 +171,7 @@ export const useTestPlanEditModal = ({
       setSelectedParent({ value: testPlan.parent.id, label: testPlan.parent.name })
       setValue("parent", testPlan.parent.id)
     }
-
-    const ids = tests.case_ids.map((i) => String(i))
-    setValue("test_cases", ids)
-  }, [testPlan, isShow, tests])
+  }, [testPlan, isShow])
 
   const onCloseModal = () => {
     setIsShow(false)
@@ -195,7 +224,7 @@ export const useTestPlanEditModal = ({
     }
   }
 
-  const handleSelectTestPlan = (value?: { label: string; value: number }) => {
+  const handleSelectTestPlan = (value?: SelectData) => {
     setErrors({ parent: "" })
     if (value?.value === testPlan.id) {
       setErrors({ parent: "Test Plan не может быть родителем для самого себя." })
@@ -204,7 +233,7 @@ export const useTestPlanEditModal = ({
 
     if (value) {
       setValue("parent", value.value, { shouldDirty: true })
-      setSelectedParent({ value: value.value, label: value.label })
+      setSelectedParent({ value: value.value, label: value.label?.toString() ?? "" })
     }
   }
 
@@ -247,5 +276,9 @@ export const useTestPlanEditModal = ({
     handleSearchTestPlan,
     handleSelectTestPlan,
     handleLoadNextPageData,
+    selectedLables,
+    labelProps,
+    lableCondition,
+    handleConditionClick,
   }
 }

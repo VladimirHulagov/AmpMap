@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -34,7 +34,7 @@ from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth.models import Group
 
 from testy.users.models import Group as Group_  # noqa: WPS120
-from testy.users.models import User
+from testy.users.models import Membership, Role, User
 
 admin.site.unregister(Group)
 
@@ -58,10 +58,26 @@ class UserAdmin(UserAdmin):
     fieldsets = (
         (None, {'fields': ('username', 'password', 'first_name', 'last_name', 'email')}),
         ('Groups', {'fields': ('groups',)}),
-        ('Status', {
-            'fields': ('is_active', 'is_staff', 'is_superuser', 'avatar'),
-        }),
+        (
+            'Status', {
+                'fields': ('is_active', 'is_staff', 'is_superuser', 'avatar'),
+            },
+        ),
         ('Important dates', {'fields': ('last_login', 'date_joined')}),
     )
     filter_horizontal = ('groups',)
     list_filter = ('is_active', 'is_staff', 'is_superuser', 'groups__name')
+
+
+@admin.register(Role)
+class RoleAdmin(admin.ModelAdmin):
+    fields = ('name', 'permissions', 'type')
+    search_fields = ('name', 'type', 'permissions')
+    autocomplete_fields = ('permissions',)
+
+
+@admin.register(Membership)
+class MembershipAdmin(admin.ModelAdmin):
+    list_display = ('project', 'user', 'role')
+    search_fields = ('project', 'user', 'role')
+    autocomplete_fields = ('project', 'user', 'role')

@@ -17,22 +17,18 @@ interface TestPlan {
   id: Id
   name: string
   description: string
-  parent: TestPlanParentData | null
+  parent: Parent | null
   parameters: number[]
   started_at: string
   due_date: string
   finished_at: string | null
   is_archive: boolean
   project: number
-  child_test_plans: number[]
+  child_count: number
   url: string
   title: string
   description: string
-}
-
-interface TestPlanParentData {
-  id: number
-  name: string
+  breadcrumbs: Breadcrumbs
 }
 
 interface TestPlanTreeView {
@@ -43,14 +39,16 @@ interface TestPlanTreeView {
   is_archive: boolean
   level: number
   children: TestPlanTreeView[]
-  parent: TestPlanParentData | null
+  parent: number | null
   project: number
   started_at: string
   due_date: string
   finished_at: string | null
+  test_cases?: TestPlanTestCase[]
+  labels?: string[]
 }
 
-interface TestPlanTreeViewQueryParams {
+interface TestPlanQueryParams {
   testPlanId: string
   is_archive?: boolean
 }
@@ -124,12 +122,6 @@ interface TestPlanActivityParams {
   search?: string
 }
 
-interface TestPlanParent {
-  id: Id
-  title: string
-  parent: TestPlanParent | null
-}
-
 interface TestPlanSuite {
   id: Id
   title: string
@@ -161,4 +153,17 @@ interface TestPlanHistogramData {
   broken: number
   blocked: number
   retest: number
+}
+
+interface TestPlanCopyItem {
+  plan: number
+  new_name?: string
+  started_at?: string
+  due_date?: string
+}
+
+interface TestPlanCopyBody {
+  plans: TestPlanCopyItem[]
+  dst_plan?: number
+  keep_assignee?: boolean
 }

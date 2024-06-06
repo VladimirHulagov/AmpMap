@@ -4,6 +4,8 @@ import { baseQueryWithLogout } from "app/apiSlice"
 
 import { systemStatsInvalidate } from "entities/system/api"
 
+import { invalidatesList, providesList } from "shared/libs"
+
 const rootPath = "v1/suites"
 
 export const suiteApi = createApi({
@@ -16,51 +18,17 @@ export const suiteApi = createApi({
         url: `${rootPath}/`,
         params: { project, parent, search, ...params },
       }),
-      providesTags: (result) =>
-        result
-          ? [
-              ...result.results.map(({ id }) => ({
-                type: "TestSuite" as const,
-                id,
-              })),
-              { type: "TestSuite", id: "LIST" },
-            ]
-          : [{ type: "TestSuite", id: "LIST" }],
+      providesTags: (result) => providesList(result?.results, "TestSuite"),
     }),
-    getTestSuitesTreeView: builder.query<PaginationResponse<Suite[]>, GetTestSuitesTreeViewQuery>({
+    getTestSuitesTreeView: builder.query<
+      PaginationResponse<SuiteTree[]>,
+      GetTestSuitesTreeViewQuery
+    >({
       query: ({ project, treeview = true, parent, search, ...params }) => ({
         url: `${rootPath}/`,
         params: { project, treeview, parent, search, ...params },
       }),
-      providesTags: (result) =>
-        result
-          ? [
-              ...result.results.map(({ id }) => ({
-                type: "TestSuite" as const,
-                id,
-              })),
-              { type: "TestSuite", id: "LIST" },
-            ]
-          : [{ type: "TestSuite", id: "LIST" }],
-    }),
-    getTestSuitesTreeViewWithCases: builder.query<
-      PaginationResponse<SuiteWithCases[]>,
-      GetTestSuitesTreeViewQuery
-    >({
-      query: ({ project, treeview = true, show_cases = true, parent, ...params }) => ({
-        url: `${rootPath}/`,
-        params: { project, treeview, parent, show_cases, ...params },
-      }),
-      providesTags: (result) =>
-        result
-          ? [
-              ...result.results.map(({ id }) => ({
-                type: "TestSuite" as const,
-                id,
-              })),
-              { type: "TestSuite", id: "LIST" },
-            ]
-          : [{ type: "TestSuite", id: "LIST" }],
+      providesTags: (result) => providesList(result?.results, "TestSuite"),
     }),
     createSuite: builder.mutation<Suite, SuiteCreate>({
       query: (body) => ({
@@ -89,13 +57,7 @@ export const suiteApi = createApi({
         method: "PATCH",
         body,
       }),
-      invalidatesTags: (result, error, { id }) =>
-        result
-          ? [
-              { type: "TestSuite", id },
-              { type: "TestSuite", id: "LIST" },
-            ]
-          : [{ type: "TestSuite", id: "LIST" }],
+      invalidatesTags: (result) => invalidatesList(result, "TestSuite"),
     }),
     deleteTestSuite: builder.mutation<void, number>({
       query: (testSuiteId) => ({
@@ -106,25 +68,11 @@ export const suiteApi = createApi({
         await queryFulfilled
         dispatch(systemStatsInvalidate)
       },
-      invalidatesTags: (result, error, id) =>
-        result
-          ? [
-              { type: "TestSuite", id },
-              { type: "TestSuite", id: "LIST" },
-            ]
-          : [{ type: "TestSuite", id: "LIST" }],
+      invalidatesTags: (result) => invalidatesList(result, "TestSuite"),
     }),
-    getSuite: builder.query<Suite, GetTestSuiteQuery>({
-      query: ({ suiteId, treeview = false }) => ({
-        url: `${rootPath}/${suiteId}/`,
-        method: "GET",
-        params: { treeview },
-      }),
-      providesTags: (result, error, suite) => [{ type: "TestSuite", id: suite.suiteId }],
-    }),
-    getSuiteParents: builder.query<SuiteParents, string>({
-      query: (suiteId) => `${rootPath}/${suiteId}/parents/`,
-      providesTags: (result, error, id) => [{ type: "TestSuite", id }],
+    getSuite: builder.query<Suite, number>({
+      query: (suiteId) => `${rootPath}/${suiteId}/`,
+      providesTags: (result, error, suiteId) => [{ type: "TestSuite", id: suiteId }],
     }),
     getSuiteDeletePreview: builder.query<DeletePreviewResponse[], string>({
       query: (id) => ({
@@ -151,7 +99,6 @@ export const suiteInvalidate = suiteApi.util.invalidateTags([
 ])
 
 export const {
-  useGetTestSuitesQuery,
   useLazyGetTestSuitesQuery,
   useGetSuiteQuery,
   useLazyGetTestSuitesTreeViewQuery,
@@ -159,9 +106,6 @@ export const {
   useDeleteTestSuiteMutation,
   useGetTestSuitesTreeViewQuery,
   useUpdateTestSuiteMutation,
-  useLazyGetSuiteQuery,
-  useGetSuiteParentsQuery,
-  useLazyGetTestSuitesTreeViewWithCasesQuery,
   useGetSuiteDeletePreviewQuery,
   useCopySuiteMutation,
 } = suiteApi

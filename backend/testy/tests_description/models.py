@@ -89,6 +89,7 @@ class TestCase(BaseModel):
     description = models.TextField('description', default='', blank=True)
     is_steps = models.BooleanField(default=False)
     is_archive = models.BooleanField(default=False)
+    attributes = models.JSONField(default=dict, blank=True)
 
     labeled_items = GenericRelation(LabeledItem)
     comments = GenericRelation(Comment)

@@ -59,8 +59,8 @@ class TestUserModel:
         'parameter_name, incorrect_value', [
             ('is_superuser', 'abc'),
             ('is_active', 'abc'),
-            ('is_staff', 'abc')
-        ]
+            ('is_staff', 'abc'),
+        ],
     )
     def test_fields_type_constraint(self, parameter_name, incorrect_value, user_factory):
         with pytest.raises(ValidationError) as err:
@@ -71,15 +71,15 @@ class TestUserModel:
         with pytest.raises(IntegrityError) as err:
             user_factory(username=user.username)
         assert ALREADY_EXISTS_ERR_MSG.format(
-            column_name='username', column_value=user.username
+            column_name='username', column_value=user.username,
         ) in str(err.value), f'Expected error message was not found. Expected message: {ALREADY_EXISTS_ERR_MSG}'
 
     @pytest.mark.parametrize(
-        "username,new_username",
+        'username,new_username',
         [
             ('user', 'UsEr'),
             ('user', 'USER'),
-        ]
+        ],
     )
     def test_ci_duplicate_username_not_allowed(self, user_factory, username, new_username):
         user_factory(username=username)

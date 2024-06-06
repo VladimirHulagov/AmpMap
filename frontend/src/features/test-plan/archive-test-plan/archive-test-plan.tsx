@@ -5,7 +5,7 @@ import { DeleteTestPlan } from "../delete-test-plan/delete-test-plan"
 import { ArchiveTestPlanModal } from "./archive-test-plan-modal"
 
 interface Props {
-  testPlan: TestPlanTreeView
+  testPlan: TestPlan
 }
 
 export const ArchiveTestPlan = ({ testPlan }: Props) => {

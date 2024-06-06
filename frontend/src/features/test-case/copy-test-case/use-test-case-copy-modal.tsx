@@ -12,7 +12,7 @@ export const useTestCaseCopyModal = (testCase: TestCase) => {
   const [isShow, setIsShow] = useState(false)
   const [copyTestCase, { isLoading }] = useCopyTestCaseMutation()
   const [newName, setNewName] = useState(testCase.name)
-  const [selectedSuite, setSelectedSuite] = useState<{ label: string; value: number } | null>(null)
+  const [selectedSuite, setSelectedSuite] = useState<SelectData | null>(null)
 
   const handleCancel = () => {
     setIsShow(false)

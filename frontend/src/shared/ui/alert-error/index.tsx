@@ -13,7 +13,11 @@ export const AlertError = ({ error, skipFields, style }: AlertErrorProps) => {
 
   return (
     errors && (
-      <Alert style={{ marginBottom: 24, ...style }} description={errors.errors} type="error" />
+      <Alert
+        style={{ marginBottom: 24, ...style }}
+        description={errors.errors ?? JSON.stringify(errors)}
+        type="error"
+      />
     )
   )
 }

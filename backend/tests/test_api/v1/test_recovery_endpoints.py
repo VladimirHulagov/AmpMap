@@ -28,16 +28,15 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-import json
 from copy import deepcopy
 from http import HTTPStatus
 
 import pytest
-from core.models import Project
-from tests_description.models import TestCase, TestSuite
-from tests_representation.models import Test, TestPlan, TestResult
 
 from tests.commons import RequestType
+from testy.core.models import Project
+from testy.tests_description.models import TestCase, TestSuite
+from testy.tests_representation.models import Test, TestPlan, TestResult
 
 
 @pytest.mark.django_db
@@ -57,20 +56,20 @@ class TestRecovery:
         [TestPlan, 'testplan'],
         [Test, 'test'],
         [TestResult, 'result'],
-        [TestCase, 'case'],
-        [TestSuite, 'suite']
+        [TestCase, 'testcase'],
+        [TestSuite, 'testsuite'],
     ]
 
     @pytest.mark.parametrize(
         'string_to_model',
-        [('project', Project), ('testplan', TestPlan), ('case', TestCase), ('suite', TestSuite)],
-        ids=['project', 'plan', 'case', 'suite']
+        [('project', Project), ('testplan', TestPlan), ('testcase', TestCase), ('testsuite', TestSuite)],
+        ids=['project', 'plan', 'case', 'suite'],
     )
     def test_deleted_list(self, api_client, authorized_superuser, data_for_cascade_tests_behaviour, string_to_model):
         model_str, model_class = string_to_model
         model_class.objects.all().delete()
         view_name = self.deleted_list_view.format(model_str)
-        content = json.loads(api_client.send_request(view_name).content)
+        content = api_client.send_request(view_name).json()
         assert model_class.deleted_objects.count() == content['count']
 
     @pytest.mark.parametrize(
@@ -78,16 +77,18 @@ class TestRecovery:
         [
             ('project', [1, 11, 40, 400, 2, 1], 0, project_view_name_detail, [-1]),
             ('testplan', [0, 1, 20, 200, 0, 0], 3, plan_view_name_detail, [-1]),
-            ('case', [0, 0, 20, 200, 1, 0], 2, case_view_name_detail, [-1]),
-            ('suite', [0, 0, 40, 400, 2, 1], 1, suite_view_name_detail, [-1]),
+            ('testcase', [0, 0, 20, 200, 1, 0], 2, case_view_name_detail, [-1]),
+            ('testsuite', [0, 0, 40, 400, 2, 1], 1, suite_view_name_detail, [-1]),
             ('testplan', [0, 2, 20, 200, 0, 0], 3, plan_view_name_detail, [-1, -2]),
-            ('case', [0, 0, 40, 400, 2, 0], 2, case_view_name_detail, [-1, -2]),
+            ('testcase', [0, 0, 40, 400, 2, 0], 2, case_view_name_detail, [-1, -2]),
         ],
-        ids=['projects', 'plans', 'cases', 'suites', 'several plans', 'several cases']
+        ids=['projects', 'plans', 'cases', 'suites', 'several plans', 'several cases'],
     )
-    def test_data_cascade_recovery(self, api_client, authorized_superuser, data_for_cascade_tests_behaviour,
-                                   instances_key, expected_objects_diff, model_query_param, detail_view,
-                                   idxs_for_deletion):
+    def test_data_cascade_recovery(
+        self, api_client, authorized_superuser, data_for_cascade_tests_behaviour,
+        instances_key, expected_objects_diff, model_query_param, detail_view,
+        idxs_for_deletion,
+    ):
         expected_objects, objects_count = data_for_cascade_tests_behaviour
         test_mapping = deepcopy(self.model_to_key)
         for elem, object_diff in zip(test_mapping, expected_objects_diff):
@@ -97,7 +98,7 @@ class TestRecovery:
                 detail_view,
                 reverse_kwargs={'pk': expected_objects[instances_key][idx].id},
                 expected_status=HTTPStatus.NO_CONTENT,
-                request_type=RequestType.DELETE
+                request_type=RequestType.DELETE,
             )
 
         for model, key, objects_number_diff in test_mapping:
@@ -108,8 +109,9 @@ class TestRecovery:
             self.recovery_view_name.format(instances_key),
             data={
                 'model': model_query_param,
-                'instance_ids': [expected_objects[instances_key][idx].id for idx in idxs_for_deletion]},
-            request_type=RequestType.POST
+                'instance_ids': [expected_objects[instances_key][idx].id for idx in idxs_for_deletion],
+            },
+            request_type=RequestType.POST,
         )
 
         for model, key in self.model_to_key:
@@ -122,16 +124,18 @@ class TestRecovery:
         [
             ('project', [1, 11, 40, 400, 2, 1], 0, project_view_name_detail, [-1]),
             ('testplan', [0, 1, 20, 200, 0, 0], 3, plan_view_name_detail, [-1]),
-            ('case', [0, 0, 20, 200, 1, 0], 2, case_view_name_detail, [-1]),
-            ('suite', [0, 0, 40, 400, 2, 1], 1, suite_view_name_detail, [-1]),
+            ('testcase', [0, 0, 20, 200, 1, 0], 2, case_view_name_detail, [-1]),
+            ('testsuite', [0, 0, 40, 400, 2, 1], 1, suite_view_name_detail, [-1]),
             ('testplan', [0, 2, 20, 200, 0, 0], 3, plan_view_name_detail, [-1, -2]),
-            ('case', [0, 0, 40, 400, 2, 0], 2, case_view_name_detail, [-1, -2]),
+            ('testcase', [0, 0, 40, 400, 2, 0], 2, case_view_name_detail, [-1, -2]),
         ],
-        ids=['projects', 'plans', 'cases', 'suites', 'several plans', 'several cases']
+        ids=['projects', 'plans', 'cases', 'suites', 'several plans', 'several cases'],
     )
-    def test_data_permanent_deletion(self, api_client, authorized_superuser, data_for_cascade_tests_behaviour,
-                                     instances_key, expected_objects_diff, model_key, detail_view,
-                                     idxs_for_deletion):
+    def test_data_permanent_deletion(
+        self, api_client, authorized_superuser, data_for_cascade_tests_behaviour,
+        instances_key, expected_objects_diff, model_key, detail_view,
+        idxs_for_deletion,
+    ):
         expected_objects, objects_count = data_for_cascade_tests_behaviour
         test_mapping = deepcopy(self.model_to_key)
         for elem, object_diff in zip(test_mapping, expected_objects_diff):
@@ -141,7 +145,7 @@ class TestRecovery:
                 detail_view,
                 reverse_kwargs={'pk': expected_objects[instances_key][idx].id},
                 expected_status=HTTPStatus.NO_CONTENT,
-                request_type=RequestType.DELETE
+                request_type=RequestType.DELETE,
             )
 
         for model, key, objects_number_diff in test_mapping:
@@ -152,26 +156,26 @@ class TestRecovery:
             self.delete_permanent_view_name.format(instances_key),
             data={
                 'model': model_key,
-                'instance_ids': [expected_objects[instances_key][idx].id for idx in idxs_for_deletion]
+                'instance_ids': [expected_objects[instances_key][idx].id for idx in idxs_for_deletion],
             },
             request_type=RequestType.POST,
-            expected_status=HTTPStatus.NO_CONTENT
+            expected_status=HTTPStatus.NO_CONTENT,
         )
 
-        for model, key in self.model_to_key:
+        for model, _ in self.model_to_key:
             assert not model.deleted_objects.count()
 
     def _validate_restored_objects(self, expected_objects):
         actual_objects = {
             'project': [],
             'testplan': [],
-            'suite': [],
-            'case': [],
+            'testsuite': [],
+            'testcase': [],
             'test': [],
-            'result': []
+            'result': [],
         }
         for model, key in self.model_to_key:
-            actual_objects[key] = [object for object in model.objects.all()]
+            actual_objects[key] = list(model.objects.all())
 
         for objects in expected_objects.values():
             objects.sort(key=lambda instance: instance.id)

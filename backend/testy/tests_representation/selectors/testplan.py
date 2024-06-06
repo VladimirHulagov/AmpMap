@@ -30,21 +30,20 @@
 # <http://www.gnu.org/licenses/>.
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 from django.db.models import Case, Count, DateTimeField, F, FloatField, OuterRef, Q, QuerySet, Sum, When, expressions
 from django.db.models.functions import Cast, Coalesce
 from mptt.querysets import TreeQuerySet
 
 from testy.root.selectors import MPTTSelector
-from testy.tests_representation.api.v1.serializers import TestPlanOutputSerializer
 from testy.tests_representation.choices import TestStatuses
 from testy.tests_representation.models import Parameter, Test, TestPlan
 from testy.tests_representation.selectors.results import TestResultSelector
 from testy.tests_representation.services.statistics import HistogramProcessor, StatisticProcessor
 from testy.utilities.request import PeriodDateTime
 from testy.utilities.sql import DateTrunc, SubCount
-from testy.utilities.time import PERIODS_IN_SECONDS
+from testy.utilities.time import Period
 from testy.utilities.tree import form_tree_prefetch_lookups, form_tree_prefetch_objects, get_breadcrumbs_treeview
 
 logger = logging.getLogger(__name__)
@@ -56,7 +55,7 @@ _ESTIMATES = 'estimates'
 _EMPTY_ESTIMATES = 'empty_estimates'
 
 
-class TestPlanSelector:
+class TestPlanSelector:  # noqa: WPS214
     def get_max_level(self) -> int:
         return MPTTSelector.model_max_level(TestPlan)
 
@@ -115,7 +114,7 @@ class TestPlanSelector:
             ids_to_breadcrumbs[plan.id] = get_breadcrumbs_treeview(
                 instances=tree,
                 depth=len(tree) - 1,
-                title_method=TestPlanOutputSerializer.get_title,
+                title_method=cls._get_testplan_title,
             )
         return ids_to_breadcrumbs
 
@@ -167,9 +166,13 @@ class TestPlanSelector:
         is_archive: bool = False,
     ):
         test_plan_child_ids = tuple(self.get_testplan_descendants_ids_by_testplan(test_plan))
-        seconds = PERIODS_IN_SECONDS['minutes']
+        seconds = Period.MINUTE.in_seconds(in_workday=True)
         if estimate_period:
-            seconds = PERIODS_IN_SECONDS.get(estimate_period, seconds)
+            estimate_period = next(
+                (period for period in Period.list_of_workday() if period.name.lower() in estimate_period.lower()),
+                Period.SECOND,
+            )
+            seconds = estimate_period.in_seconds(in_workday=True)
         is_archive_condition = Q() if is_archive else Q(is_archive=False)
         latest_status = TestResultSelector.get_last_status_subquery()
         total_estimate = Sum(
@@ -299,8 +302,18 @@ class TestPlanSelector:
         return processor.process_statistic(test_results_formatted)
 
     @classmethod
+    def plan_list_by_ids(cls, ids: Iterable[int]) -> QuerySet[TestPlan]:
+        return TestPlan.objects.filter(id__in=ids)
+
+    @classmethod
     def _get_tests_subquery(cls, last_status_subquery, descendants_lookup):
         return Test.objects.annotate(last_status=last_status_subquery).filter(
             descendants_lookup,
             last_status__isnull=False,
         ).values('pk')
+
+    @classmethod
+    def _get_testplan_title(cls, instance: TestPlan):
+        if parameters := instance.parameters.all():
+            return '{0} [{1}]'.format(instance.name, ', '.join([parameter.data for parameter in parameters]))
+        return instance.name

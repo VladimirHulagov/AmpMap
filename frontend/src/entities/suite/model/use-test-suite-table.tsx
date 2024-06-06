@@ -4,9 +4,9 @@ import { SorterResult } from "antd/lib/table/interface"
 import React, { useEffect, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 
-import { useGetTestSuitesTreeViewQuery } from "entities/suite/api"
+import { useLazyGetTestSuitesTreeViewQuery } from "entities/suite/api"
 
-import { TreeUtils } from "shared/libs"
+import { TreeUtils, initInternalError } from "shared/libs"
 import { addKeyToData } from "shared/libs/add-key-to-data"
 import { antdSorterToTestySort } from "shared/libs/antd-sorter-to-testy-sort"
 import { HighLighterTesty } from "shared/ui"
@@ -26,27 +26,81 @@ export const useTestSuiteTable = ({ activeSuite, setCollapse }: UseTestSuiteTabl
     pageSize: 10,
   })
   const [ordering, setOrdering] = useState<string | undefined>(undefined)
-  const [treeData, setTreeData] = useState<Suite[]>([])
+  const [treeData, setTreeData] = useState<SuiteTree[]>([])
   const [total, setTotal] = useState(0)
-  const { data: testSuitesTreeView, isLoading: isTreeLoading } = useGetTestSuitesTreeViewQuery({
-    search: searchText,
-    project: projectId,
-    ordering,
-    page: paginationParams.page,
-    page_size: paginationParams.pageSize,
-    parent: activeSuite ? String(activeSuite?.id) : undefined,
-  })
+  const [getTestSuitesTreeView] = useLazyGetTestSuitesTreeViewQuery()
+  const [isLoading, setIsLoading] = useState(false)
+  const [isInvalidList, setIsInvalidList] = useState(false)
+  const timer = React.useRef<number>()
+  const isSearchTextChange = React.useRef(false)
+
+  const fetchTestSuitesTreeView = async () => {
+    try {
+      isSearchTextChange.current = false
+
+      setIsLoading(true)
+      const result = await getTestSuitesTreeView({
+        search: searchText,
+        project: projectId,
+        ordering,
+        page: paginationParams.page,
+        page_size: paginationParams.pageSize,
+        parent: activeSuite ? String(activeSuite?.id) : undefined,
+        _cacheInvalidation: isInvalidList ? Date.now() : undefined,
+      })
+
+      if (!result.data) return
+
+      setTreeData(result.data.results)
+      setTotal(result.data.count)
+      setIsInvalidList(false)
+    } catch (error) {
+      initInternalError(error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   useEffect(() => {
-    if (!testSuitesTreeView) return
-
-    setTreeData(testSuitesTreeView.results)
-    setTotal(testSuitesTreeView.count)
-  }, [testSuitesTreeView])
+    if (isInvalidList) {
+      fetchTestSuitesTreeView()
+    }
+  }, [isInvalidList])
 
   useEffect(() => {
-    if (!testSuitesTreeView || !searchText.length) return
-    const initDataWithKeys = addKeyToData(testSuitesTreeView.results)
+    fetchTestSuitesTreeView()
+  }, [projectId, activeSuite])
+
+  useEffect(() => {
+    if (!isSearchTextChange.current) {
+      fetchTestSuitesTreeView()
+    }
+  }, [projectId, paginationParams, activeSuite])
+
+  useEffect(() => {
+    if (timer.current) {
+      clearTimeout(timer.current)
+    }
+
+    isSearchTextChange.current = true
+
+    setPaginationParams({
+      ...paginationParams,
+      page: 1,
+    })
+
+    timer.current = window.setTimeout(() => {
+      fetchTestSuitesTreeView()
+    }, 300)
+
+    return () => {
+      clearTimeout(timer.current)
+    }
+  }, [searchText])
+
+  useEffect(() => {
+    if (!treeData || !searchText.length) return
+    const initDataWithKeys = addKeyToData(treeData)
     const [, expandedRows] = TreeUtils.filterRows<DataWithKey<TestPlanTreeView>>(
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       JSON.parse(JSON.stringify(initDataWithKeys)),
@@ -58,9 +112,9 @@ export const useTestSuiteTable = ({ activeSuite, setCollapse }: UseTestSuiteTabl
     )
 
     setExpandedRowKeys(expandedRows.map((key) => String(key)))
-  }, [testSuitesTreeView, searchText])
+  }, [treeData, searchText])
 
-  const columns: ColumnsType<Suite> = [
+  const columns: ColumnsType<SuiteTree> = [
     {
       title: "Test Suite",
       dataIndex: "name",
@@ -160,7 +214,7 @@ export const useTestSuiteTable = ({ activeSuite, setCollapse }: UseTestSuiteTabl
     setPaginationParams({ page, pageSize })
   }
 
-  const handleSorter = (sorter: SorterResult<Suite> | SorterResult<Suite>[]) => {
+  const handleSorter = (sorter: SorterResult<SuiteTree> | SorterResult<SuiteTree>[]) => {
     const formatSort = antdSorterToTestySort(sorter)
     setOrdering(formatSort || undefined)
   }
@@ -188,8 +242,9 @@ export const useTestSuiteTable = ({ activeSuite, setCollapse }: UseTestSuiteTabl
     expandedRowKeys,
     treeSuites: treeData,
     total,
-    isLoading: isTreeLoading,
+    isLoading,
     testSuiteId,
     searchText,
+    invalidateList: () => setIsInvalidList(true),
   }
 }

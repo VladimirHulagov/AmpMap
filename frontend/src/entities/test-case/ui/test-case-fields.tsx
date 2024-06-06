@@ -1,6 +1,7 @@
 import { LabelField } from "entities/label/ui"
 
 import { Attachment, Field, FieldWithHide, Steps } from "shared/ui"
+import { AttributesObjectView } from "shared/ui/attributes"
 
 interface TestCaseFieldsProps {
   testCase: TestCase
@@ -30,6 +31,13 @@ export const TestCaseFields = ({ testCase }: TestCaseFieldsProps) => {
       <Field id="test-case-teardown" markdown title="Teardown" value={testCase.teardown} />
       <Field id="test-case-estimate" title="Estimate" value={testCase.estimate ?? ""} />
       {!!testCase.labels.length && <LabelField title="Labels" labels={testCase.labels} />}
+      {!!testCase.attributes && !!Object.keys(testCase.attributes).length && (
+        <Field
+          id="test-case-attributes"
+          title="Attributes"
+          value={<AttributesObjectView attributes={testCase.attributes} />}
+        />
+      )}
 
       {!!testCase.attachments.length && <Attachment.Field attachments={testCase.attachments} />}
     </>

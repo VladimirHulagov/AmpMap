@@ -3,12 +3,14 @@ import { ControllerRenderProps } from "react-hook-form"
 import { AttributForm } from "./form"
 
 interface AttributeListProps {
-  fieldProps: ControllerRenderProps<ResultFormData, "attributes">
+  fieldProps:
+    | ControllerRenderProps<ResultFormData, "attributes">
+    | ControllerRenderProps<TestCaseFormData, "attributes">
   attributes: Attribute[]
   handleAttributeRemove: (attributeId: string) => void
   handleAttributeChangeName: (attributeId: string, name: string) => void
   handleAttributeChangeValue: (attributeId: string, value: string) => void
-  handleAttributeChangeType: (attributeId: string, type: "txt" | "list" | "json") => void
+  handleAttributeChangeType: (attributeId: string, type: AttributeType) => void
 }
 
 export const AttributeList = ({
@@ -23,9 +25,10 @@ export const AttributeList = ({
 
   return (
     <>
-      {attributes.map((attribut) => {
+      {attributes.map((attribut, index) => {
         return (
           <AttributForm
+            index={index}
             key={attribut.id}
             fieldProps={fieldProps}
             attribut={attribut}

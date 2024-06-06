@@ -1,5 +1,4 @@
-import { Button, Col, Form, Modal, Row, Tree } from "antd"
-import Search from "antd/lib/input/Search"
+import { Button, Col, Form, Modal, Row, Tree, Typography } from "antd"
 import dayjs from "dayjs"
 import { Controller } from "react-hook-form"
 
@@ -16,13 +15,15 @@ import {
   TreeSelectFormItem,
 } from "shared/ui"
 
+import { TestCaseLabels } from "../test-case-labels/test-case-labels"
+import { useTestCasesFilter } from "../test-cases-filter/use-test-cases-filter"
 import styles from "./styles.module.css"
 import { useTestPlanCreateModal } from "./use-test-plan-create-modal"
 
 interface CreateTestPlanModalProps {
   isShow: boolean
   setIsShow: React.Dispatch<React.SetStateAction<boolean>>
-  testPlan?: TestPlanTreeView
+  testPlan?: TestPlan
 }
 
 export const CreateTestPlanModal = ({ isShow, setIsShow, testPlan }: CreateTestPlanModalProps) => {
@@ -54,10 +55,23 @@ export const CreateTestPlanModal = ({ isShow, setIsShow, testPlan }: CreateTestP
     handleLoadNextPageData,
     handleSearchTestPlan,
     handleSelectTestPlan,
+    selectedLables,
+    labelProps,
+    lableCondition,
+    handleConditionClick,
   } = useTestPlanCreateModal({
     isShow,
     setIsShow,
     testPlan,
+  })
+
+  const { FilterButton, FilterForm } = useTestCasesFilter({
+    labelProps,
+    searchText,
+    handleSearch,
+    selectedLables,
+    lableCondition,
+    handleConditionClick,
   })
 
   return (
@@ -176,7 +190,12 @@ export const CreateTestPlanModal = ({ isShow, setIsShow, testPlan }: CreateTestP
                 externalErrors={errors}
               />
               <Form.Item
-                label="Test Cases"
+                label={
+                  <div style={{ display: "flex" }}>
+                    <Typography.Paragraph>Test Cases</Typography.Paragraph>
+                    {FilterButton}
+                  </div>
+                }
                 validateStatus={errors?.test_cases ? "error" : ""}
                 help={errors?.test_cases ? errors.test_cases : ""}
               >
@@ -187,24 +206,24 @@ export const CreateTestPlanModal = ({ isShow, setIsShow, testPlan }: CreateTestP
                     const testCases = field.value.filter((item: string) => !item.startsWith("TS"))
                     return (
                       <>
-                        <Search
-                          placeholder="Search"
-                          onChange={(e) => handleSearch(e.target.value)}
-                          value={searchText}
-                          style={{ marginBottom: "8px" }}
-                        />
+                        {FilterForm}
                         {isLoadingTreeData && <ContainerLoader />}
                         {!isLoadingTreeData && (
                           <>
                             <Tree
                               {...field}
                               //@ts-ignore
-                              titleRender={(node: TestPlanTreeView) => (
-                                <HighLighterTesty
-                                  searchWords={searchText}
-                                  textToHighlight={String(node.title)}
-                                />
-                              )}
+                              titleRender={(node: TestPlanTreeView) => {
+                                return (
+                                  <>
+                                    <HighLighterTesty
+                                      searchWords={searchText}
+                                      textToHighlight={String(node.title)}
+                                    />
+                                    {node.labels ? <TestCaseLabels labels={node.labels} /> : null}
+                                  </>
+                                )
+                              }}
                               height={200}
                               virtual={false}
                               showIcon={true}

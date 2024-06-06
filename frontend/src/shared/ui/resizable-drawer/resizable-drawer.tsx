@@ -4,9 +4,12 @@ import { PropsWithChildren, useCallback, useState } from "react"
 
 import { useUserConfig } from "entities/user/model"
 
+import "./override.css"
 import styles from "./styles.module.css"
 
 let isResizing = false
+const DEFAULT_WIDTH = 500
+const MIN_WIDTH = 400
 
 const getDrawerMaxWidth = (width: number) => Math.min(width, document.body.clientWidth - 100)
 
@@ -22,7 +25,7 @@ export const ResizableDrawer = ({
 }: PropsWithChildren<ResizableDrawer>) => {
   const { userConfig, updateConfig } = useUserConfig()
   const [drawerWidth, setDrawerWidth] = useState(
-    getDrawerMaxWidth(userConfig.ui[`drawer_size_${drawerKey}`] || 500)
+    getDrawerMaxWidth(userConfig.ui[`drawer_size_${drawerKey}`] ?? DEFAULT_WIDTH)
   )
 
   const cbHandleMouseMove = useCallback(handleMousemove, [])
@@ -57,9 +60,8 @@ export const ResizableDrawer = ({
 
   function handleMousemove(e: MouseEvent) {
     const offsetRight = document.body.offsetWidth - (e.clientX - document.body.offsetLeft)
-    const minWidth = 300
     const maxWidth = getDrawerMaxWidth(1600)
-    if (offsetRight > minWidth && offsetRight < maxWidth) {
+    if (offsetRight > MIN_WIDTH && offsetRight < maxWidth) {
       setDrawerWidth(offsetRight)
     }
   }
@@ -68,6 +70,7 @@ export const ResizableDrawer = ({
     <Drawer
       {...props}
       width={drawerWidth}
+      className="testy-drawer"
       contentWrapperStyle={{
         transition: "all 0.2s",
       }}

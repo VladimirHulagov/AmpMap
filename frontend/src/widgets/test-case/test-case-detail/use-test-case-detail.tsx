@@ -5,7 +5,7 @@ import { useSearchParams } from "react-router-dom"
 
 import { useAppDispatch, useAppSelector } from "app/hooks"
 
-import { useLazyGetTestCaseByIdQuery, useRestoreTestCaseMutation } from "entities/test-case/api"
+import { useGetTestCaseByIdQuery, useRestoreTestCaseMutation } from "entities/test-case/api"
 import { selectDrawerTestCase, setDrawerTestCase } from "entities/test-case/model"
 
 import { initInternalError } from "shared/libs"
@@ -19,28 +19,22 @@ interface UseTestCaseDetailProps {
 export const useTestCaseDetail = ({ testCase, onClose }: UseTestCaseDetailProps) => {
   const dispatch = useAppDispatch()
   const selectedTestCase = useAppSelector(selectDrawerTestCase)
-  const [getTestCase, { data: testCaseData }] = useLazyGetTestCaseByIdQuery()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const version = searchParams.get("version")
+  const testCaseId = searchParams.get("test_case")
+
+  const { data: testCaseData } = useGetTestCaseByIdQuery(
+    {
+      testCaseId: testCaseId ?? "",
+      version: version ?? "",
+    },
+    {
+      skip: !testCaseId || !version,
+    }
+  )
   const [restoreTestCase] = useRestoreTestCaseMutation()
   const [showVersion, setShowVersion] = useState<number | null>(null)
   const { control } = useForm()
-  const [searchParams, setSearchParams] = useSearchParams()
-
-  useEffect(() => {
-    if ((!searchParams.get("version") && !searchParams.get("test_case")) || selectedTestCase) {
-      return
-    }
-    const version = searchParams.get("version")
-    const testCaseId = searchParams.get("test_case")
-    if (!testCaseId) {
-      return
-    }
-
-    const fetch = async () => {
-      await getTestCase({ testCaseId: String(testCaseId), version: version ?? undefined })
-      setShowVersion(Number(version))
-    }
-    fetch()
-  }, [searchParams.get("version"), searchParams.get("test_case"), selectedTestCase])
 
   useEffect(() => {
     if (!searchParams.get("test_case") && selectedTestCase) {
@@ -82,9 +76,8 @@ export const useTestCaseDetail = ({ testCase, onClose }: UseTestCaseDetailProps)
     dispatch(setDrawerTestCase(null))
   }
 
-  const handleChange = async (value: number) => {
+  const handleChange = (value: number) => {
     setShowVersion(value)
-    await getTestCase({ testCaseId: String(testCase?.id), version: String(value) })
     setSearchParams({ version: String(value), test_case: String(testCase?.id) })
   }
 

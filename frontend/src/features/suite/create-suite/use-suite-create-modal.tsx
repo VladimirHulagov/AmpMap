@@ -18,7 +18,7 @@ interface ErrorData {
   description?: string
 }
 
-export const useSuiteCreateModal = (suite?: Suite) => {
+export const useSuiteCreateModal = (onSubmitCb: () => void, suite?: Suite) => {
   const [isShow, setIsShow] = useState(false)
 
   const dispatch = useAppDispatch()
@@ -93,6 +93,7 @@ export const useSuiteCreateModal = (suite?: Suite) => {
 
       dispatch(setTestSuite(newSuite))
       onCloseModal()
+      onSubmitCb()
     } catch (err) {
       onHandleError(err)
     }

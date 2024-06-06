@@ -45,15 +45,18 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework.exceptions import ValidationError
 from simple_history.models import HistoricalRecords
 
-from testy.core.choices import LabelTypes, SystemMessageLevel
+from testy.core.choices import AccessRequestStatus, CustomFieldType, LabelTypes, SystemMessageLevel
+from testy.core.constraints import unique_soft_delete_constraint
 from testy.core.services.media import MediaService
 from testy.root.models import BaseModel
+from testy.users.models import Membership, User
 from testy.utils import get_media_file_path
 from testy.validators import ExtensionValidator, ProjectValidator
 
 UserModel = get_user_model()
 
 _NAME = 'name'
+_PROJECT = 'project'
 
 
 class Project(BaseModel):
@@ -66,10 +69,17 @@ class Project(BaseModel):
         max_length=settings.FILEPATH_MAX_LEN,
         upload_to=partial(get_media_file_path, media_name='icons'),
     )
+    is_private = models.BooleanField(default=False)
+    members = models.ManyToManyField(
+        User,
+        through=Membership,
+        through_fields=(_PROJECT, 'user'),
+    )
+    settings = models.JSONField(blank=True, default=dict)
 
     class Meta:
         ordering = (_NAME,)
-        verbose_name = gettext_lazy('project')
+        verbose_name = gettext_lazy(_PROJECT)
         verbose_name_plural = gettext_lazy('projects')
 
     class ModelHierarchyWeightMeta:  # noqa: WPS431
@@ -148,7 +158,7 @@ class Label(BaseModel):
     class Meta:
         verbose_name = _('Label')
         verbose_name_plural = _('Labels')
-        unique_together = ('project', _NAME)
+        constraints = [unique_soft_delete_constraint([_PROJECT, _NAME], 'label')]
 
     def clean(self):
         if label := Label.objects.filter(name__iexact=self.name, project=self.project).first():
@@ -184,3 +194,42 @@ class SystemMessage(BaseModel):
     class Meta:
         verbose_name = _('System message')
         verbose_name_plural = _('System messages')
+
+
+class CustomAttribute(BaseModel):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE)
+    name = models.CharField(max_length=settings.CHAR_FIELD_MAX_LEN)
+    type = models.IntegerField(choices=CustomFieldType.choices, blank=False)
+    is_required = models.BooleanField(default=False)
+    is_suite_specific = models.BooleanField(blank=True, default=False)
+    suite_ids = ArrayField(models.PositiveIntegerField(), blank=True, default=list)
+
+    content_types = ArrayField(models.PositiveIntegerField(blank=False))
+
+    class Meta:
+        ordering = (_NAME,)
+        verbose_name = _('Custom attribute')
+        verbose_name_plural = _('Custom attributes')
+        constraints = [unique_soft_delete_constraint(['project', _NAME], 'custom_attribute')]
+
+    def clean(self):
+        if custom_attribute := CustomAttribute.objects.filter(name__iexact=self.name, project=self.project).first():
+            if custom_attribute.id != self.id:
+                raise ValidationError(
+                    {
+                        _NAME: (
+                            f'Custom attribute name "{self.name}" clashes with already existing custom attribute name '
+                            f'"{custom_attribute.name}" in project {self.project}.'  # noqa: WPS326
+                        ),
+                    },
+                )
+
+
+class AccessRequest(BaseModel):
+    project = models.ForeignKey('core.Project', on_delete=models.CASCADE)
+    reason = models.CharField(max_length=settings.CHAR_FIELD_MAX_LEN, blank=True, null=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    status = models.IntegerField(choices=AccessRequestStatus.choices, default=AccessRequestStatus.PENDING)
+
+    class Meta:
+        default_related_name = 'requests'

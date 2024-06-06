@@ -28,14 +28,14 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-import json
 from copy import deepcopy
+from http import HTTPStatus
 
 import pytest
-from core.models import Project
-from tests_representation.models import Test, TestPlan, TestResult
 
 from tests.commons import RequestType
+from testy.core.models import Project
+from testy.tests_representation.models import Test, TestCase, TestPlan, TestResult
 
 
 @pytest.mark.django_db
@@ -47,6 +47,7 @@ class TestArchiveEndpoints:
     model_to_key = [
         [Project, 'project'],
         [TestPlan, 'testplan'],
+        [TestCase, 'testcase'],
         [Test, 'test'],
         [TestResult, 'result'],
     ]
@@ -54,17 +55,19 @@ class TestArchiveEndpoints:
     @pytest.mark.parametrize(
         'instances_key, expected_objects_diff, idxs_for_deletion',
         [
-            ('project', [1, 11, 40, 400], [-1]),
-            ('testplan', [0, 1, 20, 200], [-1]),
-            ('testplan', [0, 2, 20, 200], [-1, -2]),
-            ('test', [0, 0, 1, 10], [-1])
+            ('project', [1, 11, 2, 40, 400], [-1]),
+            ('testplan', [0, 1, 0, 20, 200], [-1]),
+            ('testplan', [0, 2, 0, 20, 200], [-1, -2]),
+            ('test', [0, 0, 0, 1, 10], [-1]),
+            ('testcase', [0, 0, 2, 40, 400], [-1, -2]),
         ],
     )
-    def test_data_cascade_recovery(self, api_client, authorized_superuser, data_for_cascade_tests_behaviour,
-                                   instances_key, expected_objects_diff, idxs_for_deletion):
+    def test_data_cascade_recovery(
+        self, api_client, authorized_superuser, data_for_cascade_tests_behaviour,
+        instances_key, expected_objects_diff, idxs_for_deletion,
+    ):
         expected_objects, objects_count = data_for_cascade_tests_behaviour
-        for unaffected_key in ['case', 'suite']:
-            expected_objects.pop(unaffected_key)
+        expected_objects.pop('testsuite')
         test_mapping = deepcopy(self.model_to_key)
         for elem, object_diff in zip(test_mapping, expected_objects_diff):
             elem.append(object_diff)
@@ -73,7 +76,7 @@ class TestArchiveEndpoints:
             api_client.send_request(
                 self.archive_view_name.format(instances_key),
                 reverse_kwargs={'pk': expected_objects[instances_key][idx].id},
-                request_type=RequestType.POST
+                request_type=RequestType.POST,
             )
         for model, key, objects_number_diff in test_mapping:
             assert model.objects.filter(is_archive=False).count() == objects_count[key] - objects_number_diff, \
@@ -81,9 +84,10 @@ class TestArchiveEndpoints:
         api_client.send_request(
             self.archive_restore_view_name.format(instances_key),
             data={
-                'instance_ids': [expected_objects[instances_key][idx].id for idx in idxs_for_deletion]
+                'instance_ids': [expected_objects[instances_key][idx].id for idx in idxs_for_deletion],
             },
-            request_type=RequestType.POST
+            request_type=RequestType.POST,
+            expected_status=HTTPStatus.OK,
         )
 
         for model, key in self.model_to_key:
@@ -94,16 +98,18 @@ class TestArchiveEndpoints:
     @pytest.mark.parametrize(
         'instances_key, expected_objects_diff, idx_for_deletion',
         [
-            ('project', [1, 11, 40, 400], -1),
-            ('testplan', [0, 1, 20, 200], -1),
-            ('test', [0, 0, 1, 10], -1)
+            ('project', [1, 11, 2, 40, 400], -1),
+            ('testplan', [0, 1, 0, 20, 200], -1),
+            ('test', [0, 0, 0, 1, 10], -1),
+            ('testcase', [0, 0, 1, 20, 200], -1),
         ],
     )
-    def test_archive_preview(self, api_client, authorized_superuser, data_for_cascade_tests_behaviour,
-                             instances_key, expected_objects_diff, idx_for_deletion, use_dummy_cache_backend):
+    def test_archive_preview(
+        self, api_client, authorized_superuser, data_for_cascade_tests_behaviour,
+        instances_key, expected_objects_diff, idx_for_deletion, use_dummy_cache_backend,
+    ):
         expected_objects, objects_count = data_for_cascade_tests_behaviour
-        for unaffected_key in ['case', 'suite']:
-            expected_objects.pop(unaffected_key)
+        expected_objects.pop('testsuite')
         test_mapping = deepcopy(self.model_to_key)
         for elem, object_diff in zip(test_mapping, expected_objects_diff):
             elem.append(object_diff)
@@ -112,12 +118,13 @@ class TestArchiveEndpoints:
             reverse_kwargs={'pk': expected_objects[instances_key][idx_for_deletion].id},
         )
         assert response.cookies.get('archive_cache'), 'No cache was set'
-        content = json.loads(response.content)
+        content = response.json()
         verbose_name_mapping = {
             'testplan': 'test plans',
             'project': 'projects',
             'test': 'tests',
             'result': 'test results',
+            'testcase': 'test cases',
         }
         len_affected_objects = len([expected_diff for expected_diff in expected_objects_diff if expected_diff > 0])
 
@@ -136,10 +143,11 @@ class TestArchiveEndpoints:
             'project': [],
             'testplan': [],
             'test': [],
-            'result': []
+            'result': [],
+            'case': [],
         }
         for model, key in self.model_to_key:
-            actual_objects[key] = [object for object in model.objects.all()]
+            actual_objects[key] = list(model.objects.all())
 
         for objects in expected_objects.values():
             objects.sort(key=lambda instance: instance.id)
@@ -147,6 +155,6 @@ class TestArchiveEndpoints:
         for objects in actual_objects.values():
             objects.sort(key=lambda instance: instance.id)
 
-        for model, key in self.model_to_key:
+        for _, key in self.model_to_key:
             for expected_object, actual_object in zip(actual_objects[key], expected_objects[key]):
                 assert expected_object.is_archive == actual_object.is_archive

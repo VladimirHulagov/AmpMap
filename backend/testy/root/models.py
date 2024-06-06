@@ -106,8 +106,9 @@ class ServiceModelMixin(models.Model):
         self.save_without_historical_record(update_fields=update_fields)
 
         history_instance = self.history.latest()
-        for field in update_fields:
-            setattr(history_instance, field, data[field])
+        if update_fields:
+            for field in update_fields:
+                setattr(history_instance, field, data[field])
         history_instance.full_clean(exclude=['history_user', 'history_change_reason'])
         history_instance.save(update_fields=update_fields)
 

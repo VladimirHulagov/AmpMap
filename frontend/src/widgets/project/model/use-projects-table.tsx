@@ -1,4 +1,4 @@
-import { Typography } from "antd"
+import { Tooltip, Typography } from "antd"
 import { TableProps } from "antd/es/table"
 import { ColumnsType, TablePaginationConfig } from "antd/lib/table"
 import { FilterValue } from "antd/lib/table/interface"
@@ -46,8 +46,11 @@ export const useProjectsTable = () => {
     setFilteredInfo(filters)
   }
 
-  const handleRowClick = (id: Id) => {
-    navigate(`/administration/projects/${id}/overview`)
+  const handleRowClick = (record: Project) => {
+    if (record.is_private && !record.is_manageable) {
+      return
+    }
+    navigate(`/administration/projects/${record.id}/overview`)
   }
 
   const columns: ColumnsType<Project> = [
@@ -65,16 +68,30 @@ export const useProjectsTable = () => {
       filteredValue: filteredInfo.name ?? null,
       ...getColumnSearch("name"),
       onFilter: (value, record) => record.name.toLowerCase().includes(String(value).toLowerCase()),
-      render: (text, record) => (
-        <Link
-          onClick={() => {
+      render: (text, record) => {
+        const handleLinkClick = () => {
+          if (!record.is_private || record.is_manageable) {
             handleShowProjectDetail(record.id)
-          }}
-        >
-          {/* eslint-disable-next-line @typescript-eslint/no-unsafe-assignment*/}
-          <HighLighterTesty searchWords={searchText} textToHighlight={text} />
-        </Link>
-      ),
+          }
+        }
+
+        const linkEl = (
+          <Link onClick={handleLinkClick}>
+            {/* eslint-disable-next-line @typescript-eslint/no-unsafe-assignment*/}
+            <HighLighterTesty searchWords={searchText} textToHighlight={text} />
+          </Link>
+        )
+
+        if (record.is_private && !record.is_manageable) {
+          return (
+            <Tooltip placement="topLeft" title="You are not able to manage this project" arrow>
+              {linkEl}
+            </Tooltip>
+          )
+        }
+
+        return linkEl
+      },
     },
     {
       title: "Archived",

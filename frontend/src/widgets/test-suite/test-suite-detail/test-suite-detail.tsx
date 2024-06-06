@@ -18,15 +18,22 @@ interface TestSuiteDetailsProps {
 }
 
 export const TestSuiteDetail = ({ collapse, setCollapse }: TestSuiteDetailsProps) => {
-  const { shortDesc, suite, isLoading, isShowMore, descriptionLines, handleShowMoreClick } =
-    useTestSuiteDetails()
+  const {
+    shortDesc,
+    suite,
+    isLoading,
+    isShowMore,
+    descriptionLines,
+    handleShowMoreClick,
+    handleRefetch,
+  } = useTestSuiteDetails()
 
   if (isLoading) return <ContainerLoader />
   if (!suite) return <Empty />
 
   return (
     <>
-      {!!suite.children.length && (
+      {!!suite.child_count && (
         <TestSuiteTableWrapper activeSuite={suite} collapse={collapse} setCollapse={setCollapse} />
       )}
       <Row>
@@ -38,7 +45,7 @@ export const TestSuiteDetail = ({ collapse, setCollapse }: TestSuiteDetailsProps
               </Col>
               <Col flex={"none"}>
                 <Space size="middle">
-                  <CreateSuite suite={suite} />
+                  <CreateSuite suite={suite} onSubmit={handleRefetch} />
                   <CopySuite suite={suite} />
                   <EditSuite suite={suite} />
                   <DeleteSuite suite={suite} />

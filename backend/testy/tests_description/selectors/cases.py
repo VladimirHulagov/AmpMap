@@ -33,7 +33,7 @@ import logging
 from typing import Any, Dict, List, Optional, Tuple
 
 from django.contrib.postgres.aggregates import ArrayAgg
-from django.db.models import OuterRef, QuerySet, Subquery
+from django.db.models import OuterRef, Q, QuerySet, Subquery
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import ValidationError
 
@@ -48,7 +48,7 @@ logger = logging.getLogger(__name__)
 _ID = 'id'
 
 
-class TestCaseSelector:
+class TestCaseSelector:  # noqa: WPS214
     def case_list(self, filter_condition: Optional[Dict[str, Any]] = None) -> QuerySet[TestCase]:
         if not filter_condition:
             filter_condition = {}
@@ -57,7 +57,17 @@ class TestCaseSelector:
         ).annotate(
             current_version=self._current_version_subquery(),
             versions=self._versions_subquery(),
+        ).order_by()
+
+    def case_list_with_label_names(self, filter_condition: Optional[Dict[str, Any]] = None) -> QuerySet[TestCase]:
+        return self.case_list(filter_condition=filter_condition).annotate(
+            labels=ArrayAgg('labeled_items__label__name', distinct=True, filter=Q(labeled_items__is_deleted=False)),
+            label_ids=ArrayAgg('labeled_items__label__id', distinct=True, filter=Q(labeled_items__is_deleted=False)),
         )
+
+    @classmethod
+    def case_by_id(cls, case_id: int) -> TestCase:
+        return get_object_or_404(TestCase, pk=case_id)
 
     def case_deleted_list(self):
         return TestCase.deleted_objects.all().prefetch_related().annotate(
@@ -89,16 +99,14 @@ class TestCaseSelector:
         return TestCase.objects.filter(**{f'{field_name}__in': ids}).order_by(_ID)
 
     @classmethod
-    def case_by_version(cls, pk: str, version: Optional[str]) -> Tuple[TestCase, Optional[str]]:
-        instance = get_object_or_404(TestCase, pk=pk)
-
+    def case_by_version(cls, case: TestCase, version: Optional[str]) -> Tuple[TestCase, Optional[str]]:
         if not version:
-            return instance, None
+            return case, None
 
         if not version.isnumeric():
             raise ValidationError('Version must be a valid integer.')
 
-        history_instance = get_object_or_404(instance.history, history_id=version)
+        history_instance = get_object_or_404(case.history, history_id=version)
         return history_instance.instance, version
 
     @classmethod
@@ -173,7 +181,7 @@ class TestCaseStepSelector:
         test_case_history_id = step_result.test_result.test_case_version
         step = step_result.step
         steps = step.history.filter(test_case_history_id=test_case_history_id)
-        # TODO: research and fix the problem creating double historical records with same test case version id
+        # TODO: research and fix the problem creating double historical records may be a plugin issue
         if len(steps) > 1:
             logger.warning(
                 f'case step {step.id} has one more history records with same case history id {test_case_history_id}',

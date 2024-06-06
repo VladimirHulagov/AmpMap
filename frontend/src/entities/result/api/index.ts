@@ -7,6 +7,8 @@ import { testApi } from "entities/test/api"
 
 import { testPlanApi } from "entities/test-plan/api"
 
+import { invalidatesList, providesList } from "shared/libs"
+
 const invalidateListTags = (
   testPlanId: number,
   testId: number,
@@ -28,16 +30,7 @@ export const resultApi = createApi({
         url: "v1/results/",
         params: { test: testId, is_archive: showArchive, project },
       }),
-      providesTags: (result) =>
-        result
-          ? [
-              ...result.map(({ id }) => ({
-                type: "Result" as const,
-                id,
-              })),
-              { type: "Result", id: "LIST" },
-            ]
-          : [{ type: "Result", id: "LIST" }],
+      providesTags: (result) => providesList(result, "Result"),
     }),
     updateResult: builder.mutation<IResult, { id: Id; testPlanId: Id; body: IResultUpdate }>({
       query: ({ id, body }) => ({
@@ -53,13 +46,7 @@ export const resultApi = createApi({
           console.error(error)
         }
       },
-      invalidatesTags: (result, error, { id }) =>
-        result
-          ? [
-              { type: "Result", id },
-              { type: "Result", id: "LIST" },
-            ]
-          : [{ type: "Result", id: "LIST" }],
+      invalidatesTags: (result) => invalidatesList(result, "Result"),
     }),
     createResult: builder.mutation<IResult, { testPlanId: Id; body: IResultCreate }>({
       query: ({ body }) => ({
@@ -80,9 +67,5 @@ export const resultApi = createApi({
   }),
 })
 
-export const {
-  useCreateResultMutation,
-  useUpdateResultMutation,
-  useGetResultsQuery,
-  useLazyGetResultsQuery,
-} = resultApi
+export const { useCreateResultMutation, useUpdateResultMutation, useLazyGetResultsQuery } =
+  resultApi

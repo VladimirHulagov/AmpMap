@@ -4,6 +4,8 @@ import { baseQueryWithLogout } from "app/apiSlice"
 
 import { systemStatsInvalidate } from "entities/system/api"
 
+import { invalidatesList } from "shared/libs"
+
 const rootPath = "v1/projects"
 
 export const projectApi = createApi({
@@ -46,13 +48,15 @@ export const projectApi = createApi({
         method: "PATCH",
         body,
       }),
-      invalidatesTags: (result, error, { id }) =>
-        result
-          ? [
-              { type: "Project", id },
-              { type: "Project", id: "LIST" },
-            ]
-          : [{ type: "Project", id: "LIST" }],
+      invalidatesTags: (result) => invalidatesList(result, "Project"),
+    }),
+    updateProjectJson: builder.mutation<Project, { id: Id; body: Partial<Project> }>({
+      query: ({ id, body }) => ({
+        url: `${rootPath}/${id}/`,
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: (result) => invalidatesList(result, "Project"),
     }),
     deleteProject: builder.mutation<void, number>({
       query: (id) => ({
@@ -98,6 +102,24 @@ export const projectApi = createApi({
       }),
       providesTags: (result, error, { projectId }) => [{ type: "Project", id: projectId }],
     }),
+    getMembers: builder.query<
+      PaginationResponse<UserWithRoles[]>,
+      QueryWithPagination<{ id: string } & GetUsersQuery>
+    >({
+      query: ({ id, ...rest }) => ({
+        url: `${rootPath}/${id}/members/`,
+        params: rest,
+      }),
+    }),
+    requestAccess: builder.mutation<void, { id: number; reason?: string }>({
+      query: ({ id, reason }) => ({
+        url: `${rootPath}/${id}/access/`,
+        method: "POST",
+        body: {
+          reason,
+        },
+      }),
+    }),
   }),
 })
 
@@ -107,10 +129,12 @@ export const {
   useLazyGetProjectsQuery,
   useCreateProjectMutation,
   useUpdateProjectMutation,
+  useUpdateProjectJsonMutation,
   useDeleteProjectMutation,
-  useGetProjectProgressQuery,
   useLazyGetProjectProgressQuery,
   useGetProjectDeletePreviewQuery,
   useArchiveProjectMutation,
   useGetProjectArchivePreviewQuery,
+  useGetMembersQuery,
+  useRequestAccessMutation,
 } = projectApi

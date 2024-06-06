@@ -1,7 +1,6 @@
 import { DownOutlined } from "@ant-design/icons"
 import { Input } from "antd"
 import { useMemo, useRef } from "react"
-import { ControllerRenderProps } from "react-hook-form"
 
 import { UseFormLabelsProps } from "entities/label/model"
 
@@ -14,7 +13,8 @@ import styles from "./styles.module.css"
 
 interface LabelWrapperProps {
   labelProps: UseFormLabelsProps
-  fieldProps: ControllerRenderProps<TestCaseFormData, "labels">
+  fieldProps?: { onBlur: () => void }
+  noAdding?: boolean
 }
 
 export const LabelWrapper = ({
@@ -30,6 +30,7 @@ export const LabelWrapper = ({
     handleDeleteLabel,
     handleSubmitInput,
   },
+  noAdding,
 }: LabelWrapperProps) => {
   const popupRef = useRef(null)
   useOnClickOutside(popupRef, () => setIsShowPopup(false))
@@ -65,11 +66,17 @@ export const LabelWrapper = ({
         <Input
           id="label-input"
           placeholder="New label"
-          suffix={<DownOutlined style={{ cursor: "pointer" }} onClick={handlePopupClick} />}
+          suffix={
+            <DownOutlined
+              id="label-input-arrow"
+              style={{ cursor: "pointer" }}
+              onClick={handlePopupClick}
+            />
+          }
           value={searchValue}
           onChange={handleInputChange}
           onKeyDown={(e) => handleSubmitInput(e, searchValue)}
-          onBlur={fieldProps.onBlur}
+          onBlur={fieldProps?.onBlur}
         />
         {isShowPopup && (
           <div id="label-popup" className={styles.popup} ref={popupRef}>
@@ -88,7 +95,7 @@ export const LabelWrapper = ({
                   </span>
                 </>
               )}
-              {!hasSearchingLabel && !isAlreadyAdded && (
+              {!hasSearchingLabel && !isAlreadyAdded && !noAdding && (
                 <>
                   <div className={styles.line} />
                   <span className={styles.newLabel} onClick={() => handleAddLabel(searchValue)}>

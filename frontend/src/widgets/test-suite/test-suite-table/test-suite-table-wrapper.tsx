@@ -28,6 +28,7 @@ export const TestSuiteTableWrapper = ({
     onRowExpand,
     handleRowClick,
     handleSorter,
+    invalidateList,
   } = useTestSuiteTable({ setCollapse, activeSuite })
 
   if (testSuiteId && activeSuite) {
@@ -51,6 +52,7 @@ export const TestSuiteTableWrapper = ({
             onHandleRowClick={handleRowClick}
             paginationTable={paginationTable}
             handleSorter={handleSorter}
+            onListChange={invalidateList}
           />
         </Collapse.Panel>
       </Collapse>
@@ -69,6 +71,7 @@ export const TestSuiteTableWrapper = ({
       onHandleRowClick={handleRowClick}
       paginationTable={paginationTable}
       handleSorter={handleSorter}
+      onListChange={invalidateList}
     />
   )
 }

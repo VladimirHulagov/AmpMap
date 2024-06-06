@@ -1,8 +1,10 @@
 import { Button, Space, Table } from "antd"
+import cn from "classnames"
 
 import { ContainerLoader } from "shared/ui"
 
 import { useProjectsTable } from "../model/use-projects-table"
+import styles from "./styles.module.css"
 
 export const ProjectsTable = () => {
   const {
@@ -33,9 +35,14 @@ export const ProjectsTable = () => {
         style={{ marginTop: 12, cursor: "pointer" }}
         onChange={handleChange}
         pagination={paginationTable}
+        rowClassName={(record) => {
+          return cn({
+            [styles.disabledRow]: record.is_private && !record.is_manageable,
+          })
+        }}
         onRow={(record) => {
           return {
-            onClick: () => handleRowClick(record.id),
+            onClick: () => handleRowClick(record),
           }
         }}
       />

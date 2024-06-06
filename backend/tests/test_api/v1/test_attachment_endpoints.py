@@ -29,18 +29,17 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 import io
-import json
 import os.path
 from http import HTTPStatus
 from pathlib import Path
 
 import pytest
-from core.models import Attachment
-from core.services.attachments import AttachmentService
 from django.conf import settings
 from PIL import Image
 
 from tests.commons import RequestType
+from testy.core.models import Attachment
+from testy.core.services.attachments import AttachmentService
 
 
 @pytest.mark.django_db
@@ -57,25 +56,25 @@ class TestAttachmentEndpoints:
             ('.png', False),
             ('.jpeg', False),
             ('.pdf', True),
-            ('.zip', True)
+            ('.zip', True),
         ],
-        ids=['txt', 'png', 'jpeg', 'pdf', 'zip']
+        ids=['txt', 'png', 'jpeg', 'pdf', 'zip'],
     )
     def test_attachment_correct_output(self, api_client, authorized_superuser, create_file, project, as_attachment):
         attachment_json = {
             'project': project.id,
-            'file': create_file
+            'file': create_file,
         }
-        attachment_id = json.loads(api_client.send_request(
+        attachment_id = api_client.send_request(
             self.list_view_name,
             data=attachment_json,
             request_type=RequestType.POST,
             expected_status=HTTPStatus.CREATED,
-            format='multipart'
-        ).content)[0]['id']
+            format='multipart',
+        ).json()[0]['id']
         response = api_client.send_request(
             self.attachment_file_response_view_name,
-            reverse_kwargs={'pk': attachment_id}
+            reverse_kwargs={'pk': attachment_id},
         )
         assert response.headers['Content-Disposition'].split(';')[0] == 'attachment' if as_attachment else 'inline', \
             'File was returned in wrong Content-Disposition'
@@ -85,36 +84,38 @@ class TestAttachmentEndpoints:
     def test_file_deleted_after_attachment_deleted(self, api_client, authorized_superuser, create_file, project):
         attachment_json = {
             'project': project.id,
-            'file': create_file
+            'file': create_file,
         }
 
-        attachment_id = json.loads(api_client.send_request(
+        attachment_id = api_client.send_request(
             self.list_view_name,
             data=attachment_json,
             request_type=RequestType.POST,
             expected_status=HTTPStatus.CREATED,
-            format='multipart'
-        ).content)[0]['id']
+            format='multipart',
+        ).json()[0]['id']
         attachment = Attachment.objects.get(pk=attachment_id)
         assert os.path.isfile(attachment.file.path)
         attachment.hard_delete()
         assert not os.path.isfile(attachment.file.path)
 
     @pytest.mark.parametrize('extension', ['.png', '.jpeg'], ids=['png', 'jpeg'])
-    def test_attachment_creates_non_existing_thumbnails(self, api_client, authorized_superuser, create_file, project,
-                                                        media_directory):
+    def test_attachment_creates_non_existing_thumbnails(
+        self, api_client, authorized_superuser, create_file, project,
+        media_directory,
+    ):
         attachment_json = {
             'project': project.id,
-            'file': create_file
+            'file': create_file,
         }
         number_of_objects_to_create = len(settings.TESTY_THUMBNAIL_RESOLUTIONS) + 1  # plus 1 for src file
-        attachment_id = json.loads(api_client.send_request(
+        attachment_id = api_client.send_request(
             self.list_view_name,
             data=attachment_json,
             request_type=RequestType.POST,
             expected_status=HTTPStatus.CREATED,
-            format='multipart'
-        ).content)[0]['id']
+            format='multipart',
+        ).json()[0]['id']
         files_folder = Path(Attachment.objects.get(pk=attachment_id).file.url).parts[3]
         number_of_objects_in_dir = len(os.listdir(Path(media_directory, self.attachments_folder, files_folder)))
         assert number_of_objects_to_create == number_of_objects_in_dir
@@ -130,20 +131,22 @@ class TestAttachmentEndpoints:
             assert number_of_objects_to_create == number_of_objects_in_dir, 'Already existing file was created again.'
 
     @pytest.mark.parametrize('extension', ['.png', '.jpeg'], ids=['png', 'jpeg'])
-    def test_attachment_creates_thumbnails(self, api_client, authorized_superuser, create_file, project,
-                                           media_directory):
+    def test_attachment_creates_thumbnails(
+        self, api_client, authorized_superuser, create_file, project,
+        media_directory,
+    ):
         attachment_json = {
             'project': project.id,
-            'file': create_file
+            'file': create_file,
         }
         number_of_objects_to_create = len(settings.TESTY_THUMBNAIL_RESOLUTIONS) + 1  # plus 1 for src file
-        attachment_id = json.loads(api_client.send_request(
+        attachment_id = api_client.send_request(
             self.list_view_name,
             data=attachment_json,
             request_type=RequestType.POST,
             expected_status=HTTPStatus.CREATED,
-            format='multipart'
-        ).content)[0]['id']
+            format='multipart',
+        ).json()[0]['id']
         files_folder = Path(Attachment.objects.get(pk=attachment_id).file.url).parts[3]
         attachment_file_path = Path(media_directory, self.attachments_folder, files_folder)
         assert number_of_objects_to_create == len(os.listdir(attachment_file_path))
@@ -161,7 +164,7 @@ class TestAttachmentEndpoints:
             content = api_client.send_request(
                 self.attachment_file_response_view_name,
                 reverse_kwargs={'pk': attachment_id},
-                query_params=query_params
+                query_params=query_params,
             ).content
             img = Image.open(io.BytesIO(content))
             # image is scaled saving aspect ratio
@@ -172,20 +175,22 @@ class TestAttachmentEndpoints:
                 'Already existing file was created again.'
 
     @pytest.mark.parametrize('extension', ['.png', '.jpeg'], ids=['png', 'jpeg'])
-    def test_attachments_behaviour_on_file_system_file_delete(self, api_client, authorized_superuser, create_file,
-                                                              project, media_directory):
+    def test_attachments_behaviour_on_file_system_file_delete(
+        self, api_client, authorized_superuser, create_file,
+        project, media_directory,
+    ):
         attachment_json = {
             'project': project.id,
-            'file': create_file
+            'file': create_file,
         }
         number_of_objects_to_create = len(settings.TESTY_THUMBNAIL_RESOLUTIONS) + 1  # plus 1 for src file
-        attachment_id = json.loads(api_client.send_request(
+        attachment_id = api_client.send_request(
             self.list_view_name,
             data=attachment_json,
             request_type=RequestType.POST,
             expected_status=HTTPStatus.CREATED,
-            format='multipart'
-        ).content)[0]['id']
+            format='multipart',
+        ).json()[0]['id']
         attachment = Attachment.objects.get(pk=attachment_id)
         files_folder = Path(attachment.file.url).parts[3]
         attachment_file_path = Path(media_directory, self.attachments_folder, files_folder)
@@ -195,32 +200,34 @@ class TestAttachmentEndpoints:
         api_client.send_request(
             self.attachment_file_response_view_name,
             reverse_kwargs={'pk': attachment_id},
-            expected_status=HTTPStatus.NOT_FOUND
+            expected_status=HTTPStatus.NOT_FOUND,
         )
         api_client.send_request(
             self.attachment_file_response_view_name,
             reverse_kwargs={'pk': attachment_id},
             query_params={'width': 32, 'height': 32},
-            expected_status=HTTPStatus.NOT_FOUND
+            expected_status=HTTPStatus.NOT_FOUND,
         )
         assert number_of_objects_to_create == len(os.listdir(attachment_file_path))
 
     @pytest.mark.django_db(transaction=True)
     @pytest.mark.parametrize('extension', ['.png', '.jpeg'], ids=['png', 'jpeg'])
-    def test_files_deleted(self, api_client, authorized_superuser, create_file,
-                           project, media_directory, test_case):
+    def test_files_deleted(
+        self, api_client, authorized_superuser, create_file,
+        project, media_directory, test_case,
+    ):
         attachment_json = {
             'project': project.id,
-            'file': create_file
+            'file': create_file,
         }
         number_of_objects_to_create = len(settings.TESTY_THUMBNAIL_RESOLUTIONS) + 1  # plus 1 for src file
-        attachment_id = json.loads(api_client.send_request(
+        attachment_id = api_client.send_request(
             self.list_view_name,
             data=attachment_json,
             request_type=RequestType.POST,
             expected_status=HTTPStatus.CREATED,
-            format='multipart'
-        ).content)[0]['id']
+            format='multipart',
+        ).json()[0]['id']
         attachment = Attachment.objects.get(pk=attachment_id)
         files_folder = Path(attachment.file.url).parts[3]
         attachment_file_path = Path(media_directory, self.attachments_folder, files_folder)
@@ -235,15 +242,17 @@ class TestAttachmentEndpoints:
             self.detail_view_name,
             request_type=RequestType.DELETE,
             reverse_kwargs={'pk': attachment_id},
-            expected_status=HTTPStatus.NO_CONTENT
+            expected_status=HTTPStatus.NO_CONTENT,
         )
         Attachment.deleted_objects.all().hard_delete()
         assert len(os.listdir(attachment_file_path)) == 2, 'All related files must be deleted, other should exist.'
 
     @pytest.mark.parametrize('extension', ['.txt'])
     @pytest.mark.django_db(transaction=True)
-    def test_cascade_soft_delete(self, api_client, authorized_superuser, create_file, project,
-                                 attachment_test_case_factory, test_result_factory, test_case_factory, test_factory):
+    def test_cascade_soft_delete(
+        self, api_client, authorized_superuser, create_file, project,
+        attachment_test_case_factory, test_result_factory, test_case_factory, test_factory,
+    ):
         case = test_case_factory(project=project)
         test = test_factory(case=case, project=project)
         result = test_result_factory(test=test, project=project)
@@ -253,6 +262,6 @@ class TestAttachmentEndpoints:
             'api:v1:testcase-detail',
             reverse_kwargs={'pk': case.id},
             request_type=RequestType.DELETE,
-            expected_status=HTTPStatus.NO_CONTENT
+            expected_status=HTTPStatus.NO_CONTENT,
         )
         assert not Attachment.objects.count()

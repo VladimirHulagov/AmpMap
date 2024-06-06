@@ -12,6 +12,21 @@ interface Props {
   placeholder?: string
 }
 
+interface OptionProps {
+  user: User
+}
+
+export const UserSearchOption = ({ user }: OptionProps) => {
+  return (
+    <div style={{ display: "flex", alignItems: "center", flexDirection: "row", gap: 8 }}>
+      <div style={{ width: 20, height: 20 }}>
+        <UserAvatar avatar_link={user.avatar_link} size={20} />
+      </div>
+      <span>{user.username}</span>
+    </div>
+  )
+}
+
 export const UserSearchInput = ({
   selectedUser,
   handleClear,
@@ -105,12 +120,7 @@ export const UserSearchInput = ({
     >
       {data.map((user) => (
         <Select.Option key={user.id} value={user.id}>
-          <div style={{ display: "flex", alignItems: "center", flexDirection: "row", gap: 8 }}>
-            <div style={{ width: 20, height: 20 }}>
-              <UserAvatar avatar_link={user.avatar_link} size={20} />
-            </div>
-            <span>{user.username}</span>
-          </div>
+          <UserSearchOption user={user} />
         </Select.Option>
       ))}
       {!!data.length && !isLastPage && !isLoading && !isLoadingGetTestSuites && (

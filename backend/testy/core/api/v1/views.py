@@ -30,27 +30,24 @@
 # <http://www.gnu.org/licenses/>.
 from pathlib import Path
 
-import permissions
+from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404
-from filters import AttachmentFilter, LabelFilter, ProjectFilter, ProjectOrderingFilter, TestyFilterBackend
-from paginations import StandardSetPagination
 from rest_framework import mixins, status
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
+from rest_framework.filters import OrderingFilter
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
-from swagger.projects import (
-    project_create_schema,
-    project_list_schema,
-    project_parameters_schema,
-    project_plans_schema,
-    project_progress_schema,
-    project_update_schema,
-)
 
+from testy import permissions
 from testy.core.api.v1.serializers import (
+    AccessRequestSerializer,
     AllProjectsStatisticSerializer,
     AttachmentSerializer,
+    ContentTypeSerializer,
+    CustomAttributeInputSerializer,
+    CustomAttributeOutputSerializer,
     LabelSerializer,
     ProjectRetrieveSerializer,
     ProjectSerializer,
@@ -59,13 +56,39 @@ from testy.core.api.v1.serializers import (
 )
 from testy.core.mixins import MediaViewMixin
 from testy.core.models import Project, SystemMessage
+from testy.core.permissions import (
+    AttachmentPermission,
+    BaseProjectPermission,
+    ProjectIsPrivatePermission,
+    ProjectPermission,
+)
 from testy.core.selectors.attachments import AttachmentSelector
+from testy.core.selectors.custom_attribute import CustomAttributeSelector
 from testy.core.selectors.labels import LabelSelector
 from testy.core.selectors.projects import ProjectSelector
 from testy.core.services.attachments import AttachmentService
+from testy.core.services.custom_attribute import CustomAttributeService
 from testy.core.services.labels import LabelService
 from testy.core.services.projects import ProjectService
+from testy.filters import (
+    AttachmentFilter,
+    CustomAttributeFilter,
+    LabelFilter,
+    ProjectFilter,
+    ProjectOrderingFilter,
+    TestyFilterBackend,
+    UserFilter,
+)
+from testy.paginations import StandardSetPagination
 from testy.root.mixins import TestyArchiveMixin, TestyModelViewSet
+from testy.swagger.projects import (
+    project_create_schema,
+    project_list_schema,
+    project_parameters_schema,
+    project_plans_schema,
+    project_progress_schema,
+    project_update_schema,
+)
 from testy.tests_representation.api.v1.serializers import (
     ParameterSerializer,
     TestPlanProgressSerializer,
@@ -73,30 +96,55 @@ from testy.tests_representation.api.v1.serializers import (
 )
 from testy.tests_representation.selectors.parameters import ParameterSelector
 from testy.tests_representation.selectors.testplan import TestPlanSelector
+from testy.users.api.v1.serializers import UserRoleSerializer
+from testy.users.models import Membership, User
+from testy.users.selectors.roles import RoleSelector
+from testy.users.services.roles import RoleService
 from testy.utilities.request import PeriodDateTime
 
 _GET = 'get'
 
 
 class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin, MediaViewMixin):
-    queryset = ProjectSelector.project_list()
+    queryset = ProjectSelector.project_list_raw()
     serializer_class = ProjectSerializer
     filter_backends = [TestyFilterBackend, ProjectOrderingFilter]
     filterset_class = ProjectFilter
-    permission_classes = [permissions.IsAdminOrForbidArchiveUpdate, IsAuthenticated]
+    permission_classes = [permissions.IsAdminOrForbidArchiveUpdate, ProjectPermission, ProjectIsPrivatePermission]
     ordering_fields = ['name', 'is_archive']
     pagination_class = StandardSetPagination
     schema_tags = ['Projects']
 
     def get_queryset(self):
+        project_selector = ProjectSelector(self.request.user)
         if self.action in {'recovery_list', 'restore', 'delete_permanently'}:
-            return ProjectSelector().project_deleted_list()
-        return ProjectSelector.project_list()
+            return project_selector.project_deleted_list()
+        if self.action in {'list', 'retrieve'}:
+            return project_selector.project_list_statistics()
+        return project_selector.project_list()
 
     def get_serializer_class(self):
         if self.action == 'retrieve':
             return ProjectRetrieveSerializer
+        if self.action == 'list':
+            return ProjectStatisticsSerializer
+        if self.action == 'members':
+            return UserRoleSerializer
         return ProjectSerializer
+
+    @action(methods=[_GET], url_path='members', url_name='members', detail=True)
+    def members(self, request, pk):
+        project = self.get_object()
+        users = User.objects.filter(memberships__project=project).distinct().prefetch_related(
+            Prefetch('memberships', queryset=Membership.objects.filter(project=project)),
+            'groups',
+            'memberships__role',
+            'memberships__role__permissions',
+        )
+        qs = UserFilter.filter_queryset_flat(users, request)
+        page = self.paginate_queryset(qs)
+        serializer = self.get_serializer(page, many=True, context=self.get_serializer_context())
+        return self.get_paginated_response(serializer.data)
 
     @project_plans_schema
     @action(methods=[_GET], url_path='testplans', url_name='testplans', detail=True)
@@ -104,6 +152,18 @@ class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin, MediaViewMixin):
         qs = TestPlanSelector().testplan_project_root_list(project_id=pk)
         serializer = TestPlanTreeSerializer(qs, many=True, context=self.get_serializer_context())
         return Response(serializer.data)
+
+    @action(methods=['post'], url_path='access', url_name='access', detail=True)
+    def request_access(self, request, pk):
+        project = get_object_or_404(Project, pk=pk)
+        if RoleSelector.access_request_pending_list(project, request.user):
+            raise ValidationError('You already requested access to this project.')
+        if RoleSelector.project_view_allowed(request.user, pk):
+            raise ValidationError('You already have read access to project.')
+        serializer = AccessRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        RoleService.access_request_create(project, request.user, serializer.validated_data.get('reason'))
+        return Response(data='Request sent!')
 
     @project_parameters_schema
     @action(methods=[_GET], url_path='parameters', url_name='parameters', detail=True)
@@ -130,22 +190,16 @@ class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin, MediaViewMixin):
 
     @project_list_schema
     def list(self, request, *args, **kwargs):
-        queryset = self.filter_queryset(ProjectSelector.project_list_statistics())
-
+        queryset = self.filter_queryset(self.get_queryset())
         page = self.paginate_queryset(queryset)
-
-        if page is not None:
-            serializer = ProjectStatisticsSerializer(page, many=True, context={'request': request})
-            return self.get_paginated_response(serializer.data)
-
-        serializer = ProjectStatisticsSerializer(queryset, many=True, context=self.get_serializer_context())
-        return Response(serializer.data)
+        serializer = self.get_serializer(page, many=True, context=self.get_serializer_context())
+        return self.get_paginated_response(serializer.data)
 
     @project_create_schema
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        instance = ProjectService().project_create(serializer.validated_data)
+        instance = ProjectService().project_create(serializer.validated_data, request.user)
         return Response(
             ProjectRetrieveSerializer(instance, context={'request': request}).data,
             status=status.HTTP_201_CREATED,
@@ -180,6 +234,7 @@ class AttachmentViewSet(
 ):
     queryset = AttachmentSelector().attachment_list()
     serializer_class = AttachmentSerializer
+    permission_classes = [IsAuthenticated, AttachmentPermission]
     filter_backends = [TestyFilterBackend]
     filterset_class = AttachmentFilter
 
@@ -199,8 +254,9 @@ class AttachmentViewSet(
 class LabelViewSet(TestyModelViewSet):
     queryset = LabelSelector().label_list()
     serializer_class = LabelSerializer
-    filter_backends = [TestyFilterBackend]
+    filter_backends = [TestyFilterBackend, OrderingFilter]
     filterset_class = LabelFilter
+    permission_classes = [IsAuthenticated, BaseProjectPermission]
     schema_tags = ['Labels']
 
     def perform_create(self, serializer: ProjectSerializer):
@@ -224,6 +280,40 @@ class SystemStatisticViewSet(mixins.ListModelMixin, GenericViewSet):
     schema_tags = ['statistics']
 
     def list(self, request, *args, **kwargs):
-        statistic = ProjectSelector.all_projects_statistic()
+        statistic = ProjectSelector(request.user).all_projects_statistic()
         serializer = AllProjectsStatisticSerializer(statistic)
         return Response(serializer.data)
+
+
+class CustomAttributeViewSet(TestyModelViewSet):
+    queryset = CustomAttributeSelector().custom_attribute_list()
+    serializer_class = CustomAttributeInputSerializer
+    filter_backends = [TestyFilterBackend]
+    filterset_class = CustomAttributeFilter
+
+    def get_serializer_class(self):
+        if self.action in {'list', 'retrieve'}:
+            return CustomAttributeOutputSerializer
+        return CustomAttributeInputSerializer
+
+    @action(methods=[_GET], url_path='content-types', url_name='content-types', detail=False)
+    def get_allowed_content_types(self, request):
+        allowed_content_types = CustomAttributeSelector.get_allowed_content_types()
+        return Response(ContentTypeSerializer(allowed_content_types, many=True).data, status=status.HTTP_200_OK)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        custom_attribute = CustomAttributeService().custom_attribute_create(serializer.validated_data)
+        return Response(
+            CustomAttributeOutputSerializer(custom_attribute, context=self.get_serializer_context()).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.get('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        new_instance = CustomAttributeService().custom_attribute_update(instance, serializer.validated_data)
+        return Response(CustomAttributeOutputSerializer(new_instance, context=self.get_serializer_context()).data)

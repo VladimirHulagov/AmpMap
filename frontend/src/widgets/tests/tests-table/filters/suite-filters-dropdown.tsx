@@ -92,7 +92,6 @@ export const SuiteFiltersDrowdown = ({
         showIcon={false}
         selectable={false}
         checkable
-        checkStrictly
         treeData={suitesTree.data}
         checkedKeys={selectedKeys}
         onCheck={handleCheck}

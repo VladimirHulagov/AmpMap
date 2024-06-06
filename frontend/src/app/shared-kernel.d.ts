@@ -13,12 +13,19 @@ interface ParamProjectId extends BaseParams {
 interface ParamTestPlanId extends BaseParams {
   testPlanId: string
 }
+
+type AttributeType = "Text" | "List" | "JSON"
+
 interface Attribute {
   id: string
   name: string
   value: string | object
-  type: "txt" | "list" | "json"
+  type: AttributeType
+  required?: boolean
 }
+
+type AttributesObject = Record<string, string[] | string | object>
+
 interface TreeCheckboxInfo {
   checked: boolean
   node: InfoNode
@@ -77,12 +84,21 @@ interface BaseData {
   children?: T[]
 }
 interface SelectData {
-  label: string
+  label: React.ReactNode
   value: number
 }
 // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
 type DataWithKey<T> = T & BaseData & { key: string | Key }
 interface BaseResponse {
   id: string | Id
+  name: string
+}
+interface Breadcrumbs {
+  id: number
+  title: string
+  parent: Breadcrumbs | null
+}
+interface Parent {
+  id: number
   name: string
 }

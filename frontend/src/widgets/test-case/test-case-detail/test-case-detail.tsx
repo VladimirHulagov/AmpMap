@@ -37,6 +37,7 @@ export const TestCaseDetail = ({ testCase, onClose }: TestCaseDetailProps) => {
             minHeight: 32,
             display: "flex",
             alignItems: "center",
+            minWidth: "60px",
           }}
         >
           {testCase?.name}

@@ -1,12 +1,14 @@
 import { Breadcrumb } from "antd"
 import { useMemo } from "react"
-import { Link, useParams } from "react-router-dom"
+import { Link, useLocation, useParams } from "react-router-dom"
 
 import { useGetProjectQuery } from "entities/project/api"
 
-import { useGetSuiteParentsQuery } from "entities/suite/api"
+import { useGetSuiteQuery } from "entities/suite/api"
 
-import { useGetTestPlanParentsQuery } from "entities/test-plan/api"
+import { useGetTestPlanQuery } from "entities/test-plan/api"
+
+import { capitalizeFirstLetter } from "shared/libs"
 
 interface BreadCrumbElement {
   type: "suites" | "plans"
@@ -16,15 +18,33 @@ interface BreadCrumbElement {
   title: string
 }
 
+const getTestCasePageType = (pathname: string) => {
+  let type: string | null = null
+  if (pathname.endsWith("/new-test-case")) {
+    type = "new"
+  } else if (pathname.endsWith("/edit-test-case")) {
+    type = "edit"
+  }
+  return type
+}
+
 export const useBreadcrumbs = () => {
   const { projectId, testPlanId, testSuiteId } = useParams<
     ParamProjectId & ParamTestPlanId & ParamTestSuiteId
   >()
+
+  const { pathname, search } = useLocation()
+
   const { data: project, isLoading: isLoadingProject } = useGetProjectQuery(Number(projectId), {
     skip: !projectId,
   })
-  const { data: testPlan } = useGetTestPlanParentsQuery(String(testPlanId), { skip: !testPlanId })
-  const { data: testSuite } = useGetSuiteParentsQuery(String(testSuiteId), { skip: !testSuiteId })
+  const { data: testPlan } = useGetTestPlanQuery(
+    { testPlanId: String(testPlanId) },
+    { skip: !testPlanId }
+  )
+  const { data: testSuite } = useGetSuiteQuery(Number(testSuiteId), { skip: !testSuiteId })
+
+  const testCasePageType = useMemo(() => getTestCasePageType(pathname), [pathname])
 
   const getElement = ({ type, key, id, projectId, title }: BreadCrumbElement) => {
     return (
@@ -34,9 +54,9 @@ export const useBreadcrumbs = () => {
     )
   }
 
-  const getBreadCrumbs = (data: TestPlanParent, projectId: string, type: "suites" | "plans") => {
+  const getBreadCrumbs = (data: TestPlan | Suite, projectId: string, type: "suites" | "plans") => {
     const list: JSX.Element[] = []
-    const getBreadCrumbItem = (data: TestPlanParent) => {
+    const getBreadCrumbItem = (data: Breadcrumbs) => {
       const el = getElement({
         type,
         key: data.id,
@@ -50,9 +70,17 @@ export const useBreadcrumbs = () => {
         getBreadCrumbItem(data.parent)
       }
     }
-    getBreadCrumbItem(data)
+    getBreadCrumbItem(data.breadcrumbs)
     return list.reverse()
   }
+
+  const getBreadCrumbTestCase = (type: string) => (
+    <Breadcrumb.Item key={`${type}-test-case`}>
+      <Link to={`/projects/${projectId}/suites/${testSuite?.id}/${type}-test-case${search}`}>
+        {`${capitalizeFirstLetter(type)} Test Case`}
+      </Link>
+    </Breadcrumb.Item>
+  )
 
   const breadCrumbsPlans = useMemo(() => {
     if (!testPlan || !projectId) return []
@@ -61,8 +89,9 @@ export const useBreadcrumbs = () => {
 
   const breadCrumbsSuites = useMemo(() => {
     if (!testSuite || !projectId) return []
-    return getBreadCrumbs(testSuite, projectId, "suites")
-  }, [testSuite, projectId])
+    const res = getBreadCrumbs(testSuite, projectId, "suites")
+    return testCasePageType ? res.concat(getBreadCrumbTestCase(testCasePageType)) : res
+  }, [testSuite, projectId, testCasePageType])
 
   const breadCrumbs = useMemo(() => {
     if (!project) return []
@@ -94,7 +123,7 @@ export const useBreadcrumbs = () => {
     }
 
     return []
-  }, [project, projectId, testPlanId, testPlan, testSuiteId, testSuite])
+  }, [project, projectId, testPlanId, testPlan, testSuiteId, testSuite, testCasePageType])
 
   return {
     breadCrumbs,

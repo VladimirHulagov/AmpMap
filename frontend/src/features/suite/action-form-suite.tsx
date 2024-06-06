@@ -4,6 +4,7 @@ import { Control, FieldErrors, FieldValues } from "react-hook-form"
 import { useParams } from "react-router-dom"
 
 import { useLazyGetTestSuitesQuery } from "entities/suite/api"
+import { testSuiteSearchValueFormat } from "entities/suite/lib/utils"
 
 import { ErrorObj } from "shared/hooks/use-alert-error"
 import { AlertError, InputFormItem, SearchFormItem, TextAreaFormItem } from "shared/ui"
@@ -114,6 +115,7 @@ export const ActionFormSuite = <T extends FieldValues>({
               selected: parentSuiteOptions.selectedParent,
               placeholder: "Search a test suite",
               searchKey: "search",
+              valueFormat: testSuiteSearchValueFormat,
             }}
           />
           <TextAreaFormItem

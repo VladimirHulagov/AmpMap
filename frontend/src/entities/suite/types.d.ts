@@ -6,21 +6,21 @@ interface Suite {
   id: Id
   name: string
   title: string
-  parent: SuiteParent | null
+  parent: Parent | null
   project: number
   url: string
   cases_count: number
   total_cases_count: number
   descendant_count: number
   description: string
-  children: Suite[]
+  child_count: number
   estimates: string | null
   total_estimates: string | null
+  breadcrumbs: Breadcrumbs
 }
 
-interface SuiteParent {
-  id: number
-  name: string
+interface SuiteTree extends Suite {
+  children: SuiteTree[]
 }
 
 interface SuiteWithCases extends Suite {
@@ -43,25 +43,18 @@ interface SuiteCreate {
 
 interface GetTestSuiteQuery {
   suiteId: string
-  treeview?: boolean
 }
 
 interface GetTestSuitesTreeViewQuery {
   project?: string
   parent?: string
   treeview?: boolean
-  show_cases?: boolean
   search?: string
   ordering?: string
   is_flat?: boolean
   page?: number
   page_size?: number
-}
-
-interface SuiteParents {
-  id: Id
-  title: string
-  parent: SuiteParents | null
+  _cacheInvalidation?: number
 }
 
 interface CopySuiteResponse {
@@ -71,6 +64,7 @@ interface CopySuiteResponse {
   parent: number | null
   project: number | null
   url: string
+  path: string
 }
 
 interface SuiteCopyBody {

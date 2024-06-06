@@ -28,6 +28,7 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
+import pytimeparse
 from rest_framework.fields import CharField
 
 from testy.utilities.time import WorkTimeProcessor
@@ -43,7 +44,23 @@ class EstimateField(CharField):
         '5 hours, 34 minutes, 56 seconds',
     )
 
+    def __init__(self, **kwargs):
+        self.to_workday = kwargs.pop('to_workday', True)
+        super().__init__(**kwargs)
+
     def to_representation(self, value):
+        if isinstance(value, str):
+            value = int(value)
         if not value:
             return None
-        return WorkTimeProcessor.format_duration(value)
+        return WorkTimeProcessor.format_duration(value, self.to_workday)
+
+    def to_internal_value(self, data):
+        if self.to_workday:
+            return super().to_internal_value(data)
+        if data is None:
+            return None
+        data = str(data)
+        if data.isnumeric():
+            data = f'{data}m'
+        return pytimeparse.parse(data)

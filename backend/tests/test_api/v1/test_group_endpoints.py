@@ -29,17 +29,16 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 
-import json
 from http import HTTPStatus
 
 import pytest
 from django.forms import model_to_dict
-from tests_representation.models import Parameter
-from users.models import Group
 
 from tests import constants
 from tests.commons import RequestType
 from tests.error_messages import REQUIRED_FIELD_MSG
+from testy.tests_representation.models import Parameter
+from testy.users.models import Group
 
 
 @pytest.mark.django_db
@@ -53,14 +52,14 @@ class TestGroupEndpoints:
             expected_instances.append(model_to_dict(group_factory()))
 
         response = api_client.send_request(self.view_name_list)
-        for instance in json.loads(response.content):
+        for instance in response.json():
             instance.pop('url')
             assert instance in expected_instances
 
     def test_retrieve(self, api_client, authorized_superuser, group):
         expected_dict = model_to_dict(group)
         response = api_client.send_request(self.view_name_detail, reverse_kwargs={'pk': group.pk})
-        actual_dict = json.loads(response.content)
+        actual_dict = response.json()
         actual_dict.pop('url')
         assert actual_dict == expected_dict
 
@@ -68,7 +67,7 @@ class TestGroupEndpoints:
         expected_number_of_parameters = 1
         group_dict = {
             'name': constants.PARAMETER_GROUP_NAME,
-            'permissions': []
+            'permissions': [],
         }
         api_client.send_request(self.view_name_list, group_dict, HTTPStatus.CREATED, RequestType.POST)
         assert Group.objects.count() == expected_number_of_parameters, f'Expected number of groups is ' \
@@ -85,7 +84,7 @@ class TestGroupEndpoints:
             self.view_name_detail,
             reverse_kwargs={'pk': group.pk},
             request_type=RequestType.PATCH,
-            data=group_dict
+            data=group_dict,
         )
         actual_name = Group.objects.get(pk=group.id).name
         assert actual_name == new_name, f'New name does not match. Expected data "{new_name}", actual: "{actual_name}"'
@@ -103,14 +102,14 @@ class TestGroupEndpoints:
             reverse_kwargs={'pk': group.pk},
             request_type=RequestType.PUT,
             expected_status=expected_status,
-            data=group_dict
+            data=group_dict,
         )
         if expected_status == HTTPStatus.OK:
             actual_name = Group.objects.get(pk=group.id).name
             assert actual_name == new_name, f'Group names do not match. Expected name "{actual_name}", ' \
                                             f'actual: "{new_name}"'
         else:
-            assert json.loads(response.content)['name'][0] == REQUIRED_FIELD_MSG
+            assert response.json()['name'][0] == REQUIRED_FIELD_MSG
 
     def test_delete(self, api_client, authorized_superuser, group):
         assert Group.objects.count() == 1, 'Group was not created'
@@ -118,6 +117,6 @@ class TestGroupEndpoints:
             self.view_name_detail,
             expected_status=HTTPStatus.NO_CONTENT,
             request_type=RequestType.DELETE,
-            reverse_kwargs={'pk': group.pk}
+            reverse_kwargs={'pk': group.pk},
         )
         assert not Group.objects.count(), f'Group with id "{group.id}" was not deleted.'

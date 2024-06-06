@@ -1,5 +1,9 @@
 import { Action, ThunkAction, combineReducers, configureStore } from "@reduxjs/toolkit"
 import { commentsApi } from "entities/comments/api"
+import { customAttributeApi } from "entities/custom-attribute/api"
+import { customAttributeReducer } from "entities/custom-attribute/model"
+import { roleApi } from "entities/roles/api"
+import { roleReducer } from "entities/roles/model"
 import {
   FLUSH,
   PAUSE,
@@ -62,7 +66,9 @@ const rootReducer = combineReducers({
   testPlan: testPlanReducer,
   test: testReducer,
   label: labelReducer,
+  role: roleReducer,
   system: systemReducer,
+  customAttribute: customAttributeReducer,
   [systemApi.reducerPath]: systemApi.reducer,
   [authApi.reducerPath]: authApi.reducer,
   [usersApi.reducerPath]: usersApi.reducer,
@@ -75,7 +81,9 @@ const rootReducer = combineReducers({
   [resultApi.reducerPath]: resultApi.reducer,
   [attachmentApi.reducerPath]: attachmentApi.reducer,
   [labelApi.reducerPath]: labelApi.reducer,
+  [roleApi.reducerPath]: roleApi.reducer,
   [commentsApi.reducerPath]: commentsApi.reducer,
+  [customAttributeApi.reducerPath]: customAttributeApi.reducer,
 })
 
 const persistedReducer = persistReducer(persistConfig, rootReducer)
@@ -100,7 +108,9 @@ export const store = configureStore({
       .concat(attachmentApi.middleware)
       .concat(labelApi.middleware)
       .concat(commentsApi.middleware)
-      .concat(systemApi.middleware),
+      .concat(roleApi.middleware)
+      .concat(systemApi.middleware)
+      .concat(customAttributeApi.middleware),
   devTools: import.meta.env.NODE_ENV !== "production",
 })
 

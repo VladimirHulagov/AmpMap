@@ -18,10 +18,14 @@ interface User {
   last_name: string
   email: string
   is_active: boolean
-  is_staff: boolean
   date_joined: string
   groups: number[]
   avatar_link: string
+  is_superuser: boolean
+}
+
+interface UserWithRoles extends User {
+  roles: Role[]
 }
 
 interface UserCreate {
@@ -32,7 +36,6 @@ interface UserCreate {
 }
 
 interface UserUpdate {
-  email: string
   first_name: string
   last_name: string
 }
@@ -56,6 +59,7 @@ interface UserConfig {
   test_plans: {
     is_show_archived: boolean
     shown_columns?: string[]
+    is_cases_filter_open: boolean
   }
   test_cases: {
     is_show_archived: boolean
@@ -69,5 +73,4 @@ interface GetUsersQuery {
   first_name?: string
   last_name?: string
   is_active?: boolean
-  is_staff?: boolean
 }

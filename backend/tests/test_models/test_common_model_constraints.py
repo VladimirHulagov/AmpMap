@@ -32,8 +32,6 @@ from http import HTTPStatus
 
 import pytest
 from django.db import DataError
-from tests_description.models import TestCase, TestSuite
-from tests_representation.models import Parameter, Test, TestPlan, TestResult
 
 from tests import constants
 from tests.commons import RequestType
@@ -48,6 +46,8 @@ from tests.factories import (
     TestResultFactory,
     TestSuiteFactory,
 )
+from testy.tests_description.models import TestCase, TestSuite
+from testy.tests_representation.models import Parameter, Test, TestPlan, TestResult
 
 
 @pytest.mark.django_db
@@ -65,8 +65,8 @@ class TestCommonConstraints:
             (TestPlanFactory, ['name']),
             (ProjectFactory, ['name']),
             (ParameterFactory, ['group_name']),
-            (AttachmentTestCaseFactory, ['name', 'filename', 'file_extension'])
-        ]
+            (AttachmentTestCaseFactory, ['name', 'filename', 'file_extension']),
+        ],
     )
     def test_char_length_constraint(self, instance, column_names):
         with pytest.raises(DataError) as err:
@@ -85,10 +85,12 @@ class TestCommonConstraints:
             (ParameterFactory, ProjectFactory, Parameter, 'project', project_view_name),
             (TestCaseFactory, ProjectFactory, TestCase, 'project', project_view_name),
             (TestCaseFactory, TestSuiteFactory, TestCase, 'suite', suite_view_name),
-        ]
+        ],
     )
-    def test_cascade_delete(self, api_client, authorized_superuser, parent_factory, child_factory, model,
-                            parameter_name, view_name, test_case_factory):
+    def test_cascade_delete(
+        self, api_client, authorized_superuser, parent_factory, child_factory, model,
+        parameter_name, view_name, test_case_factory,
+    ):
 
         expected_number_of_objects = 5
 
@@ -113,6 +115,6 @@ class TestCommonConstraints:
             view_name,
             reverse_kwargs={'pk': reverse_id},
             request_type=RequestType.DELETE,
-            expected_status=HTTPStatus.NO_CONTENT
+            expected_status=HTTPStatus.NO_CONTENT,
         )
         assert not model.objects.count(), f'{model} objects were not deleted with project.'

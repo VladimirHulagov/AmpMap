@@ -1,4 +1,4 @@
-import React, { useContext } from "react"
+import React, { useContext, useRef } from "react"
 import { Link, useNavigate } from "react-router-dom"
 
 import { ProjectActiveTabContext } from "pages/project/project-main"
@@ -30,11 +30,28 @@ export const useProjectTabs = (projectId: string) => {
       path: `/projects/${projectId}/plans`,
     },
   ].map((tab: Tab) => {
-    tab.label = <Link to={tab.path}>{tab.label}</Link>
+    tab.label = (
+      <Link
+        to={tab.path}
+        onClick={(e) => {
+          //Prevent navigate three times (native Link event, onTabChange, onChange)
+          e.preventDefault()
+        }}
+      >
+        {tab.label}
+      </Link>
+    )
     return tab
   })
 
+  const switchRef = useRef("")
   const onNavigate = (key: string) => {
+    //Prevent navigate twice (onTabClick, onChange)
+    if (switchRef.current === key) {
+      return
+    }
+    switchRef.current = key
+
     const activeTabItem = tabItems.find((i) => i.key === key)
     if (!activeTabItem) return
     navigate(activeTabItem.path)

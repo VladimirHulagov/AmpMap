@@ -5,7 +5,7 @@ import { useState } from "react"
 import { EditTestPlanModal } from "./edit-test-plan-modal"
 
 interface Props {
-  testPlan: TestPlanTreeView
+  testPlan: TestPlan
 }
 
 export const EditTestPlan = ({ testPlan }: Props) => {

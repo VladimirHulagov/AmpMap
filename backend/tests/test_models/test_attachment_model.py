@@ -29,10 +29,10 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 import pytest
-from core.models import Attachment
 from django.db import IntegrityError
 
 from tests.error_messages import NOT_NULL_ERR_MSG
+from testy.core.models import Attachment
 
 
 @pytest.mark.django_db

@@ -8,13 +8,12 @@ import { useAppSelector } from "app/hooks"
 import { useAttachments } from "entities/attachment/model"
 
 import { useCreateResultMutation } from "entities/result/api"
-import { makeAttributesJson } from "entities/result/lib"
 import { useAttributes } from "entities/result/model/use-attributes"
 
 import { selectTest } from "entities/test/model"
 
 import { useErrors } from "shared/hooks"
-import { showModalCloseConfirm } from "shared/libs"
+import { makeAttributesJson, showModalCloseConfirm } from "shared/libs"
 import { AlertSuccessChange } from "shared/ui"
 
 export interface CreateResultModalProps {
@@ -68,8 +67,8 @@ export const useCreateResultModal = ({ setIsShow, testCase }: CreateResultModalP
     onAttributeChangeType,
     onAttributeChangeValue,
     onAttributeRemove,
-    setAttributes,
-  } = useAttributes({ setValue })
+    resetAttributes,
+  } = useAttributes({ mode: "create", setValue })
 
   const [steps, setSteps] = useState<Record<string, string>>({})
   const { onHandleError } = useErrors<ErrorData>(setErrors)
@@ -79,7 +78,7 @@ export const useCreateResultModal = ({ setIsShow, testCase }: CreateResultModalP
     setErrors(null)
     onReset()
     removeAttachmentIds()
-    setAttributes([])
+    resetAttributes()
     reset()
   }
 

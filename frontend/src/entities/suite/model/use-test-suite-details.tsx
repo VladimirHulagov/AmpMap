@@ -14,10 +14,7 @@ export const useTestSuiteDetails = () => {
     isLoading,
     isSuccess,
     refetch,
-  } = useGetSuiteQuery({
-    suiteId: testSuiteId ?? "",
-    treeview: true,
-  })
+  } = useGetSuiteQuery(Number(testSuiteId), { skip: !testSuiteId })
 
   const dispatch = useAppDispatch()
   const [isShowMore, setIsShowMore] = useState(false)

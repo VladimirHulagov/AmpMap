@@ -2,6 +2,8 @@ import { createApi } from "@reduxjs/toolkit/dist/query/react"
 
 import { baseQueryWithLogout } from "app/apiSlice"
 
+import { providesList } from "shared/libs"
+
 const rootPath = "v1/system"
 
 export const systemApi = createApi({
@@ -11,16 +13,7 @@ export const systemApi = createApi({
   endpoints: (builder) => ({
     getSystemMessages: builder.query<SystemMessage[], void>({
       query: () => `${rootPath}/messages/`,
-      providesTags: (result) =>
-        result
-          ? [
-              ...result.map(({ id }) => ({
-                type: "SystemMessages" as const,
-                id,
-              })),
-              { type: "SystemMessages", id: "LIST" },
-            ]
-          : [{ type: "SystemMessages", id: "LIST" }],
+      providesTags: (result) => providesList(result, "SystemMessages"),
     }),
     getSystemStats: builder.query<SystemStatistic, void>({
       query: () => `${rootPath}/statistics/`,

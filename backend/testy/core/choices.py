@@ -42,3 +42,14 @@ class SystemMessageLevel(models.IntegerChoices):
     INFO = 0, _('Info')
     WARNING = 1, _('Warning')
     CRITICAL = 2, _('Critical')
+
+
+class CustomFieldType(models.IntegerChoices):
+    TXT = 0, _('Text')
+    LIST = 1, _('List')
+    JSON = 2, _('JSON')
+
+
+class AccessRequestStatus(models.IntegerChoices):
+    PENDING = 0, 'Pending'
+    RESOLVED = 1, 'Resolved'
