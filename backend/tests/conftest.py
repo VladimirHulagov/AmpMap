@@ -34,7 +34,9 @@ from http import HTTPStatus
 from pathlib import Path
 from unittest import mock
 
+import allure
 import pytest
+from channels.layers import get_channel_layer
 from django.contrib.auth.models import Permission
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
@@ -56,6 +58,8 @@ from tests.factories import (
     LabeledItemFactory,
     LabelFactory,
     MembershipFactory,
+    NotificationFactory,
+    NotificationSettingFactory,
     ParameterFactory,
     PermissionFactory,
     ProjectFactory,
@@ -71,6 +75,7 @@ from tests.factories import (
     TestSuiteFactory,
     UserFactory,
 )
+from testy.core.choices import ActionCode
 from testy.core.selectors.custom_attribute import CustomAttributeSelector
 from testy.tests_representation.choices import TestStatuses
 from testy.tests_representation.models import TestResult
@@ -103,6 +108,8 @@ register(MembershipFactory)
 register(CustomAttributeFactory)
 register(PermissionFactory)
 register(TestResultWithStepsFactory)
+register(NotificationSettingFactory)
+register(NotificationFactory)
 
 
 @pytest.fixture
@@ -111,18 +118,20 @@ def api_client():
 
 
 @pytest.fixture
-def superuser(user_factory):
-    def make_user(**kwargs):
-        return user_factory(is_staff=True, is_superuser=True, **kwargs)
+def superuser_client(superuser, api_client):
+    api_client.force_login(superuser)
+    yield api_client
 
-    return make_user
+
+@pytest.fixture
+def superuser(user_factory):
+    yield user_factory(is_superuser=True, is_staff=True)
 
 
 @pytest.fixture
 def authorized_superuser(api_client, superuser):
-    user = superuser()
-    api_client.force_login(user)
-    return user
+    api_client.force_login(superuser)
+    return superuser
 
 
 @pytest.fixture
@@ -133,8 +142,7 @@ def authorized_client(api_client, user):
 
 @pytest.fixture
 def authorized_superuser_client(api_client, superuser):
-    user = superuser()
-    api_client.force_login(user)
+    api_client.force_login(superuser)
     return api_client
 
 
@@ -156,23 +164,31 @@ def combined_parameters(number_of_param_groups, number_of_entities_in_group, par
     return parameters, number_of_combinations
 
 
+@allure.step('Generate several test plans via api')
 @pytest.fixture
 def several_test_plans_from_api(api_client, authorized_superuser, parameter_factory, project):
-    parameters = []
-    for _ in range(3):
-        parameters.append(parameter_factory().id)
+    with allure.step('Create parameters'):
+        parameters = []
+        for _ in range(3):
+            parameters.append(parameter_factory().id)
 
     test_plan_ids = []
-    for idx in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
-        testplan_dict = {
-            'name': f'Test plan {idx}',
-            'due_date': constants.END_DATE,
-            'started_at': constants.DATE,
-            'parameters': parameters,
-            'project': project.id,
-        }
-        response = api_client.send_request('api:v1:testplan-list', testplan_dict, HTTPStatus.CREATED, RequestType.POST)
-        test_plan_ids.extend(plan['id'] for plan in response.json())
+    with allure.step('Create plans with parameterization'):
+        for idx in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
+            testplan_dict = {
+                'name': f'Test plan {idx}',
+                'due_date': constants.END_DATE,
+                'started_at': constants.DATE,
+                'parameters': parameters,
+                'project': project.id,
+            }
+            response = api_client.send_request(
+                'api:v1:testplan-list',
+                testplan_dict,
+                HTTPStatus.CREATED,
+                RequestType.POST,
+            )
+            test_plan_ids.extend(plan['id'] for plan in response.json())
     yield test_plan_ids
 
 
@@ -447,7 +463,7 @@ def cases_with_labels(
 ):
     test_plan = test_plan_factory(project=project)
     label_blue_bank = label_factory(name='blue_bank')
-    label_green_bank = label_factory(name='green_bank ')
+    label_green_bank = label_factory(name='green_bank')
     label_red_bank = label_factory(name='red_bank')
     test_cases = [test_case_factory(project=project) for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE)]
     for idx in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
@@ -505,3 +521,65 @@ def allowed_content_types():
 def mock_project_access_email():
     with mock.patch('testy.root.tasks.project_access_email.delay') as project_access_mock:
         yield project_access_mock
+
+
+@allure.step('Generate data for suites')
+@pytest.fixture
+def generate_projects_and_suites(project_factory, test_suite_factory):
+    with allure.step('Create 3 projects'):
+        projects = [project_factory() for _ in range(3)]
+    with allure.step('Create 2 suites in each project'):
+        for _ in range(2):
+            for project in projects:
+                test_suite_factory(project=project)
+    yield projects
+
+
+@pytest.fixture
+def default_notify_settings(notification_setting_factory):
+    action_code = 'action_code'
+    settings_data = [
+        {
+            action_code: ActionCode.TEST_ASSIGNED,
+            'message': '{{{{placeholder}}}} was assigned to you by {actor}',
+            'verbose_name': 'Test assigned',
+            'placeholder_link': '/projects/{project_id}/plans/{plan_id}?test={test_id}',
+            'placeholder_text': 'Test {name}',
+        },
+        {
+            action_code: ActionCode.TEST_UNASSIGNED,
+            'message': '{{{{placeholder}}}} was unassigned by {actor}',
+            'verbose_name': 'Test unassigned',
+            'placeholder_link': '/projects/{project_id}/plans/{plan_id}?test={test_id}',
+            'placeholder_text': 'Test {name}',
+        },
+    ]
+    settings = []
+    for settings_data in settings_data:
+        setting = notification_setting_factory(**settings_data)
+        settings.append(setting.pk)
+    yield settings
+
+
+@allure.step('Mock channel layer to in-memory storage')
+@pytest.fixture
+def mock_notifications_channel_layer(settings):
+    settings.CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        },
+    }
+    with mock.patch('testy.core.services.notifications.channel_layer', get_channel_layer()):
+        yield
+
+
+@allure.step('Mock channel layer to in-memory storage')
+@pytest.fixture
+def mock_tests_channel_layer(settings):
+    settings.CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
+        },
+    }
+    with mock.patch('testy.tests_representation.services.tests.channel_layer', get_channel_layer()):
+        yield

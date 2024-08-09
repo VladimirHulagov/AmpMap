@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -28,6 +28,9 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
+from typing import Any
+
+from django.db.models import QuerySet
 from django.shortcuts import get_object_or_404
 from drf_yasg.utils import swagger_auto_schema
 from mptt.exceptions import InvalidMove
@@ -72,6 +75,7 @@ from testy.tests_description.api.v1.serializers import TestSuiteTreeBreadcrumbsS
 from testy.tests_description.selectors.cases import TestCaseSelector
 from testy.tests_description.selectors.suites import TestSuiteSelector
 from testy.tests_representation.api.v1.serializers import (
+    BulkUpdateTestsSerializer,
     ParameterSerializer,
     TestPlanCopySerializer,
     TestPlanInputSerializer,
@@ -87,7 +91,7 @@ from testy.tests_representation.api.v1.serializers import (
     TestResultSerializer,
     TestSerializer,
 )
-from testy.tests_representation.models import TestPlan
+from testy.tests_representation.models import Test, TestPlan
 from testy.tests_representation.permissions import TestPlanPermission, TestResultPermission
 from testy.tests_representation.selectors.parameters import ParameterSelector
 from testy.tests_representation.selectors.results import TestResultSelector
@@ -98,7 +102,7 @@ from testy.tests_representation.services.results import TestResultService
 from testy.tests_representation.services.statistics import HistogramProcessor
 from testy.tests_representation.services.testplans import TestPlanService
 from testy.tests_representation.services.tests import TestService
-from testy.utilities.request import PeriodDateTime, get_boolean
+from testy.utilities.request import PeriodDateTime, get_boolean, get_integer, mock_request_with_query_params
 
 _LABELS = 'labels'
 _GET = 'get'
@@ -187,7 +191,7 @@ class TestPlanViewSet(TestyModelViewSet, TestyArchiveMixin):
             return TestPlanSelector().testplan_treeview_list(
                 is_archive=get_boolean(self.request, _IS_ARCHIVE),
                 children_ordering=self.request.query_params.get('ordering'),
-                parent_id=self.request.query_params.get('parent'),
+                parent_id=get_integer(self.request, 'parent'),
             )
         if self.action == 'breadcrumbs_view':
             return TestPlanSelector.testplan_list_raw()
@@ -320,12 +324,40 @@ class TestViewSet(TestyModelViewSet, TestyArchiveMixin):
     schema_tags = ['Tests']
 
     def perform_update(self, serializer: TestSerializer):
-        serializer.instance = TestService().test_update(serializer.instance, serializer.validated_data)
+        serializer.instance = TestService().test_update(
+            serializer.instance,
+            serializer.validated_data,
+            self.request.user,
+        )
 
-    def get_queryset(self):
+    def get_queryset(self, test_plan_ids: list[int] | None = None):
+        filters = {'plan_id__in': test_plan_ids} if test_plan_ids else {}
         if self.action in {'archive_preview', 'archive_objects', 'restore_archived'}:
             return TestSelector().test_list()
-        return TestSelector().test_list_with_last_status()
+        return TestSelector().test_list_with_last_status(filter_condition=filters)
+
+    def get_serializer_class(self):
+        if self.action == 'bulk_update_tests':
+            return BulkUpdateTestsSerializer
+        return TestSerializer
+
+    @action(methods=['put'], url_path='bulk-update', url_name='bulk-update', detail=False)
+    def bulk_update_tests(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        queryset = self.get_queryset(test_plan_ids=[serializer.validated_data.pop('current_plan')])
+        filter_conditions = serializer.validated_data.pop('filter_conditions', {})
+        if filter_conditions:
+            queryset = self._filter_queryset_from_request_payload(queryset, filter_conditions)
+        tests = TestService().bulk_update_tests(queryset, serializer.validated_data, request.user)
+        return Response(TestSerializer(tests, many=True, context=self.get_serializer_context()).data)
+
+    def _filter_queryset_from_request_payload(self, queryset: QuerySet[Test], filter_conditions: dict[str, Any]):
+        mocked_request = mock_request_with_query_params(filter_conditions)
+        queryset = TestyBaseSearchFilter().filter_queryset(mocked_request, queryset, self)
+        test_filter = TestFilter(mocked_request.GET, queryset, request=mocked_request)
+        test_filter.is_valid()
+        return test_filter.filter_queryset(queryset)
 
 
 @result_list_schema

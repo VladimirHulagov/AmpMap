@@ -8,6 +8,7 @@ interface TestCase {
   name: string
   project: number
   suite: number
+  suite_name: string
   setup: string
   scenario?: string
   expected: string | null

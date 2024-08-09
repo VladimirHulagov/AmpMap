@@ -1,3 +1,5 @@
+import { config } from "shared/config"
+
 const CLEAR_USERNAMES = ["admin", "ci", "unknown"]
 
 export const UserUsername = ({ username }: { username: string }) => {
@@ -6,7 +8,7 @@ export const UserUsername = ({ username }: { username: string }) => {
   if (isClear) return <span style={{ userSelect: "none" }}>{username}</span>
 
   return (
-    <a href="" target="_blank" rel="noreferrer">
+    <a href={`${config.teamYadroUrl}/${username}/`} target="_blank" rel="noreferrer">
       {username}
     </a>
   )

@@ -196,6 +196,7 @@ export const {
   useGetTestPlanQuery,
   useLazyGetTestPlansQuery,
   useGetTestPlansTreeViewQuery,
+  useLazyGetTestPlansTreeViewQuery,
   useCreateTestPlanMutation,
   useGetTestPlansQuery,
   useDeleteTestPlanMutation,

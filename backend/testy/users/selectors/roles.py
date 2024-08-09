@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -28,7 +28,7 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from typing import Optional, Protocol, Union
+from typing import Protocol
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -62,10 +62,10 @@ class RoleSelector:
         qs = cls.role_list(exclude_roles=exclude_roles)
         if not user.is_superuser:
             qs = Role.objects.filter(~Q(type=RoleTypes.SUPERUSER_ONLY))
-        return qs
+        return qs.order_by('name')
 
     @classmethod
-    def can_assign_role(cls, user: User, project_id: int, role_pks: Optional[list[int]] = None) -> bool:
+    def can_assign_role(cls, user: User, project_id: int, role_pks: list[int] | None = None) -> bool:
         if role_pks is not None:
             project_restriction_perm_exists = Permission.objects.filter(
                 roles__pk__in=role_pks,
@@ -83,8 +83,8 @@ class RoleSelector:
     def action_allowed_for_instance(
         cls,
         user: User,
-        project: Union[ProjectAssignable, Project],
-        permission_code: Union[UserAllowedPermissionCodenames, str],
+        project: ProjectAssignable | Project,
+        permission_code: UserAllowedPermissionCodenames | str,
     ) -> bool:
         lookup = (
             Q(user__pk=user.pk)
@@ -120,7 +120,7 @@ class RoleSelector:
         return Membership.objects.filter(lookup).exists()
 
     @classmethod
-    def admin_user_role(cls) -> Optional[Role]:
+    def admin_user_role(cls) -> Role | None:
         return Role.objects.filter(name=settings.ADMIN_ROLE_NAME).first()
 
     @classmethod

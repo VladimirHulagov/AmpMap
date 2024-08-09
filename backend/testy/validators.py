@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -31,7 +31,7 @@
 import datetime
 import os
 from itertools import chain
-from typing import TYPE_CHECKING, Any, Iterable, Mapping, Optional, Protocol
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping, Protocol
 
 import pytimeparse
 from django.conf import settings
@@ -104,6 +104,24 @@ def compare_steps(old_value: 'RelatedManager', new_value: list[Mapping[str, Any]
     return True
 
 
+def validator_launcher(
+    attrs: dict[str, Any],
+    *,
+    validator_instance: Callable[[dict[str, Any]], None],
+    fields_to_validate: list[str],
+    none_valid_fields: list[str] | None = None,
+) -> None:
+    if not none_valid_fields:
+        none_valid_fields = []
+    attrs_to_validate = {}
+    for field in fields_to_validate:
+        attr_value = attrs.get(field)
+        if attr_value is None and field not in none_valid_fields:
+            return
+        attrs_to_validate[field] = attr_value
+    validator_instance(attrs_to_validate)
+
+
 @deconstructible
 class TestResultUpdateValidator:
     requires_context = True
@@ -145,7 +163,7 @@ class TestResultUpdateValidator:
                     raise ValidationError(err_msg)
 
     @classmethod
-    def _default_error_message(cls, result_edit_limit: Optional[int]):
+    def _default_error_message(cls, result_edit_limit: int | None):
         if result_edit_limit is None:
             return None
         result_edit_limit_str = WorkTimeProcessor.format_duration(result_edit_limit, to_workday=False)
@@ -162,9 +180,9 @@ class TestResultArchiveTestValidator:
         instance = serializer.instance
         test = attrs.get('test') or serializer.instance.test
         if test.is_archive and not instance:
-            raise ValidationError('Can not create a result in an archived test')
+            raise ValidationError('Cannot create a result in an archived test')
         if instance and (test.is_archive or instance.is_archive):
-            raise ValidationError('Can not update result in an archived test/archived result')
+            raise ValidationError('Cannot update result in an archived test/archived result')
 
 
 @deconstructible
@@ -228,3 +246,33 @@ class TestPlanParentValidator:
             raise serializers.ValidationError(
                 f'Cannot make child to an archived ancestor, archive ancestors ids are: {ids}',
             )
+
+
+class MoveTestsSameProjectValidator:
+    err_msg = 'All tests must be in {0} project.'
+
+    def __call__(self, attrs: dict[str, Any]):
+        dst_plan = attrs.get('plan')
+        current_plan = attrs.get('current_plan')
+        if current_plan.project.pk != dst_plan.project.pk:
+            raise ValidationError(self.err_msg.format(dst_plan.project.name))
+
+
+class BulkUpdateExcludeIncludeValidator:
+    err_msg = 'Included_tests and excluded_tests should not be provided.'
+
+    def __call__(self, attrs):
+
+        if all([attrs.get('included_tests'), attrs.get('excluded_tests')]):
+            raise ValidationError(self.err_msg)
+
+
+class TestPlanCasesValidator:
+    err_msg = 'You cannot add archive test case, archive test cases ids: {0}'
+
+    def __call__(self, attrs):
+        cases = attrs.get('test_cases')
+        if not cases:
+            return
+        if archived_cases := [case.pk for case in cases if case.is_archive]:
+            raise ValidationError(self.err_msg.format(archived_cases))

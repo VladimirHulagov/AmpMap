@@ -13,35 +13,4 @@ export const statuses = Object.entries(statusesObject).map(([statusNum, statusTe
   label: statusText,
 }))
 
-export const tableColumnStatuses = [
-  {
-    value: "0",
-    text: "Failed",
-  },
-  {
-    value: "1",
-    text: "Passed",
-  },
-  {
-    value: "2",
-    text: "Skipped",
-  },
-  {
-    value: "3",
-    text: "Broken",
-  },
-  {
-    value: "4",
-    text: "Blocked",
-  },
-  {
-    value: "5",
-    text: "Retest",
-  },
-  {
-    value: "null",
-    text: "Untested",
-  },
-]
-
 export const statusesWithoutUntested = statuses.filter((i) => i.label !== "Untested")

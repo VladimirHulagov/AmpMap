@@ -14,12 +14,18 @@ allure-pytest==2.13.2
     # via -r dev-requirements.in
 allure-python-commons==2.13.2
     # via allure-pytest
-allure-uploader-v2 @ git+https://gitlab-pub.yadro.com/testy/allure-uploader-v2.git@release/2.0.0
+allure-uploader-v2 @ git+https://gitlab-pub.yadro.com/testy/allure-uploader-v2.git@release/2.0.3
     # via -r requirements.in
 amqp==5.1.1
     # via kombu
-asgiref==3.5.2
-    # via django
+ansi2html==1.8.0
+    # via -r ci-requirements.in
+asgiref==3.8.1
+    # via
+    #   channels
+    #   channels-redis
+    #   daphne
+    #   django
 astor==0.8.1
     # via wemake-python-styleguide
 async-timeout==4.0.2
@@ -30,15 +36,22 @@ attrs==22.1.0
     # via
     #   aiohttp
     #   allure-python-commons
+    #   automat
     #   flake8-bugbear
     #   flake8-eradicate
     #   pytest
+    #   service-identity
+    #   twisted
     #   wemake-python-styleguide
+autobahn==24.4.2
+    # via daphne
+automat==22.10.0
+    # via twisted
 bandit==1.7.6
     # via flake8-bandit
 billiard==3.6.4.0
     # via celery
-build==0.8.0
+build==1.2.1
     # via pip-tools
 celery==5.2.7
     # via
@@ -47,7 +60,17 @@ celery==5.2.7
 celery-progress==0.1.3
     # via -r requirements.in
 certifi==2022.9.24
-    # via requests
+    # via
+    #   requests
+    #   sentry-sdk
+cffi==1.17.0
+    # via cryptography
+channels==4.1.0
+    # via
+    #   -r requirements.in
+    #   channels-redis
+channels-redis==4.2.0
+    # via -r requirements.in
 charset-normalizer==2.1.1
     # via
     #   aiohttp
@@ -59,12 +82,15 @@ click==8.1.3
     #   click-plugins
     #   click-repl
     #   pip-tools
+    #   uvicorn
 click-didyoumean==0.3.0
     # via celery
 click-plugins==1.1.1
     # via celery
 click-repl==0.2.0
     # via celery
+constantly==23.10.4
+    # via twisted
 coreapi==2.3.3
     # via drf-yasg
 coreschema==0.0.4
@@ -75,50 +101,75 @@ coverage[toml]==7.2.3
     # via pytest-cov
 cron-descriptor==1.2.35
     # via django-celery-beat
+cryptography==43.0.0
+    # via
+    #   autobahn
+    #   pyopenssl
+    #   service-identity
+daphne==4.1.2
+    # via -r dev-requirements.in
 darglint==1.8.1
     # via wemake-python-styleguide
-django==3.2.4
+django==4.2.13
     # via
+    #   -r ci-requirements.in
     #   -r requirements.in
+    #   channels
     #   django-celery-beat
     #   django-cors-headers
     #   django-debug-toolbar
     #   django-extensions
     #   django-filter
     #   django-js-asset
+    #   django-model-utils
+    #   django-notifications-hq
     #   django-redis
     #   djangorestframework
     #   djangorestframework-simplejwt
     #   drf-yasg
+    #   jsonfield
 django-celery-beat==2.5.0
     # via -r requirements.in
 django-cors-headers==3.13.0
     # via -r requirements.in
-django-debug-toolbar==3.8.1
+django-debug-toolbar==4.4.2
     # via -r dev-requirements.in
 django-extensions==3.2.1
-    # via -r dev-requirements.in
+    # via
+    #   -r ci-requirements.in
+    #   -r dev-requirements.in
 django-filter==22.1
     # via -r requirements.in
 django-js-asset==2.0.0
     # via django-mptt
+django-model-utils==4.5.1
+    # via django-notifications-hq
 django-mptt==0.13.4
+    # via
+    #   -r ci-requirements.in
+    #   -r requirements.in
+django-notifications-hq==1.8.3
     # via -r requirements.in
 django-redis==5.2.0
     # via -r requirements.in
 django-simple-history==3.1.1
-    # via -r requirements.in
+    # via
+    #   -r ci-requirements.in
+    #   -r requirements.in
 django-test-migrations==1.2.0
     # via -r dev-requirements.in
 django-timezone-field==5.0
     # via django-celery-beat
-djangorestframework==3.13.1
+djangorestframework==3.15.1
     # via
+    #   -r ci-requirements.in
     #   -r requirements.in
     #   djangorestframework-simplejwt
     #   drf-yasg
 djangorestframework-simplejwt==5.2.0
-    # via -r requirements.in
+    # via
+    #   -r ci-requirements.in
+    #   -r requirements.in
 docutils==0.20.1
     # via restructuredtext-lint
 drf-yasg==1.21.4
@@ -135,6 +186,7 @@ faker==15.1.1
     # via factory-boy
 flake8==6.1.0
     # via
+    #   -r ci-requirements.in
     #   flake8-bandit
     #   flake8-broken-line
     #   flake8-bugbear
@@ -162,8 +214,8 @@ flake8-comprehensions==3.14.0
     # via wemake-python-styleguide
 flake8-copyright-validator==0.0.1
     # via
+    #   -r ci-requirements.in
     #   -r requirements.in
-    #   allure-uploader-v2
 flake8-debugger==4.1.2
     # via wemake-python-styleguide
 flake8-docstrings==1.7.0
@@ -171,7 +223,9 @@ flake8-docstrings==1.7.0
 flake8-eradicate==1.5.0
     # via wemake-python-styleguide
 flake8-isort==6.1.0
-    # via wemake-python-styleguide
+    # via
+    #   -r ci-requirements.in
+    #   wemake-python-styleguide
 flake8-quotes==3.3.2
     # via wemake-python-styleguide
 flake8-rst-docstrings==0.3.0
@@ -184,26 +238,40 @@ frozenlist==1.4.1
     # via
     #   aiohttp
     #   aiosignal
-gevent==23.7.0
+gevent==24.2.1
     # via -r requirements.in
 gitdb==4.0.11
     # via gitpython
 gitpython==3.1.40
     # via bandit
-greenlet==2.0.2
+greenlet==3.0.3
     # via
     #   -r requirements.in
     #   gevent
-gunicorn==20.1.0
-    # via -r requirements.in
+gunicorn==22.0.0
+    # via
+    #   -r requirements.in
+    #   uvicorn-worker
+h11==0.14.0
+    # via uvicorn
 humanize==4.4.0
     # via -r requirements.in
+hyperlink==21.0.0
+    # via
+    #   autobahn
+    #   twisted
 idna==3.4
     # via
+    #   hyperlink
     #   requests
+    #   twisted
     #   yarl
 importlib-metadata==5.0.0
-    # via flake8-copyright-validator
+    # via
+    #   build
+    #   flake8-copyright-validator
+incremental==24.7.2
+    # via twisted
 inflection==0.5.1
     # via
     #   drf-yasg
@@ -216,6 +284,8 @@ itypes==1.2.0
     # via coreapi
 jinja2==3.1.2
     # via coreschema
+jsonfield==3.1.0
+    # via django-notifications-hq
 kombu==5.2.4
     # via celery
 markdown-it-py==3.0.0
@@ -226,14 +296,12 @@ mccabe==0.7.0
     # via flake8
 mdurl==0.1.2
     # via markdown-it-py
+msgpack==1.0.8
+    # via channels-redis
 multidict==6.0.5
     # via
     #   aiohttp
     #   yarl
-mypy==1.8.0
-    # via allure-uploader-v2
-mypy-extensions==1.0.0
-    # via mypy
 openpyxl==3.1.1
     # via plugin-example
 orjson==3.10.1
@@ -242,18 +310,17 @@ packaging==21.3
     # via
     #   build
     #   drf-yasg
+    #   gunicorn
     #   pytest
 pbr==6.0.0
     # via stevedore
-pep517==0.13.0
-    # via build
 pep8-naming==0.13.3
     # via wemake-python-styleguide
 pillow==9.5.0
     # via -r requirements.in
-pip-tools==6.8.0
+pip-tools==7.4.1
     # via -r dev-requirements.in
-pluggy==1.3.0
+pluggy==1.0.0
     # via
     #   -r requirements.in
     #   allure-python-commons
@@ -262,14 +329,24 @@ plugin-example @ git+https://gitlab-pub.yadro.com/testy/plugin-example.git@relea
     # via -r requirements.in
 prompt-toolkit==3.0.36
     # via click-repl
-psycopg2==2.9.3
-    # via -r requirements.in
+psycopg==3.1.19
+    # via
+    #   -r ci-requirements.in
+    #   -r requirements.in
 py==1.11.0
     # via pytest
+pyasn1==0.6.0
+    # via
+    #   pyasn1-modules
+    #   service-identity
+pyasn1-modules==0.4.0
+    # via service-identity
 pycodestyle==2.11.1
     # via
     #   flake8
     #   flake8-debugger
+pycparser==2.22
+    # via cffi
 pydocstyle==6.3.0
     # via flake8-docstrings
 pyflakes==3.1.0
@@ -281,22 +358,34 @@ pygments==2.17.2
     #   wemake-python-styleguide
 pyjwt==2.4.0
     # via djangorestframework-simplejwt
+pyopenssl==24.2.1
+    # via twisted
 pyparsing==3.0.9
     # via packaging
+pyproject-hooks==1.1.0
+    # via
+    #   build
+    #   pip-tools
 pytest==7.1.3
     # via
+    #   -r ci-requirements.in
     #   -r dev-requirements.in
     #   allure-pytest
+    #   pytest-asyncio
     #   pytest-cov
     #   pytest-django
     #   pytest-factoryboy
     #   pytest-freezegun
+pytest-asyncio==0.23.7
+    # via -r dev-requirements.in
 pytest-cov==4.0.0
     # via -r dev-requirements.in
 pytest-django==4.5.2
-    # via -r dev-requirements.in
+    # via
+    #   -r ci-requirements.in
+    #   -r dev-requirements.in
 pytest-factoryboy==2.5.0
-    # via -r requirements.in
+    # via -r ci-requirements.in
 pytest-freezegun==0.4.2
     # via -r dev-requirements.in
 python-crontab==2.7.1
@@ -307,21 +396,23 @@ python-dateutil==2.8.2
     #   freezegun
     #   python-crontab
 python-dotenv==0.21.0
-    # via -r requirements.in
+    # via
+    #   -r ci-requirements.in
+    #   -r requirements.in
 pytimeparse==1.1.8
     # via -r requirements.in
 pytz==2022.2.1
     # via
     #   celery
-    #   django
+    #   django-notifications-hq
     #   django-timezone-field
-    #   djangorestframework
     #   drf-yasg
 pyyaml==6.0.1
     # via bandit
-redis==4.4.0
+redis==4.6.0
     # via
     #   -r requirements.in
+    #   channels-redis
     #   django-redis
 requests==2.28.1
     # via
@@ -335,8 +426,13 @@ ruamel-yaml==0.17.21
     # via drf-yasg
 ruamel-yaml-clib==0.2.7
     # via ruamel-yaml
+sentry-sdk==1.12.1
+    # via -r requirements.in
+service-identity==24.1.0
+    # via twisted
 six==1.16.0
     # via
+    #   automat
     #   click-repl
     #   python-dateutil
 smmap==5.0.1
@@ -349,24 +445,35 @@ sqlparse==0.4.2
     #   django-debug-toolbar
 stevedore==5.1.0
     # via bandit
+swapper==1.3.0
+    # via django-notifications-hq
 testrail-migrator @ git+https://gitlab-pub.yadro.com/testy/testrail_migrator.git@release/0.2.0
     # via -r requirements.in
-testy-rust==0.1.4
+testy-rust==0.1.7
+    # via -r requirements.in
+timeago==1.0.16
     # via -r requirements.in
 tomli==2.0.1
     # via
     #   build
     #   coverage
-    #   mypy
-    #   pep517
+    #   incremental
+    #   pip-tools
     #   pytest
 tqdm==4.64.1
     # via testrail-migrator
+twisted[tls]==24.3.0
+    # via daphne
+txaio==23.1.1
+    # via autobahn
 typing-extensions==4.4.0
     # via
+    #   asgiref
     #   django-test-migrations
-    #   mypy
+    #   psycopg
     #   pytest-factoryboy
+    #   twisted
+    #   uvicorn
     #   wemake-python-styleguide
 tzdata==2022.7
     # via django-celery-beat
@@ -375,7 +482,13 @@ uritemplate==4.1.1
     #   coreapi
     #   drf-yasg
 urllib3==1.26.12
-    # via requests
+    # via
+    #   requests
+    #   sentry-sdk
+uvicorn==0.30.1
+    # via uvicorn-worker
+uvicorn-worker==0.2.0
+    # via -r requirements.in
 vine==5.0.0
     # via
     #   amqp
@@ -383,8 +496,12 @@ vine==5.0.0
     #   kombu
 wcwidth==0.2.5
     # via prompt-toolkit
+websockets==12.0
+    # via -r requirements.in
 wemake-python-styleguide==0.18.0
-    # via -r dev-requirements.in
+    # via
+    #   -r ci-requirements.in
+    #   -r dev-requirements.in
 wheel==0.37.1
     # via pip-tools
 yarl==1.9.4
@@ -394,7 +511,9 @@ zipp==3.10.0
 zope-event==5.0
     # via gevent
 zope-interface==6.0
-    # via gevent
+    # via
+    #   gevent
+    #   twisted
 
 # The following packages are considered to be unsafe in a requirements file:
 # pip

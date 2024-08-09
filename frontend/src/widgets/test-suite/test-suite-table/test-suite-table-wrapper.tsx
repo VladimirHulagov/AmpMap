@@ -1,8 +1,7 @@
 import { Collapse, Typography } from "antd"
 
-import { useTestSuiteTable } from "entities/suite/model"
-
 import { TestSuiteSearchAndTable } from "./test-suite-search-and-table"
+import { useTestSuiteTable } from "./use-test-suite-table"
 
 interface TestSuiteTableProps {
   collapse: boolean
@@ -22,12 +21,13 @@ export const TestSuiteTableWrapper = ({
     testSuiteId,
     paginationTable,
     isLoading,
+    searchText,
     onCollapseChange,
     onSearch,
     onSearchFieldClick,
     onRowExpand,
     handleRowClick,
-    handleSorter,
+    handleChange,
     invalidateList,
   } = useTestSuiteTable({ setCollapse, activeSuite })
 
@@ -48,10 +48,11 @@ export const TestSuiteTableWrapper = ({
             expandedRowKeys={expandedRowKeys}
             onRowExpand={onRowExpand}
             onSearch={onSearch}
+            searchText={searchText}
             onSearchFieldClick={onSearchFieldClick}
             onHandleRowClick={handleRowClick}
             paginationTable={paginationTable}
-            handleSorter={handleSorter}
+            handleChange={handleChange}
             onListChange={invalidateList}
           />
         </Collapse.Panel>
@@ -67,10 +68,11 @@ export const TestSuiteTableWrapper = ({
       expandedRowKeys={expandedRowKeys}
       onRowExpand={onRowExpand}
       onSearch={onSearch}
+      searchText={searchText}
       onSearchFieldClick={onSearchFieldClick}
       onHandleRowClick={handleRowClick}
       paginationTable={paginationTable}
-      handleSorter={handleSorter}
+      handleChange={handleChange}
       onListChange={invalidateList}
     />
   )

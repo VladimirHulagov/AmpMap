@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -29,19 +29,27 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 
-from typing import Any, Dict
+from typing import Any
 
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.db.models import QuerySet
+from simple_history.utils import bulk_update_with_history
 
 from testy.tests_description.models import TestCase
 from testy.tests_representation.models import Test, TestPlan
+from testy.tests_representation.selectors.tests import TestSelector
+from testy.users.models import User
+
+channel_layer = get_channel_layer()
 
 
 class TestService:
     non_side_effect_fields = ['case', 'plan', 'assignee', 'is_archive', 'project']
 
-    def test_create(self, data: Dict[str, Any]) -> Test:
+    def test_create(self, data: dict[str, Any]) -> Test:
         test = Test.model_create(
             fields=self.non_side_effect_fields,
             data=data,
@@ -64,15 +72,56 @@ class TestService:
         ]
         return Test.objects.bulk_create(test_objects)
 
-    def test_update(self, test: Test, data: Dict[str, Any]) -> Test:
+    def test_update(self, test: Test, data: dict[str, Any], user: User, commit: bool = True) -> Test:
+        old_assignee = test.assignee
+        assignee = data.get('assignee')
         test, _ = test.model_update(
             fields=self.non_side_effect_fields,
             data=data,
+            commit=commit,
         )
+        if old_assignee and assignee != old_assignee:
+            self.produce_action(test, old_assignee, user, 'test.unassigned')
+        if assignee:
+            self.produce_action(test, assignee, user, 'test.assigned')
         return test
+
+    def bulk_update_tests(self, queryset: QuerySet[Test], payload: dict[str, Any], user: User):
+        tests = TestSelector.test_list_for_bulk_operation(
+            queryset=queryset,
+            included_tests=payload.pop('included_tests', None),
+            excluded_tests=payload.pop('excluded_tests', None),
+        )
+
+        updated_tests = []
+        for test in tests:
+            updated_tests.append(self.test_update(test, payload, commit=False, user=user))
+        bulk_update_with_history(
+            updated_tests,
+            Test,
+            fields=payload.keys(),
+            default_user=user,
+            default_change_reason='Bulk update tests',
+        )
+        return TestSelector().test_list_with_last_status({'pk__in': tests})
 
     def get_testcase_ids_by_testplan(self, test_plan: TestPlan) -> QuerySet[int]:
         return test_plan.tests.values_list('case', flat=True)
+
+    def produce_action(self, test: Test, receiver, actor, action_type: str):
+        async_to_sync(channel_layer.send)(
+            'notifications',
+            {
+                'type': action_type,
+                'object_id': test.pk,
+                'content_type_id': ContentType.objects.get_for_model(test).pk,
+                'receiver_id': receiver.pk,
+                'actor_id': actor.pk,
+                'project_id': test.project.pk,
+                'plan_id': test.plan.pk,
+                'name': test.case.name,
+            },
+        )
 
     def _make_test_model(self, data):
         return Test.model_create(

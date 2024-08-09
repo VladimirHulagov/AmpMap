@@ -1,5 +1,5 @@
 import { LeftOutlined } from "@ant-design/icons"
-import { Button, TablePaginationConfig, TableProps, Tag } from "antd"
+import { Button, TablePaginationConfig, Tag } from "antd"
 import type { FilterValue } from "antd/es/table/interface"
 import { ColumnsType } from "antd/lib/table"
 import { useEffect, useMemo, useState } from "react"
@@ -8,116 +8,140 @@ import { Link, useParams, useSearchParams } from "react-router-dom"
 import { useAppDispatch, useAppSelector } from "app/hooks"
 
 import { useGetTestCasesQuery, useLazyGetTestCaseByIdQuery } from "entities/test-case/api"
+import { selectDrawerTestCase, setDrawerTestCase } from "entities/test-case/model"
 
 import { useUserConfig } from "entities/user/model"
 
-import { colors } from "shared/config"
-import { useTableSearch } from "shared/hooks"
-import { antdSorterToTestySort } from "shared/libs/antd-sorter-to-testy-sort"
+import { colors, config } from "shared/config"
+import { useAntdTable, useTableSearch } from "shared/hooks"
 import { HighLighterTesty } from "shared/ui"
 
-import { selectDrawerTestCase, setDrawerTestCase } from "../../../entities/test-case/model"
-
 export const useTestCasesTable = () => {
-  const dispatch = useAppDispatch()
   const { testSuiteId, projectId } = useParams<ParamTestSuiteId & ParamProjectId>()
-  const { searchText, setSearchText, getColumnSearch } = useTableSearch()
-  const selectedTestCase = useAppSelector(selectDrawerTestCase)
-  const [ordering, setOrdering] = useState<string | undefined>(undefined)
+  const dispatch = useAppDispatch()
   const { userConfig, updateConfig } = useUserConfig()
-  const [isShowArchive, setIsShowArchive] = useState(userConfig.test_cases.is_show_archived)
-
-  const [filteredInfo, setFilteredInfo] = useState<Record<string, FilterValue | null>>({})
   const [searchParams, setSearchParams] = useSearchParams()
-  const [paginationParams, setPaginationParams] = useState({
-    page: 1,
-    pageSize: 10,
-  })
-
-  const { data: testCases, isLoading } = useGetTestCasesQuery(
-    {
-      suite: testSuiteId ?? "",
-      project: projectId ?? "",
-      search: searchText,
-      ordering,
-      page: paginationParams.page,
-      page_size: paginationParams.pageSize,
-      is_archive: isShowArchive,
-    },
-    { skip: !projectId }
+  const [isShowArchive, setIsShowArchive] = useState<boolean>(
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    searchParams.get("show_archived")
+      ? JSON.parse(searchParams.get("show_archived") ?? "")
+      : userConfig.test_cases.is_show_archived
   )
-  const [getTestCase] = useLazyGetTestCaseByIdQuery()
 
-  const handleChange: TableProps<TestCase>["onChange"] = (
-    pagination: TablePaginationConfig,
-    filters: Record<string, FilterValue | null>,
-    sorter
-  ) => {
-    setFilteredInfo(filters)
-    const formatSorter = antdSorterToTestySort(sorter)
-    setOrdering(formatSorter)
-  }
+  const [isRefreshingTable, setIsRefreshingTable] = useState(false)
 
-  const clearAll = () => {
-    setFilteredInfo({})
-    setSearchText("")
-  }
+  const searchTestCase = searchParams.get("test_case")
 
   const showTestCaseDetail = (testCase: TestCase) => {
+    handleAddTableParam("test_case", testCase.id.toString())
     dispatch(setDrawerTestCase(testCase))
   }
 
-  const hideTestCaseDetail = () => {
-    dispatch(setDrawerTestCase(null))
-  }
-
-  const handleRowClick = (testCaseRow: TestCase) => {
-    const testCaseIdQuery = searchParams.get("test_case")
-    if (!testCaseIdQuery) {
-      setSearchParams({ test_case: String(testCaseRow.id) })
+  const onRowClick = (testCaseRow: TestCase) => {
+    if (!searchTestCase) {
+      searchParams.set("test_case", String(testCaseRow.id))
+      setSearchParams(searchParams)
       showTestCaseDetail(testCaseRow)
-    } else if (testCaseIdQuery && testCaseRow.id === selectedTestCase?.id) {
+    } else if (searchTestCase && testCaseRow.id === selectedTestCase?.id) {
       searchParams.delete("test_case")
       setSearchParams(searchParams)
       hideTestCaseDetail()
     } else {
+      searchParams.set("test_case", String(testCaseRow.id))
       setSearchParams({ test_case: String(testCaseRow.id) })
       showTestCaseDetail(testCaseRow)
     }
   }
 
-  const handlePaginationChange = (page: number, pageSize: number) => {
-    setPaginationParams({ page, pageSize })
+  const {
+    data,
+    tableParams,
+    total,
+    isLoading,
+    handleChange,
+    handleRowClick,
+    handleClearAll,
+    handleDeleteTableParam,
+    handleAddTableParam,
+  } = useAntdTable<TestCase>({
+    key: "test-cases-table",
+    // @ts-ignore
+    getData: useGetTestCasesQuery,
+    onRowClick,
+    requestParams: {
+      suite: testSuiteId,
+      project: projectId,
+      is_archive: isShowArchive,
+    },
+    requestOptions: {
+      skip: !projectId,
+    },
+    filtersMapping: (filters) => ({
+      name: filters?.name ? (filters?.name[0] as string) : undefined,
+    }),
+    hasSearch: false,
+  })
+
+  const { searchText, onClear: onSearchClear, getColumnSearch } = useTableSearch()
+  const selectedTestCase = useAppSelector(selectDrawerTestCase)
+
+  const [filteredInfo, setFilteredInfo] = useState<Record<string, FilterValue | null>>({})
+  const [getTestCase] = useLazyGetTestCaseByIdQuery()
+
+  const clearAll = async () => {
+    await handleChangeShowArchive(false)
+    setFilteredInfo({})
+    onSearchClear()
+    handleClearAll()
+
+    //dirty fix to refresh table filters
+    setIsRefreshingTable(true)
+    setTimeout(() => {
+      setIsRefreshingTable(false)
+    }, 0)
+  }
+
+  const hideTestCaseDetail = () => {
+    handleDeleteTableParam(["test_case", "version"])
+    dispatch(setDrawerTestCase(null))
+  }
+
+  const handleChangeShowArchive = async (value: boolean) => {
+    setIsShowArchive(value)
+    await updateConfig({
+      test_cases: { is_show_archived: value },
+    })
+    const urlParams = Object.fromEntries([...searchParams])
+    setSearchParams({
+      ...urlParams,
+      show_archived: String(value),
+    })
   }
 
   const handleShowArchived = async () => {
-    setIsShowArchive(!isShowArchive)
-    await updateConfig({
-      test_cases: { is_show_archived: !userConfig.test_cases.is_show_archived },
-    })
+    await handleChangeShowArchive(!isShowArchive)
   }
 
   const paginationTable: TablePaginationConfig = useMemo(() => {
     return {
       hideOnSinglePage: false,
-      pageSizeOptions: ["10", "20", "50", "100"],
+      pageSizeOptions: config.pageSizeOptions,
       showLessItems: true,
       showSizeChanger: true,
-      current: paginationParams.page,
-      pageSize: paginationParams.pageSize,
-      onChange: handlePaginationChange,
+      current: tableParams.page,
+      pageSize: tableParams.page_size,
+      total,
     }
-  }, [testCases, paginationParams, searchParams.get("test_case")])
+  }, [tableParams, total])
 
   useEffect(() => {
-    if (!searchParams.get("test_case") || selectedTestCase) return
+    if (!searchTestCase || selectedTestCase) return
     const fetchTestCase = async () => {
-      const testCaseId = searchParams.get("test_case")
-      const testCase = await getTestCase({ testCaseId: testCaseId ?? "" }).unwrap()
+      const testCase = await getTestCase({ testCaseId: searchTestCase ?? "" }).unwrap()
       showTestCaseDetail(testCase)
     }
     fetchTestCase()
-  }, [searchParams.get("test_case"), selectedTestCase])
+  }, [searchTestCase, selectedTestCase])
 
   const columns: ColumnsType<TestCase> = [
     {
@@ -133,7 +157,6 @@ export const useTestCasesTable = () => {
       key: "name",
       sorter: true,
       ...getColumnSearch("name"),
-      onFilter: (value, record) => record.name.toLowerCase().includes(String(value).toLowerCase()),
       render: (text, record) => (
         <Link
           id={record.name}
@@ -176,10 +199,10 @@ export const useTestCasesTable = () => {
     isShowArchive,
     isLoading,
     selectedTestCase,
-    testCases,
+    testCases: data,
     filteredInfo,
     searchText,
-    paginationTable: { ...paginationTable, total: testCases?.count ?? 0 },
+    paginationTable,
     getColumnSearch,
     handleChange,
     clearAll,
@@ -187,5 +210,6 @@ export const useTestCasesTable = () => {
     hideTestCaseDetail,
     handleShowArchived,
     showTestCaseDetail,
+    isRefreshingTable,
   }
 }

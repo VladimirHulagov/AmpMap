@@ -61,7 +61,10 @@ export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
       fmData.append("name", data.name)
       fmData.append("description", data.description)
       fmData.append("is_archive", String(data.is_archive))
-      fmData.append("icon", data.icon ?? "")
+
+      if (data.icon !== undefined) {
+        fmData.append("icon", data.icon ?? "")
+      }
       if (project.is_manageable) {
         fmData.append("is_private", String(data.is_private))
       }

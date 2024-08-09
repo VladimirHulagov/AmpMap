@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -46,22 +46,27 @@ from testy.users.selectors.permissions import PermissionSelector
 
 
 @pytest.mark.django_db
+@allure.parent_suite('Test permissions')
+@allure.suite('Integration tests')
+@allure.sub_suite('Endpoints')
 class TestRolePermissions:
     view_name_list = 'api:v1:role-list'
     view_name_detail = 'api:v1:role-detail'
     view_name_assign = 'api:v1:role-assign'
     view_name_unassign = 'api:v1:role-unassign'
 
+    @allure.title('Test usual user forbidden actions')
     def test_project_forbidden_actions(
         self,
         project_factory,
         authorized_client,
         user,
-        admin,
         role_factory,
     ):
-        private_project = project_factory(is_private=True)
-        role_no_perms = role_factory()
+        with allure.step('Create private project'):
+            private_project = project_factory(is_private=True)
+        with allure.step('Create empty role'):
+            role_no_perms = role_factory()
         with self._role(private_project, user, role_no_perms):
             authorized_client.send_request(
                 TestProjectEndpoints.view_name_detail,
@@ -77,6 +82,7 @@ class TestRolePermissions:
                     additional_error_msg=f'Validation failed for {request_type.value}',
                 )
 
+    @allure.title('Test private projects admin user actions')
     def test_private_project_allowed_actions(self, project_factory, authorized_client, user, admin):
         private_project = project_factory(is_private=True)
         with self._role(private_project, user, admin):
@@ -113,10 +119,10 @@ class TestRolePermissions:
             ('label', 'label_factory', [RequestType.PATCH, RequestType.PUT, RequestType.DELETE, RequestType.GET]),
         ],
         ids=[
-            'Test suite permissions',
-            'Test case permissions',
-            'Test plan permissions',
-            'Label permissions',
+            'suite permissions',
+            'case permissions',
+            'plan permissions',
+            'label permissions',
         ],
     )
     def test_private_project_forbidden_actions(
@@ -130,12 +136,16 @@ class TestRolePermissions:
         request,
         request_types,
     ):
+        allure.dynamic.title(f'Test {request.node.callspec.id} with user without any permissions')
         view_name_detail = f'api:v1:{model_name}-detail'
         view_name_list = f'api:v1:{model_name}-list'
-        project = project_factory(is_private=True)
-        factory = request.getfixturevalue(factory_name)
-        instance = factory(is_private=True) if model_name == 'project' else factory(project=project)
-        role_no_perms = role_factory()
+        with allure.step('Create private project'):
+            project = project_factory(is_private=True)
+        with allure.step('Create required objects'):
+            factory = request.getfixturevalue(factory_name)
+            instance = factory(is_private=True) if model_name == 'project' else factory(project=project)
+        with allure.step('Create role without permissions'):
+            role_no_perms = role_factory()
 
         with self._role(project, user, role_no_perms):
             for request_type in request_types:
@@ -157,6 +167,7 @@ class TestRolePermissions:
                     additional_error_msg=f'Validation failed for list action with request {request_type.value}',
                 )
 
+    @allure.title('Test result permissions')
     def test_result_permissions(
         self,
         project_factory,
@@ -166,8 +177,10 @@ class TestRolePermissions:
         user,
         authorized_client,
     ):
-        project = project_factory(is_private=True)
-        test = test_factory(project=project)
+        with allure.step('Create private project'):
+            project = project_factory(is_private=True)
+        with allure.step('Create test for project'):
+            test = test_factory(project=project)
         instance = test_result_factory(project=project, test=test)
         role_no_perms = role_factory()
 
@@ -213,11 +226,11 @@ class TestRolePermissions:
             ('label', 'label_factory', [RequestType.PATCH, RequestType.PUT, RequestType.DELETE, RequestType.GET]),
         ],
         ids=[
-            'Test suite permissions',
-            'Test case permissions',
-            'Test plan permissions',
-            'Test result permissions',
-            'Label permissions',
+            'suite permissions',
+            'case permissions',
+            'plan permissions',
+            'result permissions',
+            'label permissions',
         ],
     )
     def test_private_project_permissions_allowing_actions(
@@ -231,19 +244,28 @@ class TestRolePermissions:
         request,
         request_types,
     ):
-        view_name_detail = f'api:v1:{model_name}-detail'
-        project = project_factory(is_private=True)
-        instance = request.getfixturevalue(factory_name)(project=project)
-        role_no_perms = role_factory()
-        permissions = PermissionSelector.permission_by_codenames(
-            [
-                f'change_{model_name}',
-                f'delete_{model_name}',
-                f'add_{model_name}',
-                'view_project',
-            ],
+        allure.dynamic.title(
+            f'Test {request.node.callspec.id} user with permissions allowed to perform actions on private project',
         )
-        role = role_factory(permissions=permissions)
+        view_name_detail = f'api:v1:{model_name}-detail'
+        with allure.step('Create private project'):
+            project = project_factory(is_private=True)
+        with allure.step(f'Create {model_name}'):
+            instance = request.getfixturevalue(factory_name)(project=project)
+        with allure.step('Create role without permissions'):
+            role_no_perms = role_factory()
+        with allure.step(f'Select permissions for {model_name}'):
+            permissions = PermissionSelector.permission_by_codenames(
+                [
+                    f'change_{model_name}',
+                    f'delete_{model_name}',
+                    f'add_{model_name}',
+                    'view_project',
+                ],
+            )
+        with allure.step('Set permissions on role'):
+            role = role_factory(permissions=permissions)
+
         with self._role(project, user, role_no_perms):
             for request_type in request_types:
                 authorized_client.send_request(
@@ -264,9 +286,12 @@ class TestRolePermissions:
                 )
                 assert resp.status_code != HTTPStatus.FORBIDDEN
 
+    @allure.title('Test admin permissions')
     def test_admin_permissions(self, authorized_client, user, admin, project_factory, user_factory, role, member):
-        user_to_assign = user_factory()
-        project = project_factory(is_private=True)
+        with allure.step('Create user to assign role to'):
+            user_to_assign = user_factory()
+        with allure.step('Craete private project'):
+            project = project_factory(is_private=True)
         with self._role(project, user, member):
             for forbidden_view_name in [self.view_name_assign, self.view_name_unassign]:
                 authorized_client.send_request(
@@ -292,9 +317,12 @@ class TestRolePermissions:
                     },
                 )
 
+    @allure.title('Test multiple roles for user')
     def test_multiple_projects_roles(self, authorized_client, user, admin, project_factory, member):
-        project_spb = project_factory(is_private=True)
-        project_msk = project_factory(is_private=True)
+        with allure.step('Create private project spb'):
+            project_spb = project_factory(is_private=True)
+        with allure.step('Create private project msk'):
+            project_msk = project_factory(is_private=True)
         with self._role(project_spb, user, admin):
             with self._role(project_msk, user, member):
                 for project in [project_spb, project_msk]:
@@ -328,12 +356,12 @@ class TestRolePermissions:
             ('label', 'label_factory'),
         ],
         ids=[
-            'Project suite permissions',
-            'Test suite permissions',
-            'Test case permissions',
-            'Test plan permissions',
-            'Test result permissions',
-            'Label permissions',
+            'project permissions',
+            'suite permissions',
+            'case permissions',
+            'plan permissions',
+            'result permissions',
+            'label permissions',
         ],
     )
     def test_public_project_allowed_actions(
@@ -344,10 +372,12 @@ class TestRolePermissions:
         factory_name,
         request,
     ):
+        allure.dynamic.title(f'Test {request.node.callspec.id} for public projects with common user')
         view_name_detail = f'api:v1:{model_name}-detail'
         view_name_list = f'api:v1:{model_name}-list'
-        factory = request.getfixturevalue(factory_name)
-        instance = factory() if model_name == 'project' else factory(project=project)
+        with allure.step(f'Create {model_name}'):
+            factory = request.getfixturevalue(factory_name)
+            instance = factory() if model_name == 'project' else factory(project=project)
         authorized_client.send_request(
             view_name=view_name_detail,
             reverse_kwargs={'pk': instance.pk},
@@ -369,13 +399,7 @@ class TestRolePermissions:
             ('testresult', 'test_result_factory', [RequestType.PATCH, RequestType.PUT, RequestType.DELETE]),
             ('label', 'label_factory', [RequestType.PATCH, RequestType.PUT, RequestType.DELETE]),
         ],
-        ids=[
-            'Test suite permissions',
-            'Test case permissions',
-            'Test plan permissions',
-            'Test result permissions',
-            'Label permissions',
-        ],
+        ids=['suite actions', 'case actions', 'plan actions', 'result actions', 'label actions'],
     )
     def test_public_project_actions_not_forbidden(
         self,
@@ -386,10 +410,12 @@ class TestRolePermissions:
         request,
         request_types,
     ):
+        allure.dynamic.title(f'Test {request.node.callspec.id} for public projects users')
         view_name_detail = f'api:v1:{model_name}-detail'
         view_name_list = f'api:v1:{model_name}-list'
-        factory = request.getfixturevalue(factory_name)
-        instance = factory() if model_name == 'project' else factory(project=project)
+        with allure.step(f'Create {model_name}'):
+            factory = request.getfixturevalue(factory_name)
+            instance = factory() if model_name == 'project' else factory(project=project)
         payload = None
         if model_name == 'testresult':
             instance.test.project = project
@@ -403,14 +429,16 @@ class TestRolePermissions:
                 additional_error_msg=f'Failed validation for {request_type.value} request',
                 validate_status=False,
             )
-            assert resp.status_code != HTTPStatus.FORBIDDEN
+            with allure.step('Validate request status code was not 403'):
+                assert resp.status_code != HTTPStatus.FORBIDDEN
         resp = authorized_client.send_request(
             view_name=view_name_list,
             request_type=RequestType.POST,
             data=payload,
             validate_status=False,
         )
-        assert resp.status_code != HTTPStatus.FORBIDDEN
+        with allure.step('Validate request status code was not 403'):
+            assert resp.status_code != HTTPStatus.FORBIDDEN
 
     @pytest.mark.parametrize(
         'model_name, factory_name',
@@ -423,12 +451,12 @@ class TestRolePermissions:
             ('label', 'label_factory'),
         ],
         ids=[
-            'Project permissions',
-            'Test suite permissions',
-            'Test case permissions',
-            'Test plan permissions',
-            'Test result permissions',
-            'Label permissions',
+            'project permissions',
+            'suite permissions',
+            'case permissions',
+            'plan permissions',
+            'result permissions',
+            'label permissions',
         ],
     )
     def test_public_project_external_user_permission(
@@ -443,17 +471,21 @@ class TestRolePermissions:
         permission_factory,
         membership_factory,
     ):
-        role.permissions.add(
-            permission_factory(
-                codename=UserAllowedPermissionCodenames.VIEW_PROJECT_RESTRICTION,
-                content_type=ContentType.objects.get_for_model(Project),
-            ),
-        )
+        allure.dynamic.title(f'Test {request.node.callspec.id} public probject behaviour for external user')
+        with allure.step('Add external user permission to role'):
+            role.permissions.add(
+                permission_factory(
+                    codename=UserAllowedPermissionCodenames.VIEW_PROJECT_RESTRICTION,
+                    content_type=ContentType.objects.get_for_model(Project),
+                ),
+            )
         view_name_detail = f'api:v1:{model_name}-detail'
         view_name_list = f'api:v1:{model_name}-list'
-        factory = request.getfixturevalue(factory_name)
-        instance = factory() if model_name == 'project' else factory(project=project)
-        membership_factory(user=user, role=role)
+        with allure.step(f'Create {model_name}'):
+            factory = request.getfixturevalue(factory_name)
+            instance = factory() if model_name == 'project' else factory(project=project)
+        with allure.step('Assign user external user role'):
+            membership_factory(user=user, role=role)
         authorized_client.send_request(
             view_name=view_name_detail,
             reverse_kwargs={'pk': instance.pk},
@@ -468,6 +500,7 @@ class TestRolePermissions:
             expected_status=HTTPStatus.OK if model_name == 'project' else HTTPStatus.FORBIDDEN,
         )
 
+    @allure.title('Test list display for external user')
     def test_projects_display_for_external_user(
         self,
         authorized_client,
@@ -477,27 +510,36 @@ class TestRolePermissions:
         membership_factory,
         project_factory,
     ):
-        restricting_role = role_factory(
-            permissions=[
-                permission_factory(
-                    codename=UserAllowedPermissionCodenames.VIEW_PROJECT_RESTRICTION,
-                    content_type=ContentType.objects.get_for_model(Project),
-                ),
-            ],
-        )
-        project_role = role_factory()
-        visible_project = project_factory(is_private=True)
-        project_factory(is_private=False)
-        project_factory(is_private=True)
-        membership_factory(user=user, role=restricting_role, project=None)
-        membership_factory(user=user, role=project_role, project=visible_project)
+        with allure.step('Create external user role'):
+            restricting_role = role_factory(
+                permissions=[
+                    permission_factory(
+                        codename=UserAllowedPermissionCodenames.VIEW_PROJECT_RESTRICTION,
+                        content_type=ContentType.objects.get_for_model(Project),
+                    ),
+                ],
+            )
+        with allure.step('Create member role for project'):
+            project_role = role_factory()
+        with allure.step('Create private project visibile for external user'):
+            visible_project = project_factory(is_private=True)
+        with allure.step('Create public project'):
+            project_factory(is_private=False)
+        with allure.step('Create private project'):
+            project_factory(is_private=True)
+        with allure.step('Assign roles to user'):
+            membership_factory(user=user, role=restricting_role, project=None)
+            membership_factory(user=user, role=project_role, project=visible_project)
         projects = authorized_client.send_request(
             view_name='api:v1:project-list',
             expected_status=HTTPStatus.OK,
         ).json()['results']
-        assert len(projects) == 1
-        assert projects[0]['id'] == visible_project.pk
+        with allure.step('Validate only one project in response body'):
+            assert len(projects) == 1
+        with allure.step('Validate visible project id'):
+            assert projects[0]['id'] == visible_project.pk
 
+    @allure.title('Test admin role added for user that creates project')
     def test_admin_role_added_for_created_user(self, authorized_client, admin):
         authorized_client.send_request(
             TestProjectEndpoints.view_name_list,
@@ -510,7 +552,9 @@ class TestRolePermissions:
     @pytest.mark.parametrize(
         'user_role, expected_status',
         [
-            ('admin', HTTPStatus.OK), ('role', HTTPStatus.FORBIDDEN), ('superuser', HTTPStatus.OK),
+            ('admin', HTTPStatus.OK),
+            ('role', HTTPStatus.FORBIDDEN),
+            ('superuser', HTTPStatus.OK),
         ],
     )
     def test_is_private_project_update_for_admins_only(
@@ -518,18 +562,21 @@ class TestRolePermissions:
         project_factory,
         api_client,
         user_factory,
-        admin,
         user_role,
         request,
         role_factory,
         expected_status,
     ):
-        project = project_factory()
+        allure.dynamic.title('Test private project is updateable for admin/superuser only')
+        with allure.step('Create public project'):
+            project = project_factory()
         if user_role == 'superuser':
-            user = user_factory(is_superuser=True)
-            role = role_factory()
+            with allure.step('Create superuser'):
+                user = user_factory(is_superuser=True)
+                role = role_factory()
         else:
-            user = user_factory()
+            with allure.step('Create user'):
+                user = user_factory()
             role = request.getfixturevalue(user_role)
         api_client.force_login(user)
         with self._role(project, user, role):
@@ -541,6 +588,7 @@ class TestRolePermissions:
                 expected_status=expected_status,
             )
 
+    @allure.title('Test only superuser can assign global or restricting roles')
     def test_admin_cannot_assign_none_or_restricting(
         self,
         api_client,
@@ -550,32 +598,37 @@ class TestRolePermissions:
         role_factory,
         permission_factory,
     ):
-        role = role_factory(
-            permissions=[
-                permission_factory(
-                    codename=UserAllowedPermissionCodenames.VIEW_PROJECT_RESTRICTION,
-                    content_type=ContentType.objects.get_for_model(Project),
-                ),
-            ],
-        )
-        admin_user = user_factory()
-        user = user_factory()
-        membership_factory = membership_factory(user=admin_user, role=admin)
-        api_client.force_login(admin_user)
-        for project in (None, membership_factory.project):
-            api_client.send_request(
-                self.view_name_assign,
-                request_type=RequestType.POST,
-                expected_status=HTTPStatus.FORBIDDEN,
-                data={
-                    'user': user.pk,
-                    'project': project.pk if project else None,
-                    'roles': [role.pk],
-                },
+        with allure.step('Create external user role'):
+            role = role_factory(
+                permissions=[
+                    permission_factory(
+                        codename=UserAllowedPermissionCodenames.VIEW_PROJECT_RESTRICTION,
+                        content_type=ContentType.objects.get_for_model(Project),
+                    ),
+                ],
             )
+        with allure.step('Create admin user'):
+            admin_user = user_factory()
+            membership_factory = membership_factory(user=admin_user, role=admin)
+
+        user = user_factory()
+        with allure.step('Login as admin user'):
+            api_client.force_login(admin_user)
+        for project in (None, membership_factory.project):
+            with allure.step(f'Trying to assign role with {project}'):
+                api_client.send_request(
+                    self.view_name_assign,
+                    request_type=RequestType.POST,
+                    expected_status=HTTPStatus.FORBIDDEN,
+                    data={
+                        'user': user.pk,
+                        'project': project.pk if project else None,
+                        'roles': [role.pk],
+                    },
+                )
 
     @contextmanager
-    def _role(self, project: Project, user: User, role: Role) -> None:
+    def _role(self, project: Project, user: User, role: Role):
         with allure.step(f'Sending request as user: {user} with role: {role} for {project}'):
             membership = Membership.objects.create(project=project, user=user, role=role)
             try:

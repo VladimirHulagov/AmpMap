@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -37,6 +37,7 @@ from rest_framework.reverse import reverse
 from rest_framework.serializers import HyperlinkedIdentityField, ModelSerializer, Serializer
 
 from testy.core.api.v1.serializers import ProjectSerializer
+from testy.users.api.v1.validators import UserPasswordValidator, PasswordValidator
 from testy.users.models import Group, Membership, Role
 from testy.users.selectors.permissions import PermissionSelector
 from testy.users.selectors.roles import RoleSelector
@@ -60,13 +61,12 @@ class UserSerializer(ModelSerializer):
     class Meta:
         model = UserModel
         fields = (
-            'id', 'url', 'username', 'password', 'first_name', 'last_name', 'email', 'is_staff', 'is_active',
+            'id', 'url', 'username', 'first_name', 'last_name', 'email', 'is_staff', 'is_active',
             'date_joined', 'groups', 'avatar', 'avatar_link', 'is_superuser', 'projects',
         )
 
         read_only_fields = ('date_joined',)
         extra_kwargs = {
-            'password': {'write_only': True},
             'avatar': {'write_only': True},
         }
 
@@ -76,6 +76,22 @@ class UserSerializer(ModelSerializer):
         return self.context['request'].build_absolute_uri(
             reverse('avatar-path', kwargs={'pk': instance.id}),
         )
+
+
+class UserCreateSerializer(UserSerializer):
+    class Meta(UserSerializer.Meta):
+        fields = UserSerializer.Meta.fields + ('password',)
+        extra_kwargs = {
+            'password': {'write_only': True, 'validators': [PasswordValidator()]},
+            'avatar': {'write_only': True},
+        }
+
+
+class PasswordUpdateSerializer(Serializer):
+    password = CharField(write_only=True)
+
+    class Meta:
+        validators = [UserPasswordValidator()]
 
 
 class UserUpdateSerializer(ModelSerializer):

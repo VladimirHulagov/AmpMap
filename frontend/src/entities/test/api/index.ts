@@ -2,6 +2,8 @@ import { createApi } from "@reduxjs/toolkit/dist/query/react"
 
 import { baseQueryWithLogout } from "app/apiSlice"
 
+import { testPlanApi } from "entities/test-plan/api"
+
 import { invalidatesList } from "shared/libs"
 
 import { setTest } from "../model"
@@ -50,7 +52,34 @@ export const testApi = createApi({
       }),
       invalidatesTags: (result) => invalidatesList(result, "Test"),
     }),
+    bulkUpdate: builder.mutation<Test[], TestBulkUpdate>({
+      query: (body) => ({
+        url: `${rootPath}/bulk-update/`,
+        method: "PUT",
+        body,
+      }),
+      async onQueryStarted({ current_plan, plan }, { dispatch, queryFulfilled }) {
+        await queryFulfilled
+        dispatch(
+          testPlanApi.util.invalidateTags([{ type: "TestPlanStatistics", id: current_plan }])
+        )
+        dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanHistogram", id: current_plan }]))
+        dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanLabels", id: "LIST" }]))
+        dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanCasesIds", id: current_plan }]))
+
+        dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanStatistics", id: plan }]))
+        dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanHistogram", id: plan }]))
+        dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanCasesIds", id: plan }]))
+      },
+      invalidatesTags: (result) => invalidatesList(result, "Test"),
+    }),
   }),
 })
 
-export const { useLazyGetTestsQuery, useLazyGetTestQuery, useUpdateTestMutation } = testApi
+export const {
+  useLazyGetTestsQuery,
+  useLazyGetTestQuery,
+  useUpdateTestMutation,
+  useBulkUpdateMutation,
+  useGetTestsQuery,
+} = testApi

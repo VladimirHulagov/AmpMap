@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -28,7 +28,7 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from typing import Iterable, Union
+from typing import Iterable
 
 from django.contrib.auth.models import Permission
 from django.db.models import QuerySet
@@ -45,6 +45,6 @@ class PermissionSelector:
     @classmethod
     def permission_by_codenames(
         cls,
-        codenames: Iterable[Union[UserAllowedPermissionCodenames, str]],
+        codenames: Iterable[UserAllowedPermissionCodenames | str],
     ) -> QuerySet[Permission]:
         return Permission.objects.filter(codename__in=codenames)

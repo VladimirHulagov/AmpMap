@@ -49,7 +49,7 @@ class RolePermission(IsAuthenticated):
 
 
 class UserPermission(BasePermission):
-    self_actions = {'avatar', 'config', 'me'}
+    self_actions = {'avatar', 'config', 'me', 'change_password'}
 
     def has_permission(self, request, view):
         if request.method in SAFE_METHODS or view.action in self.self_actions:

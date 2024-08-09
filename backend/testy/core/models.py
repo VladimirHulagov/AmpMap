@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -31,7 +31,7 @@
 from copy import deepcopy
 from functools import partial
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -45,10 +45,11 @@ from django.utils.translation import gettext_lazy as _
 from rest_framework.exceptions import ValidationError
 from simple_history.models import HistoricalRecords
 
-from testy.core.choices import AccessRequestStatus, CustomFieldType, LabelTypes, SystemMessageLevel
+from testy.core.choices import AccessRequestStatus, ActionCode, CustomFieldType, LabelTypes, SystemMessageLevel
 from testy.core.constraints import unique_soft_delete_constraint
 from testy.core.services.media import MediaService
 from testy.root.models import BaseModel
+from testy.tests_representation.choices import TestStatuses
 from testy.users.models import Membership, User
 from testy.utils import get_media_file_path
 from testy.validators import ExtensionValidator, ProjectValidator
@@ -126,10 +127,10 @@ class Attachment(BaseModel):
 
     def model_clone(
         self,
-        related_managers: List[str] = None,
-        attrs_to_change: Dict[str, Any] = None,
-        attachment_references_fields: List[str] = None,
-        common_attrs_to_change: Dict[str, Any] = None,
+        related_managers: list[str] = None,
+        attrs_to_change: dict[str, Any] = None,
+        attachment_references_fields: list[str] = None,
+        common_attrs_to_change: dict[str, Any] = None,
     ):
         self_copy = deepcopy(self)
         attrs = {'pk': None, 'id': None}
@@ -203,7 +204,12 @@ class CustomAttribute(BaseModel):
     is_required = models.BooleanField(default=False)
     is_suite_specific = models.BooleanField(blank=True, default=False)
     suite_ids = ArrayField(models.PositiveIntegerField(), blank=True, default=list)
-
+    status_specific = ArrayField(
+        models.IntegerField(
+            choices=TestStatuses.choices,
+        ),
+        default=TestStatuses.cb_values,
+    )
     content_types = ArrayField(models.PositiveIntegerField(blank=False))
 
     class Meta:
@@ -233,3 +239,15 @@ class AccessRequest(BaseModel):
 
     class Meta:
         default_related_name = 'requests'
+
+
+class NotificationSetting(BaseModel):
+    action_code = models.IntegerField(choices=ActionCode.choices, primary_key=True)
+    verbose_name = models.CharField(max_length=settings.CHAR_FIELD_MAX_LEN, blank=True, null=True)
+    placeholder_text = models.CharField(max_length=settings.CHAR_FIELD_MAX_LEN, blank=True, null=True)
+    placeholder_link = models.CharField(max_length=settings.CHAR_FIELD_MAX_LEN, blank=True, null=True)
+    message = models.CharField(max_length=settings.CHAR_FIELD_MAX_LEN)
+    subscribers = models.ManyToManyField(User)
+
+    class Meta:
+        default_related_name = 'notification_settings'

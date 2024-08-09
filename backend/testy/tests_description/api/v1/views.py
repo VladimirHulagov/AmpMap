@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -116,11 +116,11 @@ class TestCaseViewSet(TestyModelViewSet, TestyArchiveMixin):
             return TestCaseSelector().case_deleted_list()
         if self.action == 'restore_archived':
             return TestCaseSelector().case_list({_IS_ARCHIVE: True})
-        if self.action == 'cases_search':
-            return TestCaseSelector().case_list_with_label_names({_IS_ARCHIVE: False})
         filter_condition = None
-        if self.action == _LIST and not get_boolean(self.request, _IS_ARCHIVE):
+        if self.request.method == 'GET' and not get_boolean(self.request, _IS_ARCHIVE):
             filter_condition = {_IS_ARCHIVE: False}
+        if self.action == 'cases_search':
+            return TestCaseSelector().case_list_with_label_names(filter_condition)
         return TestCaseSelector().case_list(filter_condition)
 
     def get_serializer_class(self):
@@ -184,7 +184,7 @@ class TestCaseViewSet(TestyModelViewSet, TestyArchiveMixin):
     def copy_cases(self, request):
         serializer = TestCaseCopySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        cases = TestCaseService.cases_copy(serializer.validated_data)
+        cases = CopyService.cases_copy(serializer.validated_data)
         return Response(self.get_serializer(cases, many=True).data)
 
     @cases_tests_schema
@@ -226,7 +226,7 @@ class TestCaseViewSet(TestyModelViewSet, TestyArchiveMixin):
         instance = self.get_object()
         serializer = TestCaseRestoreSerializer(instance, data=request.data)
         serializer.is_valid(raise_exception=True)
-        updated_test_case = TestCaseService.restore_version(serializer.validated_data.get('version'), pk)
+        updated_test_case = TestCaseService.restore_version(serializer.validated_data.get('version'), instance.pk)
         return Response(TestCaseRetrieveSerializer(updated_test_case, context=self.get_serializer_context()).data)
 
     @cases_search_schema
@@ -237,7 +237,11 @@ class TestCaseViewSet(TestyModelViewSet, TestyArchiveMixin):
         suites = list(
             TestSuite.objects.filter(
                 id__in=cases.values_list('suite_id', flat=True),
-            ).get_ancestors(include_self=True).annotate(title=F(_NAME)).values(_ID, _NAME, 'title', 'parent_id'),
+            ).get_ancestors(
+                include_self=True,
+            ).annotate(
+                title=F(_NAME),
+            ).values(_ID, _NAME, 'title', 'parent_id').order_by('name'),
         )
         data = rusty.serialize_tree(
             rusty.DataSetObject('parent_id', _ID, instances=suites),
@@ -245,7 +249,7 @@ class TestCaseViewSet(TestyModelViewSet, TestyArchiveMixin):
                 rusty.Prefetch(
                     'test_cases',
                     'suite_id',
-                    instances=list(cases.values(_ID, _NAME, 'suite_id', 'labels')),
+                    instances=list(cases.values(_ID, _NAME, 'suite_id', 'labels', 'is_archive').order_by('name')),
                 ),
             ],
             is_tree=True,

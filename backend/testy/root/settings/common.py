@@ -59,13 +59,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
-VERSION = '1.3.1'
+VERSION = '1.3.2'
 
 loaded_hosts = os.environ.get('ALLOWED_HOSTS', [])
+csrf_origins = os.environ.get('CSRF_TRUSTED_ORIGINS', [])
 
 add_mimetypes(os.environ.get('CUSTOM_MIMETYPES'))
 
 ALLOWED_HOSTS = json.loads(loaded_hosts) if loaded_hosts else loaded_hosts
+CSRF_TRUSTED_ORIGINS = json.loads(csrf_origins) if csrf_origins else csrf_origins
 
 CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL')
 CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND')
@@ -90,6 +92,8 @@ INSTALLED_APPS = [
     'simple_history',
     'celery',
     'celery_progress',
+    'notifications',
+    'channels',
     # TestY apps
     'core',
     'comments',
@@ -148,7 +152,21 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'root.wsgi.application'
+ASGI_APPLICATION = 'root.asgi.application'
 
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [
+                (
+                    REDIS_HOST,
+                    REDIS_PORT,
+                ),
+            ],
+        },
+    },
+}
 # Database
 DATABASES = {
     'default': {
@@ -158,6 +176,7 @@ DATABASES = {
         'PASSWORD': os.environ.get('POSTGRES_PASSWORD'),
         'HOST': os.environ.get('POSTGRES_SERVICE_HOST'),
         'PORT': os.environ.get('POSTGRES_SERVICE_PORT'),
+        'DISABLE_SERVER_SIDE_CURSORS': True,
     },
 }
 
@@ -180,6 +199,9 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
+    {
+        'NAME': 'testy.users.api.v1.validators.TestyPasswordValidator',
     },
 ]
 
@@ -274,7 +296,7 @@ LOGGING = {
         'django': {
             'handlers': ['console'],
             'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
-            'propagate': False
+            'propagate': False,
         },
         'gunicorn': {
             'handlers': ['console'],
@@ -342,3 +364,5 @@ ADMIN_ROLE_NAME = 'Admin'
 
 IS_RESULT_EDITABLE = True
 RESULT_EDIT_LIMIT = 60 * 60
+
+DJANGO_NOTIFICATIONS_CONFIG = {'USE_JSONFIELD': True}

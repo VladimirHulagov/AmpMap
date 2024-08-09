@@ -79,7 +79,7 @@ export const TestCaseDetail = ({ testCase, onClose }: TestCaseDetailProps) => {
       }
     >
       <>
-        {!isLastVersion && (
+        {testCase && !isLastVersion && (
           <Alert
             showIcon={true}
             closable

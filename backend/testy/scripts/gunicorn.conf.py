@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -33,7 +33,7 @@ import multiprocessing
 
 bind = '0.0.0.0:8000'
 workers = multiprocessing.cpu_count() * 2 + 1
-worker_class = 'gevent'
+worker_class = 'workers.UvicornWorker'
 timeout = 60 * 2
 capture_output = True
 accesslog = '-'

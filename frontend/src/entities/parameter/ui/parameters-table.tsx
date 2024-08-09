@@ -11,7 +11,6 @@ import { setParameter, showEditParameterModal } from "entities/parameter/model"
 
 import { useTableSearch } from "shared/hooks"
 import { initInternalError } from "shared/libs"
-import { ContainerLoader } from "shared/ui"
 
 export const ParametersTable = () => {
   const dispatch = useDispatch()
@@ -100,10 +99,6 @@ export const ParametersTable = () => {
     },
   ]
 
-  if (isLoading) {
-    return <ContainerLoader />
-  }
-
   return (
     <>
       <Space style={{ marginBottom: 16, display: "flex", justifyContent: "right" }}>
@@ -112,6 +107,7 @@ export const ParametersTable = () => {
         </Button>
       </Space>
       <Table
+        loading={isLoading}
         dataSource={parameters}
         columns={columns}
         rowKey="data"

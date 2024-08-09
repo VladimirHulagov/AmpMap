@@ -35,11 +35,20 @@ from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from factory import LazyAttribute, Sequence, SubFactory, post_generation
 from factory.django import DjangoModelFactory
+from notifications.models import Notification
 
 import tests.constants as constants
 from testy.comments.models import Comment
 from testy.core.choices import CustomFieldType
-from testy.core.models import Attachment, CustomAttribute, Label, LabeledItem, Project, SystemMessage
+from testy.core.models import (
+    Attachment,
+    CustomAttribute,
+    Label,
+    LabeledItem,
+    NotificationSetting,
+    Project,
+    SystemMessage,
+)
 from testy.core.selectors.custom_attribute import CustomAttributeSelector
 from testy.tests_description.models import TestCase, TestCaseStep, TestSuite
 from testy.tests_representation.choices import TestStatuses
@@ -375,3 +384,13 @@ class PermissionFactory(DjangoModelFactory):
 
     class Meta:
         model = Permission
+
+
+class NotificationSettingFactory(DjangoModelFactory):
+    class Meta:
+        model = NotificationSetting
+
+
+class NotificationFactory(DjangoModelFactory):
+    class Meta:
+        model = Notification

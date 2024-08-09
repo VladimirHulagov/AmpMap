@@ -13,10 +13,13 @@ import { selectTest } from "entities/test/model"
 export const useAttributesTestResult = () => {
   const { projectId } = useParams<ParamProjectId>()
 
-  const testSuiteId = useAppSelector(selectTest)?.suite
+  const selectedTest = useAppSelector(selectTest)
 
   const { data: contentTypes } = useGetCustomAttributeContentTypesQuery()
-  const { data } = useGetCustomAttributesQuery({ project: projectId ?? "" }, { skip: !projectId })
+  const { data } = useGetCustomAttributesQuery(
+    { project: projectId ?? "", test: selectedTest?.id },
+    { skip: !projectId || !selectedTest }
+  )
 
   const attributes = useMemo(() => {
     if (!data || !contentTypes) return []
@@ -28,8 +31,8 @@ export const useAttributesTestResult = () => {
     return data
       .filter((attribute) => attribute.content_types?.includes(contentTypeId))
       .filter((attribute) =>
-        attribute.is_suite_specific && testSuiteId
-          ? attribute.suite_ids.includes(testSuiteId)
+        attribute.is_suite_specific && selectedTest?.suite
+          ? attribute.suite_ids.includes(selectedTest?.suite)
           : true
       )
       .map(convertAttribute)

@@ -1,9 +1,8 @@
 import { useState } from "react"
 import { useParams } from "react-router-dom"
 
-import { TestPlanTableWrapper } from "entities/test-plan/ui"
-
 import { TestPlanDetail } from "./test-plan-detail"
+import { TestPlanTableWrapper } from "./test-plan-table/test-plan-table-wrapper"
 
 export const TestPlansView = () => {
   const { testPlanId } = useParams<ParamTestPlanId>()

@@ -25,3 +25,10 @@
   margin: 0;
   padding-left: 0;
 }
+
+.titleRow {
+  display: flex;
+  justify-content: flex-start;
+  align-items: baseline;
+  gap: 8px;
+}

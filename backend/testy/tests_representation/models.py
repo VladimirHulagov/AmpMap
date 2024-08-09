@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -28,7 +28,7 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from typing import Any, Dict, List
+from typing import Any
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -39,6 +39,7 @@ from mptt.models import TreeForeignKey
 from simple_history.models import HistoricalRecords
 
 from testy.comments.models import Comment
+from testy.core.constraints import unique_soft_delete_constraint
 from testy.core.models import Attachment, Project
 from testy.root.mixins import TestyArchiveMixin
 from testy.root.models import BaseModel, MPTTBaseModel
@@ -56,7 +57,7 @@ class Parameter(BaseModel):
 
     class Meta:
         default_related_name = 'parameters'
-        unique_together = ('group_name', 'data', 'project')
+        constraints = [unique_soft_delete_constraint(['group_name', 'data', 'project'], 'parameter')]
 
     def __str__(self):
         return f'{self.group_name}: {self.data}'
@@ -118,10 +119,10 @@ class TestResult(BaseModel):
 
     def model_clone(
         self,
-        related_managers: List[str] = None,
-        attrs_to_change: Dict[str, Any] = None,
-        attachment_references_fields: List[str] = None,
-        common_attrs_to_change: Dict[str, Any] = None,
+        related_managers: list[str] = None,
+        attrs_to_change: dict[str, Any] = None,
+        attachment_references_fields: list[str] = None,
+        common_attrs_to_change: dict[str, Any] = None,
     ):
         if related_managers is None:
             related_managers = ['attachments', 'steps_results']

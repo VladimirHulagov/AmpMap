@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -42,6 +42,18 @@ import os
 
 from django.core.asgi import get_asgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'root.settings.production')
+asgi_app = get_asgi_application()
 
-application = get_asgi_application()
+from channels.routing import ChannelNameRouter, ProtocolTypeRouter, URLRouter  # noqa: E402
+
+from testy.core.api.v1.urls import websocket_urlpatterns  # noqa: E402
+from testy.core.consumers import NotificationConsumer  # noqa: E402
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'root.settings.production')
+application = ProtocolTypeRouter({
+    'http': asgi_app,
+    'websocket': URLRouter(websocket_urlpatterns),
+    'channel': ChannelNameRouter({
+        'notifications': NotificationConsumer(),
+    }),
+})

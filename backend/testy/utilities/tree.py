@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -28,12 +28,12 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from typing import Any, Callable, Dict, List, Union
+from typing import Any, Callable
 
 from django.db.models import Prefetch
 
 
-def form_tree_prefetch_lookups(nested_prefetch_field: str, prefetch_field: str, tree_depth) -> List[str]:
+def form_tree_prefetch_lookups(nested_prefetch_field: str, prefetch_field: str, tree_depth) -> list[str]:
     """
     Form list of lookups for nested objects.
 
@@ -63,13 +63,13 @@ def form_tree_prefetch_objects(  # noqa: WPS211
     prefetch_field: str,
     tree_depth: int,
     queryset_class=None,
-    annotation: Dict[str, Any] = None,
-    queryset_filter: Dict[str, Any] = None,
-    order_by_fields: List[str] = None,
+    annotation: dict[str, Any] = None,
+    queryset_filter: dict[str, Any] = None,
+    order_by_fields: list[str] = None,
     queryset=None,
     to_attr: str = None,
     manager_name: str = 'objects',
-) -> List[Prefetch]:
+) -> list[Prefetch]:
     """
     Form a list of prefetch objects for MPTTModels prefetch.
 
@@ -119,7 +119,7 @@ def get_breadcrumbs_treeview(
     instances,
     depth: int,
     title_method: Callable = None,
-) -> Dict[str, Union[str, None]]:
+) -> dict[str, str | None]:
     """
     Recursively get treeview dict of mptt tree model.
 

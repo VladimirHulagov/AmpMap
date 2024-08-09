@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -71,7 +71,7 @@ class TestCaseCopyPermission(BaseProjectPermission):
             )
         if dst_suite_id := serializer.validated_data.get('dst_suite_id'):
             is_allowed_list.append(
-                self.has_object_permission(request, view, TestSuiteSelector().suite_by_id(dst_suite_id)),
+                self.has_object_permission(request, view, dst_suite_id),
             )
         return all(is_allowed_list)
 

@@ -1,5 +1,6 @@
-import React, { useContext, useRef } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import React, { useContext, useEffect, useRef } from "react"
+import { useNavigate } from "react-router-dom"
+import { Link } from "react-router-dom"
 
 import { ProjectActiveTabContext } from "pages/project/project-main"
 
@@ -46,24 +47,18 @@ export const useProjectTabs = (projectId: string) => {
 
   const switchRef = useRef("")
   const onNavigate = (key: string) => {
-    //Prevent navigate twice (onTabClick, onChange)
-    if (switchRef.current === key) {
-      return
-    }
-    switchRef.current = key
-
     const activeTabItem = tabItems.find((i) => i.key === key)
     if (!activeTabItem) return
     navigate(activeTabItem.path)
-  }
-
-  const onChange = (key: string) => {
-    onNavigate(key)
   }
 
   const onTabClick = (key: string) => {
     onNavigate(key)
   }
 
-  return { projectActiveTab, tabItems, onTabClick, onChange }
+  useEffect(() => {
+    switchRef.current = projectActiveTab
+  }, [projectActiveTab])
+
+  return { projectActiveTab, tabItems, onTabClick }
 }

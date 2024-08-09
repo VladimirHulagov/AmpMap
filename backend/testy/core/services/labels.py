@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -28,24 +28,26 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from typing import Any, Dict
+from typing import Any
 
 from django.contrib.contenttypes.models import ContentType
+from django.db.models import Model
 
 from testy.core.choices import LabelTypes
 from testy.core.models import Label, LabeledItem
+from testy.core.selectors.labels import LabelSelector
 
 
 class LabelService:
     non_side_effect_fields = ['name', 'user', 'project', 'type']
 
-    def label_create(self, data: Dict[str, Any]) -> Label:
+    def label_create(self, data: dict[str, Any]) -> Label:
         return Label.model_create(
             fields=self.non_side_effect_fields,
             data=data,
         )
 
-    def label_update(self, label: Label, data: Dict[str, Any]) -> Label:
+    def label_update(self, label: Label, data: dict[str, Any]) -> Label:
         label, _ = label.model_update(
             fields=self.non_side_effect_fields,
             data=data,
@@ -76,6 +78,20 @@ class LabelService:
         }
 
         LabeledItem.objects.filter(**lookup_kwargs).delete()
+
+    @classmethod
+    def restore_by_version(cls, instance: Model, history_id: int):
+        labeled_items = LabelSelector.label_list_by_parent_object_and_history_ids(instance, history_id)
+        for labeled_item in labeled_items:
+            cls._restore_item(labeled_item, instance.history.latest().history_id)
+
+    @classmethod
+    def _restore_item(cls, labeled_item: LabeledItem, history_id: int):
+        labeled_item.pk = None
+        labeled_item.is_deleted = False
+        labeled_item.deleted_at = None
+        labeled_item.content_object_history_id = history_id
+        labeled_item.save()
 
     def _to_label_model_instances(self, labels, label_kwargs=None):
         label_objs = set()

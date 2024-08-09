@@ -68,5 +68,5 @@ class InputCommentSerializer(ModelSerializer):
 
     def validate(self, attrs):
         if not attrs.get('content') and not attrs.get('attachments'):
-            raise ValidationError('Comment can not be empty')
+            raise ValidationError('Comment cannot be empty')
         return super().validate(attrs)

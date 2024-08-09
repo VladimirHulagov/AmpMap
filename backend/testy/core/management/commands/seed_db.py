@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -40,12 +40,15 @@ from django.core.exceptions import ImproperlyConfigured, ValidationError
 from django.core.management.base import BaseCommand
 from django.core.validators import validate_email
 
-from testy.core.models import Project
+from testy.core.choices import ActionCode
+from testy.core.models import NotificationSetting, Project
 from testy.users.choices import RoleTypes, UserAllowedPermissionCodenames
 from testy.users.models import Role
 
 logger = logging.getLogger(__name__)
 UserModel = get_user_model()
+_ACTION_CODE = 'action_code'
+_VERBOSE_NAME = 'verbose_name'
 
 
 class Command(BaseCommand):
@@ -55,6 +58,38 @@ class Command(BaseCommand):
         self.create_default_superuser()
         self.create_custom_permissions()
         self.create_default_roles()
+        self.create_default_notification_settings()
+
+    @classmethod
+    def create_default_notification_settings(cls):
+        fields = [_ACTION_CODE, 'message', _VERBOSE_NAME, 'placeholder_link', 'placeholder_text']
+        settings_data = [
+            {
+                _ACTION_CODE: ActionCode.TEST_ASSIGNED,
+                'message': '{{{{placeholder}}}} was assigned to you by {actor}',
+                _VERBOSE_NAME: 'Test assigned',
+                'placeholder_link': '/projects/{project_id}/plans/{plan_id}?test={object_id}',
+                'placeholder_text': 'Test {name}',
+            },
+            {
+                _ACTION_CODE: ActionCode.TEST_UNASSIGNED,
+                'message': '{{{{placeholder}}}} was unassigned by {actor}',
+                _VERBOSE_NAME: 'Test unassigned',
+                'placeholder_link': '/projects/{project_id}/plans/{plan_id}?test={object_id}',
+                'placeholder_text': 'Test {name}',
+            },
+        ]
+        for data in settings_data:
+            instance = NotificationSetting.objects.filter(pk=data[_ACTION_CODE]).first()
+            if instance is None:
+                NotificationSetting.model_create(fields, data)
+                updated = True
+            else:
+                _, updated = instance.model_update(fields, data)
+            if updated:
+                logger.info(f'Successfully modified notify action: {data["verbose_name"]}')
+            else:
+                logger.info(f'Skipping creating notify action: {data["verbose_name"]}')
 
     @classmethod
     def create_default_superuser(cls) -> None:

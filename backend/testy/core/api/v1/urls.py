@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -32,6 +32,7 @@
 from django.urls import path
 from rest_framework import routers
 
+from testy.core import consumers
 from testy.core.api.v1 import views
 
 router = routers.SimpleRouter()
@@ -39,10 +40,15 @@ router.register('attachments', views.AttachmentViewSet)
 router.register('labels', views.LabelViewSet)
 router.register('projects', views.ProjectViewSet)
 router.register('custom-attributes', views.CustomAttributeViewSet)
+router.register('notifications', views.NotificationViewSet)
 
 urlpatterns = [
     path('system/messages/', views.SystemMessagesViewSet.as_view({'get': 'list'}), name='system-messages'),
     path('system/statistics/', views.SystemStatisticViewSet.as_view({'get': 'list'}), name='system-statistics'),
+]
+
+websocket_urlpatterns = [
+    path('ws/notifications/<int:user_id>/', consumers.WebsocketNotificationConsumer.as_asgi()),
 ]
 
 urlpatterns += router.urls

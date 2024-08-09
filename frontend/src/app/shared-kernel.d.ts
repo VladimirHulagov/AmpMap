@@ -22,6 +22,7 @@ interface Attribute {
   value: string | object
   type: AttributeType
   required?: boolean
+  status_specific?: number[]
 }
 
 type AttributesObject = Record<string, string[] | string | object>
@@ -88,7 +89,7 @@ interface SelectData {
   value: number
 }
 // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
-type DataWithKey<T> = T & BaseData & { key: string | Key }
+type DataWithKey<T> = T & BaseData & { key: Key }
 interface BaseResponse {
   id: string | Id
   name: string
@@ -101,4 +102,10 @@ interface Breadcrumbs {
 interface Parent {
   id: number
   name: string
+}
+
+interface WebSocketState<T> {
+  connected: boolean
+  messages: T[]
+  lastMessage: T | null
 }

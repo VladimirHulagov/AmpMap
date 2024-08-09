@@ -1,7 +1,7 @@
 import { Space, Tag, Typography } from "antd"
 import classNames from "classnames"
 import dayjs from "dayjs"
-import { EditResult } from "features/test-result"
+import { EditCloneResult } from "features/test-result"
 import { useEffect } from "react"
 import { Link, useLocation, useParams } from "react-router-dom"
 import { HashLink } from "react-router-hash-link"
@@ -116,7 +116,21 @@ export const ResultList = ({ testId, testCase, isProjectArchive }: ResultListPro
                 </Link>
               )}
             </span>
-            <EditResult isDisabled={isProjectArchive} testCase={testCase} testResult={result} />
+            <span>
+              <EditCloneResult
+                isDisabled={isProjectArchive}
+                testCase={testCase}
+                testResult={result}
+                isClone={true}
+              />
+              <span className={styles.divider}>|</span>
+              <EditCloneResult
+                isDisabled={isProjectArchive}
+                testCase={testCase}
+                testResult={result}
+                isClone={false}
+              />
+            </span>
           </div>
         </div>
       ))}

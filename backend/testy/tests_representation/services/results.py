@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -29,7 +29,7 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 
-from typing import Any, Dict
+from typing import Any
 
 from django.db import transaction
 
@@ -48,7 +48,7 @@ class TestResultService:
     step_non_side_effect_fields = ['test_result', 'step', 'status', 'project']
 
     @transaction.atomic
-    def result_create(self, data: Dict[str, Any], user: User) -> TestResult:
+    def result_create(self, data: dict[str, Any], user: User) -> TestResult:
         pre_create_result.send(sender=self.result_create, data=data)
         test_result: TestResult = TestResult.model_create(
             fields=self.non_side_effect_fields,
@@ -75,7 +75,7 @@ class TestResultService:
         return test_result
 
     @transaction.atomic
-    def result_update(self, test_result: TestResult, data: Dict[str, Any]) -> TestResult:
+    def result_update(self, test_result: TestResult, data: dict[str, Any]) -> TestResult:
         test_result, has_updated = test_result.model_update(
             fields=self.non_side_effect_fields,
             data=data,

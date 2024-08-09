@@ -20,6 +20,7 @@ export const makeTestSuitesWithCasesForTreeView = (
       title: item.name,
       icon: <FileDoneOutlined />,
       labels: item.labels,
+      is_archive: item.is_archive,
     }
   })
 

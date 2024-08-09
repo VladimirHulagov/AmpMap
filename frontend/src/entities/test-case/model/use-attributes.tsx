@@ -86,6 +86,7 @@ export const useAttributes = ({ mode, setValue }: UseAttributesProps) => {
           name: key,
           type: "Text",
           value: attributesJson[key],
+          required: false,
         })
       } else if (Array.isArray(attributesJson[key])) {
         const array: string[] = attributesJson[key] as string[]
@@ -94,6 +95,7 @@ export const useAttributes = ({ mode, setValue }: UseAttributesProps) => {
           name: key,
           type: "List",
           value: array.join("\r\n"),
+          required: false,
         })
       } else if (typeof attributesJson[key] === "object") {
         newAttributes.push({
@@ -101,6 +103,7 @@ export const useAttributes = ({ mode, setValue }: UseAttributesProps) => {
           name: key,
           type: "JSON",
           value: JSON.stringify(attributesJson[key], null, 2),
+          required: false,
         })
       }
     })

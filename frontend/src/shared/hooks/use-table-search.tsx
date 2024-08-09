@@ -6,9 +6,12 @@ import { useState } from "react"
 import { colors } from "shared/config"
 import { HighLighterTesty } from "shared/ui"
 
-export const useTableSearch = () => {
+import { useDebounce } from "./use-debounce"
+
+export const useTableSearch = (debounceTime = 300) => {
   const [searchText, setSearchText] = useState("")
   const [searchedColumn, setSearchedColumn] = useState<string[]>([])
+  const searchDebounce = useDebounce(searchText, debounceTime)
 
   const handleSearch = (
     selectedKeys: string[],
@@ -63,11 +66,18 @@ export const useTableSearch = () => {
       ),
   })
 
+  const onClear = () => {
+    setSearchText("")
+    setSearchedColumn([])
+  }
+
   return {
     setSearchText,
-    getColumnSearch,
     setSearchedColumn,
+    getColumnSearch,
+    onClear,
     searchText,
     searchedColumn,
+    searchDebounce,
   }
 }

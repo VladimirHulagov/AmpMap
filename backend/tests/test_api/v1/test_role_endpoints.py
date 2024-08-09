@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -51,7 +51,11 @@ class TestRoleEndpoints:
     def test_list(self, api_client, authorized_superuser, role_factory):
         for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
             role_factory()
-        expected_instances = model_to_dict_via_serializer(Role.objects.all(), RoleSerializer, many=True)
+        expected_instances = model_to_dict_via_serializer(
+            Role.objects.order_by('name'),
+            RoleSerializer,
+            many=True,
+        )
         response = api_client.send_request(self.view_name_list)
         assert response.json()['results'] == expected_instances
 

@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -29,7 +29,7 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 from itertools import product
-from typing import Any, Dict, Iterable, List
+from typing import Any, Iterable
 
 from django.db import transaction
 
@@ -47,7 +47,7 @@ class TestPlanService:
     ]
 
     @transaction.atomic
-    def testplan_create(self, data: Dict[str, Any]) -> List[TestPlan]:
+    def testplan_create(self, data: dict[str, Any]) -> list[TestPlan]:
         with lock_table(TestPlan):
             test_plan = TestPlan.model_create(fields=self.non_side_effect_fields, data=data)
             parent = data.get(_PARENT) if data.get(_PARENT) else test_plan
@@ -57,7 +57,7 @@ class TestPlanService:
         return test_plan
 
     @transaction.atomic
-    def testplan_bulk_create(self, data: Dict[str, Any]) -> List[TestPlan]:
+    def testplan_bulk_create(self, data: dict[str, Any]) -> list[TestPlan]:
         parameters = data.get('parameters')
         parameter_combinations = self._parameter_combinations(parameters)
         created_plans = []
@@ -127,10 +127,10 @@ class TestPlanService:
         Return all possible combinations of parameters by group name.
 
         Args:
-            parameters: List of Parameter objects.
+            parameters: list of Parameter objects.
 
         Returns:
-             List of tuple of every possible combination of parameters.
+             list of tuple of every possible combination of parameters.
         """
         group_parameters = {}
 

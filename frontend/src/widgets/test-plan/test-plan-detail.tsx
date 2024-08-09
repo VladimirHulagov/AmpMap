@@ -13,12 +13,14 @@ import { Link } from "react-router-dom"
 import { TestPlanStatistics } from "widgets"
 
 import { useTestPlanDetails } from "entities/test-plan/model"
-import { TestPlanTableWrapper } from "entities/test-plan/ui"
 
 import { colors } from "shared/config"
 import { ContainerLoader, Markdown } from "shared/ui"
 
-import { TestDetail, TestsTable } from "widgets/tests"
+import { TestDetail } from "widgets/tests"
+import { TestsTable } from "widgets/tests/tests-table/tests-table"
+
+import { TestPlanTableWrapper } from "./test-plan-table/test-plan-table-wrapper"
 
 interface TestPlanDetailProps {
   collapse: boolean

@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -29,14 +29,14 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 from rest_framework import serializers
-from rest_framework.fields import BooleanField, IntegerField, ListField, SerializerMethodField, empty
+from rest_framework.fields import BooleanField, CharField, IntegerField, ListField, SerializerMethodField, empty
 from rest_framework.relations import HyperlinkedIdentityField, PrimaryKeyRelatedField
 
 from testy.core.api.v1.serializers import AttachmentSerializer, CopyDetailSerializer
 from testy.core.models import Label, LabeledItem
 from testy.core.selectors.attachments import AttachmentSelector
 from testy.core.selectors.projects import ProjectSelector
-from testy.core.validators import TestCaseCustomAttributeValuesValidator
+from testy.core.validators import CasesCopyProjectValidator, TestCaseCustomAttributeValuesValidator
 from testy.serializer_fields import EstimateField
 from testy.tests_description.models import TestCase, TestCaseStep, TestSuite
 from testy.tests_description.selectors.cases import TestCaseSelector, TestCaseStepSelector
@@ -134,7 +134,7 @@ class TestCaseInputBaseSerializer(TestCaseBaseSerializer):
             request = self.context['request']
             history_latest = TestCaseSelector.get_last_history(self.instance.pk)
             if request.user != history_latest.history_user:
-                raise serializers.ValidationError('You can not update version of Test Case')
+                raise serializers.ValidationError('You cannot update version of Test Case')
 
         return attrs
 
@@ -163,6 +163,7 @@ class TestCaseListSerializer(TestCaseBaseSerializer):
     labels = SerializerMethodField(read_only=True)
     versions = ListField(child=IntegerField(), read_only=True)
     current_version = SerializerMethodField(read_only=True)
+    suite_name = CharField(source='suite.name', read_only=True)
 
     def __init__(self, instance=None, version=None, data=empty, **kwargs):
         self._version = version
@@ -170,7 +171,7 @@ class TestCaseListSerializer(TestCaseBaseSerializer):
 
     class Meta(TestCaseBaseSerializer.Meta):
         fields = TestCaseBaseSerializer.Meta.fields + (
-            'attachments', 'url', 'steps', 'labels', 'versions', 'current_version',
+            'attachments', 'url', 'steps', 'labels', 'versions', 'current_version', 'suite_name',
         )
 
     def get_current_version(self, instance):
@@ -282,7 +283,10 @@ class TestSuiteTreeCasesSerializer(TestSuiteTreeSerializer):
 
 class TestCaseCopySerializer(serializers.Serializer):
     cases = CopyDetailSerializer(many=True, required=True)
-    dst_suite_id = serializers.IntegerField(required=False)
+    dst_suite_id = serializers.PrimaryKeyRelatedField(queryset=TestSuiteSelector.suite_list_raw(), required=False)
+
+    class Meta:
+        validators = [CasesCopyProjectValidator()]
 
 
 class TestSuiteCopySerializer(serializers.Serializer):

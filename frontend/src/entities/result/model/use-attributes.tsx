@@ -2,12 +2,15 @@ import { useAttributesTestResult } from "entities/custom-attribute/model"
 import { useEffect, useState } from "react"
 import { UseFormSetValue } from "react-hook-form"
 
+import { statusesObject } from "shared/config"
 import { makeRandomId } from "shared/libs"
 
 interface UseAttributesProps {
   mode: "create" | "edit"
   setValue: UseFormSetValue<ResultFormData>
 }
+
+const allStatusesId = Object.keys(statusesObject).map((i) => Number(i))
 
 export const useAttributes = ({ mode, setValue }: UseAttributesProps) => {
   const [attributes, setAttributes] = useState<Attribute[]>([])
@@ -23,7 +26,14 @@ export const useAttributes = ({ mode, setValue }: UseAttributesProps) => {
   const addAttribute = () => {
     const newAttributes = [
       ...attributes,
-      { id: makeRandomId(), name: "", value: "", type: "Text" },
+      {
+        id: makeRandomId(),
+        name: "",
+        value: "",
+        type: "Text",
+        required: false,
+        status_specific: allStatusesId,
+      },
     ] as Attribute[]
     setAttributes(newAttributes)
     setValue("attributes", newAttributes, { shouldDirty: true })
@@ -85,6 +95,8 @@ export const useAttributes = ({ mode, setValue }: UseAttributesProps) => {
           name: key,
           type: "Text",
           value: attributesJson[key],
+          required: false,
+          status_specific: allStatusesId,
         })
       } else if (Array.isArray(attributesJson[key])) {
         const array: string[] = attributesJson[key] as string[]
@@ -93,6 +105,8 @@ export const useAttributes = ({ mode, setValue }: UseAttributesProps) => {
           name: key,
           type: "List",
           value: array.join("\r\n"),
+          required: false,
+          status_specific: allStatusesId,
         })
       } else if (typeof attributesJson[key] === "object") {
         newAttributes.push({
@@ -100,6 +114,8 @@ export const useAttributes = ({ mode, setValue }: UseAttributesProps) => {
           name: key,
           type: "JSON",
           value: JSON.stringify(attributesJson[key], null, 2),
+          required: false,
+          status_specific: allStatusesId,
         })
       }
     })

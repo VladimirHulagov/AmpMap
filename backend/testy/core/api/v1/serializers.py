@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -28,18 +28,21 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from typing import Optional
 
 import humanize
+import timeago
 from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
+from django.utils import timezone
+from notifications.models import Notification
 from rest_framework.exceptions import ValidationError
-from rest_framework.fields import BooleanField, CharField, IntegerField, ListField, SerializerMethodField
+from rest_framework.fields import BooleanField, CharField, DateTimeField, IntegerField, ListField, SerializerMethodField
 from rest_framework.relations import PrimaryKeyRelatedField
 from rest_framework.serializers import HyperlinkedIdentityField, ModelSerializer, Serializer
 
 from testy.core.constants import CUSTOM_ATTRIBUTES_ALLOWED_APPS, CUSTOM_ATTRIBUTES_ALLOWED_MODELS
-from testy.core.models import Attachment, CustomAttribute, Label, Project, SystemMessage
+from testy.core.models import Attachment, CustomAttribute, Label, NotificationSetting, Project, SystemMessage
+from testy.core.selectors.notifications import NotificationSelector
 from testy.core.selectors.project_settings import ProjectSettings
 from testy.core.validators import CustomAttributeCreateValidator
 from testy.serializer_fields import EstimateField
@@ -53,7 +56,7 @@ class LabelSerializer(ModelSerializer):
         model = Label
         fields = ('id', 'url', 'name', 'username', 'type', 'user', 'project')
 
-    def get_username(self, instance) -> Optional[str]:
+    def get_username(self, instance) -> str | None:
         if instance.user is not None:
             return instance.user.username
         return None
@@ -65,7 +68,16 @@ class CustomAttributeBaseSerializer(ModelSerializer):
     class Meta:
         model = CustomAttribute
         fields = (
-            'id', 'url', 'project', 'name', 'is_required', 'is_suite_specific', 'type', 'is_deleted', 'suite_ids',
+            'id',
+            'url',
+            'project',
+            'name',
+            'is_required',
+            'is_suite_specific',
+            'type',
+            'is_deleted',
+            'suite_ids',
+            'status_specific',
         )
 
 
@@ -210,3 +222,58 @@ class CopyDetailSerializer(Serializer):
 
 class AccessRequestSerializer(Serializer):
     reason = CharField(required=False, allow_blank=True, allow_null=True)
+
+
+class NotificationSerializer(ModelSerializer):
+    actor = CharField(source='actor.username', read_only=True)
+    timeago = SerializerMethodField()
+    timestamp = DateTimeField(read_only=True)
+    message = SerializerMethodField()
+
+    @classmethod
+    def get_message(cls, instance: Notification):
+        return instance.data
+
+    @classmethod
+    def get_timeago(cls, instance: Notification):
+        return timeago.format(timezone.now() - instance.timestamp)
+
+    class Meta:
+        model = Notification
+        fields = (
+            'id',
+            'unread',
+            'actor',
+            'timestamp',
+            'timeago',
+            'message',
+        )
+
+
+class NotificationSettingSerializer(ModelSerializer):
+    enabled = BooleanField(read_only=True)
+
+    class Meta:
+        model = NotificationSetting
+        fields = ('action_code', 'verbose_name', 'enabled')
+
+
+class ModifyNotificationsSettingsSerializer(Serializer):
+    settings = PrimaryKeyRelatedField(
+        queryset=NotificationSelector.list_notification_settings(),
+        many=True,
+        required=True,
+    )
+
+
+class MarkNotificationSerializer(Serializer):
+    unread = BooleanField(default=True)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if (request := self.context.get('request')) and request.user:
+            self.fields['notifications'] = PrimaryKeyRelatedField(
+                many=True,
+                queryset=NotificationSelector.list_notifications(request.user),
+                allow_empty=True,
+            )

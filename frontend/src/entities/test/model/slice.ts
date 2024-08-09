@@ -2,6 +2,8 @@ import { PayloadAction, createSlice } from "@reduxjs/toolkit"
 
 import { RootState } from "app/store"
 
+import { config } from "shared/config"
+
 const initialState: TestState = {
   test: null,
   settings: {
@@ -11,7 +13,7 @@ const initialState: TestState = {
       pagination: {
         current: 1,
         defaultPageSize: 10,
-        pageSizeOptions: ["10", "20", "50", "100"],
+        pageSizeOptions: config.pageSizeOptions,
         showLessItems: true,
         hideOnSinglePage: false,
         showSizeChanger: true,

@@ -8,8 +8,7 @@ import { useSelectSuiteModal } from "./use-select-suite-modal"
 export interface SelectSuiteModalProps {
   opened: boolean
   onCancel: () => void
-  onSubmit: (suiteId: number) => void
-  treeSuites: SuiteTree[]
+  onSubmit: (suiteId: number, suiteName?: string) => void
   selectedSuiteId: number
 }
 
@@ -25,6 +24,10 @@ export const SelectSuiteModal = (props: SelectSuiteModalProps) => {
     selectedKeys,
   } = useSelectSuiteModal(props)
   const { opened, onCancel } = props
+
+  if (!opened) {
+    return null
+  }
 
   return (
     <Modal
@@ -49,7 +52,7 @@ export const SelectSuiteModal = (props: SelectSuiteModalProps) => {
         selectedKeys={selectedKeys}
         onSelect={hadleChangeSuite}
         treeData={treeData}
-        expandedKeys={expandedKeys}
+        expandedKeys={[...expandedKeys, ...selectedKeys]}
         onExpand={onExpand}
         autoExpandParent={autoExpandParent}
       />

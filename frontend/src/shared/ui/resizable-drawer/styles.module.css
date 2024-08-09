@@ -37,3 +37,16 @@
   align-items: center;
   justify-content: center;
 }
+
+:global(.testy-drawer .ant-drawer-header) {
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+:global(.testy-drawer .ant-drawer-header-title) {
+  min-width: auto;
+}
+
+:global(.testy-drawer .ant-drawer-title) {
+  overflow-wrap: anywhere;
+}

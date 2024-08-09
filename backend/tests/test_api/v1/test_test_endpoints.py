@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -33,6 +33,7 @@ from http import HTTPStatus
 from operator import itemgetter
 
 import pytest
+from tests_representation.selectors.tests import TestSelector
 
 from tests import constants
 from tests.commons import RequestType, model_to_dict_via_serializer
@@ -40,12 +41,15 @@ from tests.error_messages import PERMISSION_ERR_MSG, REQUIRED_FIELD_MSG
 from tests.mock_serializers import TestMockSerializer
 from testy.tests_representation.choices import TestStatuses
 from testy.tests_representation.models import Test
+from testy.validators import BulkUpdateExcludeIncludeValidator, MoveTestsSameProjectValidator
 
 
 @pytest.mark.django_db
+@pytest.mark.usefixtures('mock_tests_channel_layer')
 class TestTestEndpoints:
     view_name_list = 'api:v1:test-list'
     view_name_detail = 'api:v1:test-detail'
+    view_name_bulk_update = 'api:v1:test-bulk-update'
 
     def test_list(self, api_client, authorized_superuser, test_factory, project):
         expected_instances = model_to_dict_via_serializer(
@@ -140,23 +144,22 @@ class TestTestEndpoints:
                 expected_instance.last_status = TestStatuses.FAILED.value
                 test_result_factory(test=expected_instance, status=TestStatuses.FAILED)
             elif idx % 3:
-                expected_instance.last_status = TestStatuses.SKIPPED.value
-                test_result_factory(test=expected_instance, status=TestStatuses.SKIPPED)
+                expected_instance.last_status = TestStatuses.BROKEN.value
+                test_result_factory(test=expected_instance, status=TestStatuses.BROKEN)
             else:
                 expected_instance.last_status = TestStatuses.PASSED.value
                 test_result_factory(test=expected_instance, status=TestStatuses.PASSED)
+        ordering_condition = f'{"-" if descending else ""}{"case__name" if field_name == "name" else field_name}'
+        tests = (
+            TestSelector()
+            .test_list_with_last_status({'id__in': [test.id for test in tests]})
+            .order_by(ordering_condition)
+        )
         expected_instances = model_to_dict_via_serializer(
             tests,
             TestMockSerializer,
             many=True,
         )
-
-        expected_instances = sorted(
-            expected_instances,
-            key=itemgetter(field_name),
-            reverse=descending,
-        )
-
         for page_number in range(1, number_of_pages + 1):
             response = api_client.send_request(
                 self.view_name_list,
@@ -290,3 +293,170 @@ class TestTestEndpoints:
             query_params=query_params,
         ).json()
         assert content.get('count') == number_of_items
+
+    @pytest.mark.parametrize('payload_key', ['included_tests', 'excluded_tests'])
+    @pytest.mark.parametrize('update_key', ['plan', 'assignee'])
+    def test_bulk_update_tests(
+        self,
+        api_client,
+        authorized_superuser,
+        project,
+        test_plan_factory,
+        test_factory,
+        user,
+        update_key,
+        payload_key,
+    ):
+
+        first_plan = test_plan_factory(project=project)
+        if update_key == 'plan':
+            update_value = test_plan_factory(project=project).pk
+        elif update_key == 'assignee':
+            update_value = user.pk
+        payload = {update_key: update_value}
+        tests_pk = []
+        for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
+            test = test_factory(project=project, plan=first_plan)
+            tests_pk.append(test.pk)
+        tests_in_payload = tests_pk[:constants.NUMBER_OF_OBJECTS_TO_CREATE // 2]
+        api_client.send_request(
+            self.view_name_bulk_update,
+            {'current_plan': first_plan.pk, payload_key: tests_in_payload, **payload},
+            HTTPStatus.OK,
+            RequestType.PUT,
+        )
+        if payload_key == 'included_tests':
+            affected_tests_pks = tests_pk[:constants.NUMBER_OF_OBJECTS_TO_CREATE // 2]
+        else:
+            affected_tests_pks = tests_pk[constants.NUMBER_OF_OBJECTS_TO_CREATE // 2:]
+        expected_count = constants.NUMBER_OF_OBJECTS_TO_CREATE // 2
+        actual_count = Test.objects.filter(pk__in=affected_tests_pks, **payload).count()
+        assert actual_count == expected_count
+
+    def test_bulk_update_plan_forbidden(
+        self,
+        api_client,
+        authorized_superuser,
+        project,
+        test_plan_factory,
+        test_factory,
+    ):
+        test_plan = test_plan_factory()
+        second_plan = test_plan_factory(project=project)
+
+        tests_pk = []
+        for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
+            tests_pk.append(test_factory(plan=test_plan, project=test_plan.project).pk)
+        assert test_plan.project != second_plan.project
+        response = api_client.send_request(
+            self.view_name_bulk_update,
+            {'plan': second_plan.pk, 'included_tests': tests_pk, 'current_plan': test_plan.pk},
+            HTTPStatus.BAD_REQUEST,
+            RequestType.PUT,
+        )
+        assert MoveTestsSameProjectValidator.err_msg.format(second_plan.project.name) in response.json()['errors']
+
+    def test_bulk_update_plan_both_include_exclude(
+        self,
+        api_client,
+        authorized_superuser,
+        test_plan,
+        test_factory,
+    ):
+        include = []
+        exclude = []
+        for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
+            include.append(test_factory(plan=test_plan, project=test_plan.project).pk)
+            exclude.append(test_factory(plan=test_plan, project=test_plan.project).pk)
+        response = api_client.send_request(
+            self.view_name_bulk_update,
+            {'included_tests': include, 'excluded_tests': exclude, 'current_plan': test_plan.pk},
+            HTTPStatus.BAD_REQUEST,
+            RequestType.PUT,
+        )
+        assert BulkUpdateExcludeIncludeValidator.err_msg in response.json()['errors']
+
+    @pytest.mark.parametrize(
+        'filter_keys',
+        [
+            ('search',),
+            ('last_status',),
+            ('labels',),
+            ('not_labels',),
+            ('assignee',),
+            ('unassigned',),
+            ('suite',),
+            ('suite', 'search'),
+            ('suite', 'labels'),
+            ('suite', 'last_status'),
+            ('suite', 'last_status', 'labels'),
+            ('suite', 'labels', 'assignee', 'last_status'),
+        ],
+    )
+    def test_bulk_update_tests_with_filters(
+        self,
+        api_client,
+        authorized_superuser,
+        project,
+        test_plan_factory,
+        test_factory,
+        user_factory,
+        test_suite_factory,
+        test_case_factory,
+        labeled_item_factory,
+        filter_keys,
+        test_result_factory,
+    ):
+        case_name_for_search = 'case_name_for_search'
+        status_for_search = TestStatuses.BROKEN
+        suite_for_search = test_suite_factory()
+        case = test_case_factory(suite=suite_for_search, name=case_name_for_search)
+        assignee = user_factory()
+        new_assignee_id = user_factory().id
+        labels_for_search = []
+        for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
+            labeled_item = labeled_item_factory(content_object=case)
+            labels_for_search.append(str(labeled_item.label.id))
+        filter_parameters = {
+            'unassigned': True,
+            'assignee': new_assignee_id,
+            'search': case_name_for_search,
+            'labels': labels_for_search,
+            'not_labels': labels_for_search,
+            'suite': str(suite_for_search.id),
+            'last_status': str(status_for_search),
+        }
+        first_plan = test_plan_factory(project=project)
+        tests_pk = []
+        negative_tests_pk = []
+        for idx in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
+            if idx % 2:
+                test = test_factory(
+                    project=project,
+                    plan=first_plan,
+                    case=case,
+                    assignee=assignee,
+                )
+                test_result_factory(test=test, status=status_for_search)
+                tests_pk.append(test.pk)
+            else:
+                negative_tests_pk.append(test_factory().pk)
+
+        response_body = api_client.send_request(
+            self.view_name_bulk_update,
+            {
+                'current_plan': first_plan.pk,
+                'filter_conditions': {filter_key: filter_parameters[filter_key] for filter_key in filter_keys},
+                'include_tests': tests_pk + negative_tests_pk,
+                'assignee': new_assignee_id,
+            },
+            HTTPStatus.OK,
+            RequestType.PUT,
+        ).json()
+        if 'not_labels' in filter_keys:
+            affected_tests_pks = negative_tests_pk
+        else:
+            affected_tests_pks = tests_pk
+        for actual_test in response_body:
+            assert actual_test['id'] in affected_tests_pks, f'Missing test {actual_test["id"]}'
+            assert actual_test['assignee'] == new_assignee_id, f'Assignee was not changed: {actual_test["assignee"]}'

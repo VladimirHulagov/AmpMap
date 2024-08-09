@@ -139,10 +139,7 @@ export const CreateResultModal = (props: CreateResultModalProps) => {
                 <Steps.ResultInCreateModal testCase={testCase} steps={steps} setSteps={setSteps} />
               </Row>
             )}
-            <Form.Item
-              validateStatus={errors?.attributes ? "error" : ""}
-              help={errors?.attributes ? errors.attributes : "Fill the attribute name."}
-            >
+            <Form.Item>
               <Controller
                 name="attributes"
                 control={control}
@@ -160,6 +157,8 @@ export const CreateResultModal = (props: CreateResultModalProps) => {
                       handleAttributeChangeName={onAttributeChangeName}
                       handleAttributeChangeValue={onAttributeChangeValue}
                       handleAttributeChangeType={onAttributeChangeType}
+                      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                      errors={errors?.attributes ? JSON.parse(errors?.attributes) : undefined}
                     />
                     <div style={{ marginTop: 8 }}>
                       <Button id="add-attribute-btn" type="dashed" block onClick={addAttribute}>

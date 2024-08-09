@@ -3,6 +3,7 @@ import { ControllerRenderProps } from "react-hook-form"
 import { AttributForm } from "./form"
 
 interface AttributeListProps {
+  errors?: Record<string, Record<string, string>>
   fieldProps:
     | ControllerRenderProps<ResultFormData, "attributes">
     | ControllerRenderProps<TestCaseFormData, "attributes">
@@ -14,6 +15,7 @@ interface AttributeListProps {
 }
 
 export const AttributeList = ({
+  errors,
   fieldProps,
   attributes,
   handleAttributeRemove,
@@ -22,7 +24,6 @@ export const AttributeList = ({
   handleAttributeChangeType,
 }: AttributeListProps) => {
   if (attributes.length === 0) return null
-
   return (
     <>
       {attributes.map((attribut, index) => {
@@ -30,6 +31,7 @@ export const AttributeList = ({
           <AttributForm
             index={index}
             key={attribut.id}
+            errors={errors ? errors[attribut.id] : undefined}
             fieldProps={fieldProps}
             attribut={attribut}
             handleAttributeRemove={handleAttributeRemove}

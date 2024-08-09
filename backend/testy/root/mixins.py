@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -28,7 +28,7 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from typing import Any, Optional, Set, TypedDict, Union
+from typing import Any, TypedDict
 from uuid import uuid4
 
 from django.apps import apps
@@ -51,8 +51,7 @@ from testy.core.services.recovery import RecoveryService
 from testy.paginations import StandardSetPagination
 from testy.root.models import DeletedQuerySet, SoftDeleteQuerySet
 
-UniqueRelationSet = Set[Union[ManyToOneRel, GenericRelation, ManyToManyRel]]
-
+UniqueRelationSet = set[ManyToOneRel | GenericRelation | ManyToManyRel]
 _TARGET_OBJECT = 'target_object'
 _POST = 'post'
 
@@ -84,7 +83,7 @@ CacheReadyQuerySet = tuple[list[QuerySetMeta], list[QuerySetInfo]]
 
 
 class RelationTreeMixin:
-    def build_relation_tree(self, model, tree: Optional[list] = None) -> UniqueRelationSet:  # noqa: WPS231
+    def build_relation_tree(self, model, tree: list | None = None) -> UniqueRelationSet:  # noqa: WPS231
         """
         Build tree of relations by model to prevent duplicate recursive queries gathering.
 
@@ -115,8 +114,8 @@ class RelationTreeMixin:
         self,
         qs,
         model,
-        qs_info_list: Optional[list[QuerySetInfo]] = None,
-        qs_meta_list: Optional[list[QuerySetMeta]] = None,
+        qs_info_list: list[QuerySetInfo] | None = None,
+        qs_meta_list: list[QuerySetMeta] | None = None,
         deleted: bool = False,
         relation_tree=None,
         ignore_on_delete_property: bool = False,
@@ -193,7 +192,7 @@ class RelationTreeMixin:
         return qs_meta_list, qs_info_list
 
     @classmethod
-    def _check_for_relation(cls, new_relation: Union[GenericRelation, ManyToManyRel, ManyToOneRel], relations):
+    def _check_for_relation(cls, new_relation: GenericRelation | ManyToManyRel | ManyToOneRel, relations):
         """
         Decide if new gathered relation clashes with previously found relations.
 

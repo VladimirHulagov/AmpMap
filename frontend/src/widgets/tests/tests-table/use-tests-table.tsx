@@ -1,157 +1,301 @@
 import { LeftOutlined, RightOutlined } from "@ant-design/icons"
-import { Button, TableProps, Tag, Tooltip } from "antd"
-import { CheckboxValueType } from "antd/es/checkbox/Group"
+import { Button, TablePaginationConfig } from "antd"
 import { ColumnsType } from "antd/es/table"
-import type { FilterValue, TablePaginationConfig } from "antd/es/table/interface"
-import { Key, useEffect, useState } from "react"
-import { useDispatch } from "react-redux"
+import { FilterValue, Key, RowSelectMethod, SorterResult } from "antd/es/table/interface"
+import decodeUriComponent from "decode-uri-component"
+import queryString from "query-string"
+import { useEffect, useMemo, useState } from "react"
 import { Link, useParams, useSearchParams } from "react-router-dom"
 
-import { useAppSelector } from "app/hooks"
+import { useAppDispatch, useAppSelector } from "app/hooks"
 
-import { selectSelectedLabels } from "entities/label/model"
+import { selectSelectedLabels, setSelectedLabels } from "entities/label/model"
 import { Label } from "entities/label/ui"
 
-import { useLazyGetTestsQuery } from "entities/test/api"
-import { useTestsTableParams } from "entities/test/model"
-import { selectTest, setTest } from "entities/test/model/slice"
+import { useBulkUpdateMutation, useGetTestsQuery } from "entities/test/api"
+import { selectTest, setTest, useTestsTableParams } from "entities/test/model"
 
-import { selectArchivedTestsIsShow, setTests, showArchivedTests } from "entities/test-plan/model"
+import { selectArchivedTestsIsShow, setShowArchivedTests } from "entities/test-plan/model"
 
-import { useUserConfig } from "entities/user/model"
 import { UserAvatar, UserUsername } from "entities/user/ui"
 
-import { colors } from "shared/config"
+import { colors, config } from "shared/config"
 import { useTableSearch } from "shared/hooks"
-import { initInternalError, sortEstimate } from "shared/libs"
+import { useUrlSyncParams } from "shared/hooks/use-url-sync-params"
+import { sortEstimate } from "shared/libs"
+import { antdSorterToTestySort } from "shared/libs/antd-sorter-to-testy-sort"
 import { HighLighterTesty, Status } from "shared/ui"
+import { ArchivedTag } from "shared/ui/archived-tag/archived-tag"
 
 import { AssigneeFiltersDrowdown } from "./filters/assignee-filters-dropdown"
 import { SuiteFiltersDrowdown } from "./filters/suite-filters-dropdown"
 import styles from "./styles.module.css"
 
-// TODO need refacroting
-export const useTestsTable = (testPlanId: Id) => {
-  const dispatch = useDispatch()
-  const showArchive = useAppSelector(selectArchivedTestsIsShow)
-  const [getTests, { data: tests, isLoading }] = useLazyGetTestsQuery()
-  const selectedLabels = useAppSelector(selectSelectedLabels)
-  const { userConfig, updateConfig } = useUserConfig()
+interface TableParamsData extends Record<string, unknown> {
+  page: number
+  page_size: number
+}
 
-  const { setSearchText, getColumnSearch, searchText } = useTableSearch()
-  const { tableParams, setTableParams, reset } = useTestsTableParams()
-  const [requestDataState, setRequestDataState] = useState("")
+interface Props {
+  testPlanId: Id
+}
+
+const formatOptions = {
+  arrayFormat: "bracket-separator",
+  arrayFormatSeparator: ",",
+} as {
+  arrayFormat: "bracket-separator"
+  arrayFormatSeparator: ","
+}
+const DEFAULT_PAGE = 1
+const DEFAULT_PAGE_SIZE = 10
+
+export const useTestsTable = ({ testPlanId }: Props) => {
   const { projectId } = useParams<ParamProjectId>()
-  const [searchParams, setSearchParams] = useSearchParams()
+  const dispatch = useAppDispatch()
+  const selectedLabels = useAppSelector(selectSelectedLabels)
+  const { setSearchText, getColumnSearch, searchText } = useTableSearch()
+
+  const isShowArchiveState = useAppSelector(selectArchivedTestsIsShow)
+  const [selectedSuites, setSelectedSuites] = useState<Key[]>([])
+  const [visibleColumns, setVisibleColumns] = useState<string[]>([])
+  const {
+    tableParams: testsTableParams,
+    setTableParams: setTestsTableParams,
+    reset,
+  } = useTestsTableParams()
   const test = useAppSelector(selectTest)
-  const [shownColumns, setShownColumns] = useState<string[]>(
-    userConfig.test_plans?.shown_columns ?? []
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [isCompleteSelectLabels, setIsCompleteSelectLabels] = useState(false)
+  const [isRefreshingTable, setIsRefreshingTable] = useState(false)
+
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+  const isShowArchive: boolean = searchParams.get("is_archive")
+    ? JSON.parse(searchParams.get("is_archive") ?? "")
+    : isShowArchiveState
+  const paramLabelsCondition = searchParams.get("labels_condition")
+  const paramSuite = searchParams.get("suite[]")
+
+  const [tableParams, setTableParams] = useState<TableParamsData>({
+    page: searchParams.get("page") ? Number(searchParams.get("page")) : DEFAULT_PAGE,
+    page_size: searchParams.get("page_size")
+      ? Number(searchParams.get("page_size"))
+      : DEFAULT_PAGE_SIZE,
+  })
+
+  useEffect(() => {
+    setTableParams({
+      page: DEFAULT_PAGE,
+      page_size: DEFAULT_PAGE_SIZE,
+    })
+    setSearchText("")
+  }, [selectedLabels])
+
+  const tableParamsMemo = useMemo(() => {
+    return {
+      ...tableParams,
+      labels: selectedLabels.labels,
+      not_labels: selectedLabels.not_labels,
+      labels_condition: testsTableParams.filters?.labels_condition,
+      suite: selectedSuites,
+    }
+  }, [tableParams, testsTableParams, selectedSuites])
+
+  useEffect(() => {
+    if (isCompleteSelectLabels) {
+      return
+    }
+
+    const format = queryString.parse(decodeUriComponent(searchParams.toString()), {
+      arrayFormat: "bracket-separator",
+      arrayFormatSeparator: ",",
+    })
+
+    if (format?.labels ?? format?.not_labels) {
+      dispatch(
+        setSelectedLabels({
+          labels: (format?.labels as string[]) ?? [],
+          not_labels: (format?.not_labels as string[]) ?? [],
+        })
+      )
+    }
+    setIsCompleteSelectLabels(true)
+  }, [isCompleteSelectLabels, searchParams.get("labels"), searchParams.get("not_labels")])
+
+  useEffect(() => {
+    if (paramLabelsCondition) {
+      setTestsTableParams({ filters: { labels_condition: paramLabelsCondition } })
+    }
+  }, [paramLabelsCondition])
+
+  useEffect(() => {
+    if (paramSuite) {
+      const format = queryString.parse(decodeUriComponent(searchParams.toString()), formatOptions)
+      setSelectedSuites(format?.suite as string[])
+    }
+  }, [paramSuite])
+
+  useUrlSyncParams({ params: tableParamsMemo as typeof tableParams, setTableParams })
+
+  const { data, isFetching } = useGetTestsQuery(
+    {
+      project: projectId ?? "",
+      plan: testPlanId,
+      is_archive: isShowArchive,
+      nested_search: true,
+      ...tableParamsMemo,
+    },
+    {
+      skip: !projectId || !isCompleteSelectLabels,
+    }
   )
 
-  useEffect(() => {
-    if (!userConfig.test_plans?.shown_columns) return
-    setShownColumns(userConfig.test_plans.shown_columns)
-  }, [userConfig, testPlanId])
+  const [selectedRows, setSelectedRows] = useState<number[]>([])
+  const [excludedRows, setExcludedRows] = useState<number[]>([])
+  const [isAllSelected, setIsAllSelected] = useState(false)
+  const [bulkUpdateTests] = useBulkUpdateMutation()
 
   useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    dispatch(setTests(tests?.results ?? []))
-  }, [tests])
-
-  const [selectedSuites, setSelectedSuites] = useState<Key[]>([])
-
-  useEffect(() => {
-    reset()
-  }, [testPlanId])
-
-  // TODO need refactoring next code
-  useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const currentPage =
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      Number(testPlanId) !== Number(tableParams.testPlanId) ? 1 : tableParams.pagination?.current
-
-    ;(async () => {
-      const requestData = {
-        plan: testPlanId,
-        project: projectId ?? "",
-        is_archive:
-          (tableParams.filters?.is_archive && tableParams.filters?.is_archive[0]) ?? showArchive,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-        page_size: tableParams.pagination?.pageSize,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        page: currentPage,
-        last_status: tableParams.filters?.last_status?.join(","),
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-        search: tableParams.filters?.name ? (tableParams.filters?.name[0] as string) : undefined,
-        labels: selectedLabels.labels,
-        not_labels: selectedLabels.not_labels,
-        labels_condition: tableParams.filters?.labels_condition,
-        suite: tableParams.filters?.suite,
-        assignee: tableParams.filters?.assignee_id,
-        unassigned: tableParams.filters?.unassigned,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        ordering: tableParams.sorter ? tableParams.sorter : undefined,
-        nested_search: true,
-      }
-
-      const requestDataWithNonce = { ...requestData, nonce: tableParams.nonce }
-
-      // hack for remove duplicate requests
-      if (JSON.stringify(requestDataWithNonce) === requestDataState) return
-      setRequestDataState(JSON.stringify(requestDataWithNonce))
-
-      // TODO тут баг при быстрой смене
-      // tableParams запросы перетирают друг друга и уходят в рекурсию нужна полная смена функционала
-      await fetchTests(requestData, testPlanId)
-    })()
-  }, [showArchive, tableParams, testPlanId, selectedLabels])
-
-  const fetchTests = async (
-    requestData: QueryWithPagination<ITestGetWithFilters>,
-    testPlanId: number
-  ) => {
-    try {
-      const request = await getTests(requestData)
-
-      setTableParams({
-        pagination: {
-          total: request.data?.count ?? 0,
-        },
-        testPlanId,
-      })
-      return request
-    } catch (error) {
-      initInternalError(error)
+    if (isAllSelected && data?.results) {
+      const newSelectedRows = data.results
+        .map((test) => test.id)
+        .filter((id) => !excludedRows.includes(id))
+      setSelectedRows(newSelectedRows)
     }
+  }, [data])
+
+  const changeTableParams = (params: TableParamsData) => {
+    const clearedSettings = JSON.parse(JSON.stringify(params)) as TableParamsData
+    setTableParams(clearedSettings)
   }
 
   const handleAssignUserChange = (data?: SelectData) => {
-    setTableParams({
-      filters: {
-        assignee_id: data ? String(data?.value) : undefined,
-        unassigned: undefined,
-      },
+    changeTableParams({
+      ...tableParams,
+      assignee: data ? String(data?.value) : undefined,
+      unassigned: undefined,
     })
   }
 
   const handleUnAssignUser = () => {
-    setTableParams({
-      filters: {
-        assignee_id: undefined,
-        unassigned: true,
-      },
+    changeTableParams({
+      ...tableParams,
+      assignee: undefined,
+      unassigned: true,
     })
   }
 
-  const handleResetAssignee = () => [
+  const handleResetAssignee = () => {
+    changeTableParams({
+      ...tableParams,
+      assignee: undefined,
+      unassigned: undefined,
+    })
+  }
+
+  const handleChangeShowArchive = (value: boolean, updatedTableParams?: TableParamsData) => {
+    const newTableParams = updatedTableParams ?? tableParams
+    changeTableParams({ ...newTableParams, is_archive: value })
+    dispatch(setShowArchivedTests(value))
+  }
+
+  const handleShowArchived = () => {
+    handleChangeShowArchive(!isShowArchive)
+  }
+
+  const handleClearAll = async () => {
+    dispatch(
+      setSelectedLabels({
+        labels: [],
+        not_labels: [],
+      })
+    )
     setTableParams({
-      filters: {
-        assignee_id: undefined,
-        unassigned: undefined,
-      },
-    }),
-  ]
+      page: tableParams.page,
+      page_size: tableParams.page_size,
+    })
+    reset()
+    setSearchText("")
+    handleChangeShowArchive(false, {
+      page: tableParams.page,
+      page_size: tableParams.page_size,
+    })
+
+    //dirty fix to refresh table filters
+    setIsRefreshingTable(true)
+    await Promise.resolve()
+    setIsRefreshingTable(false)
+  }
+
+  const handleTableChange = <T extends unknown>(
+    pagination: TablePaginationConfig,
+    filters: Record<string, FilterValue | null>,
+    sorter: SorterResult<T> | SorterResult<T>[]
+  ) => {
+    const order = antdSorterToTestySort(sorter)
+
+    const settings: TableParamsData = {
+      page: pagination.current ?? DEFAULT_PAGE,
+      page_size: pagination.pageSize ?? DEFAULT_PAGE_SIZE,
+      order: order.length ? order : undefined,
+      search: filters?.name ? (filters?.name[0] as string) : undefined,
+      last_status: filters?.last_status,
+      suite: tableParams?.suite,
+      labels_condition: tableParams?.labels_condition,
+      assignee: tableParams?.assignee,
+      unassigned: tableParams?.unassigned,
+    }
+
+    changeTableParams(settings)
+  }
+
+  const handleRowClick = (testClick: Test) => {
+    setSearchParams({ test: String(testClick.id) })
+    dispatch(setTest(testClick))
+  }
+
+  const handleChangeVisibleColumns = (columns: string[]) => {
+    setVisibleColumns(columns)
+  }
+
+  const handleSelectRows = (
+    selectedRowKeys: Key[],
+    selectedRows: Test[],
+    info: {
+      type: RowSelectMethod
+    }
+  ) => {
+    setSelectedRows(selectedRowKeys as number[])
+
+    if (info.type === "all") {
+      const newIsAllSelected = !isAllSelected
+      setIsAllSelected(newIsAllSelected)
+      setExcludedRows([])
+      if (!newIsAllSelected) {
+        setSelectedRows([])
+      } else {
+        setSelectedRows(data?.results.map((test) => test.id) ?? [])
+      }
+    } else {
+      if (isAllSelected) {
+        //Exclude
+        const notThisPageExcluded = excludedRows.filter(
+          (id) => !data?.results.find((test) => test.id === id)
+        )
+        const currentPageExcluded =
+          data?.results
+            .filter((test) => !selectedRowKeys.includes(test.id))
+            .map((test) => test.id) ?? []
+        setExcludedRows([...notThisPageExcluded, ...currentPageExcluded])
+      }
+    }
+  }
+
+  const resetSelectedRows = () => {
+    setExcludedRows([])
+    setSelectedRows([])
+    setIsAllSelected(false)
+  }
 
   const columns: ColumnsType<Test> = [
     {
@@ -169,14 +313,10 @@ export const useTestsTable = (testPlanId: Id) => {
       ...getColumnSearch("name"),
       render: (text, record) => (
         <>
-          {record.is_archive && (
-            <Tooltip title="Archived">
-              <Tag color={colors.error}>A</Tag>
-            </Tooltip>
-          )}
+          {record.is_archive && <ArchivedTag />}
           <Link
             id={record.name}
-            to={`/projects/${record.project}/suites/${record.suite}/?test_case=${record.case}`}
+            to={`/projects/${record.project}/plans/${record.plan}?test=${record.id}`}
             onClick={(e) => e.stopPropagation()}
           >
             {/* eslint-disable-next-line @typescript-eslint/no-unsafe-assignment */}
@@ -253,6 +393,7 @@ export const useTestsTable = (testPlanId: Id) => {
           text: "Untested",
         },
       ],
+      filteredValue: (tableParams.last_status as FilterValue) ?? undefined,
       render: (last_status: Statuses) => <Status value={last_status || "Untested"} />,
     },
     {
@@ -298,86 +439,127 @@ export const useTestsTable = (testPlanId: Id) => {
     },
   ]
 
-  const onChange: TableProps<Test>["onChange"] = (
-    pagination: TablePaginationConfig,
-    filters: Record<string, FilterValue | null>,
-    sorter
-  ) => {
-    const newState = {
-      pagination,
-      filters: filters as Record<string, FilterValue>,
-      sorter,
-    }
-    setTableParams(newState)
-  }
-
-  const onShowArchived = () => {
-    dispatch(showArchivedTests())
-  }
-
-  const clearAll = () => {
-    reset()
-    setTableParams({
-      filters: {},
-      sorter: "",
-      pagination: {
-        current: 1,
-        pageSize: 10,
-      },
-    })
-    setSearchText("")
-  }
-
-  const handleRowClick = (testClick: Test) => {
-    if (!test) {
-      setSearchParams({ test: String(testClick.id) })
-      dispatch(setTest(testClick))
-    } else if (test.id === testClick.id) {
-      searchParams.delete("test")
-      setSearchParams(searchParams)
-      dispatch(setTest(null))
-    } else {
-      setSearchParams({ test: String(testClick.id) })
-      dispatch(setTest(testClick))
-    }
+  const paginationTable: TablePaginationConfig = {
+    hideOnSinglePage: false,
+    pageSizeOptions: config.pageSizeOptions,
+    showLessItems: true,
+    showSizeChanger: true,
+    current: tableParams.page,
+    pageSize: tableParams.page_size,
+    total: data?.count ?? 0,
   }
 
   const filteredColumns = columns.filter(
-    (column) => column.key === "action" || shownColumns.includes(column.title as string)
+    (column) => column.key === "action" || visibleColumns.includes(column.title as string)
   )
-  const columnNames = columns
-    .filter((column) => !!column.title)
-    .map((column) => column.title as string)
 
-  useEffect(() => {
-    setShownColumns(columnNames)
-  }, [])
+  const afterBulkSubmit = () => {
+    resetSelectedRows()
+    handleClearAll()
+  }
 
-  const handleChangeShownColumns = (data: CheckboxValueType[]) => {
-    if (data.length === 0) return
-    setShownColumns(data as string[])
-    updateConfig({
-      test_plans: {
-        ...userConfig.test_plans,
-        shown_columns: data as string[],
-      },
+  const prepareBulkRequestData = () => {
+    const commonFilters = {
+      is_archive: tableParams.is_archived ?? isShowArchive,
+      last_status: (tableParams.last_status as string[])?.join(","),
+      search: tableParams.search,
+      labels: selectedLabels.labels,
+      not_labels: selectedLabels.not_labels,
+      labels_condition: tableParams.labels_condition,
+      suite: tableParams.suite,
+      assignee: tableParams.assignee_id as string,
+      unassigned: tableParams.unassigned,
+    } as Partial<TestBulkUpdate>
+
+    Object.keys(commonFilters).forEach((key) => {
+      //@ts-ignore
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const v = commonFilters[key]
+      if (Array.isArray(v)) {
+        if (v.length) {
+          const arr = v as string[]
+          //@ts-ignore
+          commonFilters[key] = arr.filter((t) => t !== "")
+        }
+        //@ts-ignore
+        if ((commonFilters[key] as string[])?.length === 0) {
+          //@ts-ignore
+          delete commonFilters[key]
+        }
+      }
+      if (v === undefined) {
+        //@ts-ignore
+        delete commonFilters[key]
+      }
     })
+
+    const reqData: TestBulkUpdate = {
+      filter_conditions: commonFilters,
+      included_tests: [] as number[],
+      excluded_tests: [] as number[],
+      current_plan: testPlanId,
+    }
+    if (isAllSelected) {
+      reqData.excluded_tests = excludedRows
+    } else {
+      reqData.included_tests = selectedRows
+    }
+
+    return reqData
+  }
+
+  const handleBulkAssignSubmit = async (assignee: string | null) => {
+    const reqData = prepareBulkRequestData()
+    reqData.assignee = assignee ?? ""
+
+    handleClearAll()
+    const result = await bulkUpdateTests(reqData)
+    //@ts-ignore
+    if (result.error) {
+      //@ts-ignore
+      throw new Error(result.error as unknown)
+    }
+    afterBulkSubmit()
+  }
+
+  const handleMoveSubmit = async (plan: number) => {
+    const reqData = prepareBulkRequestData()
+    reqData.plan = plan
+
+    handleClearAll()
+    const result = await bulkUpdateTests(reqData)
+    //@ts-ignore
+    if (result.error) {
+      //@ts-ignore
+      throw new Error(result.error as unknown)
+    }
+    afterBulkSubmit()
   }
 
   return {
-    clearAll,
-    onShowArchived,
-    onChange,
-    handleRowClick,
-    columns: filteredColumns,
-    columnNames,
-    shownColumns,
-    handleChangeShownColumns,
+    data: data?.results ?? [],
     test,
-    tests,
-    isLoading,
-    showArchive,
-    tableParams,
+    isLoading: isFetching,
+    isShowArchive,
     projectId,
+    handleSelectRows,
+    resetSelectedRows,
+    selectedRows,
+    excludedRows,
+    isAllSelected,
+    hasSelection: !!selectedRows.length || isAllSelected,
+    handleMoveSubmit,
+    paginationTable,
+    columns,
+    activeTestId: test?.id,
+    visibleColumns,
+    filteredColumns,
+    handleClearAll,
+    handleShowArchived,
+    handleTableChange,
+    handleRowClick,
+    handleChangeVisibleColumns,
+    isRefreshingTable,
+    handleBulkAssignSubmit,
   }
 }

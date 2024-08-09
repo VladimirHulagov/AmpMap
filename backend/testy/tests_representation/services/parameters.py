@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -29,7 +29,7 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 
-from typing import Any, Dict
+from typing import Any
 
 from testy.tests_representation.models import Parameter
 
@@ -37,13 +37,13 @@ from testy.tests_representation.models import Parameter
 class ParameterService:
     non_side_effect_fields = ['project', 'data', 'group_name']
 
-    def parameter_create(self, data: Dict[str, Any]) -> Parameter:
+    def parameter_create(self, data: dict[str, Any]) -> Parameter:
         return Parameter.model_create(
             fields=self.non_side_effect_fields,
             data=data,
         )
 
-    def parameter_update(self, parameter: Parameter, data: Dict[str, Any]) -> Parameter:
+    def parameter_update(self, parameter: Parameter, data: dict[str, Any]) -> Parameter:
         parameter, _ = parameter.model_update(
             fields=self.non_side_effect_fields,
             data=data,

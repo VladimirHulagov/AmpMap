@@ -62,6 +62,14 @@ export const usersApi = createApi({
       }),
       invalidatesTags: [{ type: "Profile" }],
     }),
+    updatePassword: builder.mutation<void, { password: string }>({
+      query: (body) => ({
+        url: `${rootPath}/change-password/`,
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: [{ type: "Profile" }],
+    }),
     createUser: builder.mutation<User, UserCreate>({
       query: (body) => ({
         url: `${rootPath}/`,
@@ -113,6 +121,7 @@ export const {
   useLazyGetMeQuery,
   useLazyGetConfigQuery,
   useUpdateMeMutation,
+  useUpdatePasswordMutation,
   useUpdateConfigMutation,
   useUploadAvatarMutation,
   useDeleteAvatarMutation,

@@ -13,9 +13,9 @@ export const customAttributeApi = createApi({
   tagTypes: ["CustomAttribute"],
   endpoints: (builder) => ({
     getCustomAttributes: builder.query<CustomAttribute[], GetCustomAttributesParams>({
-      query: ({ project }) => ({
+      query: (params) => ({
         url: `${rootPath}/`,
-        params: { project },
+        params,
       }),
       providesTags: (result) => providesList(result, "CustomAttribute"),
     }),
@@ -25,7 +25,7 @@ export const customAttributeApi = createApi({
         method: "POST",
         body,
       }),
-      invalidatesTags: [{ type: "CustomAttribute", id: "LIST" }],
+      invalidatesTags: (result) => invalidatesList(result, "CustomAttribute"),
     }),
     updateCustomAttribute: builder.mutation<
       CustomAttribute,
@@ -43,10 +43,10 @@ export const customAttributeApi = createApi({
         url: `${rootPath}/${id}/`,
         method: "DELETE",
       }),
-      invalidatesTags: [{ type: "CustomAttribute", id: "LIST" }],
+      invalidatesTags: (result) => invalidatesList(result, "CustomAttribute"),
     }),
     getCustomAttributeContentTypes: builder.query<CustomAttributeContentType[], void>({
-      query: () => ({ url: `${rootPath}/content-types` }),
+      query: () => ({ url: `${rootPath}/content-types/` }),
       transformResponse: (response: CustomAttributeContentTypesResponse) =>
         response?.map((type) => ({
           label: customAttributeContentTypeNames[type.model],

@@ -1,7 +1,5 @@
 import { Button, Checkbox, Space, Table } from "antd"
 
-import { ContainerLoader } from "shared/ui"
-
 import { TestCaseDetail } from "widgets/test-case"
 
 import { useTestCasesTable } from "./use-test-cases-table"
@@ -19,9 +17,8 @@ export const TestCasesTable = () => {
     handleRowClick,
     hideTestCaseDetail,
     handleShowArchived,
+    isRefreshingTable,
   } = useTestCasesTable()
-
-  if (isLoading || !testCases) return <ContainerLoader />
 
   return (
     <>
@@ -35,21 +32,24 @@ export const TestCasesTable = () => {
           Show Archived
         </Checkbox>
       </div>
-      <Table
-        rowKey="id"
-        rowClassName={(record) => (record.id === selectedTestCase?.id ? "active" : "")}
-        style={{ marginTop: 12, cursor: "pointer" }}
-        columns={columns}
-        dataSource={testCases.results}
-        size="small"
-        pagination={paginationTable}
-        onChange={handleChange}
-        onRow={(record) => {
-          return {
-            onClick: () => handleRowClick(record),
-          }
-        }}
-      />
+      {!isRefreshingTable && (
+        <Table
+          loading={isLoading}
+          rowKey="id"
+          rowClassName={(record) => (record.id === selectedTestCase?.id ? "active" : "")}
+          style={{ marginTop: 12, cursor: "pointer" }}
+          columns={columns}
+          dataSource={testCases}
+          size="small"
+          pagination={paginationTable}
+          onChange={handleChange}
+          onRow={(record) => {
+            return {
+              onClick: (e) => handleRowClick(record, e),
+            }
+          }}
+        />
+      )}
       <TestCaseDetail testCase={selectedTestCase} onClose={hideTestCaseDetail} />
     </>
   )

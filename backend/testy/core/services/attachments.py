@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -30,7 +30,7 @@
 # <http://www.gnu.org/licenses/>.
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any
 
 from django.db.models import Model
 
@@ -45,7 +45,7 @@ class AttachmentService(MediaService):
         'url',
     ]
 
-    def attachment_create(self, data: Dict[str, Any], request) -> Union[List[Attachment], str]:
+    def attachment_create(self, data: dict[str, Any], request) -> list[Attachment] | str:
         attachments_instances = []
         for file in request.data.getlist('file'):
             name, extension = os.path.splitext(file.name)
@@ -93,7 +93,7 @@ class AttachmentService(MediaService):
 
     def bulk_add_history_to_attachment(
         self,
-        attachments: List[Attachment],
+        attachments: list[Attachment],
         history_id: int,
     ):
         for attachment in attachments:

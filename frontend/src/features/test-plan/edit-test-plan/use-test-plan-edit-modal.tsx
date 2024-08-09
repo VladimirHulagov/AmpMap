@@ -1,45 +1,19 @@
 import { notification } from "antd"
-import dayjs, { Dayjs } from "dayjs"
-import { useEffect, useState } from "react"
+import dayjs from "dayjs"
+import { useEffect } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
-import { useParams } from "react-router-dom"
-
-import { useTestCaseFormLabels } from "entities/label/model"
 
 import { useTestsTableParams } from "entities/test/model"
 
-import { useTestCasesSearch } from "entities/test-case/model"
-
-import {
-  useGetTestPlanCasesQuery,
-  useLazyGetTestPlansQuery,
-  useUpdateTestPlanMutation,
-} from "entities/test-plan/api"
+import { useGetTestPlanCasesQuery, useUpdateTestPlanMutation } from "entities/test-plan/api"
 import { getTestCaseChangeResult } from "entities/test-plan/lib"
 
-import { useDatepicker, useErrors } from "shared/hooks"
 import { showModalCloseConfirm } from "shared/libs"
 import { AlertSuccessChange } from "shared/ui/alert-success-change"
 
-import { useSearchField } from "widgets/search-field"
+import { ModalForm, useTestPlanCommonModal } from "../create-test-plan/use-test-plan-common-modal"
 
-interface ErrorData {
-  name?: string
-  description?: string
-  parent?: string
-  test_cases?: string
-  started_at?: string
-  due_date?: string
-}
-
-type IForm = Modify<
-  TestPlanUpdate,
-  {
-    test_cases: string[]
-    started_at: Dayjs
-    due_date: Dayjs
-  }
->
+type IForm = ModalForm<TestPlanUpdate>
 
 interface UseTestPlanEditModalProps {
   testPlan: TestPlan
@@ -52,8 +26,6 @@ export const useTestPlanEditModal = ({
   isShow,
   setIsShow,
 }: UseTestPlanEditModalProps) => {
-  const { projectId } = useParams<ParamProjectId>()
-  const [errors, setErrors] = useState<ErrorData | null>(null)
   const {
     handleSubmit,
     reset,
@@ -63,21 +35,6 @@ export const useTestPlanEditModal = ({
     formState: { isDirty, errors: formErrors },
   } = useForm<IForm>()
   const testCasesWatch = watch("test_cases")
-  const { onHandleError } = useErrors<ErrorData>(setErrors)
-
-  const {
-    isLoading: isLoadingSearch,
-    searchText,
-    treeData,
-    expandedRowKeys,
-    onSearch,
-    onRowExpand,
-    onClearSearch,
-  } = useTestCasesSearch({ isShow })
-  const [selectedParent, setSelectedParent] = useState<{ label: string; value: number } | null>(
-    null
-  )
-  const { setDateFrom, setDateTo, disabledDateFrom, disabledDateTo } = useDatepicker()
 
   const { data: tests, isLoading: isLoadingTestCases } = useGetTestPlanCasesQuery(
     {
@@ -89,68 +46,35 @@ export const useTestPlanEditModal = ({
   const { trigger } = useTestsTableParams()
 
   const {
-    search,
-    paginationParams,
-    handleSearch: handleSearchField,
+    selectedLables,
+    labelProps,
+    lableCondition,
+    handleConditionClick,
+    showArchived,
+    handleToggleArchived,
+    projectId,
+    errors,
+    setErrors,
+    isLastPage,
+    isLoadingTestPlans,
+    dataTestPlans,
+    onHandleError,
+    selectedParent,
+    setSelectedParent,
+    setDateFrom,
+    setDateTo,
+    disabledDateFrom,
+    disabledDateTo,
     handleLoadNextPageData,
-  } = useSearchField()
-
-  const [getPlans] = useLazyGetTestPlansQuery()
-  const [isLastPage, setIsLastPage] = useState(false)
-  const [isLoadingTestPlans, setIsLoadingTestPlans] = useState(false)
-  const [dataTestPlans, setDataTestPlans] = useState<TestPlan[]>([])
-
-  const [selectedLables, setSelectedLabels] = useState<number[]>([])
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
-  const setLables = (_: string, values: any, data: any) => {
-    const v = values as { name: string; id?: number }[]
-    setSelectedLabels(v.map((i) => i.id).filter((i) => i !== undefined) as number[])
-  }
-
-  const labelProps = useTestCaseFormLabels({
-    setValue: setLables,
-    testCase: null,
-    isShow: true,
-    isEditMode: false,
-  })
-
-  const [lableCondition, setLableCondition] = useState<"and" | "or">("and")
-
-  const handleConditionClick = () => {
-    setLableCondition(lableCondition === "and" ? "or" : "and")
-  }
-
-  useEffect(() => {
-    onSearch(searchText, selectedLables, lableCondition)
-  }, [selectedLables, lableCondition])
-
-  const handleSearchTestPlan = (value?: string) => {
-    setDataTestPlans([])
-    setIsLastPage(false)
-    handleSearchField(value)
-  }
-
-  const fetchPlans = async () => {
-    setIsLoadingTestPlans(true)
-    const res = await getPlans({
-      search,
-      projectId,
-      page: paginationParams.page,
-      page_size: paginationParams.page_size,
-      is_flat: true,
-    }).unwrap()
-    setDataTestPlans((prevState) => [...prevState, ...res.results])
-    setIsLoadingTestPlans(false)
-
-    if (!res.pages.next) {
-      setIsLastPage(true)
-    }
-  }
-
-  useEffect(() => {
-    if (!projectId || search === undefined) return
-    fetchPlans()
-  }, [paginationParams, search, projectId])
+    searchText,
+    treeData,
+    expandedRowKeys,
+    isLoading: isLoadingSearch,
+    onSearch,
+    onRowExpand,
+    onClearSearch,
+    handleSearchTestPlan,
+  } = useTestPlanCommonModal({ isShow })
 
   useEffect(() => {
     if (!isShow || !tests) return
@@ -280,5 +204,7 @@ export const useTestPlanEditModal = ({
     labelProps,
     lableCondition,
     handleConditionClick,
+    showArchived,
+    handleToggleArchived,
   }
 }

@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -461,6 +461,33 @@ class TestResultEndpoints:
             'test': test.id,
             'attributes': {},
         }
+        response = api_client.send_request(self.view_name_list, result_dict, HTTPStatus.BAD_REQUEST, RequestType.POST)
+        assert response.json()[_ERRORS][0] == MISSING_REQUIRED_CUSTOM_ATTRIBUTES_ERR_MSG.format([custom_attribute.name])
+
+    def test_status_specific_validation(
+        self,
+        api_client,
+        authorized_superuser,
+        custom_attribute_factory,
+        project,
+        user,
+        test_factory,
+    ):
+        custom_attribute = custom_attribute_factory(
+            project=project,
+            is_required=True,
+            status_specific=[TestStatuses.FAILED],
+        )
+        test = test_factory(project=project)
+        result_dict = {
+            'status': TestStatuses.PASSED,
+            'user': user.id,
+            'comment': constants.TEST_COMMENT,
+            'test': test.id,
+            'attributes': {},
+        }
+        api_client.send_request(self.view_name_list, result_dict, HTTPStatus.CREATED, RequestType.POST)
+        result_dict['status'] = TestStatuses.FAILED
         response = api_client.send_request(self.view_name_list, result_dict, HTTPStatus.BAD_REQUEST, RequestType.POST)
         assert response.json()[_ERRORS][0] == MISSING_REQUIRED_CUSTOM_ATTRIBUTES_ERR_MSG.format([custom_attribute.name])
 

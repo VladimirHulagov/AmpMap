@@ -38,6 +38,7 @@ export const useCreateResultModal = ({ setIsShow, testCase }: CreateResultModalP
     setValue,
     register,
     formState: { isDirty },
+    watch,
   } = useForm<ResultFormData>({
     defaultValues: {
       comment: "",
@@ -47,6 +48,7 @@ export const useCreateResultModal = ({ setIsShow, testCase }: CreateResultModalP
       steps: [],
     },
   })
+  const watchStatus = watch("status")
   const test = useAppSelector(selectTest)
   const { projectId, testPlanId } = useParams<ParamProjectId & ParamTestPlanId>()
   const {
@@ -61,7 +63,7 @@ export const useCreateResultModal = ({ setIsShow, testCase }: CreateResultModalP
     isLoading: isLoadingCreateAttachment,
   } = useAttachments<ResultFormData>(control, projectId)
   const {
-    attributes,
+    attributes: allAttributes,
     addAttribute,
     onAttributeChangeName,
     onAttributeChangeType,
@@ -69,7 +71,9 @@ export const useCreateResultModal = ({ setIsShow, testCase }: CreateResultModalP
     onAttributeRemove,
     resetAttributes,
   } = useAttributes({ mode: "create", setValue })
-
+  const attributes = allAttributes.filter(
+    (attr) => attr.status_specific?.includes(Number(watchStatus))
+  )
   const [steps, setSteps] = useState<Record<string, string>>({})
   const { onHandleError } = useErrors<ErrorData>(setErrors)
 
@@ -96,13 +100,13 @@ export const useCreateResultModal = ({ setIsShow, testCase }: CreateResultModalP
   }
 
   const onSubmit: SubmitHandler<ResultFormData> = async (data) => {
-    if (!test) return // TODO check it
+    if (!test) return
     setErrors(null)
 
-    const { isSuccess, attributesJson, error } = makeAttributesJson(attributes)
+    const { isSuccess, attributesJson, errors } = makeAttributesJson(attributes)
 
     if (!isSuccess) {
-      setErrors({ attributes: error })
+      setErrors({ attributes: JSON.stringify(errors) })
       return
     }
 

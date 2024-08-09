@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -28,7 +28,7 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from django.conf import settings
 from django.contrib.postgres.aggregates import StringAgg
@@ -40,16 +40,17 @@ from testy.tests_representation.selectors.results import TestResultSelector
 
 
 class TestSelector:
-    def test_list(self) -> QuerySet[Test]:
+    @classmethod
+    def test_list(cls) -> QuerySet[Test]:
         return Test.objects.select_related('case').prefetch_related('results').annotate(
             test_suite_description=F('case__suite__description'),
         ).all()
 
     @classmethod
-    def test_list_by_testplan_ids(cls, plan_ids: List[int]) -> QuerySet[Test]:
+    def test_list_by_testplan_ids(cls, plan_ids: list[int]) -> QuerySet[Test]:
         return Test.objects.filter(plan__in=plan_ids)
 
-    def test_list_with_last_status(self, filter_condition: Optional[Dict[str, Any]] = None) -> QuerySet[Test]:
+    def test_list_with_last_status(self, filter_condition: dict[str, Any] | None = None) -> QuerySet[Test]:
         if not filter_condition:
             filter_condition = {}
         subquery = (
@@ -79,5 +80,18 @@ class TestSelector:
                 test_suite_description=F('case__suite__description'),
                 estimate=F('case__estimate'),
             )
-            .order_by('case__suite')
+            .order_by('case__suite', '-id')
         )
+
+    @classmethod
+    def test_list_for_bulk_operation(
+        cls,
+        queryset: QuerySet[Test],
+        included_tests: list[Test] | None,
+        excluded_tests: list[Test] | None,
+    ) -> QuerySet[Test]:
+        if included_tests:
+            queryset = queryset.filter(pk__in=[test.pk for test in included_tests])
+        if excluded_tests:
+            queryset = queryset.exclude(pk__in=[test.pk for test in excluded_tests])
+        return queryset

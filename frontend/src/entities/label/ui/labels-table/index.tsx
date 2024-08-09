@@ -12,7 +12,6 @@ import { getLabelTypeTextByNumber } from "entities/label/lib"
 import { showLabelModal, useAdministrationLabelModal } from "entities/label/model"
 
 import { useTableSearch } from "shared/hooks"
-import { ContainerLoader } from "shared/ui"
 
 import { LabelCreateEditModal } from "../label-create-edit-modal"
 
@@ -99,8 +98,6 @@ export const LabelsTable = () => {
     },
   ]
 
-  if (isLoading) return <ContainerLoader />
-
   return (
     <>
       <Space style={{ marginBottom: 16, display: "flex", justifyContent: "right" }}>
@@ -109,6 +106,7 @@ export const LabelsTable = () => {
         </Button>
       </Space>
       <Table
+        loading={isLoading}
         dataSource={labels}
         columns={columns}
         rowKey="id"

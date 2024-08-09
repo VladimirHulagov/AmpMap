@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -32,6 +32,8 @@ from pathlib import Path
 
 from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404
+from django_filters.rest_framework import DjangoFilterBackend
+from notifications.models import Notification
 from rest_framework import mixins, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
@@ -49,6 +51,10 @@ from testy.core.api.v1.serializers import (
     CustomAttributeInputSerializer,
     CustomAttributeOutputSerializer,
     LabelSerializer,
+    MarkNotificationSerializer,
+    ModifyNotificationsSettingsSerializer,
+    NotificationSerializer,
+    NotificationSettingSerializer,
     ProjectRetrieveSerializer,
     ProjectSerializer,
     ProjectStatisticsSerializer,
@@ -65,22 +71,26 @@ from testy.core.permissions import (
 from testy.core.selectors.attachments import AttachmentSelector
 from testy.core.selectors.custom_attribute import CustomAttributeSelector
 from testy.core.selectors.labels import LabelSelector
+from testy.core.selectors.notifications import NotificationSelector
 from testy.core.selectors.projects import ProjectSelector
 from testy.core.services.attachments import AttachmentService
 from testy.core.services.custom_attribute import CustomAttributeService
 from testy.core.services.labels import LabelService
+from testy.core.services.notifications import NotificationService
 from testy.core.services.projects import ProjectService
 from testy.filters import (
     AttachmentFilter,
     CustomAttributeFilter,
     LabelFilter,
+    NotificationFilter,
+    NotificationSettingFilter,
     ProjectFilter,
     ProjectOrderingFilter,
     TestyFilterBackend,
     UserFilter,
 )
 from testy.paginations import StandardSetPagination
-from testy.root.mixins import TestyArchiveMixin, TestyModelViewSet
+from testy.root.mixins import TestyArchiveMixin, TestyDestroyModelMixin, TestyModelViewSet, TestyRestoreModelMixin
 from testy.swagger.projects import (
     project_create_schema,
     project_list_schema,
@@ -103,6 +113,9 @@ from testy.users.services.roles import RoleService
 from testy.utilities.request import PeriodDateTime
 
 _GET = 'get'
+_LIST = 'list'
+_POST = 'post'
+_SETTINGS = 'settings'
 
 
 class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin, MediaViewMixin):
@@ -119,14 +132,14 @@ class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin, MediaViewMixin):
         project_selector = ProjectSelector(self.request.user)
         if self.action in {'recovery_list', 'restore', 'delete_permanently'}:
             return project_selector.project_deleted_list()
-        if self.action in {'list', 'retrieve'}:
+        if self.action in {_LIST, 'retrieve'}:
             return project_selector.project_list_statistics()
         return project_selector.project_list()
 
     def get_serializer_class(self):
         if self.action == 'retrieve':
             return ProjectRetrieveSerializer
-        if self.action == 'list':
+        if self.action == _LIST:
             return ProjectStatisticsSerializer
         if self.action == 'members':
             return UserRoleSerializer
@@ -140,7 +153,7 @@ class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin, MediaViewMixin):
             'groups',
             'memberships__role',
             'memberships__role__permissions',
-        )
+        ).order_by('-id')
         qs = UserFilter.filter_queryset_flat(users, request)
         page = self.paginate_queryset(qs)
         serializer = self.get_serializer(page, many=True, context=self.get_serializer_context())
@@ -153,7 +166,7 @@ class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin, MediaViewMixin):
         serializer = TestPlanTreeSerializer(qs, many=True, context=self.get_serializer_context())
         return Response(serializer.data)
 
-    @action(methods=['post'], url_path='access', url_name='access', detail=True)
+    @action(methods=[_POST], url_path='access', url_name='access', detail=True)
     def request_access(self, request, pk):
         project = get_object_or_404(Project, pk=pk)
         if RoleSelector.access_request_pending_list(project, request.user):
@@ -161,7 +174,7 @@ class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin, MediaViewMixin):
         if RoleSelector.project_view_allowed(request.user, pk):
             raise ValidationError('You already have read access to project.')
         serializer = AccessRequestSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        serializer.is_valid(raise_exception=True)  # noqa: WPS204
         RoleService.access_request_create(project, request.user, serializer.validated_data.get('reason'))
         return Response(data='Request sent!')
 
@@ -292,7 +305,7 @@ class CustomAttributeViewSet(TestyModelViewSet):
     filterset_class = CustomAttributeFilter
 
     def get_serializer_class(self):
-        if self.action in {'list', 'retrieve'}:
+        if self.action in {_LIST, 'retrieve'}:
             return CustomAttributeOutputSerializer
         return CustomAttributeInputSerializer
 
@@ -317,3 +330,73 @@ class CustomAttributeViewSet(TestyModelViewSet):
         serializer.is_valid(raise_exception=True)
         new_instance = CustomAttributeService().custom_attribute_update(instance, serializer.validated_data)
         return Response(CustomAttributeOutputSerializer(new_instance, context=self.get_serializer_context()).data)
+
+
+class NotificationViewSet(
+    mixins.RetrieveModelMixin,
+    TestyDestroyModelMixin,
+    TestyRestoreModelMixin,
+    mixins.ListModelMixin,
+    GenericViewSet,
+):
+    queryset = Notification.objects.none()
+    permission_classes = [IsAuthenticated]
+    serializer_class = NotificationSerializer
+    filter_backends = [DjangoFilterBackend]
+    pagination_class = StandardSetPagination
+    schema_tags = ['Notifications']
+
+    @property
+    def filterset_class(self):
+        if self.action == _LIST:
+            return NotificationFilter
+        if self.action == 'notification_settings':
+            return NotificationSettingFilter
+
+    def get_queryset(self):
+        if self.action in {'enable_notifications', 'disable_notifications', 'notification_settings'}:
+            return NotificationSelector.list_notification_settings(self.request.user)
+        return NotificationSelector.list_notifications(self.request.user)
+
+    def get_serializer_class(self):
+        if self.action in {'enable_notifications', 'disable_notifications'}:
+            return ModifyNotificationsSettingsSerializer
+        if self.action == 'notification_settings':
+            return NotificationSettingSerializer
+        if self.action == 'mark_as':
+            return MarkNotificationSerializer
+        return NotificationSerializer
+
+    @action(methods=['get'], url_name=_SETTINGS, url_path=_SETTINGS, detail=False)
+    def notification_settings(self, request):
+        return Response(data=self.get_serializer(self.get_queryset(), many=True).data)
+
+    @action(methods=[_POST], url_name='mark-as', url_path='mark-as', detail=False)
+    def mark_as(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return Response(
+            NotificationService.mark_as(
+                serializer.validated_data.get('unread', True),
+                self.request.user,
+                serializer.validated_data.get('notifications'),
+            ),
+        )
+
+    @action(methods=[_POST], url_name='enable', url_path='enable', detail=False)
+    def enable_notifications(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        codes = serializer.validated_data.get(_SETTINGS, [])
+        NotificationService.enable_notifications(request.user, codes)
+        message = ', '.join([code.verbose_name for code in codes])
+        return Response(f'Enabled notifications for {message}')
+
+    @action(methods=[_POST], url_name='disable', url_path='disable', detail=False)
+    def disable_notifications(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        codes = serializer.validated_data.get(_SETTINGS, [])
+        NotificationService.disable_notifications(request.user, codes)
+        message = ', '.join([code.verbose_name for code in codes])
+        return Response(f'Disabled notifications for {message}')

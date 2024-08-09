@@ -1,7 +1,5 @@
 import { Button, Space, Table } from "antd"
 
-import { ContainerLoader } from "shared/ui"
-
 import { useUsersProjectAccessTable } from "./use-users-project-access-table"
 
 interface Props {
@@ -12,10 +10,6 @@ export const UsersProjectAccessTable = ({ isManageable = false }: Props) => {
   const { columns, isLoading, users, paginationTable, handleChange, clearAll } =
     useUsersProjectAccessTable(isManageable)
 
-  if (isLoading) {
-    return <ContainerLoader />
-  }
-
   return (
     <>
       <Space style={{ marginBottom: 16, display: "flex", justifyContent: "right" }}>
@@ -24,6 +18,7 @@ export const UsersProjectAccessTable = ({ isManageable = false }: Props) => {
         </Button>
       </Space>
       <Table
+        loading={isLoading}
         dataSource={users}
         columns={columns}
         rowKey="username"

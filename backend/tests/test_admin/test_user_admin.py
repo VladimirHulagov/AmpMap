@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -33,8 +33,9 @@ import pytest
 from django.contrib import admin
 from django.contrib.auth import get_user_model
 
+from tests import constants
 from tests.commons import RequestMock
-from tests.error_messages import CASE_INSENSITIVE_USERNAME_ALREADY_EXISTS, USERNAME_ALREADY_EXISTS
+from tests.error_messages import USERNAME_ALREADY_EXISTS
 
 UserModel = get_user_model()
 
@@ -43,19 +44,18 @@ UserModel = get_user_model()
 class TestUserAdmin:
 
     @pytest.mark.parametrize(
-        "username,new_username,message",
+        'username,new_username,message',
         [
             ('user', 'user', USERNAME_ALREADY_EXISTS),
-            ('user', 'UsEr', CASE_INSENSITIVE_USERNAME_ALREADY_EXISTS),
-            ('user', 'USER', CASE_INSENSITIVE_USERNAME_ALREADY_EXISTS),
-        ]
+            ('user', 'UsEr', USERNAME_ALREADY_EXISTS),
+            ('user', 'USER', USERNAME_ALREADY_EXISTS),
+        ],
     )
     def test_duplicate_username_not_allowed(self, user_factory, username, new_username, message):
         user_factory(username=username)
         user_admin = admin.site._registry[UserModel]
-        UserCreationForm = user_admin.get_form(RequestMock())
-        password = 'pass1313'
-        form = UserCreationForm(
-            {'username': new_username, 'password1': password, 'password2': password}
+        user_creation_form = user_admin.get_form(RequestMock())
+        form = user_creation_form(
+            {'username': new_username, 'password1': constants.PASSWORD, 'password2': constants.PASSWORD},
         )
         assert form.errors == {'username': [message]}

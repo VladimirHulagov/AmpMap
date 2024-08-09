@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -28,7 +28,7 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from typing import Any, Dict, List
+from typing import Any
 
 from django.contrib.contenttypes.models import ContentType
 
@@ -37,11 +37,11 @@ from testy.core.models import CustomAttribute
 
 class CustomAttributeService:
     non_side_effect_fields = [
-        'name', 'project', 'type', 'is_required', 'is_suite_specific', 'suite_ids',
+        'name', 'project', 'type', 'is_required', 'is_suite_specific', 'suite_ids', 'status_specific',
     ]
 
     @classmethod
-    def custom_attribute_create(cls, data: Dict[str, Any]) -> CustomAttribute:
+    def custom_attribute_create(cls, data: dict[str, Any]) -> CustomAttribute:
         custom_attribute = CustomAttribute.model_create(
             fields=cls.non_side_effect_fields,
             data=data,
@@ -53,7 +53,7 @@ class CustomAttributeService:
         return custom_attribute
 
     @classmethod
-    def custom_attribute_update(cls, custom_attribute: CustomAttribute, data: Dict[str, Any]) -> CustomAttribute:
+    def custom_attribute_update(cls, custom_attribute: CustomAttribute, data: dict[str, Any]) -> CustomAttribute:
         custom_attribute, _ = custom_attribute.model_update(
             fields=cls.non_side_effect_fields,
             data=data,
@@ -66,5 +66,5 @@ class CustomAttributeService:
         return custom_attribute
 
     @classmethod
-    def _get_content_type_ids(cls, content_types: List[ContentType]) -> List[int]:
+    def _get_content_type_ids(cls, content_types: list[ContentType]) -> list[int]:
         return [content_type.id for content_type in content_types]

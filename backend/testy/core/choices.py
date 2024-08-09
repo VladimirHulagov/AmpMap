@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -53,3 +53,10 @@ class CustomFieldType(models.IntegerChoices):
 class AccessRequestStatus(models.IntegerChoices):
     PENDING = 0, 'Pending'
     RESOLVED = 1, 'Resolved'
+
+
+class ActionCode(models.IntegerChoices):
+    TEST_ASSIGNED = 0, 'Test assigned'
+    TEST_UNASSIGNED = 1, 'Test unassigned'
+    TEST_CASE_MODIFIED = 2, 'Test case modified'
+    TEST_PLAN_MODIFIED = 3, 'Test plan modified'

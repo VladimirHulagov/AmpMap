@@ -1,3 +1,39 @@
+Version 1.3.2
+--------------
+*Status: General availability*
+
+*Released: 12-08-2024*
+
+- In the first approximation, mass operations with tests have been implemented, namely: transfer of tests, assessment (TMS-700, TMS-907)
+- The functionality of custom attributes has been improved. Custom attributes can be applied to specific result statuses within a project (TMS-857)
+- Implemented adding user settings to URL (TMS-858)
+- Added the ability to change passwords for external users (TMS-886)
+- Implemented a mechanism for notifying users about events in the system, with the ability to customize notifications (TMS-955)
+- Implemented the ability to transfer tests from one Test Plan to another within a project while preserving the results (TMS-907)
+- Added the ability to clone a test result (TMS-885)
+- Optimized Test-Suites search when creating/editing a Test Plan (TMS-851)
+- Transition to Python 3.11 and Django 4.2.13
+
+**Bug fixes**:
+
+- When switching to a child plan, the list of labels and the condition should be reset (TMS-831)
+- Ordering does not work in the Test-Suites table (TMS-846)
+- [Test Plan] Clicking on Test name redirects to Test-Suites (TMS-847)
+- Navigation doesn't work on various conditions (TMS-848)
+- "Not the latest version" warning appears on any close of the test-case (TMS-849)
+- Cannot access the frontend raised in Docker (TMS-853)
+- Error processing the GET parameter parent_id in TestPlanViewSet (treeview) (TMS-854)
+- Incorrect pagination when filtering by name (TMS-855)
+- When setting the SKIPPED and RETEST status, it requires filling in the fields (TMS-856)
+- Soft deleting parameter not allowing to create another one. (TMS-882)
+- Incorrect error output for mandatory attributes in test result (TMS-884)
+- Backend responds with incorrect set of Steps (TMS-894)
+- Pagination inside the test plan doesn't work 
+- Number of DB connections exceeded (TMS-942)
+- RecursionError when copying a test plan to itself or a test plan to a child test plan (TMS-946)
+- Not all suites are displayed in the Suite field search when editing TC (TMS-954)
+
+
 Version 1.3.1
 --------------
 *Status: General availability*

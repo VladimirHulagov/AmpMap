@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom"
 import { useGetProjectsQuery } from "entities/project/api"
 import { ProjectIcon } from "entities/project/ui"
 
+import { config } from "shared/config"
 import { useTableSearch } from "shared/hooks"
 import { HighLighterTesty } from "shared/ui"
 import { CheckedIcon } from "shared/ui/icons"
@@ -115,7 +116,7 @@ export const useProjectsTable = () => {
 
   const paginationTable: TablePaginationConfig = {
     hideOnSinglePage: false,
-    pageSizeOptions: ["10", "20", "50", "100"],
+    pageSizeOptions: config.pageSizeOptions,
     showLessItems: true,
     showSizeChanger: true,
     current: paginationParams.page,

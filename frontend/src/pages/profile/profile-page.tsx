@@ -1,6 +1,7 @@
 import { EditOutlined } from "@ant-design/icons"
 import { PageHeader } from "@ant-design/pro-layout"
 import { Breadcrumb, Button, Card, Col, Divider, Layout, Row } from "antd"
+import { ChangePassword } from "features/user/change-password/change-password"
 import { useDispatch } from "react-redux"
 import { ProfileAvatar } from "widgets"
 
@@ -29,7 +30,6 @@ export const ProfileFields = ({ profile }: { profile: User }) => {
 export const ProfilePage = () => {
   const dispatch = useDispatch()
   const { data: profile, isLoading } = useGetMeQuery()
-
   const breadcrumbItems = [<Breadcrumb.Item key="profile">Profile</Breadcrumb.Item>]
 
   const handleClickEdit = () => {
@@ -60,6 +60,7 @@ export const ProfilePage = () => {
                   <Button id="edit-profile" onClick={handleClickEdit} icon={<EditOutlined />}>
                     Edit
                   </Button>
+                  {profile && <ChangePassword />}
                 </Col>
               </Row>
               <Divider />

@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -30,7 +30,7 @@
 # <http://www.gnu.org/licenses/>.
 import operator
 from functools import reduce
-from typing import Callable, List
+from typing import Callable
 
 from django.contrib.auth import get_user_model
 from django.contrib.postgres.aggregates import StringAgg
@@ -38,11 +38,12 @@ from django.db.models import F, Model, OuterRef, Prefetch, Q, QuerySet, Subquery
 from django.db.models.functions import Concat
 from django_filters import BaseCSVFilter
 from django_filters import rest_framework as filters
-from rest_framework.compat import distinct
+from notifications.models import Notification
 from rest_framework.exceptions import NotFound
 from rest_framework.filters import OrderingFilter, SearchFilter
+from rest_framework.generics import get_object_or_404
 
-from testy.core.models import Attachment, CustomAttribute, Label, Project
+from testy.core.models import Attachment, CustomAttribute, Label, NotificationSetting, Project
 from testy.core.selectors.projects import ProjectSelector
 from testy.tests_description.models import TestCase, TestSuite
 from testy.tests_description.selectors.suites import TestSuiteSelector
@@ -204,12 +205,24 @@ class LabelFilter(BaseProjectFilter):
 
 class CustomAttributeFilter(BaseProjectFilter):
     suite = filters.NumberFilter(field_name='suite_ids', method='filter_by_suite')
+    test = filters.NumberFilter(field_name='suite_ids', method='filter_by_test')
+    status = filters.NumberFilter(field_name='status_specific', lookup_expr='filter_by_status')
 
     @classmethod
     def filter_by_suite(cls, queryset, field_name, val):
-        non_suite_specific = queryset.filter(is_suite_specific__exact=False)
-        suite_specific = queryset.filter(**{f'{field_name}__icontains': val})
+        non_suite_specific = queryset.filter(is_suite_specific=False)
+        suite_specific = queryset.filter(**{f'{field_name}__contains': [val]})
         return non_suite_specific | suite_specific
+
+    @classmethod
+    def filter_by_test(cls, queryset, field_name, test_id):
+        test = get_object_or_404(Test, pk=test_id)
+        lookup = Q(suite_ids__contains=[test.case.suite.id]) | Q(is_suite_specific=False)
+        return queryset.filter(lookup)
+
+    @classmethod
+    def filter_by_status(cls, queryset, field_name, status: int):
+        return queryset.filter(status_specific__contains=[status])
 
     class Meta:
         model = CustomAttribute
@@ -294,9 +307,9 @@ class TestOrderingFilter(OrderingFilter):
 
 
 class TestyBaseSearchFilter(SearchFilter):
-    def construct_orm_lookups(self, search_fields):
+    def construct_orm_lookups(self, search_fields, queryset):
         return [
-            self.construct_search(str(search_field))
+            self.construct_search(str(search_field), queryset)
             for search_field in search_fields
         ]
 
@@ -312,9 +325,8 @@ class TestyBaseSearchFilter(SearchFilter):
         if not search_fields or not search_terms:
             return queryset
 
-        orm_lookups = self.construct_orm_lookups(search_fields)
+        orm_lookups = self.construct_orm_lookups(search_fields, queryset)
 
-        base = queryset
         conditions = []
         for search_term in search_terms:
             queries = [
@@ -326,12 +338,6 @@ class TestyBaseSearchFilter(SearchFilter):
         queryset = self.custom_filter(queryset, reduce(operator.and_, conditions), request)
         if not distinct_fields:
             return queryset
-        if self.must_call_distinct(queryset, distinct_fields):
-            # Filtering against a many-to-many field requires us to
-            # call queryset.distinct() in order to avoid duplicate items
-            # in the resulting queryset.
-            # We try to avoid this if possible, for performance reasons.
-            queryset = distinct(queryset, base)
         return queryset
 
 
@@ -426,7 +432,7 @@ class ActivitySearchFilter(SearchFilter):
         search_terms = self.get_search_terms(request)
 
         orm_lookups = [
-            self.construct_search(search_field)
+            self.construct_search(search_field, queryset)
             for search_field in search_fields
         ]
 
@@ -454,7 +460,7 @@ class CustomOrderingFilter(OrderingFilter):
 
 
 class CustomSearchFilter(SearchFilter):
-    def filter_queryset(self, request, queryset, allowed_search_params: List[str]):
+    def filter_queryset(self, request, queryset, allowed_search_params: list[str]):
         filter_lookup = {}
         for query_param_name in allowed_search_params:
             if value := request.query_params.get(query_param_name):
@@ -474,3 +480,24 @@ class UserFilter(filters.FilterSet, FilterListMixin, FlatFilterMixin):
     class Meta:
         model = UserModel
         fields = ('username', 'email', 'first_name', 'last_name', 'is_active', 'is_superuser')
+
+
+class NotificationFilter(filters.FilterSet):
+    ordering = filters.OrderingFilter(
+        fields=(
+            ('id', 'id'),
+            ('unread', 'unread'),
+        ),
+    )
+
+    class Meta:
+        model = Notification
+        fields = ('unread',)
+
+
+class NotificationSettingFilter(filters.FilterSet):
+    verbose_name = filters.CharFilter(lookup_expr='icontains')
+
+    class Meta:
+        model = NotificationSetting
+        fields = ('action_code',)

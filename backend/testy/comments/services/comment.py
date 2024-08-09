@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -29,7 +29,7 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 
-from typing import Any, Dict
+from typing import Any
 
 from django.db import transaction
 
@@ -42,7 +42,7 @@ class CommentService:
     non_side_effect_fields = ['content', 'content_type', 'object_id']
 
     @transaction.atomic
-    def comment_create(self, data: Dict[str, Any], user: User) -> Comment:
+    def comment_create(self, data: dict[str, Any], user: User) -> Comment:
         comment: Comment = Comment.model_create(
             fields=self.non_side_effect_fields,
             data=data,
@@ -58,7 +58,7 @@ class CommentService:
         return comment
 
     @transaction.atomic
-    def comment_update(self, comment: Comment, data: Dict[str, Any]) -> Comment:
+    def comment_update(self, comment: Comment, data: dict[str, Any]) -> Comment:
         comment, _ = comment.model_update(
             fields=self.non_side_effect_fields,
             data=data,

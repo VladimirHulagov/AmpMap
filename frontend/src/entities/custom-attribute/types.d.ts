@@ -17,10 +17,12 @@ interface CustomAttribute {
   is_deleted: boolean
   suite_ids: number[]
   content_types: number[]
+  status_specific?: number[]
 }
 
 interface GetCustomAttributesParams {
   project: string
+  test?: number
 }
 
 interface CustomAttributeUpdate {
@@ -31,6 +33,7 @@ interface CustomAttributeUpdate {
   is_required?: boolean
   is_suite_specific?: boolean
   suite_ids?: number[]
+  status_specific?: number[]
 }
 
 type CustomAttributeTypes = "Text" | "List" | "JSON"

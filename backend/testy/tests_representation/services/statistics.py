@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -31,7 +31,7 @@
 import operator
 from datetime import datetime
 from itertools import groupby
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import F, Func, OuterRef, Q, QuerySet, Subquery
@@ -49,8 +49,8 @@ _POINT = 'point'
 class StatisticProcessor:
     def __init__(
         self,
-        filter_condition: Dict[str, Any],
-        outer_ref_prefix: Optional[str] = 'case',
+        filter_condition: dict[str, Any],
+        outer_ref_prefix: str | None = 'case',
     ):
         self.labels = filter_condition.get('labels') or []
         self.not_labels = filter_condition.get('not_labels') or []
@@ -60,7 +60,7 @@ class StatisticProcessor:
         self.outer_ref_prefix = outer_ref_prefix
 
     @property
-    def label_subquery(self):
+    def label_subquery(self) -> Subquery:
         outer_ref_lookup = f'{self.outer_ref_prefix}_id' if self.outer_ref_prefix else 'id'
         return Subquery(
             LabeledItem.objects.filter(
@@ -74,7 +74,7 @@ class StatisticProcessor:
         )
 
     @property
-    def not_condition(self):
+    def not_condition(self) -> Q:
         not_condition = Q()
         labeled_item_outer_ref = f'{self.outer_ref_prefix}__labeled_items' if self.outer_ref_prefix else 'labeled_items'
         for label in self.not_labels:
@@ -88,8 +88,8 @@ class StatisticProcessor:
 
     def process_labels(
         self,
-        instances: QuerySet[Union[Test, TestResult, TestCase]],
-    ) -> QuerySet[Union[Test, TestResult, TestCase]]:
+        instances: QuerySet[Test | TestResult | TestCase],
+    ) -> QuerySet[Test | TestResult | TestCase]:
         if self.labels_condition == 'and' and self.labels:
             having_condition = Q(label_count=len(self.labels))
         elif self.labels:
@@ -102,7 +102,7 @@ class StatisticProcessor:
 
 
 class HistogramProcessor:
-    def __init__(self, request_data: Dict[str, Any]) -> None:
+    def __init__(self, request_data: dict[str, Any]) -> None:
         self.attribute = request_data.get('attribute', None)
         self.period = []
         for key in ('start_date', 'end_date'):
@@ -122,7 +122,7 @@ class HistogramProcessor:
             )
         }
 
-    def fill_empty_points(self, result: List[Dict[str, Any]]):
+    def fill_empty_points(self, result: list[dict[str, Any]]):
         for unused_date in self.all_dates:
             item = {_POINT: unused_date.date()}
             item.update(
@@ -140,8 +140,8 @@ class HistogramProcessor:
 
     def process_statistic(
         self,
-        test_results_formatted: QuerySet[Dict[str, Any]],
-    ) -> List[Dict[str, Any]]:
+        test_results_formatted: QuerySet[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
         group_func = self.group_by_attribute if self.attribute else self.group_by_date
         grouped_data = groupby(test_results_formatted, group_func)
         result = []

@@ -11,6 +11,7 @@ import { useGetMembersQuery } from "entities/project/api"
 
 import { UserAvatar } from "entities/user/ui/user-avatar/user-avatar"
 
+import { config } from "shared/config"
 import { useTableSearch } from "shared/hooks"
 
 import { DeleteUsetProjectAccess } from "../user-project-access-modal/delete-user-project-access"
@@ -146,7 +147,7 @@ export const useUsersProjectAccessTable = (isManageable: boolean) => {
   const paginationTable: TablePaginationConfig = {
     total: users?.pages.total ?? 0,
     hideOnSinglePage: false,
-    pageSizeOptions: ["10", "20", "50", "100"],
+    pageSizeOptions: config.pageSizeOptions,
     showLessItems: true,
     showSizeChanger: true,
     current: paginationParams.page,

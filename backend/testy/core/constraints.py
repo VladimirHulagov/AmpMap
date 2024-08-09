@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -28,12 +28,11 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from typing import List, Union
 
 from django.db import models
 
 
-def unique_soft_delete_constraint(fields: Union[str, List[str]], model_name: str) -> models.UniqueConstraint:
+def unique_soft_delete_constraint(fields: str | list[str], model_name: str) -> models.UniqueConstraint:
     constraint_prefix = fields if isinstance(fields, str) else '_'.join(fields)
     return models.UniqueConstraint(
         fields=[fields] if isinstance(fields, str) else fields,

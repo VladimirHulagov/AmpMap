@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -29,35 +29,34 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 from operator import methodcaller
-from typing import Any, Optional
+from typing import Any
 
 from django.apps import AppConfig
-from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from packaging import version
 from pluggy import HookimplMarker, HookspecMarker
-from rest_framework.request import Request
 from rest_framework.reverse import reverse
 
 hookspec = HookspecMarker('testy')
 hookimpl = HookimplMarker('testy')
 
 URLS_SENTINEL = object()
+VERSION = '1.3.2'
 
 
 class TestyPluginConfig(AppConfig):
-    package_name: Optional[str] = None
+    package_name: str | None = None
     verbose_name: str = ''
     description: str = ''
     version: str = ''
     plugin_base_url: str = ''
     author: str = ''
     author_email: str = ''
-    middlewares: Optional[list[str]] = None
-    min_version: Optional[str] = None
-    max_version: Optional[str] = None
-    index_reverse_name: Optional[str] = None
-    urls_module: Optional[str] = None
+    middlewares: list[str] | None = None
+    min_version: str | None = None
+    max_version: str | None = None
+    index_reverse_name: str | None = None
+    urls_module: str | None = None
     _validators = [
         '_validate_package_name',
         '_validate_urls_module',
@@ -73,7 +72,7 @@ class TestyPluginConfig(AppConfig):
         return True
 
     @classmethod
-    def verbose_dict(cls, request: Optional[Request] = None) -> dict[str, Any]:
+    def verbose_dict(cls, request=None) -> dict[str, Any]:
         plugin_dict = {
             'Name': cls.verbose_name,
             'Package': cls.package_name,
@@ -106,7 +105,7 @@ class TestyPluginConfig(AppConfig):
     def _validate_min_version(cls):
         if cls.min_version is None:
             return
-        if version.parse(settings.VERSION) < version.parse(cls.min_version):
+        if version.parse(VERSION) < version.parse(cls.min_version):
             raise ImproperlyConfigured(
                 f'Plugin "{cls.package_name}" requires min version {cls.min_version} of TestY.\n'
                 f'Source of error is {cls.package_name}',
@@ -116,7 +115,7 @@ class TestyPluginConfig(AppConfig):
     def _validate_max_version(cls):
         if cls.max_version is None:
             return
-        if version.parse(settings.VERSION) < version.parse(cls.min_version):
+        if version.parse(VERSION) < version.parse(cls.min_version):
             raise ImproperlyConfigured(
                 f'Plugin {cls.package_name} requires max version {cls.max_version} of TestY.'
                 f'Source of error is {cls.package_name}',

@@ -53,9 +53,6 @@ export const EditTestCaseView = () => {
     handleSubmitFormAsCurrent,
     handleSubmitFormAsNew,
     register,
-    treeSuites,
-    shouldShowSuiteSelect,
-    flatSuites,
     handleTabChange,
     attributes,
     addAttribute,
@@ -63,6 +60,8 @@ export const EditTestCaseView = () => {
     onAttributeChangeValue,
     onAttributeChangeName,
     onAttributeRemove,
+    selectedSuiteName,
+    setSelectedSuiteName,
   } = useTestCaseEditView()
 
   const scenarioFormErrors = !isSteps
@@ -104,7 +103,7 @@ export const EditTestCaseView = () => {
       {errors ? (
         <AlertError
           error={errors as ErrorObj}
-          skipFields={["name", "setup", "scenario", "teardown", "estimate", "steps"]}
+          skipFields={["name", "setup", "scenario", "teardown", "estimate", "steps", "attributes"]}
         />
       ) : null}
 
@@ -145,31 +144,33 @@ export const EditTestCaseView = () => {
                     )}
                   />
                 </Form.Item>
-                {shouldShowSuiteSelect && (
-                  <Form.Item
-                    label="Suite"
-                    validateStatus={errors?.suite ? "error" : ""}
-                    help={errors?.suite ? errors.suite : ""}
-                  >
-                    <Controller
-                      name="suite"
-                      control={control}
-                      render={({ field }) => {
-                        const suiteName =
-                          flatSuites.find((item) => item.id === field.value)?.name ?? ""
 
-                        return (
-                          <SelectSuiteTestCase
-                            suiteName={suiteName}
-                            selectedSuiteId={field.value}
-                            onChange={field.onChange}
-                            treeSuites={treeSuites?.results ?? []}
-                          />
-                        )
-                      }}
-                    />
-                  </Form.Item>
-                )}
+                <Form.Item
+                  label="Suite"
+                  validateStatus={errors?.suite ? "error" : ""}
+                  help={errors?.suite ? errors.suite : ""}
+                >
+                  <Controller
+                    name="suite"
+                    control={control}
+                    render={({ field }) => {
+                      const handleChange = (event: { id: number; name?: string }) => {
+                        if (event.name) {
+                          setSelectedSuiteName(event.name)
+                        }
+                        field.onChange(event.id)
+                      }
+
+                      return (
+                        <SelectSuiteTestCase
+                          suiteName={selectedSuiteName}
+                          selectedSuiteId={field.value}
+                          onChange={handleChange}
+                        />
+                      )
+                    }}
+                  />
+                </Form.Item>
 
                 <Form.Item
                   label="Setup"
@@ -311,6 +312,8 @@ export const EditTestCaseView = () => {
                         handleAttributeChangeName={onAttributeChangeName}
                         handleAttributeChangeValue={onAttributeChangeValue}
                         handleAttributeChangeType={onAttributeChangeType}
+                        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                        errors={errors?.attributes ? JSON.parse(errors?.attributes) : undefined}
                       />
 
                       <div style={{ marginTop: 8 }}>

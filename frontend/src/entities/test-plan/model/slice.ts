@@ -12,6 +12,9 @@ export const testPlanSlice = createSlice({
   name: "testPlan",
   initialState,
   reducers: {
+    setShowArchivedTests: (state, action: PayloadAction<boolean>) => {
+      state.showArchivedTests = action.payload
+    },
     showArchivedTests: (state) => {
       state.showArchivedTests = !state.showArchivedTests
     },
@@ -24,7 +27,8 @@ export const testPlanSlice = createSlice({
   },
 })
 
-export const { showArchivedTests, showArchivedResults, setTests } = testPlanSlice.actions
+export const { showArchivedTests, showArchivedResults, setTests, setShowArchivedTests } =
+  testPlanSlice.actions
 
 export const testPlanReducer = testPlanSlice.reducer
 

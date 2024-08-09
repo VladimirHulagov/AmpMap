@@ -26,7 +26,12 @@ export const useTestCasesSearch = ({ isShow }: { isShow: boolean }) => {
     fetch()
   }, [isShow, projectId])
 
-  const onSearch = async (value: string, labels: number[], labels_condition: "and" | "or") => {
+  const onSearch = async (
+    value: string,
+    labels: number[],
+    labels_condition: "and" | "or",
+    showArchived = false
+  ) => {
     if (!projectId) return
     if (value !== searchText) {
       setSearchText(value)
@@ -38,11 +43,12 @@ export const useTestCasesSearch = ({ isShow }: { isShow: boolean }) => {
       search: value,
       labels,
       labels_condition: labels.length > 1 ? labels_condition : undefined,
+      is_archive: showArchived,
     }).unwrap()
 
     const suitesWithKeys = makeTestSuitesWithCasesForTreeView(res)
 
-    const [filteredRows, expandedRows] = TreeUtils.filterRows(
+    const [filteredRows] = TreeUtils.filterRows(
       suitesWithKeys as unknown as DataWithKey<Suite>[],
       value,
       {
@@ -53,8 +59,6 @@ export const useTestCasesSearch = ({ isShow }: { isShow: boolean }) => {
 
     if (!value.trim().length && !labels.length) {
       setExpandedRowKeys([])
-    } else {
-      setExpandedRowKeys(expandedRows.map((key) => key.toString()))
     }
     setTreeData(filteredRows)
     setIsLoading(false)

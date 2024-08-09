@@ -7,6 +7,7 @@ import { FontsIcon, JsonIcon, ListIcon } from "shared/ui/icons"
 const { TextArea } = Input
 
 interface AttributFormProps {
+  errors?: Record<string, string>
   index?: number
   fieldProps:
     | ControllerRenderProps<ResultFormData, "attributes">
@@ -19,6 +20,7 @@ interface AttributFormProps {
 }
 
 export const AttributForm = ({
+  errors,
   index,
   fieldProps,
   attribut,
@@ -37,6 +39,7 @@ export const AttributForm = ({
               value={attribut.name}
               onChange={(e) => handleAttributeChangeName(attribut.id, e.target.value)}
               onBlur={fieldProps.onBlur}
+              style={{ borderColor: errors?.name ? "#c44d56" : "" }}
             />
           </Col>
           <Col flex="150px" style={{ textAlign: "right" }}>
@@ -72,6 +75,7 @@ export const AttributForm = ({
           value={String(attribut.value)}
           onChange={(e) => handleAttributeChangeValue(attribut.id, e.target.value)}
           onBlur={fieldProps.onBlur}
+          style={{ borderColor: errors?.value ? "#c44d56" : "" }}
         />
 
         <div style={{ textAlign: "right" }}>

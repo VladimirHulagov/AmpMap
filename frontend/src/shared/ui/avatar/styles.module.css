@@ -1,3 +1,22 @@
 .dropdown {
   min-width: 150px;
 }
+
+.container {
+  position: relative;
+}
+
+.badge {
+  position: absolute;
+  top: 18px;
+  right: -10px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: blue;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 0.8rem;
+}

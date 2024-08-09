@@ -28,6 +28,12 @@ const getTestCasePageType = (pathname: string) => {
   return type
 }
 
+const getProjectCrumb = (project: Project, type: "suites" | "plans") => (
+  <Breadcrumb.Item key={project.id}>
+    <Link to={`/projects/${project.id}/${type}`}>{project.name}</Link>
+  </Breadcrumb.Item>
+)
+
 export const useBreadcrumbs = () => {
   const { projectId, testPlanId, testSuiteId } = useParams<
     ParamProjectId & ParamTestPlanId & ParamTestSuiteId
@@ -108,18 +114,12 @@ export const useBreadcrumbs = () => {
       ])
     }
 
-    const projectCrumb = (
-      <Breadcrumb.Item key={projectId}>
-        <Link to={`/projects/${project.id}`}>{project.name}</Link>
-      </Breadcrumb.Item>
-    )
-
     if (testPlan && testPlanId && (!testSuite || !testSuiteId)) {
-      return baseBreadCrumbs.concat(projectCrumb).concat(breadCrumbsPlans)
+      return baseBreadCrumbs.concat(getProjectCrumb(project, "plans")).concat(breadCrumbsPlans)
     }
 
     if (testSuite && testSuiteId && (!testPlan || !testPlanId)) {
-      return baseBreadCrumbs.concat(projectCrumb).concat(breadCrumbsSuites)
+      return baseBreadCrumbs.concat(getProjectCrumb(project, "suites")).concat(breadCrumbsSuites)
     }
 
     return []

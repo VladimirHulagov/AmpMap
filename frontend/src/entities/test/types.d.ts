@@ -37,13 +37,17 @@ interface ITestGetWithFilters extends ITestGet {
   last_status?: string
   search?: string
   ordering?: string
+  labels?: string[]
+  not_labels?: string[]
+  labels_condition?: string
   nested_search?: boolean
+  is_archive?: boolean
 }
 
 interface TestTableParams {
   testPlanId?: number | null
   filters?: TestTableFilters
-  pagination?: TablePaginationConfig
+  pagination?: Partial<TablePaginationConfig>
   sorter?: SorterResult<string>
   nonce?: number
 }
@@ -71,6 +75,15 @@ interface TestUpdate {
   plan?: number
   assignee?: string
   is_archive?: boolean
+}
+
+interface TestBulkUpdate {
+  included_tests: number[]
+  excluded_tests: number[]
+  plan?: number
+  current_plan: number
+  assignee?: string
+  filter_conditions?: Partial<ITestGetWithFilters>
 }
 
 interface TestsWithPlanBreadcrumbs extends Test {

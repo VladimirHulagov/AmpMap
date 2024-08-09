@@ -25,6 +25,8 @@ export const labelSlice = createSlice({
       state.modal.label = undefined
     },
     setSelectedLabels: (state, action: PayloadAction<LabelState["selectedLabels"]>) => {
+      action.payload.labels = action.payload.labels.filter((i) => i !== "")
+      action.payload.not_labels = action.payload.not_labels.filter((i) => i !== "")
       state.selectedLabels = action.payload
     },
   },

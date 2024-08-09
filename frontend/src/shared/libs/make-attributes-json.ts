@@ -3,7 +3,7 @@
 export const makeAttributesJson = (attributes: Attribute[]) => {
   const attributesJson: AttributesObject = {}
   let isSuccess = true
-  let error: string | null = null
+  const errors: Record<string, Record<string, string>> = {}
 
   for (let i = 0; i < attributes.length; i++) {
     const name = attributes[i].name.trimStart().trimEnd()
@@ -13,9 +13,18 @@ export const makeAttributesJson = (attributes: Attribute[]) => {
     const isRequired = !!attributes[i].required
 
     if (name === "" || (value === "" && isRequired)) {
-      error = "All fields are required"
+      errors[attributes[i].id] = {
+        name: name === "" ? "Required" : "",
+        value: value === "" && isRequired ? "Required" : "",
+      }
       isSuccess = false
-      break
+      continue
+    }
+
+    if (value === "" && isRequired) {
+      errors[attributes[i].id] = { ...errors[attributes[i].id], value: "Required" }
+      isSuccess = false
+      continue
     }
 
     if (type === "JSON") {
@@ -23,10 +32,9 @@ export const makeAttributesJson = (attributes: Attribute[]) => {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         attributesJson[name] = JSON.parse(value)
       } catch (err: unknown) {
-        const errorData = err as Error
-        error = errorData.message
+        errors[attributes[i].id] = { ...errors[attributes[i].id], value: "JSON parse error" }
         isSuccess = false
-        break
+        continue
       }
     } else if (type === "List") {
       attributesJson[name] = value.split(/\r?\n/)
@@ -35,5 +43,5 @@ export const makeAttributesJson = (attributes: Attribute[]) => {
     }
   }
 
-  return { attributesJson, isSuccess, error }
+  return { attributesJson, isSuccess, errors }
 }

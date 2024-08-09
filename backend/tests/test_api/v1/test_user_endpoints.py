@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -35,8 +35,9 @@ import os
 from copy import deepcopy
 from http import HTTPStatus
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
+import allure
 import pytest
 from django.conf import settings
 from django.utils import timezone
@@ -48,8 +49,13 @@ from tests import constants
 from tests.commons import RequestType, model_to_dict_via_serializer
 from tests.error_messages import (
     CASE_INSENSITIVE_USERNAME_ALREADY_EXISTS,
+    DIGIT_PASS,
     INVALID_EMAIL_MSG,
+    LOWERCASE_PASS,
+    SHORT_PASS,
+    SPECIAL_SYMB_PASS,
     UNAUTHORIZED_MSG,
+    UPPERCASE_PASS,
     USERNAME_ALREADY_EXISTS,
 )
 from testy.users.api.v1.serializers import UserSerializer
@@ -62,6 +68,7 @@ class TestUserEndpoints:
     view_name_detail = 'api:v1:user-detail'
     view_name_me = 'api:v1:user-me'
     view_name_config = 'api:v1:user-config'
+    view_name_password_update = 'api:v1:user-change-password'
     view_name_login = 'user-login'
     view_name_logout = 'user-logout'
 
@@ -117,6 +124,54 @@ class TestUserEndpoints:
         response = api_client.send_request(self.view_name_detail, reverse_kwargs={'pk': user.pk})
         actual_dict = response.json()
         assert actual_dict == expected_dict, 'Actual model dict is different from expected'
+
+    def test_password_update(self, api_client, user):
+        api_client.force_login(user)
+        api_client.send_request(
+            self.view_name_password_update,
+            data={'password': constants.NEW_PASSWORD},
+            request_type=RequestType.POST,
+        )
+        with allure.step('Validate user not logged out after password change'):
+            api_client.send_request(self.view_name_me)
+        with allure.step('Validate user can login with new credentials'):
+            api_client.send_request(
+                self.view_name_login,
+                request_type=RequestType.POST,
+                data={
+                    'username': user.username,
+                    'password': constants.NEW_PASSWORD,
+                    'remember_me': True,
+                },
+            )
+
+    @pytest.mark.parametrize(
+        'password, err_msg',
+        [
+            ('Test_1', SHORT_PASS),
+            ('testsome_1', UPPERCASE_PASS),
+            ('TESTSOME_1', LOWERCASE_PASS),
+            ('TestSome_', DIGIT_PASS),
+            ('TestSome22', SPECIAL_SYMB_PASS),
+        ],
+        ids=[
+            'Minimal length',
+            'Upper case required',
+            'Lower case required',
+            'Digit required',
+            'Special symbol required',
+        ],
+    )
+    def test_password_constraints(self, authorized_client, password, err_msg):
+        resp = authorized_client.send_request(
+            self.view_name_password_update,
+            request_type=RequestType.POST,
+            data={
+                'password': password,
+            },
+            expected_status=HTTPStatus.BAD_REQUEST,
+        ).json()
+        assert resp['errors'][0] == err_msg
 
     def test_me(self, api_client, authorized_superuser):
         expected_dict = model_to_dict_via_serializer(authorized_superuser, UserSerializer)
@@ -371,7 +426,7 @@ class TestUserEndpoints:
         assert response.status_code == HTTPStatus.UNAUTHORIZED
 
     @classmethod
-    def _form_dict_user_model(cls, user: User) -> Dict[str, Any]:
+    def _form_dict_user_model(cls, user: User) -> dict[str, Any]:
         user_dict = model_to_dict_via_serializer(user, User)
         fields_to_remove = ['is_superuser', 'last_login', 'password', 'user_permissions']
         for field in fields_to_remove:

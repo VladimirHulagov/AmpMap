@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -30,9 +30,10 @@
 # <http://www.gnu.org/licenses/>.
 from http import HTTPStatus
 
-from django.contrib.auth import get_user_model
+from django.contrib.auth import get_user_model, login
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status
+from rest_framework.authentication import authenticate
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -43,11 +44,13 @@ from testy.paginations import StandardSetPagination
 from testy.users.api.v1.serializers import (
     GroupSerializer,
     MembershipSerializer,
+    PasswordUpdateSerializer,
     PermissionSerializer,
     RoleAssignSerializer,
     RoleSerializer,
     RoleUnassignSerializer,
     UserAvatarSerializer,
+    UserCreateSerializer,
     UserSerializer,
     UserUpdateSerializer,
 )
@@ -63,6 +66,7 @@ from testy.users.services.users import UserService
 UserModel = get_user_model()
 
 _ERRORS = 'errors'
+_POST = 'post'
 
 
 class GroupViewSet(ModelViewSet):
@@ -86,8 +90,12 @@ class UserViewSet(ModelViewSet):
     schema_tags = ['Users']
 
     def get_serializer_class(self):
+        if self.action == 'create':
+            return UserCreateSerializer
         if self.action in {'update', 'partial_update'}:
             return UserUpdateSerializer
+        if self.action == 'change_password':
+            return PasswordUpdateSerializer
         return UserSerializer
 
     def get_queryset(self):
@@ -113,6 +121,16 @@ class UserViewSet(ModelViewSet):
         serializer.instance = UserService().user_update(serializer.instance, serializer.validated_data)
         return Response(serializer.data)
 
+    @action(methods=[_POST], url_path='change-password', url_name='change-password', detail=False)
+    def change_password(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        password = serializer.validated_data.get('password')
+        UserService.update_password(request.user, password)
+        user = authenticate(request, username=request.user.username, password=password)
+        login(request, user)
+        return Response('Password changed successfully')
+
     @action(methods=['get', 'patch'], url_path='me/config', url_name='config', detail=False)
     def config(self, request):
         if request.method == 'GET':
@@ -121,7 +139,7 @@ class UserViewSet(ModelViewSet):
             return Response(UserService().config_update(request.user, request.data))
         return Response(request.user.config)
 
-    @action(methods=['post', 'delete'], url_path='me/avatar', url_name='avatar', detail=False)
+    @action(methods=[_POST, 'delete'], url_path='me/avatar', url_name='avatar', detail=False)
     def avatar(self, request):
         serializer = UserAvatarSerializer(request.user, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -167,14 +185,14 @@ class RoleViewSet(ModelViewSet):
             serializer.validated_data,
         )
 
-    @action(methods=['post', 'put'], detail=False, url_path='assign', url_name='assign')
+    @action(methods=[_POST, 'put'], detail=False, url_path='assign', url_name='assign')
     def assign(self, request):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         memberships = RoleService.roles_assign(serializer.validated_data)
         return Response(MembershipSerializer(memberships, many=True).data)
 
-    @action(methods=['post'], detail=False, url_path='unassign', url_name='unassign')
+    @action(methods=[_POST], detail=False, url_path='unassign', url_name='unassign')
     def unassign(self, request):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)

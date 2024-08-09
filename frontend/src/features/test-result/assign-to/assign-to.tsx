@@ -1,9 +1,9 @@
 import { UserAddOutlined } from "@ant-design/icons"
-import { Button, Divider, Form, Modal, Typography } from "antd"
+import { Button, Divider, Typography } from "antd"
 
 import { UserAvatar } from "entities/user/ui/user-avatar/user-avatar"
-import { UserSearchInput } from "entities/user/ui/user-search-input"
 
+import { AssingToModal } from "./assign-to-modal"
 import styles from "./styles.module.css"
 import { useAssignTo } from "./use-assign-to"
 
@@ -58,45 +58,20 @@ export const AssignTo = () => {
           </div>
         </Typography>
       </div>
-      <Modal
-        className="test-assign-to-modal"
-        title="Assign To"
-        open={isOpenModal}
-        onCancel={handleClose}
-        footer={[
-          <Button key="back" onClick={handleClose}>
-            Cancel
-          </Button>,
-          <Button
-            key="submit"
-            type="primary"
-            onClick={handleSubmitForm}
-            disabled={!isDirty}
-            loading={isLoadingUpdateTest}
-          >
-            Save
-          </Button>,
-        ]}
-      >
-        <Form id="test-assign-form" layout="vertical" onFinish={handleSubmitForm}>
-          <Form.Item
-            label="Name"
-            validateStatus={errors?.assignUserId ? "error" : ""}
-            help={errors?.assignUserId ?? ""}
-          >
-            <UserSearchInput
-              selectedUser={selectedUser}
-              handleChange={handleAssignUserChange}
-              handleClear={handleAssignUserClear}
-            />
-            {!isAssignetMe && (
-              <button className={styles.assignToMeModal} onClick={handleAssignToMe} type="button">
-                Assign To Me
-              </button>
-            )}
-          </Form.Item>
-        </Form>
-      </Modal>
+      <AssingToModal
+        isOpenModal={isOpenModal}
+        errors={errors}
+        isDirty={isDirty}
+        isLoadingUpdateTest={isLoadingUpdateTest}
+        selectedUser={selectedUser}
+        handleClose={handleClose}
+        handleOpenAssignModal={handleOpenAssignModal}
+        handleSubmitForm={handleSubmitForm}
+        handleAssignUserChange={handleAssignUserChange}
+        handleAssignUserClear={handleAssignUserClear}
+        handleAssignToMe={handleAssignToMe}
+        isAssignToMe={isAssignetMe}
+      />
     </>
   )
 }

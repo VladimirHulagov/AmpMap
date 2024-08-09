@@ -1,4 +1,4 @@
-import { useMemo } from "react"
+import { useEffect, useMemo } from "react"
 import { useParams } from "react-router-dom"
 
 import { useAppDispatch, useAppSelector } from "app/hooks"
@@ -68,6 +68,7 @@ export const useLabels = (options?: { testPlanId?: string }) => {
       filters: {
         labels: [],
         not_labels: [],
+        labels_condition: "or",
       },
     })
     dispatch(
@@ -77,6 +78,10 @@ export const useLabels = (options?: { testPlanId?: string }) => {
       })
     )
   }
+
+  useEffect(() => {
+    reset()
+  }, [options?.testPlanId, testPlanIdParam])
 
   const toggleCondition = useMemo(() => {
     const conditionStr = tableParams.filters?.labels_condition

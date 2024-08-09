@@ -1,36 +1,39 @@
-import { TableOutlined } from "@ant-design/icons"
-import { Button, Checkbox, Col, Popover, Row, Space, Table, Typography } from "antd"
-import { TablePaginationConfig } from "antd/es/table"
+import { Button, Checkbox, Col, Row, Space, Table, Typography } from "antd"
+import { MoveTests } from "features/test-plan"
+import { AssignTestsBulk } from "features/test-result"
+import { TestPlanLabels } from "widgets"
 
-import { ContainerLoader } from "shared/ui"
-
-import { TestPlanLabels } from "widgets/test-plan"
+import { SettingsColumnVisibility } from "shared/ui/settings-column-visibility/settings-column-visibility"
 
 import styles from "./styles.module.css"
 import { useTestsTable } from "./use-tests-table"
 
-export interface TestsTableProps {
+interface Props {
   testPlanId: Id
 }
 
-export const TestsTable = ({ testPlanId }: TestsTableProps) => {
+export const TestsTable = ({ testPlanId }: Props) => {
   const {
+    data,
     isLoading,
-    showArchive,
+    isShowArchive,
     columns,
-    tests,
-    test,
-    tableParams,
-    onChange,
-    onShowArchived,
-    clearAll,
+    visibleColumns,
+    filteredColumns,
+    activeTestId,
+    paginationTable,
+    handleChangeVisibleColumns,
+    handleShowArchived,
+    handleClearAll,
+    handleTableChange,
     handleRowClick,
-    columnNames,
-    shownColumns,
-    handleChangeShownColumns,
-  } = useTestsTable(testPlanId)
-
-  if (isLoading) return <ContainerLoader />
+    isRefreshingTable,
+    hasSelection,
+    handleMoveSubmit,
+    selectedRows,
+    handleSelectRows,
+    handleBulkAssignSubmit,
+  } = useTestsTable({ testPlanId })
 
   return (
     <>
@@ -40,50 +43,53 @@ export const TestsTable = ({ testPlanId }: TestsTableProps) => {
         </Col>
         <Col flex="0 1 190px" className={styles.colRight}>
           <Space className={styles.btnShowArchive}>
-            <Checkbox checked={showArchive} onChange={onShowArchived}>
+            <Checkbox checked={isShowArchive} onChange={handleShowArchived}>
               Show Archived
             </Checkbox>
           </Space>
           <Space className={styles.btnsRow}>
-            <Button id="clear-filters-and-sorters" onClick={clearAll}>
+            <Button id="clear-filters-and-sorters" onClick={handleClearAll}>
               Clear filters and sorters
             </Button>
-            <Popover
-              content={
-                <Checkbox.Group
-                  options={columnNames}
-                  value={shownColumns}
-                  onChange={handleChangeShownColumns}
-                />
-              }
-              title="Shown columns"
-              trigger="click"
-              placement="bottomRight"
-            >
-              <Button id="columns-settings" icon={<TableOutlined />} />
-            </Popover>
+            <SettingsColumnVisibility
+              id="tests-table-setting-columns-btn"
+              columns={columns}
+              visibilityColumns={visibleColumns}
+              onChange={handleChangeVisibleColumns}
+            />
           </Space>
         </Col>
       </Row>
-
-      <Table
-        style={{ cursor: "pointer" }}
-        title={() => <Typography.Paragraph style={{ fontSize: 22 }}>Tests</Typography.Paragraph>}
-        rowClassName={(record) => (record.id === test?.id ? "active" : "")}
-        columns={columns}
-        pagination={tableParams.pagination as TablePaginationConfig}
-        dataSource={
-          showArchive ? tests?.results : tests?.results.filter((test) => !test.is_archive)
-        }
-        size="small"
-        onChange={onChange}
-        onRow={(record) => {
-          return {
-            onClick: () => handleRowClick(record),
-          }
-        }}
-        rowKey="id"
-      />
+      {!isRefreshingTable && (
+        <Table
+          style={{ cursor: "pointer" }}
+          title={() => (
+            <div className={styles.titleRow}>
+              <Typography.Paragraph style={{ fontSize: 22 }}>Tests</Typography.Paragraph>
+              {hasSelection && <MoveTests onSubmit={handleMoveSubmit} />}
+              {hasSelection && <AssignTestsBulk onSubmit={handleBulkAssignSubmit} />}
+            </div>
+          )}
+          rowClassName={(record) => (record.id === activeTestId ? "active" : "")}
+          columns={filteredColumns}
+          pagination={paginationTable}
+          dataSource={data}
+          loading={isLoading}
+          size="small"
+          onChange={handleTableChange}
+          onRow={(record) => {
+            return {
+              onClick: () => handleRowClick(record),
+            }
+          }}
+          rowSelection={{
+            selectedRowKeys: selectedRows,
+            onChange: handleSelectRows,
+            preserveSelectedRowKeys: true,
+          }}
+          rowKey="id"
+        />
+      )}
     </>
   )
 }

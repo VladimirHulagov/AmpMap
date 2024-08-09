@@ -29,7 +29,7 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 from logging import getLogger
-from typing import Any, Dict, List
+from typing import Any
 
 from django.db import transaction
 
@@ -60,7 +60,7 @@ class TestCaseService:
         *non_side_effect_fields,
     ]
 
-    def step_create(self, data: Dict[str, Any]) -> TestCaseStep:
+    def step_create(self, data: dict[str, Any]) -> TestCaseStep:
         step: TestCaseStep = TestCaseStep.model_create(
             fields=self.step_non_side_effect_fields,
             data=data,
@@ -75,7 +75,7 @@ class TestCaseService:
     def step_update(
         self,
         step: TestCaseStep,
-        data: Dict[str, Any],
+        data: dict[str, Any],
     ) -> TestCaseStep:
         skip_history = data.pop(_SKIP_HISTORY, False)
         step, _ = step.model_update(
@@ -93,7 +93,7 @@ class TestCaseService:
         return step
 
     @transaction.atomic
-    def case_with_steps_create(self, data: Dict[str, Any]) -> TestCase:
+    def case_with_steps_create(self, data: dict[str, Any]) -> TestCase:
         case = self.case_create(data)
 
         for step in data.pop('steps', []):
@@ -105,7 +105,7 @@ class TestCaseService:
         return case
 
     @transaction.atomic
-    def case_create(self, data: Dict[str, Any]) -> TestCase:
+    def case_create(self, data: dict[str, Any]) -> TestCase:
         pre_create_case.send(sender=self.case_create, data=data)
         user = data.pop(_USER)
         case: TestCase = TestCase.model_create(
@@ -125,10 +125,10 @@ class TestCaseService:
         return case
 
     @transaction.atomic
-    def case_with_steps_update(self, case: TestCase, data: Dict[str, Any]) -> TestCase:
+    def case_with_steps_update(self, case: TestCase, data: dict[str, Any]) -> TestCase:
         case_steps = data.pop('steps', [])
         case = self.case_update(case, data)
-        steps_id_pool: List[int] = []
+        steps_id_pool: list[int] = []
 
         for step in case_steps:
             if _ID in step.keys():
@@ -162,7 +162,7 @@ class TestCaseService:
         return case
 
     @transaction.atomic
-    def case_update(self, case: TestCase, data: Dict[str, Any]) -> TestCase:
+    def case_update(self, case: TestCase, data: dict[str, Any]) -> TestCase:
         user = data.pop(_USER)
         skip_history = data.get(_SKIP_HISTORY, False)
         case, _ = case.model_update(
@@ -187,19 +187,6 @@ class TestCaseService:
         LabelService().set(data.get('labels', []), case, label_kwargs, labeled_item_kwargs)
 
         return case
-
-    @classmethod
-    def cases_copy(cls, data):
-        copied_cases = []
-        for case_data in data.get('cases'):
-            attrs_to_change = {}
-            if suite_id := data.get('dst_suite_id'):
-                attrs_to_change['suite_id'] = suite_id
-            if new_name := case_data.get('new_name'):
-                attrs_to_change['name'] = new_name
-            case = TestCase.objects.get(pk=case_data.get(_ID))
-            copied_cases.append(case.model_clone(attrs_to_change=attrs_to_change))
-        return copied_cases
 
     @classmethod
     def restore_test_case_steps_versions(cls, history_case):
@@ -234,9 +221,10 @@ class TestCaseService:
 
     @classmethod
     @transaction.atomic
-    def restore_version(cls, version: int, pk: int):
+    def restore_version(cls, version: int, pk: int) -> TestCase:
         history = TestCaseSelector.get_case_history_by_version(pk, version)
         history.instance.save()
+        LabelService.restore_by_version(history.instance, version)
         AttachmentService().restore_by_version(history.instance, version)
         cls.restore_test_case_steps_versions(history)
         return history.instance

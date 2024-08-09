@@ -1,6 +1,7 @@
-import { DownOutlined } from "@ant-design/icons"
-import { Dropdown, MenuProps, Space } from "antd"
-import { Link } from "react-router-dom"
+import { BellOutlined, DownOutlined } from "@ant-design/icons"
+import { Badge, Button, Dropdown, MenuProps, Space } from "antd"
+import { useNotificationWS } from "entities/notifications/model/use-notification-ws"
+import { Link, useNavigate } from "react-router-dom"
 
 import { UserAvatar } from "entities/user/ui/user-avatar/user-avatar"
 
@@ -9,6 +10,8 @@ import { useAvatarLogic } from "./use-avatar"
 
 export const AvatarView = () => {
   const { handleLogout, user } = useAvatarLogic()
+  const { notificationsCount } = useNotificationWS()
+  const navigate = useNavigate()
 
   const menu: MenuProps = {
     items: [
@@ -32,6 +35,11 @@ export const AvatarView = () => {
     ],
   }
 
+  const handleRedirectToNotifications = (e: React.MouseEvent<HTMLElement>) => {
+    e.stopPropagation()
+    navigate("/notifications")
+  }
+
   return (
     <Dropdown
       {...{
@@ -41,6 +49,9 @@ export const AvatarView = () => {
       }}
     >
       <Space className="pointer">
+        <Badge count={notificationsCount} showZero={false} color="blue">
+          <Button icon={<BellOutlined />} onClick={(e) => handleRedirectToNotifications(e)} />
+        </Badge>
         <UserAvatar avatar_link={user?.avatar_link ?? ""} size={32} />
         <span id="header-username">{user?.username}</span>
         <DownOutlined />

@@ -5,9 +5,9 @@ import { ErrorObj } from "shared/hooks/use-alert-error"
 import { TreeUtils } from "shared/libs"
 import {
   AlertError,
+  ArchivedTag,
   ContainerLoader,
   DateFormItem,
-  HighLighterTesty,
   InputFormItem,
   SearchFormItemOld,
   TextAreaFormItem,
@@ -56,6 +56,8 @@ export const EditTestPlanModal = ({ isShow, setIsShow, testPlan }: TestPlanEditM
     labelProps,
     lableCondition,
     handleConditionClick,
+    showArchived,
+    handleToggleArchived,
   } = useTestPlanEditModal({ isShow, setIsShow, testPlan })
 
   const { FilterButton, FilterForm } = useTestCasesFilter({
@@ -65,6 +67,8 @@ export const EditTestPlanModal = ({ isShow, setIsShow, testPlan }: TestPlanEditM
     selectedLables,
     lableCondition,
     handleConditionClick,
+    showArchived,
+    handleToggleArchived,
   })
 
   return (
@@ -189,10 +193,8 @@ export const EditTestPlanModal = ({ isShow, setIsShow, testPlan }: TestPlanEditM
                             // @ts-ignore
                             titleRender={(node: TestPlanTreeView) => (
                               <>
-                                <HighLighterTesty
-                                  searchWords={searchText}
-                                  textToHighlight={String(node.title)}
-                                />
+                                {node.is_archive && <ArchivedTag />}
+                                {node.title}
                                 {node?.labels ? <TestCaseLabels labels={node.labels} /> : null}
                               </>
                             )}

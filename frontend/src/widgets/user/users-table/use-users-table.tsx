@@ -11,6 +11,7 @@ import { selectUser } from "entities/auth/model"
 import { useGetUsersQuery } from "entities/user/api"
 import { UserAvatar } from "entities/user/ui/user-avatar/user-avatar"
 
+import { config } from "shared/config"
 import { useTableSearch } from "shared/hooks"
 import { CheckedIcon } from "shared/ui/icons"
 
@@ -149,7 +150,7 @@ export const useUsersTable = () => {
   const paginationTable: TablePaginationConfig = {
     total: users?.pages.total ?? 0,
     hideOnSinglePage: false,
-    pageSizeOptions: ["10", "20", "50", "100"],
+    pageSizeOptions: config.pageSizeOptions,
     showLessItems: true,
     showSizeChanger: true,
     current: paginationParams.page,

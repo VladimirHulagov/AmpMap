@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -28,12 +28,11 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from typing import List
-
-from django.db.models import QuerySet
+from django.contrib.contenttypes.models import ContentType
+from django.db.models import Model, QuerySet
 from django.db.models.functions import Lower
 
-from testy.core.models import Label
+from testy.core.models import Label, LabeledItem
 from testy.tests_representation.selectors.testplan import TestPlanSelector
 
 
@@ -57,7 +56,15 @@ class LabelSelector:
         )
 
     @classmethod
-    def labels_by_ids_list(cls, ids: List[int], field_name: str) -> QuerySet[Label]:
+    def labels_by_ids_list(cls, ids: list[int], field_name: str) -> QuerySet[Label]:
         return Label.objects.filter(
             **{f'{field_name}__in': ids},
         ).order_by('id')
+
+    @classmethod
+    def label_list_by_parent_object_and_history_ids(cls, instance: Model, history_id: int):
+        return QuerySet(LabeledItem).filter(
+            content_type=ContentType.objects.get_for_model(instance),
+            object_id=instance.pk,
+            content_object_history_id=history_id,
+        )

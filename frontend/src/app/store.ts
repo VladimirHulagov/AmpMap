@@ -1,7 +1,9 @@
 import { Action, ThunkAction, combineReducers, configureStore } from "@reduxjs/toolkit"
 import { commentsApi } from "entities/comments/api"
 import { customAttributeApi } from "entities/custom-attribute/api"
-import { customAttributeReducer } from "entities/custom-attribute/model"
+import { notificationApi } from "entities/notifications/api"
+import { notificationWSReducer } from "entities/notifications/model/notification-ws-slice"
+import { notificationWSMiddleware } from "entities/notifications/ws"
 import { roleApi } from "entities/roles/api"
 import { roleReducer } from "entities/roles/model"
 import {
@@ -68,7 +70,6 @@ const rootReducer = combineReducers({
   label: labelReducer,
   role: roleReducer,
   system: systemReducer,
-  customAttribute: customAttributeReducer,
   [systemApi.reducerPath]: systemApi.reducer,
   [authApi.reducerPath]: authApi.reducer,
   [usersApi.reducerPath]: usersApi.reducer,
@@ -84,6 +85,8 @@ const rootReducer = combineReducers({
   [roleApi.reducerPath]: roleApi.reducer,
   [commentsApi.reducerPath]: commentsApi.reducer,
   [customAttributeApi.reducerPath]: customAttributeApi.reducer,
+  [notificationApi.reducerPath]: notificationApi.reducer,
+  notificationWS: notificationWSReducer,
 })
 
 const persistedReducer = persistReducer(persistConfig, rootReducer)
@@ -110,7 +113,9 @@ export const store = configureStore({
       .concat(commentsApi.middleware)
       .concat(roleApi.middleware)
       .concat(systemApi.middleware)
-      .concat(customAttributeApi.middleware),
+      .concat(customAttributeApi.middleware)
+      .concat(notificationApi.middleware)
+      .concat(notificationWSMiddleware),
   devTools: import.meta.env.NODE_ENV !== "production",
 })
 

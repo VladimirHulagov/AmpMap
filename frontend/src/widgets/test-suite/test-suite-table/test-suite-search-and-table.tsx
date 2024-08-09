@@ -1,9 +1,9 @@
 import { Table } from "antd"
 import { TablePaginationConfig } from "antd/es/table"
+import { FilterValue, SorterResult } from "antd/es/table/interface"
 import Search from "antd/lib/input/Search"
 import { Content } from "antd/lib/layout/layout"
 import { ColumnsType } from "antd/lib/table"
-import { SorterResult } from "antd/lib/table/interface"
 import { CreateSuite } from "features/suite"
 
 import { TreeUtils } from "shared/libs"
@@ -14,12 +14,17 @@ interface TestSuiteSearchAndTableProps {
   treeSuites: SuiteTree[]
   expandedRowKeys: string[]
   onSearch: (searchText: string) => void
+  searchText: string
   onSearchFieldClick: (e: React.MouseEvent<HTMLElement, MouseEvent>) => void
   columns: ColumnsType<SuiteTree>
   onRowExpand: (expandedRows: string[], recordKey: string) => void
-  onHandleRowClick: (testPlan: SuiteTree) => void
+  onHandleRowClick: (testSuite: SuiteTree, e: React.MouseEvent<unknown, MouseEvent>) => void
   paginationTable: TablePaginationConfig
-  handleSorter: (sorter: SorterResult<SuiteTree> | SorterResult<SuiteTree>[]) => void
+  handleChange: (
+    pagination: TablePaginationConfig,
+    filters: Record<string, FilterValue | null>,
+    sorter: SorterResult<SuiteTree> | SorterResult<SuiteTree>[]
+  ) => void
   onListChange: () => void
 }
 
@@ -28,13 +33,14 @@ export const TestSuiteSearchAndTable = ({
   padding = 24,
   treeSuites,
   expandedRowKeys,
+  searchText,
   onSearch,
   onSearchFieldClick,
   columns,
   onRowExpand,
   onHandleRowClick,
   paginationTable,
-  handleSorter,
+  handleChange,
   onListChange,
 }: TestSuiteSearchAndTableProps) => {
   return (
@@ -46,6 +52,7 @@ export const TestSuiteSearchAndTable = ({
               placeholder="Search"
               onChange={(e) => onSearch(e.target.value)}
               onClick={onSearchFieldClick}
+              value={searchText}
             />
             <CreateSuite onSubmit={onListChange} />
           </div>
@@ -61,10 +68,10 @@ export const TestSuiteSearchAndTable = ({
               expandedRowKeys: expandedRowKeys.map((i) => Number(i)),
               onExpand: (_, record) => onRowExpand(expandedRowKeys, String(record.id)),
             }}
-            onChange={(_, __, sorter) => handleSorter(sorter)}
+            onChange={handleChange}
             onRow={(record) => {
               return {
-                onClick: () => onHandleRowClick(record),
+                onClick: (e) => onHandleRowClick(record, e),
               }
             }}
             loading={isLoading}

@@ -1,15 +1,9 @@
 import { Button, Space, Table } from "antd"
 
-import { ContainerLoader } from "shared/ui"
-
 import { useUsersTable } from "./use-users-table"
 
 export const UsersTable = () => {
   const { columns, isLoading, users, paginationTable, handleChange, clearAll } = useUsersTable()
-
-  if (isLoading) {
-    return <ContainerLoader />
-  }
 
   return (
     <>
@@ -19,6 +13,7 @@ export const UsersTable = () => {
         </Button>
       </Space>
       <Table
+        loading={isLoading}
         dataSource={users}
         columns={columns}
         rowKey="username"

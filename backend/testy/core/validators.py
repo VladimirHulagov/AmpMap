@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -28,22 +28,33 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from typing import Any, Dict, List
+from functools import partial
+from typing import Any, Iterable, Protocol
 
 from django.contrib.contenttypes.models import ContentType
 from django.utils.deconstruct import deconstructible
 from rest_framework import serializers
 
-from testy.core.models import Project
+from testy.core.models import CustomAttribute, Project
 from testy.core.selectors.custom_attribute import CustomAttributeSelector
-from testy.tests_description.models import TestSuite
+from testy.tests_description.models import TestCase, TestSuite
+
+
+class ReturnsRequiredAttrs(Protocol):
+    def __call__(self, content_type_id: int) -> Iterable[CustomAttribute]:
+        """
+        Protocol for returning a list of required attributes.
+
+        Args:
+            content_type_id: The content type ID to filter by.
+        """
 
 
 @deconstructible
 class CustomAttributeCreateValidator:
     requires_context = True
 
-    def __call__(self, attrs: Dict[str, Any], serializer):
+    def __call__(self, attrs: dict[str, Any], serializer):
         project = attrs.get('project')
         is_suite_specific = attrs.get('is_suite_specific')
         suites = attrs.get('suite_ids')
@@ -55,20 +66,19 @@ class CustomAttributeCreateValidator:
         self._validate_all_suites_project_related(project, suites, is_suite_specific)
 
     @classmethod
-    def _validate_suite_related_fields(cls, suite_ids: List[int], is_suite_specific: bool):
+    def _validate_suite_related_fields(cls, suite_ids: list[int], is_suite_specific: bool):
         if is_suite_specific and not suite_ids:
             raise serializers.ValidationError('Empty suites list, while attribute is suite-specific')
-
         elif not is_suite_specific and suite_ids:
             raise serializers.ValidationError('Provided suites list, while attribute is not suite-specific')
 
     @classmethod
-    def _validate_all_suites_project_related(cls, project: Project, suite_ids: List[int], is_suite_specific: bool):
+    def _validate_all_suites_project_related(cls, project: Project, suite_ids: list[int], is_suite_specific: bool):
         if not cls._is_project_includes_all_suites(project, suite_ids, is_suite_specific):
             raise serializers.ValidationError('Field suite_ids contains non project-related items')
 
     @classmethod
-    def _is_project_includes_all_suites(cls, project: Project, suite_ids: List[int], is_suite_specific: bool) -> bool:
+    def _is_project_includes_all_suites(cls, project: Project, suite_ids: list[int], is_suite_specific: bool) -> bool:
         if not is_suite_specific:
             return True
 
@@ -78,7 +88,7 @@ class CustomAttributeCreateValidator:
         return found_suites_count == requested_suites_count
 
     @classmethod
-    def _suites_count_by_project_and_ids(cls, project: Project, suite_ids: List[int]) -> int:
+    def _suites_count_by_project_and_ids(cls, project: Project, suite_ids: list[int]) -> int:
         return TestSuite.objects.filter(project=project, id__in=suite_ids).count()
 
 
@@ -87,12 +97,9 @@ class BaseCustomAttributeValuesValidator:
     model_name = ''
 
     @classmethod
-    def _validate(cls, project: Project, suite: TestSuite, attributes: dict):
+    def _validate(cls, attributes: dict, required_attrs_getter: ReturnsRequiredAttrs):
         content_type_id = ContentType.objects.get(app_label=cls.app_name, model=cls.model_name).id
-        required_attributes = CustomAttributeSelector.required_attribute_names_by_project_and_suite(
-            project, suite, content_type_id,
-        )
-
+        required_attributes = required_attrs_getter(content_type_id=content_type_id)
         if diff := set(required_attributes).difference(set(attributes.keys())):
             diff_list = list(diff)
             raise serializers.ValidationError(f'Missing following required attributes: {diff_list}')
@@ -106,11 +113,17 @@ class TestCaseCustomAttributeValuesValidator(BaseCustomAttributeValuesValidator)
     app_name = 'tests_description'
     model_name = 'testcase'
 
-    def __call__(self, attrs: Dict[str, Any]):
+    def __call__(self, attrs: dict[str, Any]):
         custom_attr = attrs.get('attributes', {})
         project = attrs['project']
         suite = attrs['suite']
-        self._validate(project, suite, custom_attr)
+
+        attr_getter = partial(
+            CustomAttributeSelector.required_attribute_names_by_project_and_suite,
+            project=project,
+            suite=suite,
+        )
+        self._validate(custom_attr, attr_getter)
 
 
 @deconstructible
@@ -119,8 +132,8 @@ class TestResultCustomAttributeValuesValidator(BaseCustomAttributeValuesValidato
     model_name = 'testresult'
     requires_context = True
 
-    def __call__(self, attrs: Dict[str, Any], serializer):
-        custom_attr = attrs.get('attributes', {})
+    def __call__(self, attrs: dict[str, Any], serializer):
+        attributes = attrs.get('attributes', {})
         if test := attrs.get('test'):
             project = test.project
             suite = test.case.suite
@@ -129,5 +142,23 @@ class TestResultCustomAttributeValuesValidator(BaseCustomAttributeValuesValidato
             suite = instance.test.case.suite
         else:
             return
+        status = attrs.get('status')
+        attr_getter = partial(
+            CustomAttributeSelector.required_attributes_by_status,
+            project=project,
+            suite=suite,
+            status=status,
+        )
+        self._validate(attributes, attr_getter)
 
-        self._validate(project, suite, custom_attr)
+
+class CasesCopyProjectValidator:
+    def __call__(self, attrs: dict[str, Any]):
+        dst_suite = attrs.get('dst_suite_id')
+        if not dst_suite:
+            return
+        cases_ids = [case['id'] for case in attrs.get('cases')]
+        cases = TestCase.objects.filter(pk__in=cases_ids)
+        cases_projects = cases.values_list('project_id', flat=True).distinct('project_id')
+        if cases_projects.count() != 1 or cases_projects[0] != dst_suite.project_id:
+            raise serializers.ValidationError('Cannot copy case to another project.')

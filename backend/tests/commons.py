@@ -30,16 +30,19 @@
 # <http://www.gnu.org/licenses/>.
 from enum import Enum
 from http import HTTPStatus
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Iterable, TypeAlias
 
 import allure
-from django.db.models import QuerySet
+from django.db.models import Model
 from django.test.client import RequestFactory
+from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
 from rest_framework.test import APIClient
 
 from testy.users.models import User
+
+_JSON_SERIALIZABLE: TypeAlias = dict[str, Any]
 
 
 class RequestType(Enum):
@@ -58,24 +61,32 @@ class RequestMock(RequestFactory):
         return f'http://testserver{url}'
 
 
+def json_strip(self, as_json: bool = False, is_paginated: bool = True):
+    response_body = self.json()
+    response_body = response_body['results'] if is_paginated else response_body
+    if as_json:
+        return JSONRenderer().render(response_body)
+    return response_body
+
+
 class CustomAPIClient(APIClient):
     def send_request(
         self,
         view_name: str,
-        data: Dict[str, Any] = None,
+        data: _JSON_SERIALIZABLE | None = None,
         expected_status: HTTPStatus = HTTPStatus.OK,
         request_type: RequestType = RequestType.GET,
-        reverse_kwargs: Dict[str, Any] = None,
+        reverse_kwargs: dict[str, Any] | None = None,
         format='json',  # noqa: WPS125
-        query_params: Dict[str, Any] = None,
-        additional_error_msg: str = None,
-        headers: Dict[str, Any] = None,
+        query_params: dict[str, Any] | None = None,
+        additional_error_msg: str | None = None,
+        headers: dict[str, Any] | None = None,
         validate_status: bool = True,
     ) -> Response:
-        with allure.step(f'Send {request_type.value} to {view_name}'):
-            url = reverse(view_name, kwargs=reverse_kwargs)
-            if query_params:
-                url = f'{url}?{"&".join([f"{field}={field_value}" for field, field_value in query_params.items()])}'
+        url = reverse(view_name, kwargs=reverse_kwargs)
+        if query_params:
+            url = f'{url}?{"&".join([f"{field}={field_value}" for field, field_value in query_params.items()])}'
+        with allure.step(f'Send {request_type.value} to {url}'):
             http_request = getattr(self, request_type.value, None)
             if not http_request:
                 raise TypeError('Request type is not known')
@@ -83,24 +94,26 @@ class CustomAPIClient(APIClient):
                 response = http_request(url, data=data, format=format, **headers)
             else:
                 response = http_request(url, data=data, format=format)
-
-            additional_info = f'\nAdditional info: {additional_error_msg}' if additional_error_msg else ''
-            err_msg = f'Expected response code "{expected_status}", actual: "{response.status_code}"' \
-                      f'Response content: {getattr(response, "content", "No content")}{additional_info}'
-            if validate_status:
+        additional_info = f'\nAdditional info: {additional_error_msg}' if additional_error_msg else ''
+        err_msg = f'Expected response code "{expected_status}", actual: "{response.status_code}"' \
+                  f'Response content: {getattr(response, "content", "No content")}{additional_info}'
+        if validate_status:
+            with allure.step(f'Validate status code is {expected_status}'):
                 assert response.status_code == expected_status, err_msg
-            return response
+        response.json_strip = json_strip.__get__(response)  # noqa: WPS609
+        return response
 
 
 def model_to_dict_via_serializer(
-    instances: Union[QuerySet, Any],
+    instances: Iterable[Model],
     serializer_class,
     many=False,
-    nested_fields: List[str] = None,
-    nested_fields_simple_list: List[str] = None,
-    fields_to_add: Dict[str, Any] = None,
-    requested_user: Optional[User] = None,
-) -> Union[List[dict], Dict[str, str]]:
+    nested_fields: list[str] = None,
+    nested_fields_simple_list: list[str] = None,
+    fields_to_add: dict[str, Any] = None,
+    requested_user: User | None = None,
+    as_json: bool = False,
+) -> list[_JSON_SERIALIZABLE] | _JSON_SERIALIZABLE:
     if not nested_fields:
         nested_fields = []
     if not nested_fields_simple_list:
@@ -108,6 +121,8 @@ def model_to_dict_via_serializer(
     request = RequestMock()
     setattr(request, 'user', requested_user)
     serializer = serializer_class(instances, many=many, context={'request': request})
+    if as_json:
+        return JSONRenderer().render(serializer.data)
     result_dicts = [dict(elem) for elem in serializer.data] if many else [serializer.data]
 
     if fields_to_add:

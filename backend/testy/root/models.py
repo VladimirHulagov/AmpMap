@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -32,7 +32,7 @@
 import logging
 import re
 from copy import deepcopy
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 from django.db import models, transaction
 from django.utils import timezone
@@ -53,8 +53,8 @@ class ServiceModelMixin(models.Model):
     @classmethod
     def model_create(
         cls,
-        fields: List[str],
-        data: Dict[str, Any],
+        fields: list[str],
+        data: dict[str, Any],
         commit: bool = True,
     ) -> DjangoModelType:
         actually_fields = {key: data[key] for key in fields if key in data}
@@ -68,12 +68,12 @@ class ServiceModelMixin(models.Model):
 
     def model_update(  # noqa: WPS231
         self,
-        fields: List[str],
-        data: Dict[str, Any],
+        fields: list[str],
+        data: dict[str, Any],
         commit: bool = True,
         force: bool = False,
         skip_history: bool = False,
-    ) -> Tuple[DjangoModelType, bool]:
+    ) -> tuple[DjangoModelType, bool]:
         has_updated = False
         update_fields = []
 
@@ -115,10 +115,10 @@ class ServiceModelMixin(models.Model):
     @transaction.atomic
     def model_clone(  # noqa: WPS231
         self,
-        related_managers: List[str] = None,
-        attrs_to_change: Dict[str, Any] = None,
-        attachment_references_fields: List[str] = None,
-        common_attrs_to_change: Dict[str, Any] = None,
+        related_managers: list[str] = None,
+        attrs_to_change: dict[str, Any] = None,
+        attachment_references_fields: list[str] = None,
+        common_attrs_to_change: dict[str, Any] = None,
     ) -> DjangoModelType:
         self_copy = deepcopy(self)
         mptt_fields = ['lft', 'rght', 'tree_id']

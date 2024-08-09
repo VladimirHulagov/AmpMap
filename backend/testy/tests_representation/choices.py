@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -32,8 +32,10 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
+from testy.core.mixins import CallableChoicesMixin
 
-class TestStatuses(models.IntegerChoices):
+
+class TestStatuses(CallableChoicesMixin, models.IntegerChoices):
     FAILED = 0, _('Failed')
     PASSED = 1, _('Passed')
     SKIPPED = 2, _('Skipped')

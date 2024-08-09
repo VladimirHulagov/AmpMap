@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -30,7 +30,7 @@
 # <http://www.gnu.org/licenses/>.
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Iterable
 
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.db.models import OuterRef, Q, QuerySet, Subquery
@@ -38,28 +38,28 @@ from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import ValidationError
 
 from testy.core.selectors.attachments import AttachmentSelector
+from testy.root.models import DeletedQuerySet
 from testy.tests_description.models import TestCase, TestCaseStep
 from testy.tests_representation.models import TestPlan, TestStepResult
 from testy.tests_representation.selectors.tests import TestSelector
 
 logger = logging.getLogger(__name__)
 
-
 _ID = 'id'
 
 
 class TestCaseSelector:  # noqa: WPS214
-    def case_list(self, filter_condition: Optional[Dict[str, Any]] = None) -> QuerySet[TestCase]:
+    def case_list(self, filter_condition: dict[str, Any] | None = None) -> QuerySet[TestCase]:
         if not filter_condition:
             filter_condition = {}
         return TestCase.objects.filter(**filter_condition).prefetch_related(
             'attachments', 'steps', 'steps__attachments', 'labeled_items', 'labeled_items__label',
-        ).annotate(
+        ).select_related('suite').annotate(
             current_version=self._current_version_subquery(),
             versions=self._versions_subquery(),
         ).order_by()
 
-    def case_list_with_label_names(self, filter_condition: Optional[Dict[str, Any]] = None) -> QuerySet[TestCase]:
+    def case_list_with_label_names(self, filter_condition: dict[str, Any] | None = None) -> QuerySet[TestCase]:
         return self.case_list(filter_condition=filter_condition).annotate(
             labels=ArrayAgg('labeled_items__label__name', distinct=True, filter=Q(labeled_items__is_deleted=False)),
             label_ids=ArrayAgg('labeled_items__label__id', distinct=True, filter=Q(labeled_items__is_deleted=False)),
@@ -69,7 +69,7 @@ class TestCaseSelector:  # noqa: WPS214
     def case_by_id(cls, case_id: int) -> TestCase:
         return get_object_or_404(TestCase, pk=case_id)
 
-    def case_deleted_list(self):
+    def case_deleted_list(self) -> DeletedQuerySet[TestCase]:
         return TestCase.deleted_objects.all().prefetch_related().annotate(
             current_version=self._current_version_subquery(),
             versions=self._versions_subquery(),
@@ -79,11 +79,11 @@ class TestCaseSelector:  # noqa: WPS214
         history = case.history.first()
         return history.history_id
 
-    def get_steps_ids_by_testcase(self, case: TestCase) -> List[int]:
+    def get_steps_ids_by_testcase(self, case: TestCase) -> list[int]:
         return case.steps.values_list(_ID, flat=True)
 
     @classmethod
-    def case_ids_by_testplan_id(cls, plan_id: int, include_children: bool) -> List[int]:
+    def case_ids_by_testplan_id(cls, plan_id: int, include_children: bool) -> list[int]:
         if not include_children:
             return TestSelector.test_list_by_testplan_ids([plan_id]).values_list('case__id', flat=True)
         plan_ids = (
@@ -95,11 +95,11 @@ class TestCaseSelector:  # noqa: WPS214
         return TestSelector.test_list_by_testplan_ids(plan_ids).values_list('case__id', flat=True)
 
     @classmethod
-    def cases_by_ids_list(cls, ids: List[int], field_name: str) -> QuerySet[TestCase]:
+    def cases_by_ids_list(cls, ids: Iterable[int], field_name: str) -> QuerySet[TestCase]:
         return TestCase.objects.filter(**{f'{field_name}__in': ids}).order_by(_ID)
 
     @classmethod
-    def case_by_version(cls, case: TestCase, version: Optional[str]) -> Tuple[TestCase, Optional[str]]:
+    def case_by_version(cls, case: TestCase, version: str | None) -> tuple[TestCase, str | None]:
         if not version:
             return case, None
 
@@ -154,7 +154,7 @@ class TestCaseStepSelector:
         return TestCaseStep.objects.filter(id=step_id).exists()
 
     @classmethod
-    def steps_by_ids_list(cls, ids: List[int], field_name: str) -> QuerySet[TestCaseStep]:
+    def steps_by_ids_list(cls, ids: list[int], field_name: str) -> QuerySet[TestCaseStep]:
         return TestCaseStep.objects.filter(**{f'{field_name}__in': ids}).order_by(_ID)
 
     @classmethod
@@ -177,11 +177,11 @@ class TestCaseStepSelector:
         )
 
     @classmethod
-    def get_step_by_step_result(cls, step_result: TestStepResult) -> Optional[TestCaseStep]:
+    def get_step_by_step_result(cls, step_result: TestStepResult) -> TestCaseStep | None:
         test_case_history_id = step_result.test_result.test_case_version
         step = step_result.step
         steps = step.history.filter(test_case_history_id=test_case_history_id)
-        # TODO: research and fix the problem creating double historical records may be a plugin issue
+        # TODO: research and fix the problem creating double historical records with same test case version id
         if len(steps) > 1:
             logger.warning(
                 f'case step {step.id} has one more history records with same case history id {test_case_history_id}',

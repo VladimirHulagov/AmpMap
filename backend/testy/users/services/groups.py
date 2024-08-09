@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -29,7 +29,7 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 
-from typing import Any, Dict
+from typing import Any
 
 from testy.users.models import Group
 
@@ -37,7 +37,7 @@ from testy.users.models import Group
 class GroupService:
     non_side_effect_fields = ['name']
 
-    def group_create(self, data: Dict[str, Any]) -> Group:
+    def group_create(self, data: dict[str, Any]) -> Group:
         group = Group.model_create(
             fields=self.non_side_effect_fields,
             data=data,
@@ -50,7 +50,7 @@ class GroupService:
         group.save()
         return group
 
-    def group_update(self, group: Group, data: Dict[str, Any]) -> Group:
+    def group_update(self, group: Group, data: dict[str, Any]) -> Group:
         group, _ = group.model_update(
             fields=self.non_side_effect_fields,
             data=data,

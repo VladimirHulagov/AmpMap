@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -29,7 +29,7 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 
-from typing import Any, Dict
+from typing import Any
 
 from django.db import transaction
 
@@ -56,12 +56,13 @@ class ProjectService(MediaService):
             RoleService.roles_assign(payload={'project': project, 'user': user, 'roles': [role]})
         return project
 
-    def project_update(self, project: Project, data: Dict[str, Any]) -> Project:
+    def project_update(self, project: Project, data: dict[str, Any]) -> Project:
         old_icon = project.icon
         project, _ = project.model_update(
             fields=self.non_side_effect_fields,
             data=data,
         )
-        self.populate_image_thumbnails(project.icon, old_icon)
+        if 'icon' in data:
+            self.populate_image_thumbnails(project.icon, old_icon)
         project.save()
         return project

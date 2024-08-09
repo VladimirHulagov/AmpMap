@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -28,7 +28,7 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from typing import Any, Dict
+from typing import Any
 
 from testy.tests_description.models import TestSuite
 from testy.utilities.sql import lock_table
@@ -37,7 +37,7 @@ from testy.utilities.sql import lock_table
 class TestSuiteService:
     non_side_effect_fields = ['parent', 'project', 'name', 'description']
 
-    def suite_create(self, data: Dict[str, Any]) -> TestSuite:
+    def suite_create(self, data: dict[str, Any]) -> TestSuite:
         with lock_table(TestSuite):
             suite = TestSuite.model_create(
                 fields=self.non_side_effect_fields,
@@ -46,7 +46,7 @@ class TestSuiteService:
             TestSuite.objects.partial_rebuild(suite.tree_id)
         return suite
 
-    def suite_update(self, suite: TestSuite, data: Dict[str, Any]) -> TestSuite:
+    def suite_update(self, suite: TestSuite, data: dict[str, Any]) -> TestSuite:
         with lock_table(TestSuite):
             suite, _ = suite.model_update(
                 fields=self.non_side_effect_fields,

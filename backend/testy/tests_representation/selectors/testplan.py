@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -30,7 +30,7 @@
 # <http://www.gnu.org/licenses/>.
 
 import logging
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Iterable
 
 from django.db.models import Case, Count, DateTimeField, F, FloatField, OuterRef, Q, QuerySet, Sum, When, expressions
 from django.db.models.functions import Cast, Coalesce
@@ -100,11 +100,11 @@ class TestPlanSelector:  # noqa: WPS214
     def testplan_project_root_list(self, project_id: int) -> QuerySet[TestPlan]:
         return TestPlan.objects.filter(project=project_id, parent=None).order_by('name')
 
-    def testplan_get_by_pk(self, pk) -> Optional[TestPlan]:
+    def testplan_get_by_pk(self, pk) -> TestPlan | None:
         return TestPlan.objects.get(pk=pk)
 
     @classmethod
-    def testplan_breadcrumbs_by_ids(cls, ids: List[int]) -> Dict[str, Dict[str, Any]]:
+    def testplan_breadcrumbs_by_ids(cls, ids: list[int]) -> dict[str, dict[str, Any]]:
         plans = TestPlan.objects.filter(pk__in=ids).prefetch_related(_PARAMETERS)
         ancestors = plans.get_ancestors(include_self=False).prefetch_related(_PARAMETERS)
         ids_to_breadcrumbs = {}
@@ -161,8 +161,8 @@ class TestPlanSelector:  # noqa: WPS214
     def testplan_statistics(
         self,
         test_plan: TestPlan,
-        filter_condition: Dict[str, Any],
-        estimate_period: Optional[str] = None,
+        filter_condition: dict[str, Any],
+        estimate_period: str | None = None,
         is_archive: bool = False,
     ):
         test_plan_child_ids = tuple(self.get_testplan_descendants_ids_by_testplan(test_plan))
@@ -256,7 +256,7 @@ class TestPlanSelector:  # noqa: WPS214
         self,
         test_plan: TestPlan,
         processor: HistogramProcessor,
-        filter_condition: Dict[str, Any],
+        filter_condition: dict[str, Any],
         is_archive: bool = False,
     ):
         test_plan_child_ids = tuple(self.get_testplan_descendants_ids_by_testplan(test_plan))

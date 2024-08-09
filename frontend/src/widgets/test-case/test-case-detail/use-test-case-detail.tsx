@@ -69,6 +69,7 @@ export const useTestCaseDetail = ({ testCase, onClose }: UseTestCaseDetailProps)
   }, [testCase])
 
   const handleClose = () => {
+    setShowVersion(null)
     searchParams.delete("test_case")
     searchParams.delete("version")
     setSearchParams(searchParams)

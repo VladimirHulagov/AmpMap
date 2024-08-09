@@ -1,7 +1,7 @@
 import { notification } from "antd"
 import { useState } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
-import { useNavigate, useParams } from "react-router-dom"
+import { useNavigate, useParams, useSearchParams } from "react-router-dom"
 
 import { useAttachments } from "entities/attachment/model"
 
@@ -12,6 +12,7 @@ import { useAttributes } from "entities/test-case/model"
 
 import { useConfirmBeforeRedirect, useErrors, useIsDirtyWithArrayField } from "shared/hooks"
 import { makeAttributesJson, showModalCloseConfirm } from "shared/libs"
+import { getPrevPageSearch } from "shared/libs/session-storage"
 import { AlertSuccessChange } from "shared/ui/alert-success-change"
 
 interface SubmitData extends Omit<TestCaseFormData, "steps"> {
@@ -39,6 +40,7 @@ export const useTestCaseCreateView = () => {
   const [isSteps, setIsSteps] = useState(false)
   const [steps, setSteps] = useState<Step[]>([])
   const [tab, setTab] = useState<TabType>("general")
+  const [searchParams] = useSearchParams()
 
   const navigate = useNavigate()
 
@@ -94,9 +96,29 @@ export const useTestCaseCreateView = () => {
     pathname: "new-test-case",
   })
 
-  const handleClose = () => {
+  const redirectToTestCase = (id?: number) => {
+    const prevSearchKey = searchParams.get("prevSearch")
+    let url = `/projects/${projectId}/suites/${testSuiteId}`
+    if (id !== undefined) {
+      url += `?test_case=${id}`
+    }
+    if (!prevSearchKey) {
+      navigate(url)
+      return
+    }
+
+    const prevSearchResult = getPrevPageSearch(prevSearchKey)
+    if (id !== undefined) {
+      url += `&${prevSearchResult}`
+    } else {
+      url += `?${prevSearchResult}`
+    }
+    navigate(url)
+  }
+
+  const handleClose = (id?: number) => {
     setIsRedirectByUser()
-    navigate(`/projects/${projectId}/suites/${testSuiteId}`)
+    redirectToTestCase(id)
     setErrors(null)
     setSteps([])
     setTab("general")
@@ -133,7 +155,7 @@ export const useTestCaseCreateView = () => {
   const onSubmit: SubmitHandler<TestCaseFormData> = async (data) => {
     const dataForm = data as SubmitData
 
-    const { isSuccess, attributesJson, error } = makeAttributesJson(attributes)
+    const { isSuccess, attributesJson, errors } = makeAttributesJson(attributes)
 
     if (data.is_steps && !data.steps?.length) {
       setFormError("steps", { type: "required", message: "Обязательное поле." })
@@ -148,7 +170,7 @@ export const useTestCaseCreateView = () => {
     setErrors(null)
 
     if (!isSuccess) {
-      setErrors({ attributes: error })
+      setErrors({ attributes: JSON.stringify(errors) })
       return
     }
 
@@ -167,7 +189,7 @@ export const useTestCaseCreateView = () => {
         suite: Number(testSuiteId),
         attributes: attributesJson,
       }).unwrap()
-      handleClose()
+      handleClose(newTestCase.id)
       notification.success({
         message: "Success",
         description: (

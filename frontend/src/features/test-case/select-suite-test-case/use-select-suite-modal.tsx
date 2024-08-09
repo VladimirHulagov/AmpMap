@@ -1,23 +1,33 @@
+import { Spin } from "antd"
 import { Key } from "antd/lib/table/interface"
-import { DataNode } from "antd/lib/tree"
+import { DataNode, EventDataNode } from "antd/lib/tree"
 import { useEffect, useMemo, useState } from "react"
 
+import { useLazyGetTestSuitesTreeViewQuery } from "entities/suite/api"
+
+import { useOnViewLoad } from "shared/hooks/use-on-view-load"
 import { addKeyToData } from "shared/libs/add-key-to-data"
 
 import { SelectSuiteModalProps } from "./select-suite-modal"
+
+type DataNodeWithName = DataNode & { name?: string }
 
 export const useSelectSuiteModal = ({
   opened,
   selectedSuiteId,
   onSubmit,
-  treeSuites,
 }: SelectSuiteModalProps) => {
+  const [getData] = useLazyGetTestSuitesTreeViewQuery()
+  const { data, reset, fetchInitData, handleSearchChange, isLastPage, isLoading, iref } =
+    useOnViewLoad({ getData, pageSize: 50 })
+
   const [selectedSuite, setSelectedSuite] = useState<number>(selectedSuiteId)
+  const [selectedSuiteName, setSelectedSuiteName] = useState<string>("")
   const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([selectedSuiteId])
   const [searchValue, setSearchValue] = useState("")
   const [autoExpandParent, setAutoExpandParent] = useState(true)
   const handleSubmit = () => {
-    onSubmit(selectedSuite)
+    onSubmit(selectedSuite, selectedSuiteName)
   }
 
   useEffect(() => {
@@ -32,13 +42,32 @@ export const useSelectSuiteModal = ({
     const { value } = e.target
     setSearchValue(value)
     setAutoExpandParent(true)
+
+    handleSearchChange(value)
   }
 
-  const hadleChangeSuite = (value: Key[]) => {
+  useEffect(() => {
+    if (!opened) {
+      reset()
+    } else {
+      fetchInitData()
+    }
+  }, [opened])
+
+  const hadleChangeSuite = (
+    value: Key[],
+    info: {
+      node: EventDataNode<DataNodeWithName>
+    }
+  ) => {
     if (!value.length) {
       return
     }
+
     setSelectedSuite(value[0] as number)
+    if (info.node.name) {
+      setSelectedSuiteName(info.node.name)
+    }
   }
 
   const onExpand = (newExpandedKeys: React.Key[]) => {
@@ -47,7 +76,7 @@ export const useSelectSuiteModal = ({
   }
 
   const treeData = useMemo(() => {
-    const buildBranch = (data: SuiteTree[]): DataNode[] =>
+    const buildBranch = (data: SuiteTree[]): DataNodeWithName[] =>
       data
         .map((item) => {
           const isSelected = selectedSuiteId === item.id
@@ -74,7 +103,7 @@ export const useSelectSuiteModal = ({
               return null
             }
 
-            return { title, key: item.id, children }
+            return { title, key: item.id, children, name: strTitle }
           }
 
           if (shouldSkip) {
@@ -84,12 +113,38 @@ export const useSelectSuiteModal = ({
           return {
             title,
             key: item.id,
+            name: strTitle,
           }
         })
-        .filter((x) => !!x) as DataNode[]
+        .filter((x) => !!x) as DataNodeWithName[]
 
-    return buildBranch(addKeyToData(treeSuites))
-  }, [searchValue])
+    const result = buildBranch(addKeyToData(data))
+
+    if (isLoading) {
+      result.push({
+        title: (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              userSelect: "none",
+            }}
+          >
+            <Spin />
+          </div>
+        ),
+        key: -999,
+      })
+    }
+    if (!isLastPage && !isLoading && data.length) {
+      result.push({
+        title: <div ref={iref}></div>,
+        key: -1000,
+      })
+    }
+    return result
+  }, [data, isLastPage, isLoading])
 
   return {
     handleSubmit,

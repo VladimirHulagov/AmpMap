@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -30,3 +30,6 @@
 # <http://www.gnu.org/licenses/>.
 CUSTOM_ATTRIBUTES_ALLOWED_APPS = ('tests_description', 'tests_representation')
 CUSTOM_ATTRIBUTES_ALLOWED_MODELS = ('testcase', 'testresult')
+
+# CHANNEL_GROUPS
+NOTIFICATION_COUNT_GROUP = 'notifications_count_{user_id}'

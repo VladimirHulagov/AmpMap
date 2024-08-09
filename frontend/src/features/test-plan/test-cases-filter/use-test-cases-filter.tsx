@@ -18,6 +18,8 @@ interface TestCasesFilterProps {
   lableCondition: "and" | "or"
   handleConditionClick: () => void
   labelProps: UseFormLabelsProps
+  showArchived: boolean
+  handleToggleArchived: () => void
 }
 
 export const useTestCasesFilter = ({
@@ -27,6 +29,8 @@ export const useTestCasesFilter = ({
   selectedLables,
   lableCondition,
   handleConditionClick,
+  showArchived,
+  handleToggleArchived,
 }: TestCasesFilterProps) => {
   const { userConfig, updateConfig } = useUserConfig()
   const [isShow, setIsShow] = useState(userConfig?.test_plans.is_cases_filter_open ?? false)
@@ -36,7 +40,7 @@ export const useTestCasesFilter = ({
   }
 
   useEffect(() => {
-    updateConfig({ test_plans: { is_cases_filter_open: isShow } })
+    updateConfig({ test_plans: { ...userConfig.test_plans, is_cases_filter_open: isShow } })
   }, [isShow])
 
   const FilterBtn = (
@@ -67,6 +71,17 @@ export const useTestCasesFilter = ({
           checked={lableCondition === "or"}
           onChange={handleConditionClick}
           disabled={selectedLables.length < 2}
+        />
+      </div>
+      <div className={styles.archivedRow}>
+        <Typography.Text>Show archived</Typography.Text>
+        <Switch
+          checkedChildren="yes"
+          unCheckedChildren="no"
+          defaultChecked
+          className={styles.switcher}
+          checked={showArchived}
+          onChange={handleToggleArchived}
         />
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { Modal, notification } from "antd"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
 import { useNavigate, useParams, useSearchParams } from "react-router-dom"
 
@@ -9,13 +9,12 @@ import { useAttachments } from "entities/attachment/model"
 
 import { useTestCaseFormLabels } from "entities/label/model"
 
-import { useGetTestSuitesTreeViewQuery } from "entities/suite/api"
-
 import { useGetTestCaseByIdQuery, useUpdateTestCaseMutation } from "entities/test-case/api"
 import { selectEditingTestCase, setEditingTestCase, useAttributes } from "entities/test-case/model"
 
 import { useConfirmBeforeRedirect, useErrors, useIsDirtyWithArrayField } from "shared/hooks"
 import { makeAttributesJson, showModalCloseConfirm } from "shared/libs"
+import { getPrevPageSearch } from "shared/libs/session-storage"
 import { AlertSuccessChange } from "shared/ui/alert-success-change"
 
 interface SubmitData extends Omit<TestCaseFormData, "steps"> {
@@ -88,6 +87,7 @@ export const useTestCaseEditView = () => {
     },
   })
 
+  const [selectedSuiteName, setSelectedSuiteName] = useState<string>("")
   const [updateTestCase, { isLoading }] = useUpdateTestCaseMutation()
   const { onHandleError } = useErrors<ErrorData>(setErrors)
   const {
@@ -126,10 +126,7 @@ export const useTestCaseEditView = () => {
     isEditMode: true,
     defaultLabels: testCase?.labels.map((l) => Number(l.id)) ?? [],
   })
-  const { data: treeSuites, isLoading: isLoadingTreeSuites } = useGetTestSuitesTreeViewQuery(
-    { project: projectId },
-    { skip: !projectId }
-  )
+
   const { data: dataTestCase, isLoading: isLoadingGetTestCase } = useGetTestCaseByIdQuery(
     { testCaseId: String(testCaseId) },
     {
@@ -138,56 +135,14 @@ export const useTestCaseEditView = () => {
   )
 
   useEffect(() => {
-    if (!testCase && !dataTestCase && !isLoadingGetTestCase) {
-      navigate(`/projects/${projectId}/suites/${testSuiteId}?test_case=${testCaseId ?? ""}`)
+    if (dataTestCase?.suite_name) {
+      setSelectedSuiteName(dataTestCase.suite_name)
       return
     }
-
-    if (dataTestCase) {
-      dispatch(setEditingTestCase(dataTestCase))
+    if (testCase?.suite_name) {
+      setSelectedSuiteName(testCase.suite_name)
     }
-  }, [testCase, dataTestCase, isLoadingGetTestCase])
-
-  useEffect(() => {
-    if (!testCase || isLoadingAttributesTestCase || isLoadingGetTestCase) return
-
-    setValue("name", "")
-    const testCaseAttachesWithUid = testCase.attachments.map((attach) => ({
-      ...attach,
-      uid: String(attach.id),
-    }))
-    const stepsSorted = [...testCase.steps].sort((a, b) => a.sort_order - b.sort_order)
-    if (testCaseAttachesWithUid.length) {
-      setAttachments(testCaseAttachesWithUid)
-    }
-    setSteps(stepsSorted)
-    setValue("name", testCase.name)
-    setValue("description", testCase.description)
-    setValue("setup", testCase.setup)
-    setValue("scenario", !testCase.steps.length ? testCase.scenario ?? "" : "")
-    setValue("expected", testCase.expected ?? "")
-    setValue("teardown", testCase.teardown)
-    setValue("estimate", testCase.estimate)
-    setValue("steps", stepsSorted)
-    setValue("is_steps", Boolean(testCase.steps.length))
-    setValue("labels", testCase.labels)
-    setValue("suite", Number(testCase.suite))
-
-    loadAttributeJson(testCase.attributes)
-  }, [testCase, isLoadingAttributesTestCase, isLoadingGetTestCase])
-
-  const flatSuites = useMemo(() => {
-    if (!treeSuites) return []
-    const flat: SuiteTree[] = []
-    const recurse = (node: SuiteTree) => {
-      flat.push(node)
-      if (node.children) {
-        node.children.forEach(recurse)
-      }
-    }
-    treeSuites.results.forEach(recurse)
-    return flat
-  }, [treeSuites])
+  }, [dataTestCase, testCase])
 
   const { setIsRedirectByUser } = useConfirmBeforeRedirect({
     isDirty,
@@ -196,7 +151,7 @@ export const useTestCaseEditView = () => {
 
   const handleCloseModal = () => {
     setIsRedirectByUser()
-    navigate(`/projects/${projectId}/suites/${testSuiteId}?test_case=${testCase?.id ?? ""}`)
+    redirectToTestCase()
     setErrors(null)
     setSteps([])
     setTab("general")
@@ -273,9 +228,9 @@ export const useTestCaseEditView = () => {
     }
     setErrors(null)
 
-    const { isSuccess, attributesJson, error } = makeAttributesJson(attributes)
+    const { isSuccess, attributesJson, errors } = makeAttributesJson(attributes)
     if (!isSuccess) {
-      setErrors({ attributes: error })
+      setErrors({ attributes: JSON.stringify(errors) })
       return
     }
 
@@ -340,17 +295,66 @@ export const useTestCaseEditView = () => {
     handleCloseModal()
   }
 
-  const shouldShowSuiteSelect = !isLoadingTreeSuites
+  const redirectToTestCase = () => {
+    const prevSearchKey = searchParams.get("prevSearch")
+    if (!prevSearchKey) {
+      navigate(`/projects/${projectId}/suites/${testSuiteId}?test_case=${testCase?.id ?? ""}`)
+      return
+    }
+
+    const prevSearchResult = getPrevPageSearch(prevSearchKey)
+    navigate(
+      `/projects/${projectId}/suites/${testSuiteId}?${
+        prevSearchResult ?? `test_case=${testCase?.id ?? ""}`
+      }`
+    )
+  }
+
+  useEffect(() => {
+    if (!testCase && !dataTestCase && !isLoadingGetTestCase) {
+      redirectToTestCase()
+      return
+    }
+
+    if (dataTestCase) {
+      dispatch(setEditingTestCase(dataTestCase))
+    }
+  }, [testCase, dataTestCase, isLoadingGetTestCase])
+
+  useEffect(() => {
+    if (!testCase || isLoadingAttributesTestCase || isLoadingGetTestCase) return
+
+    setValue("name", "")
+    const testCaseAttachesWithUid = testCase.attachments.map((attach) => ({
+      ...attach,
+      uid: String(attach.id),
+    }))
+    const stepsSorted = [...testCase.steps].sort((a, b) => a.sort_order - b.sort_order)
+    if (testCaseAttachesWithUid.length) {
+      setAttachments(testCaseAttachesWithUid)
+    }
+    setSteps(stepsSorted)
+    setValue("name", testCase.name)
+    setValue("description", testCase.description)
+    setValue("setup", testCase.setup)
+    setValue("scenario", !testCase.steps.length ? testCase.scenario ?? "" : "")
+    setValue("expected", testCase.expected ?? "")
+    setValue("teardown", testCase.teardown)
+    setValue("estimate", testCase.estimate)
+    setValue("steps", stepsSorted)
+    setValue("is_steps", Boolean(testCase.steps.length))
+    setValue("labels", testCase.labels)
+    setValue("suite", Number(testCase.suite))
+
+    loadAttributeJson(testCase.attributes)
+  }, [testCase, isLoadingAttributesTestCase, isLoadingGetTestCase])
+
   const title = `Edit Test Case '${testCase?.name}'`
 
   return {
     title,
     isLoading:
-      isLoading ||
-      isLoadingAttachments ||
-      isLoadingGetTestCase ||
-      isLoadingAttributesTestCase ||
-      isLoadingTreeSuites,
+      isLoading || isLoadingAttachments || isLoadingGetTestCase || isLoadingAttributesTestCase,
     errors,
     formErrors,
     control,
@@ -373,9 +377,6 @@ export const useTestCaseEditView = () => {
     handleSubmitFormAsCurrent: handleSubmit(onSubmitWithoutNewVersion),
     register,
     labelProps,
-    treeSuites,
-    shouldShowSuiteSelect,
-    flatSuites,
     handleTabChange,
     attributes,
     setAttributes,
@@ -384,5 +385,7 @@ export const useTestCaseEditView = () => {
     onAttributeChangeValue,
     onAttributeChangeName,
     onAttributeRemove,
+    selectedSuiteName,
+    setSelectedSuiteName,
   }
 }

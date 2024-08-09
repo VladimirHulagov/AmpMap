@@ -31,8 +31,8 @@
 from django.utils import timezone
 
 USERNAME = 'test_user'
-PASSWORD = '123qweasd123'
-NEW_PASSWORD = 'qweasd123qwe'
+PASSWORD = '123Mega_Cat123'
+NEW_PASSWORD = '123Mega_Dog123'
 INVALID_PASSWORD = 'qwerty'
 USER_EMAIL = 'user@example.com'
 INVALID_EMAIL = 'user@example'

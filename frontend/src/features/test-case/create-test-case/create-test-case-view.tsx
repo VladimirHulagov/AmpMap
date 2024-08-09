@@ -232,35 +232,32 @@ export const CreateTestCaseView = () => {
                     )}
                   />
                 </Form.Item>
-                <Form.Item
-                  validateStatus={errors?.attributes ? "error" : ""}
-                  help={errors?.attributes ? errors.attributes : "Fill the attribute name."}
-                >
-                  <Controller
-                    name="attributes"
-                    control={control}
-                    render={({ field }) => (
-                      <Row style={{ flexDirection: "column", marginTop: steps.length ? 24 : 0 }}>
-                        <div className="ant-col ant-form-item-label">
-                          <label title="Attributes">Attributes</label>
-                        </div>
-                        <Attribute.List
-                          fieldProps={field}
-                          attributes={attributes}
-                          handleAttributeRemove={onAttributeRemove}
-                          handleAttributeChangeName={onAttributeChangeName}
-                          handleAttributeChangeValue={onAttributeChangeValue}
-                          handleAttributeChangeType={onAttributeChangeType}
-                        />
-                        <div style={{ marginTop: 8 }}>
-                          <Button id="add-attribute-btn" type="dashed" block onClick={addAttribute}>
-                            <PlusOutlined /> Add attribute
-                          </Button>
-                        </div>
-                      </Row>
-                    )}
-                  />
-                </Form.Item>
+                <Controller
+                  name="attributes"
+                  control={control}
+                  render={({ field }) => (
+                    <Row style={{ flexDirection: "column", marginTop: steps.length ? 24 : 0 }}>
+                      <div className="ant-col ant-form-item-label">
+                        <label title="Attributes">Attributes</label>
+                      </div>
+                      <Attribute.List
+                        fieldProps={field}
+                        attributes={attributes}
+                        handleAttributeRemove={onAttributeRemove}
+                        handleAttributeChangeName={onAttributeChangeName}
+                        handleAttributeChangeValue={onAttributeChangeValue}
+                        handleAttributeChangeType={onAttributeChangeType}
+                        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+                        errors={errors?.attributes ? JSON.parse(errors?.attributes) : undefined}
+                      />
+                      <div style={{ marginTop: 8 }}>
+                        <Button id="add-attribute-btn" type="dashed" block onClick={addAttribute}>
+                          <PlusOutlined /> Add attribute
+                        </Button>
+                      </div>
+                    </Row>
+                  )}
+                />
               </Col>
             </Row>
           </Tabs.TabPane>

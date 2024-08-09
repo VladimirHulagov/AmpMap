@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -30,13 +30,14 @@
 # <http://www.gnu.org/licenses/>.
 
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import Any
 
 from django.conf import settings
+from django.http import HttpRequest
 from django.utils import timezone
 from rest_framework.exceptions import ValidationError
 
-from testy.utilities.string import parse_bool_from_str
+from testy.utilities.string import parse_bool_from_str, parse_int
 
 
 def get_boolean(request, key, method='GET', *, default=False) -> bool:
@@ -56,7 +57,17 @@ def get_boolean(request, key, method='GET', *, default=False) -> bool:
     return parse_bool_from_str(value)
 
 
-def get_datetime(request, key, method='GET', required=False) -> Optional[timezone.datetime]:
+def get_integer(request, key, method='GET', *, default=None) -> int | None:
+    value = getattr(request, method).get(key, default)
+    if value == 'null' or value is None:
+        return None
+    int_value = parse_int(value)
+    if int_value is None:
+        raise ValidationError(f'{key} must be an integer or null')
+    return int_value
+
+
+def get_datetime(request, key, method='GET', required=False) -> timezone.datetime | None:
     """
     Get the value from request and returns it's as datetime object.
 
@@ -81,8 +92,21 @@ def get_datetime(request, key, method='GET', required=False) -> Optional[timezon
             raise ValidationError(f'Invalid {method} parameter {key}: {err}')
 
 
-def get_user_favorites(request) -> List[int]:
+def get_user_favorites(request) -> list[int]:
     return request.user.config.get('projects', {}).get('favorite', [])
+
+
+def mock_request_with_query_params(query_params: dict[str, Any]):
+    request = HttpRequest()
+    new_query_params = {}
+    for query_key, query_value in query_params.items():
+        if isinstance(query_value, list):
+            new_query_params[query_key] = ','.join([str(obj) for obj in query_value])
+        else:
+            new_query_params[query_key] = query_value
+    request.GET = new_query_params
+    request.query_params = new_query_params
+    return request
 
 
 @dataclass

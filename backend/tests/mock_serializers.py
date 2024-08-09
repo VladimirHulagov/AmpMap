@@ -28,11 +28,15 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from django.db.models import Q, Sum
+from django.db.models import OuterRef, Q, Sum
 from rest_framework.fields import SerializerMethodField
 from rest_framework.reverse import reverse
 
-from testy.core.api.v1.serializers import ProjectRetrieveSerializer, ProjectStatisticsSerializer
+from testy.core.api.v1.serializers import (
+    NotificationSettingSerializer,
+    ProjectRetrieveSerializer,
+    ProjectStatisticsSerializer,
+)
 from testy.tests_description.api.v1.serializers import (
     TestCaseRetrieveSerializer,
     TestSuiteBaseSerializer,
@@ -67,15 +71,50 @@ class TestMockSerializer(TestSerializer):
 
 class TestSuiteMockTreeSerializer(TestSuiteTreeSerializer):
     descendant_count = SerializerMethodField()
+    cases_count = SerializerMethodField()
+    total_cases_count = SerializerMethodField()
+    estimates = SerializerMethodField()
+    total_estimates = SerializerMethodField()
 
     class Meta:
         model = TestSuite
         fields = TestSuiteBaseSerializer.Meta.fields + (
-            'children', 'title', 'descendant_count',
+            'children', 'title', 'descendant_count', 'cases_count', 'total_cases_count', 'total_estimates', 'estimates',
         )
 
     def get_descendant_count(self, instance):
         return instance.get_descendant_count()
+
+    def get_cases_count(self, instance):
+        return instance.test_cases.count()
+
+    def get_total_cases_count(self, instance):
+        return TestCase.objects.filter(suite__in=instance.get_descendants(include_self=True)).count()
+
+    def get_total_estimates(self, instance):
+        sum_condition = Q(test_cases__is_deleted=False) & Q(test_cases__is_archive=False)
+        filter_condition = (
+            Q(tree_id=OuterRef('tree_id')) &  # noqa: W504
+            Q(lft__gte=OuterRef('lft')) &  # noqa: W504
+            Q(rght__lte=OuterRef('rght'))
+        )
+        return self._get_suites_query(filter_condition, sum_condition)
+
+    def get_estimates(self, instance):
+        sum_condition = Q(test_cases__is_deleted=False) & Q(test_cases__is_archive=False)
+        return self._get_suites_query(Q(pk=OuterRef('pk')), sum_condition)
+
+    @classmethod
+    def _get_suites_query(cls, filter_condition, sum_condition):
+        (
+            TestSuite.objects.filter(filter_condition)
+            .prefetch_related('test_cases')
+            .values('tree_id')
+            .annotate(
+                total=Sum('test_cases__estimate', filter=sum_condition),
+            )
+            .values('total')
+        )
 
 
 class ProjectRetrieveMockSerializer(ProjectRetrieveSerializer):
@@ -193,3 +232,11 @@ class TestSuiteRetrieveMockSerializer(TestSuiteRetrieveSerializer, PathRetrieveM
             )
             .values_list('total', flat=True)[0]
         )
+
+
+class NotificationSettingMockSerializer(NotificationSettingSerializer):
+    enabled = SerializerMethodField()
+
+    def get_enabled(self, instance):
+        user = self.context.get('request').user
+        return instance.subscribers.filter(pk=user.pk).exists()

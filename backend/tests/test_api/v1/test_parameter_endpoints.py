@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -31,6 +31,7 @@
 
 from http import HTTPStatus
 
+import allure
 import pytest
 
 from tests import constants
@@ -124,3 +125,28 @@ class TestParameterEndpoints:
             reverse_kwargs={'pk': parameter.pk},
         )
         assert not Parameter.objects.count(), f'Parameter with id "{parameter.id}" was not deleted.'
+
+    def test_parameter_unique_constraint(self, api_client, authorized_superuser, parameter):
+        new_param_data = {
+            'group_name': parameter.group_name,
+            'project': parameter.project.id,
+            'data': parameter.data,
+        }
+        with allure.step('Validate duplicate parameter validation works'):
+            api_client.send_request(
+                self.view_name_list,
+                data=new_param_data,
+                request_type=RequestType.POST,
+                expected_status=HTTPStatus.BAD_REQUEST,
+            )
+        with allure.step('Soft delete parameter'):
+            parameter.delete()
+            parameter.refresh_from_db()
+            assert parameter.is_deleted
+        with allure.step('Validate parameter can be created after soft delete'):
+            api_client.send_request(
+                self.view_name_list,
+                data=new_param_data,
+                request_type=RequestType.POST,
+                expected_status=HTTPStatus.CREATED,
+            )

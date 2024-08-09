@@ -1,4 +1,5 @@
 import { StarFilled, StarOutlined } from "@ant-design/icons"
+import { notification } from "antd"
 
 import { useUserConfig } from "entities/user/model"
 
@@ -25,7 +26,20 @@ export const FolowProject = ({ project }: { project: Project }) => {
       },
     }
 
-    await updateConfig(newConfig)
+    try {
+      await updateConfig(newConfig)
+
+      notification.success({
+        message: "Success",
+        description: `${project.name} has been ${isNew ? "added" : "removed"} to favorites`,
+      })
+    } catch (error) {
+      notification.success({
+        message: "Error",
+        description: "Error when try to change follow project",
+      })
+      console.error(error)
+    }
   }
 
   return (

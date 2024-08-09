@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -30,7 +30,7 @@
 # <http://www.gnu.org/licenses/>.
 import mimetypes
 from pathlib import Path
-from typing import Optional, Tuple, Union
+from typing import TypeAlias
 
 from django.conf import settings
 from django.db.models.fields.files import FieldFile
@@ -39,7 +39,7 @@ from PIL import Image
 from rest_framework import status
 from rest_framework.response import Response
 
-suffix_properties = Union[Tuple[str, str, str], Tuple[str, int, int]]  # noqa: WPS221
+suffix_properties: TypeAlias = tuple[str, str, str] | tuple[str, int, int]
 
 
 class MediaViewMixin:
@@ -48,8 +48,9 @@ class MediaViewMixin:
         file: FieldFile,
         request,
         generate_thumbnail: bool = True,
-        source_filename: Optional[str] = None,
-    ) -> Union[Response, FileResponse]:
+        source_filename: str | None = None,
+    ) -> Response | FileResponse:
+        # TODO: Refactor this to single responsibility principal
         """
         Get filename to return in response, taking size from query parameters into account.
 
@@ -98,7 +99,7 @@ class MediaViewMixin:
         new_file_name: str,
         content_type: str,
         name_for_downloading: str,
-    ) -> Union[Response, FileResponse]:
+    ) -> Response | FileResponse:
         """
         Get response to return for user.
 
@@ -194,3 +195,11 @@ class MediaViewMixin:
         if not any(modification_params):
             return '', '', ''
         return f'@{width}x{height}', width, height
+
+
+class CallableChoicesMixin:
+    """Mixin for providing all values from choices as callable for default values in migrations."""
+
+    @classmethod
+    def cb_values(cls):
+        return cls.values

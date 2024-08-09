@@ -1,3 +1,4 @@
+import { useNotificationWS } from "entities/notifications/model/use-notification-ws"
 import "react-image-crop/dist/ReactCrop.css"
 import {
   Route,
@@ -10,6 +11,11 @@ import { Main, TestPlansView, TestSuitesView } from "widgets"
 import { ProjectDetailsAccessManagementPage } from "pages/administration/projects/project-details/access-management"
 import { ProjectDetailsSettingsPage } from "pages/administration/projects/project-details/settings"
 import { LoginPage } from "pages/login"
+import {
+  NotificationListPage,
+  NotificationSettingsPage,
+  NotificationsPage,
+} from "pages/notifications"
 import { ProjectMainPage } from "pages/project/project-main-page"
 import { TestPlanActivityPage } from "pages/project/test-plan-activity"
 
@@ -72,6 +78,10 @@ const router = createBrowserRouter(
           </Route>
 
           <Route path="profile" element={<ProfilePage />} />
+          <Route path="notifications" element={<NotificationsPage />}>
+            <Route index element={<NotificationListPage />} />
+            <Route path="settings" element={<NotificationSettingsPage />} />
+          </Route>
         </Route>
       </Route>
 
@@ -85,6 +95,7 @@ const router = createBrowserRouter(
 )
 
 const App = () => {
+  useNotificationWS()
   return <RouterProvider router={router} />
 }
 

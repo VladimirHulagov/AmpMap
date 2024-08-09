@@ -2,13 +2,12 @@ import { Button, Space, Table, TableProps } from "antd"
 import { ColumnsType } from "antd/es/table"
 import type { FilterValue, TablePaginationConfig } from "antd/es/table/interface"
 import { useGetCustomAttributesQuery } from "entities/custom-attribute/api"
-import { DeleteCustomAttribute, EditCustomAttribute } from "features/custom-attribute"
+import { ChangeCustomAttribute, DeleteCustomAttribute } from "features/custom-attribute"
 import { useState } from "react"
 import { useParams } from "react-router-dom"
 
 import { customAttributeTypes, customAttributesObject } from "shared/config/custom-attribute-types"
 import { useTableSearch } from "shared/hooks"
-import { ContainerLoader } from "shared/ui"
 
 export const CustomAttributesTable = () => {
   const { projectId } = useParams<ParamProjectId>()
@@ -61,14 +60,12 @@ export const CustomAttributesTable = () => {
       width: 100,
       render: (_, record) => (
         <Space>
-          <EditCustomAttribute attribute={record} />
+          <ChangeCustomAttribute formType="edit" attribute={record} />
           <DeleteCustomAttribute attributeId={record.id} />
         </Space>
       ),
     },
   ]
-
-  if (isLoading) return <ContainerLoader />
 
   return (
     <>
@@ -78,6 +75,7 @@ export const CustomAttributesTable = () => {
         </Button>
       </Space>
       <Table
+        loading={isLoading}
         dataSource={data}
         columns={columns}
         rowKey="id"

@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -28,12 +28,13 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from typing import Any, Dict
+from typing import Any
 
 from django.contrib.auth import get_user_model
 from PIL import Image
 
 from testy.core.services.media import MediaService
+from testy.users.models import User
 
 UserModel = get_user_model()
 
@@ -41,9 +42,11 @@ _AVATAR = 'avatar'
 
 
 class UserService(MediaService):
-    non_side_effect_fields = ['username', 'first_name', 'last_name', 'email', 'is_superuser', 'is_active', 'avatar']
+    non_side_effect_fields = [
+        'username', 'first_name', 'last_name', 'email', 'is_superuser', 'is_active', 'avatar',
+    ]
 
-    def user_create(self, data: Dict[str, Any]) -> UserModel:
+    def user_create(self, data: dict[str, Any]) -> User:
         user = UserModel.model_create(
             fields=self.non_side_effect_fields,
             data=data,
@@ -55,20 +58,22 @@ class UserService(MediaService):
         self.populate_image_thumbnails(user.avatar)
         return user
 
-    def user_update(self, user: UserModel, data: dict[str, Any]) -> UserModel:
+    def user_update(self, user: User, data: dict[str, Any]) -> User:
         user, _ = user.model_update(
             fields=self.non_side_effect_fields,
             data=data,
             commit=False,
         )
-        password = data.pop('password', None)
-        if password:
-            user.set_password(password)
         user.full_clean()
         user.save()
         return user
 
-    def update_avatar(self, user: UserModel, data: Dict[str, Any]):
+    @classmethod
+    def update_password(cls, user: User, password: str) -> None:
+        user.set_password(password)
+        user.save()
+
+    def update_avatar(self, user: User, data: dict[str, Any]):
         if data[_AVATAR]:
             img = Image.open(data[_AVATAR])
             img.load()
@@ -84,7 +89,7 @@ class UserService(MediaService):
         self.populate_image_thumbnails(user.avatar, old_avatar)
         return user
 
-    def config_update(self, user: UserModel, config: Dict[str, Any]) -> Dict[str, Any]:
+    def config_update(self, user: User, config: dict[str, Any]) -> dict[str, Any]:
         user.config.update(config)
         user.full_clean(exclude=['password'])
         user.save()

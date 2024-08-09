@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2022 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -29,8 +29,6 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 
-from typing import Optional
-
 from django.contrib.auth import get_user_model
 from django.db.models import QuerySet
 
@@ -41,9 +39,13 @@ UserModel = get_user_model()
 
 
 class UserSelector:
-    def user_list(self, user: Optional[User] = None) -> QuerySet[User]:
+    def user_list(self, user: User | None = None) -> QuerySet[User]:
         if user and RoleSelector.restricted_project_access(user):
             qs = UserModel.objects.filter(project__in=user.project_set.all()).distinct()
         else:
             qs = UserModel.objects.all()
         return qs.prefetch_related('groups').order_by('username')
+
+    @classmethod
+    def user_by_id(cls, user_id: int) -> User | None:
+        return UserModel.objects.filter(id=user_id).first()
