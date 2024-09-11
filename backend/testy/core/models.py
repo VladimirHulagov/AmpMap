@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -47,9 +47,7 @@ from simple_history.models import HistoricalRecords
 
 from testy.core.choices import AccessRequestStatus, ActionCode, CustomFieldType, LabelTypes, SystemMessageLevel
 from testy.core.constraints import unique_soft_delete_constraint
-from testy.core.services.media import MediaService
 from testy.root.models import BaseModel
-from testy.tests_representation.choices import TestStatuses
 from testy.users.models import Membership, User
 from testy.utils import get_media_file_path
 from testy.validators import ExtensionValidator, ProjectValidator
@@ -145,8 +143,6 @@ class Attachment(BaseModel):
         if new_file:
             self_copy.file.save(self.filename, new_file, save=False)
         self_copy.save()
-        if 'image/' in self_copy.file_extension:
-            MediaService().populate_image_thumbnails(self_copy.file)
         return self_copy
 
 
@@ -204,13 +200,8 @@ class CustomAttribute(BaseModel):
     is_required = models.BooleanField(default=False)
     is_suite_specific = models.BooleanField(blank=True, default=False)
     suite_ids = ArrayField(models.PositiveIntegerField(), blank=True, default=list)
-    status_specific = ArrayField(
-        models.IntegerField(
-            choices=TestStatuses.choices,
-        ),
-        default=TestStatuses.cb_values,
-    )
     content_types = ArrayField(models.PositiveIntegerField(blank=False))
+    status_specific = ArrayField(models.BigIntegerField(), blank=True, default=list)
 
     class Meta:
         ordering = (_NAME,)

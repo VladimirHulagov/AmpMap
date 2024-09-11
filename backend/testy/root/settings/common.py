@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -59,7 +59,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
-VERSION = '1.3.2'
+VERSION = '1.3.3'
 
 loaded_hosts = os.environ.get('ALLOWED_HOSTS', [])
 csrf_origins = os.environ.get('CSRF_TRUSTED_ORIGINS', [])
@@ -164,6 +164,9 @@ CHANNEL_LAYERS = {
                     REDIS_PORT,
                 ),
             ],
+            'channel_capacity': {
+                'notifications': 3000,
+            },
         },
     },
 }

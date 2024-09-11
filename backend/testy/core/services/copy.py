@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -32,13 +32,14 @@ import re
 from collections import defaultdict
 from copy import deepcopy
 from typing import Any, Callable, Generator, Iterable, TypeAlias
+from uuid import uuid4
 
 from django.db import transaction
 from django.db.models import Model, QuerySet
 from mptt.querysets import TreeQuerySet
 from simple_history.utils import bulk_create_with_history
 
-from testy.core.models import Label, LabeledItem
+from testy.core.models import Label, LabeledItem, Project
 from testy.core.selectors.attachments import AttachmentSelector
 from testy.core.selectors.labeled_items import LabeledItemSelector
 from testy.core.selectors.labels import LabelSelector
@@ -47,7 +48,7 @@ from testy.tests_description.selectors.cases import TestCaseSelector, TestCaseSt
 from testy.tests_description.selectors.suites import TestSuiteSelector
 from testy.tests_representation.models import Test, TestPlan
 from testy.tests_representation.selectors.testplan import TestPlanSelector
-from testy.utilities.sql import get_next_max_int_value, rebuild_mptt
+from testy.utilities.sql import rebuild_mptt
 
 _Mapping: TypeAlias = dict[int, int]
 _PROJECT_ID = 'project_id'
@@ -149,17 +150,8 @@ class CopyService:
             cases_to_copy.values_list(_ID, flat=True),
             _TEST_CASE_ID,
         )
-
-        field_mappings = defaultdict(dict)
-        for step in steps_to_copy:
-            field_mappings[_TEST_CASE_ID][step.pk] = case_mappings.get(step.pk)
-            field_mappings['project_id'][step.pk] = project.id if project else step.project_id
-
-        steps_mapping = cls._copy_objects(
-            steps_to_copy,
-            TestCaseStep,
-            field_mappings,
-        )
+        copied_cases = TestCaseSelector.cases_by_ids_list(case_mappings.values(), _PK)
+        steps_mapping = cls._steps_copy(copied_cases, case_mappings, steps_to_copy, project)
         cls._copy_attachments(
             TestCase,
             cases_to_copy.values_list(_ID, flat=True),
@@ -198,7 +190,6 @@ class CopyService:
 
         case_ids = []
         pk_to_new_name = {}
-        pk_to_copied_case_history = {}
         mapped_fields = defaultdict(dict)
 
         for case in cases_data:
@@ -224,22 +215,7 @@ class CopyService:
         )
 
         copied_cases = TestCaseSelector.cases_by_ids_list(case_mappings.values(), _PK)
-
-        for copied_case in copied_cases:
-            pk_to_copied_case_history[copied_case.id] = copied_case.history.first().history_id
-
-        mapped_fields = defaultdict(dict)
-        for step in steps_to_copy:
-            mapped_fields['test_case_history_id'][step.pk] = pk_to_copied_case_history.get(
-                case_mappings[step.test_case_id],
-            )
-            mapped_fields[_TEST_CASE_ID][step.pk] = case_mappings.get(step.test_case_id)
-
-        steps_mapping = cls._copy_objects(
-            steps_to_copy,
-            TestCaseStep,
-            custom_fields=mapped_fields,
-        )
+        steps_mapping = cls._steps_copy(copied_cases, case_mappings, steps_to_copy)
 
         cls._copy_attachments(
             TestCase,
@@ -370,6 +346,7 @@ class CopyService:
             labeled_item_copy.pk = None
             labeled_item_copy.label_id = label_mappings.get(labeled_item_copy.label_id)
             labeled_item_copy.object_id = mapping.get(labeled_item_copy.object_id)
+            labeled_item_copy.content_object_history_id = labeled_item_copy.content_object.history.first().history_id
             copied_labeled_items.append(labeled_item_copy)
         LabeledItem.objects.bulk_create(copied_labeled_items)
         return label_mappings
@@ -387,7 +364,7 @@ class CopyService:
         for instance in instances:
             copied_instance = deepcopy(instance)
             copied_instance.pk = None
-            copied_instance.tree_id = new_parent.tree_id if new_parent else get_next_max_int_value(model, _TREE_ID)
+            copied_instance.tree_id = new_parent.tree_id if new_parent else uuid4()
             setattr(copied_instance, parent_field_name, new_parent)
             for field_name, field_value in kwargs.items():
                 setattr(copied_instance, field_name, field_value)
@@ -469,3 +446,28 @@ class CopyService:
     @classmethod
     def _change_attachments_reference(cls, src_text: str, old_id: int, new_id: int) -> str:
         return re.sub(f'attachments/{old_id}/', f'attachments/{new_id}/', src_text)
+
+    @classmethod
+    def _steps_copy(
+        cls,
+        copied_cases: QuerySet[TestCase],
+        case_mappings: _Mapping,
+        steps_to_copy: QuerySet[TestCaseStep],
+        project: Project | None = None,
+    ):
+        pk_to_copied_case_history = {}
+        for copied_case in copied_cases:
+            pk_to_copied_case_history[copied_case.id] = copied_case.history.first().history_id
+
+        mapped_fields = defaultdict(dict)
+        for step in steps_to_copy:
+            mapped_fields['test_case_history_id'][step.pk] = pk_to_copied_case_history.get(
+                case_mappings[step.test_case_id],
+            )
+            mapped_fields[_TEST_CASE_ID][step.pk] = case_mappings.get(step.test_case_id)
+            mapped_fields['project_id'][step.pk] = project.id if project else step.project_id
+        return cls._copy_objects(
+            steps_to_copy,
+            TestCaseStep,
+            custom_fields=mapped_fields,
+        )

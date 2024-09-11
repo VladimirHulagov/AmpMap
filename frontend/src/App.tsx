@@ -10,6 +10,8 @@ import { Main, TestPlansView, TestSuitesView } from "widgets"
 
 import { ProjectDetailsAccessManagementPage } from "pages/administration/projects/project-details/access-management"
 import { ProjectDetailsSettingsPage } from "pages/administration/projects/project-details/settings"
+import { ProjectDetailsStatusesPage } from "pages/administration/projects/project-details/statuses"
+import { ErrorPage } from "pages/error-page/error-page"
 import { LoginPage } from "pages/login"
 import {
   NotificationListPage,
@@ -24,7 +26,6 @@ import "shared/styles/global.css"
 import { RequireAuth } from "./entities/auth/ui/require-auth"
 import { CreateTestCaseView } from "./features/test-case/create-test-case/create-test-case-view"
 import { EditTestCaseView } from "./features/test-case/edit-test-case/edit-test-case-view"
-import { Page404 } from "./pages/404"
 import { ProjectsMain } from "./pages/administration/projects"
 import { ProjectDetailsCustomAttributesPage } from "./pages/administration/projects/project-details/custom-attributes"
 import { ProjectDetailsLabelsPage } from "./pages/administration/projects/project-details/labels"
@@ -70,6 +71,7 @@ const router = createBrowserRouter(
               <Route path="overview" element={<ProjectDetailsOverviewPage />} />
               <Route path="parameters" element={<ProjectDetailsParametersPage />} />
               <Route path="labels" element={<ProjectDetailsLabelsPage />} />
+              <Route path="statuses" element={<ProjectDetailsStatusesPage />} />
               <Route path="access-management" element={<ProjectDetailsAccessManagementPage />} />
               <Route path="attributes" element={<ProjectDetailsCustomAttributesPage />} />
               <Route path="settings" element={<ProjectDetailsSettingsPage />} />
@@ -88,8 +90,10 @@ const router = createBrowserRouter(
       {/* public routes */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/logout" element={<LogoutPage />} />
-      <Route path="/404" element={<Page404 />} />
-      <Route path="*" element={<Page404 />} />
+      <Route
+        path="*"
+        element={<ErrorPage code="404" message="Sorry, the page you visited does not exist." />}
+      />
     </Route>
   )
 )

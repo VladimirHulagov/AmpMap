@@ -11,7 +11,7 @@ import { useGetTestPlanSuitesQuery } from "entities/test-plan/api"
 const INITIAL_PAGINATION = { current: 1 }
 
 interface SuiteFiltersDrowdownProps {
-  setSelectedKeys: React.Dispatch<React.SetStateAction<Key[]>>
+  setSelectedKeys: (keys: Key[]) => void
   selectedKeys: Key[]
   close: () => void
 }

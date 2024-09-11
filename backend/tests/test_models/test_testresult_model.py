@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -33,7 +33,7 @@ import pytest
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 
-from tests.error_messages import BOOL_VALUE_ERR_MSG, INT_VALUE_ERR_MSG, MODEL_VALUE_ERR_MSG, NOT_NULL_ERR_MSG
+from tests.error_messages import BOOL_VALUE_ERR_MSG, MODEL_VALUE_ERR_MSG, NOT_NULL_ERR_MSG
 from testy.tests_representation.models import TestResult
 
 
@@ -41,7 +41,7 @@ from testy.tests_representation.models import TestResult
 class TestResultModel:
     relation_name = TestResult._meta.label_lower.replace('.', '_')
 
-    @pytest.mark.parametrize('parameter_name', ['status', 'test', 'is_archive'])
+    @pytest.mark.parametrize('parameter_name', ['test', 'is_archive'])
     def test_not_null_constraint(self, parameter_name, test_result_factory):
         with pytest.raises(IntegrityError) as err:
             test_result_factory(**{parameter_name: None})
@@ -51,7 +51,17 @@ class TestResultModel:
 
     @pytest.mark.parametrize(
         'parameter_name, incorrect_value, error_type, err_msg', [
-            ('status', 'abc', ValueError, INT_VALUE_ERR_MSG.format(column='status', value='abc')),
+            (
+                'status',
+                'abc',
+                ValueError,
+                MODEL_VALUE_ERR_MSG.format(
+                    value='abc',
+                    model_name='TestResult',
+                    column_name='status',
+                    column_model='ResultStatus',
+                ),
+            ),
             (
                 'test',
                 'abc',

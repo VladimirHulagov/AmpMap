@@ -6,6 +6,7 @@ import { notificationWSReducer } from "entities/notifications/model/notification
 import { notificationWSMiddleware } from "entities/notifications/ws"
 import { roleApi } from "entities/roles/api"
 import { roleReducer } from "entities/roles/model"
+import { statusesApi } from "entities/status/api"
 import {
   FLUSH,
   PAUSE,
@@ -52,6 +53,8 @@ import { testPlanReducer } from "entities/test-plan/model"
 import { usersApi } from "entities/user/api"
 import userReducer from "entities/user/model/user-slice"
 
+import { appReducer } from "./slice"
+
 const persistConfig = {
   key: "root",
   storage,
@@ -59,6 +62,7 @@ const persistConfig = {
 }
 
 const rootReducer = combineReducers({
+  app: appReducer,
   auth: authReducer,
   testCase: testCaseReducer,
   testSuite: suiteReducer,
@@ -82,6 +86,7 @@ const rootReducer = combineReducers({
   [resultApi.reducerPath]: resultApi.reducer,
   [attachmentApi.reducerPath]: attachmentApi.reducer,
   [labelApi.reducerPath]: labelApi.reducer,
+  [statusesApi.reducerPath]: statusesApi.reducer,
   [roleApi.reducerPath]: roleApi.reducer,
   [commentsApi.reducerPath]: commentsApi.reducer,
   [customAttributeApi.reducerPath]: customAttributeApi.reducer,
@@ -110,6 +115,7 @@ export const store = configureStore({
       .concat(resultApi.middleware)
       .concat(attachmentApi.middleware)
       .concat(labelApi.middleware)
+      .concat(statusesApi.middleware)
       .concat(commentsApi.middleware)
       .concat(roleApi.middleware)
       .concat(systemApi.middleware)

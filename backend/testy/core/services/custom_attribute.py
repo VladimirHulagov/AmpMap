@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -33,6 +33,7 @@ from typing import Any
 from django.contrib.contenttypes.models import ContentType
 
 from testy.core.models import CustomAttribute
+from testy.tests_representation.selectors.status import ResultStatusSelector
 
 
 class CustomAttributeService:
@@ -42,6 +43,12 @@ class CustomAttributeService:
 
     @classmethod
     def custom_attribute_create(cls, data: dict[str, Any]) -> CustomAttribute:
+        if data.get('status_specific') is None:
+            data['status_specific'] = list(
+                ResultStatusSelector
+                .status_list(project=data['project'])
+                .values_list('id', flat=True),
+            )
         custom_attribute = CustomAttribute.model_create(
             fields=cls.non_side_effect_fields,
             data=data,

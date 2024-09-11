@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -28,7 +28,6 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-
 from http import HTTPStatus
 
 import pytest
@@ -44,23 +43,27 @@ from tests.error_messages import (
     PERMISSION_ERR_MSG,
     UPDATE_ARCHIVE_RESULT,
 )
+from testy.core.choices import CustomFieldType
 from testy.tests_representation.api.v1.serializers import TestResultSerializer
-from testy.tests_representation.choices import TestStatuses
 from testy.tests_representation.models import TestResult
 
 _ERRORS = 'errors'
 
 
-@pytest.mark.django_db(reset_sequences=True)
+@pytest.mark.django_db
 class TestResultEndpoints:
     view_name_list = 'api:v1:testresult-list'
     view_name_detail = 'api:v1:testresult-detail'
     project_view_name_detail = 'api:v1:project-detail'
     plan_view_name_detail = 'api:v1:testplan-detail'
 
-    def test_list(self, api_client, authorized_superuser, test_result_factory, project):
+    def test_list(self, api_client, authorized_superuser, test_result_factory, project, result_status_factory):
+        test_results = []
+        for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
+            test_results.append(test_result_factory(project=project, status=result_status_factory(project=project)))
+
         expected_instances = model_to_dict_via_serializer(
-            [test_result_factory(project=project) for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE)],
+            test_results,
             TestResultSerializer,
             many=True,
             fields_to_add={'latest': True},
@@ -77,10 +80,10 @@ class TestResultEndpoints:
         actual_dict = response.json()
         assert actual_dict == expected_dict, 'Actual model dict is different from expected'
 
-    def test_partial_update(self, api_client, authorized_superuser, test_result, user):
+    def test_partial_update(self, api_client, authorized_superuser, test_result, user, result_status_factory):
         update_dict = {
             'user': user.id,
-            'status': 3,
+            'status': result_status_factory(project=test_result.project).pk,
             'comment': 'new_comment',
         }
         api_client.send_request(
@@ -93,12 +96,12 @@ class TestResultEndpoints:
         for key in update_dict.keys():
             assert update_dict[key] == actual_dict[key], f'Field "{key}" was not updated.'
 
-    def test_update(self, api_client, authorized_superuser, test_result, user):
+    def test_update(self, api_client, authorized_superuser, test_result, user, result_status_factory):
         update_dict = {
             'id': test_result.id,
             'test': test_result.test.id,
             'user': user.id,
-            'status': 3,
+            'status': result_status_factory(project=test_result.project).pk,
             'comment': 'new_comment',
         }
         api_client.send_request(
@@ -112,11 +115,11 @@ class TestResultEndpoints:
         for key in update_dict.keys():
             assert update_dict[key] == actual_dict[key], f'Field "{key}" was not updated.'
 
-    def test_add_results_to_test(self, api_client, authorized_superuser, user, test_factory):
+    def test_add_results_to_test(self, api_client, authorized_superuser, user, test_factory, result_status_factory):
         tests = [test_factory(), test_factory()]
         for test in tests:
             result_dict = {
-                'status': TestStatuses.FAILED,
+                'status': result_status_factory(project=test.project).pk,
                 'user': user.id,
                 'comment': constants.TEST_COMMENT,
                 'test': test.id,
@@ -131,9 +134,12 @@ class TestResultEndpoints:
         assert TestResult.objects.filter(test=tests[0]).count() == 1, f'Only 1 result should be on a test "{tests[0]}"'
         assert TestResult.objects.filter(test=tests[1]).count() == 1, f'Only 1 result should be on a test "{tests[1]}"'
 
-    def test_untested_status_forbidden(self, user, api_client, authorized_superuser, test, test_result):
+    def test_deleted_status_forbidden(
+        self, user, api_client, authorized_superuser, test,
+        test_result, result_status_factory,
+    ):
         result_dict = {
-            'status': TestStatuses.UNTESTED,
+            'status': result_status_factory(project=test_result.project, is_deleted=True).pk,
             'user': user.id,
             'comment': constants.TEST_COMMENT,
             'test': test.id,
@@ -195,7 +201,10 @@ class TestResultEndpoints:
             data=result_dict,
         )
 
-    def test_get_results_by_test(self, api_client, test_result_factory, test_factory, authorized_superuser, project):
+    def test_get_results_by_test(
+        self, api_client, test_result_factory, test_factory, authorized_superuser,
+        project, result_status_factory,
+    ):
         test1 = test_factory()
         test2 = test_factory()
         dicts_test1 = []
@@ -204,14 +213,14 @@ class TestResultEndpoints:
             latest = idx == constants.NUMBER_OF_OBJECTS_TO_CREATE - 1
             dicts_test1.append(
                 model_to_dict_via_serializer(
-                    test_result_factory(test=test1, project=project),
+                    test_result_factory(test=test1, project=project, status=result_status_factory(project=project)),
                     TestResultSerializer,
                     fields_to_add={'latest': latest},
                 ),
             )
             dicts_test2.append(
                 model_to_dict_via_serializer(
-                    test_result_factory(test=test2, project=project),
+                    test_result_factory(test=test2, project=project, status=result_status_factory(project=project)),
                     TestResultSerializer,
                     fields_to_add={'latest': latest},
                 ),
@@ -240,24 +249,26 @@ class TestResultEndpoints:
     @pytest.mark.parametrize('request_type', [RequestType.PATCH, RequestType.PUT, RequestType.DELETE, RequestType.POST])
     def test_result_permissions(
         self, api_client, authorized_superuser, test_result_factory, user,
-        request_type, project_factory, test_factory,
+        request_type, project_factory, test_factory, result_status_factory,
     ):
         api_client.force_login(user)
-        result = test_result_factory(project=project_factory(is_archive=True))
+        project = project_factory(is_archive=True)
+        status = result_status_factory(project=project)
         if request_type == RequestType.POST:
-            test = test_factory(project=project_factory(is_archive=True))
+            test = test_factory(project=project)
             response = api_client.send_request(
                 self.view_name_list,
                 request_type=request_type,
                 expected_status=HTTPStatus.FORBIDDEN,
                 data={
-                    'status': TestStatuses.UNTESTED,
+                    'status': status.pk,
                     'user': user.id,
                     'comment': constants.TEST_COMMENT,
                     'test': test.id,
                 },
             )
         else:
+            result = test_result_factory(project=project_factory(is_archive=True), status=status)
             response = api_client.send_request(
                 self.view_name_detail,
                 reverse_kwargs={'pk': result.pk},
@@ -272,11 +283,11 @@ class TestResultEndpoints:
     @pytest.mark.parametrize('invalid_by', ['time', 'version'])
     def test_result_update_constraints(
         self, api_client, authorized_superuser, test_case, test_factory, invalid_by,
-        request_type,
+        request_type, result_status_factory,
     ):
         test = test_factory(case=test_case)
         update_dict = {
-            'status': 3,
+            'status': result_status_factory(project=test.project).pk,
             'comment': 'new_comment',
         }
         result_id = api_client.send_request(
@@ -284,7 +295,7 @@ class TestResultEndpoints:
             data={
                 'project': test.project.id,
                 'test': test.id,
-                'status': 0,
+                'status': result_status_factory(project=test.project).pk,
                 'comment': 'Src comment',
             },
             request_type=RequestType.POST,
@@ -329,6 +340,7 @@ class TestResultEndpoints:
         test_factory,
         project,
         user,
+        result_status_factory,
     ):
         test = test_factory(case=test_case, project=project)
         result_id = api_client.send_request(
@@ -336,7 +348,7 @@ class TestResultEndpoints:
             data={
                 'project': test.project.id,
                 'test': test.id,
-                'status': 0,
+                'status': result_status_factory(project=project).pk,
                 'comment': 'Src comment',
             },
             request_type=RequestType.POST,
@@ -363,13 +375,13 @@ class TestResultEndpoints:
         ],
     )
     def test_soft_delete(
-        self, api_client, authorized_superuser, test_result_factory, project, test_factory, test_plan,
-        view_name, query_param_key,
+            self, api_client, authorized_superuser, test_result_factory, project, test_factory, test_plan,
+            view_name, query_param_key, result_status_factory,
     ):
         test = test_factory(project=project, plan=test_plan)
         parent_id = locals()[query_param_key].id
         for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
-            test_result_factory(test=test, project=project)
+            test_result_factory(test=test, project=project, status=result_status_factory(project=project))
         response = api_client.send_request(self.view_name_list, query_params={'project': project.id})
         assert len(response.json()) == constants.NUMBER_OF_OBJECTS_TO_CREATE
         api_client.send_request(
@@ -389,12 +401,12 @@ class TestResultEndpoints:
     )
     def test_restore(
         self, api_client, authorized_superuser, test_result_factory, project, test_factory, test_plan,
-        view_name, query_param_key,
+        view_name, query_param_key, result_status_factory,
     ):
         test = test_factory(project=project, plan=test_plan)
         parent_id = locals()[query_param_key].id
         for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
-            test_result_factory(test=test, project=project)
+            test_result_factory(test=test, project=project, status=result_status_factory(project=project))
         response = api_client.send_request(self.view_name_list, query_params={'project': project.id})
         assert len(response.json()) == constants.NUMBER_OF_OBJECTS_TO_CREATE
         api_client.send_request(
@@ -407,22 +419,22 @@ class TestResultEndpoints:
         assert len(TestResult.deleted_objects.all()) == constants.NUMBER_OF_OBJECTS_TO_CREATE
 
     def test_test_result_created_if_all_required_custom_attributes_are_filled(
-        self, api_client, authorized_superuser, custom_attribute_factory, project, user, test_factory,
+        self, api_client, authorized_superuser, project, user, test_factory,
+        result_status_factory, custom_attribute_factory,
     ):
         custom_attribute_name = 'awesome_attribute'
         custom_attribute_value = 'some_value'
         expected_number_of_results = 1
-        custom_attribute_factory(project=project, name=custom_attribute_name, is_required=True)
+        status = result_status_factory(project=project)
+        custom_attribute_factory(name=custom_attribute_name, project=project, is_required=True)
         test = test_factory(project=project)
-
         result_dict = {
-            'status': TestStatuses.PASSED,
+            'status': status.pk,
             'user': user.id,
             'comment': constants.TEST_COMMENT,
             'test': test.id,
             'attributes': {custom_attribute_name: custom_attribute_value},
         }
-
         api_client.send_request(
             self.view_name_list, expected_status=HTTPStatus.CREATED, request_type=RequestType.POST, data=result_dict,
         )
@@ -432,13 +444,27 @@ class TestResultEndpoints:
                                                                          f'actual: "{TestResult.objects.count()}"'
 
     def test_test_result_is_not_created_if_required_attribute_exists_but_is_empty(
-        self, api_client, authorized_superuser, custom_attribute_factory, project, user, test_factory,
+        self, api_client, authorized_superuser, allowed_content_types, project, user, test_factory,
+        result_status_factory,
     ):
         custom_attribute_name = 'awesome_attribute'
-        custom_attribute_factory(project=project, name=custom_attribute_name, is_required=True)
+        status = result_status_factory(project=project)
+
+        api_client.send_request(
+            'api:v1:customattribute-list',
+            expected_status=HTTPStatus.CREATED,
+            request_type=RequestType.POST,
+            data={
+                'name': custom_attribute_name,
+                'project': project.pk,
+                'type': CustomFieldType.TXT,
+                'content_types': allowed_content_types,
+                'is_required': True,
+            },
+        )
         test = test_factory(project=project)
         result_dict = {
-            'status': TestStatuses.PASSED,
+            'status': status.pk,
             'user': user.id,
             'comment': constants.TEST_COMMENT,
             'test': test.id,
@@ -451,11 +477,13 @@ class TestResultEndpoints:
 
     def test_test_result_not_created_if_required_custom_attribute_missing(
         self, api_client, authorized_superuser, custom_attribute_factory, project, user, test_factory,
+        result_status_factory,
     ):
-        custom_attribute = custom_attribute_factory(project=project, is_required=True)
+        status = result_status_factory(project=project)
+        custom_attribute = custom_attribute_factory(project=project, is_required=True, status_specific=[status.pk])
         test = test_factory(project=project)
         result_dict = {
-            'status': TestStatuses.PASSED,
+            'status': status.pk,
             'user': user.id,
             'comment': constants.TEST_COMMENT,
             'test': test.id,
@@ -472,36 +500,41 @@ class TestResultEndpoints:
         project,
         user,
         test_factory,
+        result_status_factory,
     ):
+        status = result_status_factory(project=project)
         custom_attribute = custom_attribute_factory(
             project=project,
             is_required=True,
-            status_specific=[TestStatuses.FAILED],
+            status_specific=[status.pk],
         )
         test = test_factory(project=project)
         result_dict = {
-            'status': TestStatuses.PASSED,
+            'status': result_status_factory(project=project).pk,
             'user': user.id,
             'comment': constants.TEST_COMMENT,
             'test': test.id,
             'attributes': {},
         }
         api_client.send_request(self.view_name_list, result_dict, HTTPStatus.CREATED, RequestType.POST)
-        result_dict['status'] = TestStatuses.FAILED
+        result_dict['status'] = status.pk
         response = api_client.send_request(self.view_name_list, result_dict, HTTPStatus.BAD_REQUEST, RequestType.POST)
         assert response.json()[_ERRORS][0] == MISSING_REQUIRED_CUSTOM_ATTRIBUTES_ERR_MSG.format([custom_attribute.name])
 
     def test_test_result_is_created_if_the_required_custom_attribute_is_not_test_result_specific(
         self, api_client, authorized_superuser, custom_attribute_factory, project, user, test_factory,
-        allowed_content_types,
+        allowed_content_types, result_status_factory,
     ):
         expected_number_of_results = 1
         test_result_content_type_id = ContentType.objects.get_for_model(TestResult).id
         allowed_content_types.remove(test_result_content_type_id)
-        custom_attribute_factory(project=project, is_required=True, content_types=allowed_content_types)
+        status = result_status_factory(project=project)
+        custom_attribute_factory(project=project, is_required=True, content_types=allowed_content_types,
+                                 status_specific=[status.pk],
+                                 )
         test = test_factory(project=project)
         result_dict = {
-            'status': TestStatuses.PASSED,
+            'status': status.pk,
             'user': user.id,
             'comment': constants.TEST_COMMENT,
             'test': test.id,
@@ -512,10 +545,12 @@ class TestResultEndpoints:
                                                                          f'"{expected_number_of_results}" ' \
                                                                          f'actual: "{TestResult.objects.count()}"'
 
-    def test_creation_in_archive_test(self, api_client, authorized_superuser, test_factory, user):
+    def test_creation_in_archive_test(
+        self, api_client, authorized_superuser, test_factory, user, result_status_factory,
+    ):
         test = test_factory(is_archive=True)
         result_dict = {
-            'status': TestStatuses.PASSED,
+            'status': result_status_factory(project=test.project).pk,
             'user': user.id,
             'comment': constants.TEST_COMMENT,
             'test': test.id,
@@ -543,14 +578,17 @@ class TestResultEndpoints:
         request_type,
         is_test_archive,
         is_result_archive,
+        result_status_factory,
     ):
         test = test_factory(is_archive=is_test_archive)
-        test_result = test_result_factory(is_archive=is_result_archive, test=test)
+        test_result = test_result_factory(
+            is_archive=is_result_archive, test=test, status=result_status_factory(project=test.project),
+        )
         update_dict = {
             'id': test_result.id,
             'test': test.id,
             'user': user.id,
-            'status': 3,
+            'status': result_status_factory(project=test.project).pk,
             'comment': 'new_comment',
         }
         response = api_client.send_request(
@@ -572,14 +610,16 @@ class TestResultEndpoints:
         request_type,
         project_factory,
         test_result_factory,
+        result_status_factory,
     ):
-        update_dict = {
-            'status': 3,
-            'comment': 'new_comment',
-        }
+
         project = project_factory(settings={'is_result_editable': False})
         test = test_factory(case=test_case, project=project)
-        result = test_result_factory(project=project, test=test)
+        result = test_result_factory(project=project, test=test, status=result_status_factory(project=project))
+        update_dict = {
+            'status': result_status_factory(project=project).pk,
+            'comment': 'new_comment',
+        }
         response = api_client.send_request(
             self.view_name_detail,
             data=update_dict,
@@ -599,16 +639,19 @@ class TestResultEndpoints:
         request_type,
         project_factory,
         test_result_with_steps_factory,
+        result_status_factory,
     ):
         project = project_factory(settings={'is_result_editable': False})
         test = test_factory(case=test_case, project=project)
-        result = test_result_with_steps_factory(project=project, test=test)
+        result = test_result_with_steps_factory(
+            project=project, test=test, status=result_status_factory(project=project),
+        )
         step_to_update = result.steps_results.first()
         update_dict = {
             'steps_results': [
                 {
                     'id': step_to_update.id,
-                    'status': TestStatuses.BROKEN.value,
+                    'status': result_status_factory(project=project).pk,
                 },
             ],
         }
@@ -633,16 +676,22 @@ class TestResultEndpoints:
         project_factory,
         test_result_factory,
         hours_for_editing,
+        result_status_factory,
     ):
-        update_dict = {
-            'status': 3,
-            'comment': 'new_comment',
-        }
+
         project = project_factory(settings={'is_result_editable': True, 'result_edit_limit': hours_for_editing})
         test = test_factory(case=test_case, project=project)
         now = timezone.now()
         created_at = now - timezone.timedelta(seconds=hours_for_editing) + timezone.timedelta(minutes=1)
-        result = test_result_factory(project=project, test=test, created_at=created_at)
+        result = test_result_factory(
+            project=project, test=test, created_at=created_at, status=result_status_factory(project=project),
+        )
+
+        update_dict = {
+            'status': result_status_factory(project=project).pk,
+            'comment': 'new_comment',
+        }
+
         api_client.send_request(
             self.view_name_detail,
             data=update_dict,
@@ -651,5 +700,5 @@ class TestResultEndpoints:
             expected_status=HTTPStatus.OK,
         )
         result.refresh_from_db()
-        assert result.status == update_dict['status']
+        assert result.status.pk == update_dict['status']
         assert result.comment == update_dict['comment']

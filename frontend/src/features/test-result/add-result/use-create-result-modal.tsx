@@ -1,4 +1,5 @@
 import { notification } from "antd"
+import { useStatuses } from "entities/status/model/use-statuses"
 import { useState } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
 import { useParams } from "react-router-dom"
@@ -15,6 +16,8 @@ import { selectTest } from "entities/test/model"
 import { useErrors } from "shared/hooks"
 import { makeAttributesJson, showModalCloseConfirm } from "shared/libs"
 import { AlertSuccessChange } from "shared/ui"
+
+import { filterAttributesByStatus } from "../utils"
 
 export interface CreateResultModalProps {
   isShow: boolean
@@ -42,7 +45,7 @@ export const useCreateResultModal = ({ setIsShow, testCase }: CreateResultModalP
   } = useForm<ResultFormData>({
     defaultValues: {
       comment: "",
-      status: "1",
+      status: null,
       attachments: [],
       attributes: [],
       steps: [],
@@ -51,6 +54,7 @@ export const useCreateResultModal = ({ setIsShow, testCase }: CreateResultModalP
   const watchStatus = watch("status")
   const test = useAppSelector(selectTest)
   const { projectId, testPlanId } = useParams<ParamProjectId & ParamTestPlanId>()
+  const { statuses } = useStatuses({ project: projectId })
   const {
     setAttachments,
     onReset,
@@ -71,10 +75,9 @@ export const useCreateResultModal = ({ setIsShow, testCase }: CreateResultModalP
     onAttributeRemove,
     resetAttributes,
   } = useAttributes({ mode: "create", setValue })
-  const attributes = allAttributes.filter(
-    (attr) => attr.status_specific?.includes(Number(watchStatus))
-  )
-  const [steps, setSteps] = useState<Record<string, string>>({})
+  const attributes = filterAttributesByStatus(allAttributes, statuses, watchStatus)
+
+  const [steps, setSteps] = useState<Record<string, number>>({})
   const { onHandleError } = useErrors<ErrorData>(setErrors)
 
   const onCloseModal = () => {
@@ -110,11 +113,11 @@ export const useCreateResultModal = ({ setIsShow, testCase }: CreateResultModalP
       return
     }
 
-    const stepsResult: { step: string; status: string }[] = []
+    const stepsResult: { step: string; status: number }[] = []
     if (testCase.steps.length) {
       testCase.steps.forEach((step) => {
-        if (!steps[step.id]) {
-          stepsResult.push({ step: step.id, status: "1" })
+        if (steps[step.id] === undefined || steps[step.id] === null) {
+          console.error(`Step ${step.id} is not selected`)
         } else {
           stepsResult.push({ step: step.id, status: steps[step.id] })
         }
@@ -127,7 +130,7 @@ export const useCreateResultModal = ({ setIsShow, testCase }: CreateResultModalP
         attributes: attributesJson,
         test: test.id,
         steps_results: stepsResult,
-      }
+      } as IResultCreate
       const newResult = await createResult({
         testPlanId: Number(testPlanId),
         body: dataReq,
@@ -149,6 +152,8 @@ export const useCreateResultModal = ({ setIsShow, testCase }: CreateResultModalP
       onHandleError(err)
     }
   }
+
+  const isAllStepsSelected = testCase.steps.every((step) => steps[step.id])
 
   return {
     isLoading,
@@ -174,5 +179,7 @@ export const useCreateResultModal = ({ setIsShow, testCase }: CreateResultModalP
     onAttributeRemove,
     setSteps,
     setAttachments,
+    statuses,
+    disabled: !isDirty || isLoading || !watchStatus || !isAllStepsSelected,
   }
 }

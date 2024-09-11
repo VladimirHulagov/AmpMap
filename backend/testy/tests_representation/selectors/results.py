@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -36,6 +36,7 @@ from testy.tests_representation.models import Test, TestPlan, TestResult
 _TEST = 'test'
 _CREATED_AT_DESC = '-created_at'
 _ID = 'id'
+_RESULT_STATUS = 'status'
 
 
 class TestResultSelector:
@@ -44,7 +45,7 @@ class TestResultSelector:
         ).order_by(
             _CREATED_AT_DESC,
         ).prefetch_related(
-            'user', 'steps_results', 'attachments',
+            'user', 'steps_results', 'attachments', _RESULT_STATUS,
         ).annotate(
             latest_result_id=self.get_latest_result_by_test_subquery(),
         )
@@ -64,6 +65,10 @@ class TestResultSelector:
         )
 
     @classmethod
+    def result_list_by_ids(cls, test_plan_ids: list[int]) -> QuerySet[TestResult]:
+        return TestResult.objects.filter(pk__in=test_plan_ids)
+
+    @classmethod
     def result_cascade_history_list_by_test_plan(cls, instance: TestPlan):
         instances = instance.get_descendants(include_self=True).values_list(_ID, flat=True)
         tests = Test.objects.filter(plan__in=instances).values_list(_ID, flat=True)
@@ -71,20 +76,20 @@ class TestResultSelector:
             TestResult.history
             .filter(test__in=tests)
             .order_by('-history_date')
-            .prefetch_related('test', 'test__case', 'test__plan', 'project', 'history_user')
+            .prefetch_related('test', 'test__case', 'test__plan', 'project', 'history_user', _RESULT_STATUS)
             .annotate(
                 action_day=Trunc('history_date', 'day'),
             )
         )
 
     @classmethod
-    def get_last_status_subquery(cls, filters=None, outer_ref_key: str = _ID):
+    def get_last_status_subquery(cls, filters=None, outer_ref_key: str = _ID, status_field: str = _ID):
         if not filters:
             filters = []
         return Subquery(
             TestResult.objects.filter(
                 *filters, test_id=OuterRef(outer_ref_key),
-            ).order_by(_CREATED_AT_DESC).values('status')[:1],
+            ).prefetch_related(_RESULT_STATUS).order_by(_CREATED_AT_DESC).values(f'status__{status_field}')[:1],
         )
 
     @classmethod

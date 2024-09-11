@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -30,7 +30,6 @@
 # <http://www.gnu.org/licenses/>.
 import datetime
 import os
-from itertools import chain
 from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping, Protocol
 
 import pytimeparse
@@ -40,13 +39,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import FieldDoesNotExist, ValidationError
 from django.db.models import Model
 from django.utils.deconstruct import deconstructible
-from django.utils.timezone import now, timedelta
 from rest_framework import serializers
-from rest_framework.exceptions import ValidationError as DRFValidationError
-from utilities.time import WorkTimeProcessor
-
-from testy.core.selectors.project_settings import ProjectSettings
-from testy.tests_representation.choices import TestStatuses
 
 _ID = 'id'
 
@@ -123,77 +116,6 @@ def validator_launcher(
 
 
 @deconstructible
-class TestResultUpdateValidator:
-    requires_context = True
-
-    def __init__(self, fields_to_comparator: Iterable[FieldsToComparator]):
-        self._fields_to_comparator = fields_to_comparator
-
-    def __call__(self, attrs, serializer):  # noqa: WPS231
-        instance = serializer.instance
-        payload_attrs = set(attrs.keys())
-        attrs_to_validate = chain(*(elem[0] for elem in self._fields_to_comparator))
-
-        time_limited_fields = set(payload_attrs).intersection(set(attrs_to_validate))
-
-        if not instance or not time_limited_fields:
-            return
-
-        project_settings = ProjectSettings(**instance.project.settings)
-
-        if not project_settings.is_result_editable:
-            raise ValidationError('Results in this project are not editable. Contact with project admin')
-
-        creation_timedelta = now() - instance.created_at
-        version_changed = instance.test_case_version != instance.test.case.history.first().history_id
-        time_over = (
-            project_settings.result_edit_limit
-            and creation_timedelta > timedelta(seconds=project_settings.result_edit_limit)
-        )
-        update_forbidden = time_over or version_changed
-        err_msg = self._default_error_message(project_settings.result_edit_limit)
-
-        if version_changed:
-            err_msg = 'Test case version changed you can only update "comment" on current result'
-        for fields, are_equal in self._fields_to_comparator:
-            for field in fields:
-                if field not in attrs:
-                    continue
-                if not are_equal(getattr(instance, field), attrs.get(field)) and update_forbidden:
-                    raise ValidationError(err_msg)
-
-    @classmethod
-    def _default_error_message(cls, result_edit_limit: int | None):
-        if result_edit_limit is None:
-            return None
-        result_edit_limit_str = WorkTimeProcessor.format_duration(result_edit_limit, to_workday=False)
-        return f"""Update gap closed, you can only update "comment" on this result.\n
-        Update gap is set to "{result_edit_limit_str}"
-        """  # noqa: S608
-
-
-@deconstructible
-class TestResultArchiveTestValidator:
-    requires_context = True
-
-    def __call__(self, attrs, serializer):
-        instance = serializer.instance
-        test = attrs.get('test') or serializer.instance.test
-        if test.is_archive and not instance:
-            raise ValidationError('Cannot create a result in an archived test')
-        if instance and (test.is_archive or instance.is_archive):
-            raise ValidationError('Cannot update result in an archived test/archived result')
-
-
-@deconstructible
-class TestResultStatusValidator:
-
-    def __call__(self, status):
-        if status == TestStatuses.UNTESTED:
-            raise DRFValidationError('Setting status to UNTESTED is forbidden')
-
-
-@deconstructible
 class EstimateValidator:
     def __call__(self, value):  # noqa: WPS238, WPS231
         estimate = value.get('estimate')
@@ -232,47 +154,3 @@ class DateRangeValidator:
 
         if started_at and due_date and started_at >= due_date:
             raise ValidationError('End date must be greater than start date.')
-
-
-@deconstructible
-class TestPlanParentValidator:
-    def __call__(self, attrs):
-        parent = attrs.get('parent')
-        if not parent:
-            return
-        archived_ancestors = parent.get_ancestors(include_self=True).filter(is_archive=True)
-        if archived_ancestors:
-            ids = list(archived_ancestors.values_list(_ID, flat=True))
-            raise serializers.ValidationError(
-                f'Cannot make child to an archived ancestor, archive ancestors ids are: {ids}',
-            )
-
-
-class MoveTestsSameProjectValidator:
-    err_msg = 'All tests must be in {0} project.'
-
-    def __call__(self, attrs: dict[str, Any]):
-        dst_plan = attrs.get('plan')
-        current_plan = attrs.get('current_plan')
-        if current_plan.project.pk != dst_plan.project.pk:
-            raise ValidationError(self.err_msg.format(dst_plan.project.name))
-
-
-class BulkUpdateExcludeIncludeValidator:
-    err_msg = 'Included_tests and excluded_tests should not be provided.'
-
-    def __call__(self, attrs):
-
-        if all([attrs.get('included_tests'), attrs.get('excluded_tests')]):
-            raise ValidationError(self.err_msg)
-
-
-class TestPlanCasesValidator:
-    err_msg = 'You cannot add archive test case, archive test cases ids: {0}'
-
-    def __call__(self, attrs):
-        cases = attrs.get('test_cases')
-        if not cases:
-            return
-        if archived_cases := [case.pk for case in cases if case.is_archive]:
-            raise ValidationError(self.err_msg.format(archived_cases))

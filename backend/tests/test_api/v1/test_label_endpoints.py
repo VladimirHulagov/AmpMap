@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -31,6 +31,7 @@
 
 from http import HTTPStatus
 
+import allure
 import pytest
 
 from tests import constants
@@ -162,3 +163,20 @@ class TestLabelEndpoints:
             expected_status=HTTPStatus.BAD_REQUEST,
             request_type=request_type,
         )
+
+
+@pytest.mark.django_db
+class TestLabelFilters:
+    view_name_list = 'api:v1:label-list'
+
+    @allure.title('Test labels filters')
+    def test_filter(self, superuser_client, label_factory, project_factory):
+        project = project_factory()
+        label_factory(project=project)
+        label_factory(project=project_factory())
+        response = superuser_client.send_request(
+            self.view_name_list,
+            query_params={'project': project.pk},
+        )
+        results = response.json_strip(is_paginated=False)
+        assert len(results) == 1

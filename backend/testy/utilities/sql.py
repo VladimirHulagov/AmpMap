@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -28,10 +28,8 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from contextlib import contextmanager
 
-from django.db import transaction
-from django.db.models import Func, IntegerField, Max, Model, Q, Subquery, UniqueConstraint, Value, fields
+from django.db.models import Func, IntegerField, Q, Subquery, UniqueConstraint, Value, fields
 from mptt.models import MPTTModel
 
 
@@ -62,27 +60,11 @@ class ConcatSubquery(Subquery):
         return sql, sql_params
 
 
-@contextmanager
-def lock_table(model):
-    with transaction.atomic():
-        cursor = transaction.get_connection().cursor()
-        cursor.execute(f'LOCK TABLE {model._meta.db_table}')  # noqa: WPS237
-        try:
-            yield
-        finally:
-            cursor.close()
-
-
 def rebuild_mptt(model: type[MPTTModel], tree_id: int):
     try:
         model.objects.partial_rebuild(tree_id)
     except RuntimeError:
         model.objects.rebuild()
-
-
-def get_next_max_int_value(model: type[Model], field: str) -> int:
-    max_val = model.objects.aggregate(Max(field))[f'{field}__max']
-    return 1 if max_val is None else max_val + 1
 
 
 def unique_soft_delete_constraint(field: str, model_name: str) -> UniqueConstraint:

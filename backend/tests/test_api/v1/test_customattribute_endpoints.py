@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -129,7 +129,7 @@ class TestCustomAttributeEndpoints:
 
     @pytest.mark.parametrize('expected_status', [HTTPStatus.OK, HTTPStatus.BAD_REQUEST])
     def test_update(
-            self, api_client, authorized_superuser, custom_attribute, project, expected_status, allowed_content_types,
+        self, api_client, authorized_superuser, custom_attribute, project, expected_status, allowed_content_types,
     ):
         updated_name = 'new_custom_attribute_name'
         custom_attribute_fields = {
@@ -186,8 +186,8 @@ class TestCustomAttributeEndpoints:
 
     @pytest.mark.parametrize('request_type', [RequestType.PATCH, RequestType.PUT])
     def test_duplicates_not_allowed(
-            self, api_client, authorized_superuser, custom_attribute_factory, project, request_type,
-            allowed_content_types,
+        self, api_client, authorized_superuser, custom_attribute_factory, project, request_type,
+        allowed_content_types,
     ):
         custom_attribute_factory(name=constants.CUSTOM_ATTRIBUTE_NAME, project=project)
 
@@ -211,7 +211,7 @@ class TestCustomAttributeEndpoints:
 
     @pytest.mark.parametrize('is_suite_specific, suite_ids', [(False, [1, 2, 3]), (True, [])])
     def test_suite_ids_if_is_suite_specific_provided(
-            self, api_client, authorized_superuser, project, is_suite_specific, suite_ids, allowed_content_types,
+        self, api_client, authorized_superuser, project, is_suite_specific, suite_ids, allowed_content_types,
     ):
         custom_attribute_fields = {
             'name': constants.CUSTOM_ATTRIBUTE_NAME,
@@ -233,7 +233,7 @@ class TestCustomAttributeEndpoints:
 
     @pytest.mark.parametrize('expected_status', [HTTPStatus.CREATED, HTTPStatus.BAD_REQUEST])
     def test_suite_is_a_part_of_project(
-            self, api_client, authorized_superuser, project, test_suite, expected_status, allowed_content_types,
+        self, api_client, authorized_superuser, project, test_suite, expected_status, allowed_content_types,
     ):
         expected_custom_attributes_count = 1
         assert CustomAttribute.objects.count() == 0, 'Extra custom attributes were found.'
@@ -264,8 +264,8 @@ class TestCustomAttributeEndpoints:
 
     @pytest.mark.parametrize('expected_status', [HTTPStatus.OK, HTTPStatus.BAD_REQUEST])
     def test_suite_is_a_part_of_project_on_update(
-            self, api_client, authorized_superuser, project, test_suite_factory, custom_attribute_factory,
-            expected_status,
+        self, api_client, authorized_superuser, project, test_suite_factory, custom_attribute_factory,
+        expected_status,
     ):
         expected_custom_attributes_count = 1
         broken_suite_id = [999]

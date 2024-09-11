@@ -10,7 +10,9 @@ interface Test {
   project: number
   case: number
   name: string
-  last_status: string
+  last_status: number
+  last_status_color: string
+  last_status_name: string
   plan: number
   suite: number
   user: number
@@ -34,7 +36,7 @@ interface ITestGet {
 }
 
 interface ITestGetWithFilters extends ITestGet {
-  last_status?: string
+  last_status?: number[]
   search?: string
   ordering?: string
   labels?: string[]

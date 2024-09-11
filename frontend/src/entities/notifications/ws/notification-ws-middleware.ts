@@ -17,6 +17,7 @@ export const notificationWSMiddleware: Middleware = (storeAPI) => {
       }
 
       socket.onopen = () => {
+        // eslint-disable-next-line no-console
         console.log("Notification WebSocket connected")
         isConnected = true
       }
@@ -37,6 +38,7 @@ export const notificationWSMiddleware: Middleware = (storeAPI) => {
       if (socket && isConnected) {
         socket.close()
         isConnected = false
+        // eslint-disable-next-line no-console
         console.log("Notification WebSocket disconnected")
       }
       socket = null

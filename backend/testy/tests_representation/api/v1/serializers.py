@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -33,43 +33,39 @@ from functools import partial
 from rest_framework.fields import (
     BooleanField,
     CharField,
-    ChoiceField,
     DateTimeField,
     FloatField,
     IntegerField,
+    ListField,
     SerializerMethodField,
 )
 from rest_framework.relations import HyperlinkedIdentityField, PrimaryKeyRelatedField
 from rest_framework.reverse import reverse
 from rest_framework.serializers import JSONField, ModelSerializer, Serializer
-from tests_representation.selectors.tests import TestSelector
-from users.selectors.users import UserSelector
 
 from testy.core.api.v1.serializers import AttachmentSerializer
 from testy.core.selectors.attachments import AttachmentSelector
-from testy.core.validators import TestResultCustomAttributeValuesValidator
 from testy.serializer_fields import EstimateField
-from testy.tests_description.api.v1.serializers import TestCaseLabelOutputSerializer, TestCaseListSerializer
-from testy.tests_description.selectors.cases import TestCaseSelector, TestCaseStepSelector
-from testy.tests_representation.choices import TestStatuses
-from testy.tests_representation.models import Parameter, Test, TestPlan, TestResult, TestStepResult
+from testy.tests_description.api.v1.serializers import TestCaseLabelOutputSerializer
+from testy.tests_description.selectors.cases import TestCaseStepSelector
+from testy.tests_representation.models import Parameter, ResultStatus, Test, TestPlan, TestResult, TestStepResult
 from testy.tests_representation.selectors.parameters import ParameterSelector
-from testy.tests_representation.selectors.results import TestResultSelector
 from testy.tests_representation.selectors.testplan import TestPlanSelector
-from testy.utilities.tree import get_breadcrumbs_treeview
-from testy.validators import (
+from testy.tests_representation.selectors.tests import TestSelector
+from testy.tests_representation.validators import (
     BulkUpdateExcludeIncludeValidator,
-    DateRangeValidator,
     MoveTestsSameProjectValidator,
+    ResultStatusValidator,
     TestPlanCasesValidator,
+    TestPlanCustomAttributeValuesValidator,
     TestPlanParentValidator,
     TestResultArchiveTestValidator,
-    TestResultStatusValidator,
+    TestResultCustomAttributeValuesValidator,
     TestResultUpdateValidator,
-    compare_related_manager,
-    compare_steps,
-    validator_launcher,
 )
+from testy.users.selectors.users import UserSelector
+from testy.utilities.tree import get_breadcrumbs_treeview
+from testy.validators import DateRangeValidator, compare_related_manager, compare_steps, validator_launcher
 
 
 class ParameterSerializer(ModelSerializer):
@@ -81,15 +77,29 @@ class ParameterSerializer(ModelSerializer):
 
 
 class TestPlanUpdateSerializer(ModelSerializer):
-    test_cases = PrimaryKeyRelatedField(queryset=TestCaseSelector().case_list(), many=True, required=False)
+    test_cases = ListField(child=IntegerField(required=False, allow_null=False), required=False, default=list)
 
     class Meta:
         model = TestPlan
         fields = (
-            'id', 'name', 'parent', 'test_cases', 'started_at', 'due_date', 'finished_at', 'is_archive', 'project',
+            'id',
+            'name',
+            'parent',
+            'test_cases',
+            'started_at',
+            'due_date',
+            'finished_at',
+            'is_archive',
+            'project',
+            'attributes',
             'description',
         )
-        validators = [DateRangeValidator(), TestPlanParentValidator(), TestPlanCasesValidator()]
+        validators = [
+            DateRangeValidator(),
+            TestPlanParentValidator(),
+            TestPlanCasesValidator(),
+            TestPlanCustomAttributeValuesValidator(),
+        ]
 
 
 class TestPlanInputSerializer(TestPlanUpdateSerializer):
@@ -102,7 +112,9 @@ class TestPlanInputSerializer(TestPlanUpdateSerializer):
 class TestSerializer(ModelSerializer):
     url = HyperlinkedIdentityField(view_name='api:v1:test-detail')
     name = SerializerMethodField(read_only=True)
-    last_status = SerializerMethodField(read_only=True)
+    last_status = IntegerField(read_only=True, default=None)
+    last_status_name = CharField(read_only=True, default=None)
+    last_status_color = CharField(read_only=True, default=None)
     suite = SerializerMethodField(read_only=True)
     labels = SerializerMethodField()
     suite_path = CharField(read_only=True)
@@ -114,9 +126,9 @@ class TestSerializer(ModelSerializer):
     class Meta:
         model = Test
         fields = (
-            'id', 'project', 'case', 'suite', 'name', 'last_status', 'plan', 'assignee',
-            'assignee_username', 'is_archive', 'created_at', 'updated_at', 'url', 'labels', 'suite_path', 'avatar_link',
-            'test_suite_description', 'estimate',
+            'id', 'project', 'case', 'suite', 'name', 'last_status', 'last_status_name', 'last_status_color',
+            'plan', 'assignee', 'assignee_username', 'is_archive', 'created_at', 'updated_at', 'url', 'labels',
+            'suite_path', 'avatar_link', 'test_suite_description', 'estimate',
         )
         read_only_fields = ('project',)
 
@@ -129,7 +141,7 @@ class TestSerializer(ModelSerializer):
 
     def get_last_status(self, instance):
         if getattr(instance, 'last_status', None) is not None:
-            return TestStatuses(instance.last_status).label
+            return instance.last_status
 
     def get_labels(self, instance):
         return TestCaseLabelOutputSerializer(instance.case.labeled_items.all(), many=True).data
@@ -152,10 +164,12 @@ class TestStepResultSerializer(ModelSerializer):
     id = IntegerField(required=False)
     name = SerializerMethodField()
     sort_order = SerializerMethodField()
+    status_text = CharField(source='status.name', read_only=True)
+    status_color = CharField(source='status.color', read_only=True)
 
     class Meta:
         model = TestStepResult
-        fields = ('id', 'step', 'name', 'status', 'sort_order')
+        fields = ('id', 'step', 'name', 'status', 'status_text', 'status_color', 'sort_order')
 
     def get_name(self, instance):
         step = TestCaseStepSelector().get_step_by_step_result(instance)
@@ -168,7 +182,8 @@ class TestStepResultSerializer(ModelSerializer):
 
 class TestResultSerializer(ModelSerializer):
     url = HyperlinkedIdentityField(view_name='api:v1:testresult-detail')
-    status_text = CharField(source='get_status_display', read_only=True)
+    status_text = CharField(source='status.name', read_only=True)
+    status_color = CharField(source='status.color', read_only=True)
     user_full_name = SerializerMethodField(read_only=True)
     attachments = AttachmentSerializer(many=True, read_only=True)
     steps_results = TestStepResultSerializer(many=True, required=False)
@@ -178,16 +193,15 @@ class TestResultSerializer(ModelSerializer):
     class Meta:
         model = TestResult
         fields = (
-            'id', 'project', 'status', 'status_text', 'test', 'user', 'user_full_name', 'comment', 'avatar_link',
-            'is_archive', 'test_case_version', 'created_at', 'updated_at', 'url', 'execution_time', 'attachments',
-            'attributes', 'steps_results', 'latest',
+            'id', 'project', 'status', 'status_text', 'status_color', 'test', 'user', 'user_full_name', 'comment',
+            'avatar_link', 'is_archive', 'test_case_version', 'created_at', 'updated_at', 'url', 'execution_time',
+            'attachments', 'attributes', 'steps_results', 'latest',
         )
 
         read_only_fields = ('test_case_version', 'project', 'user', 'id')
         validators = [TestResultArchiveTestValidator()]
         extra_kwargs = {
             'status': {
-                'validators': [TestResultStatusValidator()],
                 'required': True,
                 'allow_null': False,
             },
@@ -213,7 +227,8 @@ class TestResultSerializer(ModelSerializer):
 
 
 class TestResultActivitySerializer(ModelSerializer):
-    status_text = CharField(source='get_status_display', read_only=True)
+    status_text = CharField(source='status.name', read_only=True)
+    status_color = CharField(source='status.color', read_only=True)
     action = SerializerMethodField()
     plan_id = SerializerMethodField()
     test_id = IntegerField()
@@ -226,8 +241,8 @@ class TestResultActivitySerializer(ModelSerializer):
     class Meta:
         model = TestResult
         fields = (
-            'id', 'status_text', 'username', 'action', 'plan_id', 'test_id', 'test_name', 'action_day',
-            'action_timestamp', 'avatar_link',
+            'id', 'status', 'status_text', 'status_color', 'username', 'action', 'plan_id', 'test_id', 'test_name',
+            'action_day', 'action_timestamp', 'avatar_link',
         )
 
     @classmethod
@@ -297,44 +312,6 @@ class ParentPlanSerializer(ModelSerializer):
         fields = ('id', 'name')
 
 
-class TestPlanTestResultSerializer(ModelSerializer):
-    status = SerializerMethodField()
-    updated_at = SerializerMethodField()
-
-    class Meta:
-        model = TestResult
-        fields = (
-            'id', 'status', 'comment', 'test_case_version', 'created_at', 'updated_at',
-        )
-
-    def get_status(self, instance):
-        return instance.get_status_display()
-
-    def get_updated_at(self, instance):
-        return instance.updated_at.strftime('%d.%m.%Y %H:%M:%S')
-
-
-class TestPlanTestSerializer(ModelSerializer):
-    case = TestCaseListSerializer()
-    current_result = SerializerMethodField()
-    test_results = TestPlanTestResultSerializer(many=True, read_only=True)
-
-    def get_test_results(self, instance):
-        return TestResultSelector().result_list_by_test_id(instance.id)
-
-    class Meta:
-        model = Test
-        fields = (
-            'id', 'case', 'plan', 'is_archive', 'created_at', 'updated_at', 'test_results',
-            'current_result',
-        )
-
-    def get_current_result(self, instance):
-        if instance.test_results.last():
-            return instance.test_results.last().get_status_display()
-        return None
-
-
 class TestPlanOutputSerializer(ModelSerializer):
     url = HyperlinkedIdentityField(view_name='api:v1:testplan-detail')
     title = SerializerMethodField()
@@ -348,6 +325,7 @@ class TestPlanOutputSerializer(ModelSerializer):
             'project',
             'child_test_plans',
             'url', 'title', 'description',
+            'attributes',
         )
 
     @classmethod
@@ -392,9 +370,8 @@ class TestPlanTreeSerializer(TestPlanOutputSerializer):
 
 
 class TestPlanStatisticsSerializer(Serializer):
-    label = ChoiceField(
-        choices=[label.upper() for label in TestStatuses.labels],
-    )
+    label = CharField()
+    color = CharField()
     value = IntegerField()
     estimates = FloatField()
 
@@ -437,6 +414,15 @@ class TestPlanMinSerializer(ModelSerializer):
     class Meta:
         model = TestPlan
         exclude = ('is_deleted', 'created_at', 'updated_at', 'lft', 'rght', 'tree_id', 'level')
+
+
+class ResultStatusSerializer(ModelSerializer):
+    url = HyperlinkedIdentityField(view_name='api:v1:status-detail')
+
+    class Meta:
+        model = ResultStatus
+        fields = 'id', 'url', 'name', 'color', 'type', 'project'
+        validators = [ResultStatusValidator()]
 
 
 class BulkUpdateTestsSerializer(Serializer):

@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -93,31 +93,6 @@ class TestUserEndpoints:
         response_instances.sort(key=lambda u: u['id'])
 
         assert expected_instances == response_instances
-
-    @pytest.mark.parametrize(
-        'field,token,expected,remaining',
-        (
-            ('username', 'token', ['TOKEN', 'test_token', 'token_test'], ['remain']),
-            ('email', 'token', ['token@example.com', 'example@token.com'], ['remain@remain.com']),
-            ('first_name', 'Token', ['Token', 'Tokenshi', 'Itoken'], ['Remain']),
-            ('last_name', 'Token', ['Token', 'Tokenshi', 'Itoken'], ['Remain']),
-            ('is_active', False, [False], [True]),
-            ('is_superuser', False, [False], [True]),
-        ),
-    )
-    def test_filter(
-        self, api_client, authorized_superuser, user_factory, field, token, expected, remaining,
-    ):
-        for value in expected + remaining:
-            user_factory(**{field: value})
-
-        response = api_client.send_request(
-            self.view_name_list,
-            query_params={field: token},
-        )
-        results = response.json()['results']
-
-        assert sorted(r[field] for r in results) == sorted(expected)
 
     def test_retrieve(self, api_client, authorized_superuser, user):
         expected_dict = model_to_dict_via_serializer(user, UserSerializer)
@@ -252,7 +227,7 @@ class TestUserEndpoints:
         [
             ('first_name', 'new_name'),
             ('last_name', 'new_last_name'),
-            ('email', 'newmail@yadro.com'),
+            ('email', 'newmail@example.com'),
             ('is_active', False),
             ('is_superuser', False),
         ],
@@ -275,7 +250,7 @@ class TestUserEndpoints:
             'id': user.id,
             'first_name': 'new_name',
             'last_name': 'new_last_name',
-            'email': 'newmail@yadro.com',
+            'email': 'newmail@example.com',
             'is_superuser': False,
             'is_active': False,
         }
@@ -493,8 +468,8 @@ class TestUserAvatars:
                 self.avatars_file_response_view_name,
                 reverse_kwargs={'pk': user_id},
                 query_params={'width': resolution[0], 'height': resolution[1]},
-            ).content
-            img = Image.open(io.BytesIO(content))
+            ).streaming_content
+            img = Image.open(io.BytesIO(b''.join(content)))
             assert resolution[0] == img.width, 'width did not match'
             assert number_of_objects_to_create == number_of_objects_in_dir, 'Already existing file was created again.'
 
@@ -663,6 +638,52 @@ class TestUserAvatars:
             request_type=RequestType.DELETE,
         )
         assert len(os.listdir(avatar_file_path)) == 2
+
+
+@pytest.mark.django_db
+class TestUserFilters:
+    view_name_list = 'api:v1:user-list'
+    view_name_members = 'api:v1:project-members'
+
+    @pytest.mark.parametrize('view_name', [view_name_list, view_name_members])
+    @pytest.mark.parametrize(
+        'field,token,expected,remaining',
+        (
+            ('username', 'token', ['TOKEN', 'test_token', 'token_test'], ['remain']),
+            ('email', 'token', ['token@example.com', 'example@token.com'], ['remain@remain.com']),
+            ('first_name', 'Token', ['Token', 'Tokenshi', 'Itoken'], ['Remain']),
+            ('last_name', 'Token', ['Token', 'Tokenshi', 'Itoken'], ['Remain']),
+            ('is_active', False, [False], [True]),
+            ('is_superuser', False, [False], [True]),
+        ),
+    )
+    def test_filter(
+        self,
+        api_client,
+        authorized_superuser,
+        user_factory,
+        field,
+        token,
+        expected,
+        remaining,
+        view_name,
+        project,
+        membership_factory,
+        role,
+    ):
+        allure.dynamic.title(f'Test user filter for {view_name}')
+        for value in expected + remaining:
+            user = user_factory(**{field: value})
+            membership_factory(user=user, project=project, role=role)
+
+        response = api_client.send_request(
+            view_name,
+            query_params={field: token},
+            reverse_kwargs={'pk': project.pk} if view_name == self.view_name_members else None,
+        )
+        results = response.json()['results']
+
+        assert sorted(r[field] for r in results) == sorted(expected)
 
     def test_project_filter(self, authorized_superuser_client, project_factory, user_factory, role):
         project_spb = project_factory(name='project spb')

@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -83,7 +83,7 @@ class TestCaseSelector:  # noqa: WPS214
         return case.steps.values_list(_ID, flat=True)
 
     @classmethod
-    def case_ids_by_testplan_id(cls, plan_id: int, include_children: bool) -> list[int]:
+    def case_ids_by_testplan_id(cls, plan_id: int, include_children: bool) -> QuerySet[TestCase]:
         if not include_children:
             return TestSelector.test_list_by_testplan_ids([plan_id]).values_list('case__id', flat=True)
         plan_ids = (

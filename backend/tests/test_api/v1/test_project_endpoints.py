@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -49,8 +49,8 @@ from tests.test_api.v1.test_role_endpoints import TestRoleEndpoints
 from testy.core.choices import AccessRequestStatus
 from testy.core.models import AccessRequest, Project
 from testy.core.selectors.project_settings import ProjectSettings
+from testy.serializer_fields import EstimateField
 from testy.tests_description.models import TestCase
-from testy.tests_representation.choices import TestStatuses
 from testy.tests_representation.models import Parameter, TestResult
 from testy.users.models import Membership
 from testy.utilities.time import WorkTimeProcessor
@@ -203,9 +203,9 @@ class TestProjectEndpoints:
             assert not os.path.isfile(icon_path), 'Icon was not deleted'
 
     @allure.title('Test project is set automatically for result')
-    def test_valid_project_assignation(self, superuser_client, user, test):
+    def test_valid_project_assignation(self, superuser_client, user, test, result_status_factory):
         result_dict = {
-            'status': TestStatuses.PASSED,
+            'status': result_status_factory(project=test.project).pk,
             'test': test.id,
             'user': user.id,
             'comment': constants.TEST_COMMENT,
@@ -276,67 +276,6 @@ class TestProjectEndpoints:
                     requested_user=superuser,
                 )
                 assert content['results'] == expected_body
-
-    @allure.title('Test favorites filter')
-    def test_favorites_filter(self, superuser_client, superuser, project_factory):
-        for idx in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
-            project_factory(name=str(idx))
-        with allure.step('Select project ids that will be favorite'):
-            favorite_ids = Project.objects.filter(name__in=['3', '5']).values_list('id', flat=True)
-        with allure.step('Select project ids that will not be favorite'):
-            not_favorite_ids = Project.objects.filter(~Q(name__in=['3', '5'])).values_list('id', flat=True)
-        user_config = {
-            'projects': {
-                'favorite': list(favorite_ids),
-            },
-        }
-        with allure.step('Set favorites in config'):
-            superuser.config = user_config
-            superuser.save()
-        with allure.step('Validate display with favorites off'):
-            actual_projects = superuser_client.send_request(
-                self.view_name_list,
-                query_params={'favorites': False},
-            ).json()['results']
-            actual_ids = [project['id'] for project in actual_projects]
-            expected_ids = list(deepcopy(favorite_ids))
-            expected_ids.extend(list(not_favorite_ids))
-            assert actual_ids == expected_ids
-
-        actual_projects = superuser_client.send_request(
-            self.view_name_list,
-            query_params={'favorites': True},
-        ).json()['results']
-        with allure.step('Validate only favorites are displayed'):
-            actual_ids = [project['id'] for project in actual_projects]
-            assert actual_ids == list(favorite_ids)
-        actual_projects = superuser_client.send_request(
-            self.view_name_list,
-            query_params={'favorites': False, 'ordering': '-name'},
-        ).json()['results']
-        with allure.step('Validate favorites are going before other projects if favorites is off'):
-            actual_ids = [project['id'] for project in actual_projects]
-            expected_ids = list(deepcopy(favorite_ids.order_by('-name')))
-            expected_ids.extend(list(not_favorite_ids.order_by('-name')))
-            assert actual_ids == expected_ids
-
-    @allure.title('Test search by name')
-    def test_search_by_name(self, superuser_client, project_factory):
-        with allure.step('Create projects'):
-            projects = [project_factory() for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE)]
-        with allure.step('Map search condition to number of objects'):
-            filter_values_to_count = [
-                (constants.PROJECT_NAME, constants.NUMBER_OF_OBJECTS_TO_CREATE),
-                (projects[0].name, 1),
-                (projects[1].name, 1),
-            ]
-        for filter_value, expected_number_of_objects in filter_values_to_count:
-            actual_objects_count = superuser_client.send_request(
-                self.view_name_list,
-                query_params={'name': filter_value},
-            ).json()['count']
-            with allure.step(f'Validate objects count on search condition "{filter_value}"'):
-                assert expected_number_of_objects == actual_objects_count
 
     @pytest.mark.django_db(reset_sequences=True)
     @pytest.mark.parametrize(
@@ -594,3 +533,99 @@ class TestProjectEndpoints:
         assert project.icon, 'Icon was deleted'
         api_client.send_request(self.view_name_icon, reverse_kwargs={'pk': project.pk})
         assert old_icon == project.icon, 'Icon was updated'
+
+    @pytest.mark.parametrize('update_dict', (
+        {'is_result_editable': False},
+        {'is_result_editable': False, 'result_edit_limit': 6000},
+        {'status_order': {'8': 1}},
+        {'is_result_editable': False, 'result_edit_limit': '6000s', 'status_order': {'8': 1}},
+    ))
+    def test_update_settings(self, superuser_client, update_dict, project_factory):
+        project = project_factory()
+        expected_dict = project.settings.copy()
+        expected_dict.update(update_dict)
+        if 'result_edit_limit' in update_dict:
+            expected_dict['result_edit_limit'] = EstimateField(to_workday=False).to_internal_value(
+                expected_dict['result_edit_limit'],
+            )
+        expected_dict['result_edit_limit'] = WorkTimeProcessor.format_duration(
+            expected_dict['result_edit_limit'],
+            to_workday=False,
+        )
+        response = superuser_client.send_request(
+            self.view_name_detail,
+            reverse_kwargs={'pk': project.pk},
+            request_type=RequestType.PATCH,
+            data={'settings': update_dict},
+        )
+        assert expected_dict == response.json()['settings']
+
+
+@pytest.mark.django_db
+@allure.parent_suite('Projects')
+@allure.suite('Integration tests')
+@allure.sub_suite('Endpoints')
+class TestProjectFilters:
+    view_name_list = 'api:v1:project-list'
+    view_name_members = 'api:v1:project-members'
+
+    @allure.title('Test favorites filter')
+    def test_favorites_filter(self, superuser_client, superuser, project_factory):
+        for idx in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
+            project_factory(name=str(idx))
+        with allure.step('Select project ids that will be favorite'):
+            favorite_ids = Project.objects.filter(name__in=['3', '5']).values_list('id', flat=True)
+        with allure.step('Select project ids that will not be favorite'):
+            not_favorite_ids = Project.objects.filter(~Q(name__in=['3', '5'])).values_list('id', flat=True)
+        user_config = {
+            'projects': {
+                'favorite': list(favorite_ids),
+            },
+        }
+        with allure.step('Set favorites in config'):
+            superuser.config = user_config
+            superuser.save()
+        with allure.step('Validate display with favorites off'):
+            actual_projects = superuser_client.send_request(
+                self.view_name_list,
+                query_params={'favorites': False},
+            ).json()['results']
+            actual_ids = [project['id'] for project in actual_projects]
+            expected_ids = list(deepcopy(favorite_ids))
+            expected_ids.extend(list(not_favorite_ids))
+            assert actual_ids == expected_ids
+
+        actual_projects = superuser_client.send_request(
+            self.view_name_list,
+            query_params={'favorites': True},
+        ).json()['results']
+        with allure.step('Validate only favorites are displayed'):
+            actual_ids = [project['id'] for project in actual_projects]
+            assert actual_ids == list(favorite_ids)
+        actual_projects = superuser_client.send_request(
+            self.view_name_list,
+            query_params={'favorites': False, 'ordering': '-name'},
+        ).json()['results']
+        with allure.step('Validate favorites are going before other projects if favorites is off'):
+            actual_ids = [project['id'] for project in actual_projects]
+            expected_ids = list(deepcopy(favorite_ids.order_by('-name')))
+            expected_ids.extend(list(not_favorite_ids.order_by('-name')))
+            assert actual_ids == expected_ids
+
+    @allure.title('Test search by name')
+    def test_search_by_name(self, superuser_client, project_factory):
+        with allure.step('Create projects'):
+            projects = [project_factory() for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE)]
+        with allure.step('Map search condition to number of objects'):
+            filter_values_to_count = [
+                (constants.PROJECT_NAME, constants.NUMBER_OF_OBJECTS_TO_CREATE),
+                (projects[0].name, 1),
+                (projects[1].name, 1),
+            ]
+        for filter_value, expected_number_of_objects in filter_values_to_count:
+            actual_objects_count = superuser_client.send_request(
+                self.view_name_list,
+                query_params={'name': filter_value},
+            ).json()['count']
+            with allure.step(f'Validate objects count on search condition "{filter_value}"'):
+                assert expected_number_of_objects == actual_objects_count

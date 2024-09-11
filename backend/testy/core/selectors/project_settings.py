@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -28,7 +28,7 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from dataclasses import dataclass
+from dataclasses import MISSING, dataclass, field, fields
 
 from django.conf import settings
 
@@ -37,3 +37,11 @@ from django.conf import settings
 class ProjectSettings:
     is_result_editable: bool = settings.IS_RESULT_EDITABLE
     result_edit_limit: int = settings.RESULT_EDIT_LIMIT
+    status_order: dict = field(default_factory=dict)
+
+    def __init__(self, **kwargs):
+        for setting_field in fields(self):
+            if setting_field.name in kwargs:
+                setattr(self, setting_field.name, kwargs.get(setting_field.name))
+            elif setting_field.name not in kwargs and getattr(setting_field, 'default_factory', MISSING) is not MISSING:
+                setattr(self, setting_field.name, setting_field.default_factory())

@@ -1,6 +1,12 @@
-import { createApi } from "@reduxjs/toolkit/dist/query/react"
+import {
+  BaseQueryFn,
+  FetchArgs,
+  FetchBaseQueryError,
+  createApi,
+} from "@reduxjs/toolkit/dist/query/react"
 
-import { baseQueryAuth } from "app/apiSlice"
+import { authMutex, authQuery } from "app/apiSlice"
+import { handleError } from "app/slice"
 
 import { logout } from "../model"
 
@@ -15,6 +21,23 @@ export const getCsrfCookie = () => {
   })
 
   return csrfToken
+}
+
+export const baseQueryAuth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> = async (
+  args,
+  api,
+  extraOptions
+) => {
+  await authMutex.waitForUnlock()
+
+  const result = await authQuery(args, api, extraOptions)
+
+  if (result.error?.status === 404) {
+    await authMutex.waitForUnlock()
+    api.dispatch(handleError({ code: 404, message: "Sorry, the page you visited does not exist." }))
+  }
+
+  return result
 }
 
 export const authApi = createApi({

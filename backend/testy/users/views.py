@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -48,4 +48,4 @@ class AvatarView(APIView, MediaViewMixin):
         user = get_object_or_404(UserModel, pk=pk)
         if not user.avatar or not user.avatar.storage.exists(user.avatar.path):
             return Response(status=status.HTTP_404_NOT_FOUND)
-        return self.retrieve_filepath(user.avatar, request, generate_thumbnail=False)
+        return self.format_response(user.avatar, request)

@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -31,17 +31,17 @@
 
 from http import HTTPStatus
 from operator import itemgetter
+from unittest import mock
+from unittest.mock import Mock
 
 import pytest
-from tests_representation.selectors.tests import TestSelector
 
 from tests import constants
 from tests.commons import RequestType, model_to_dict_via_serializer
 from tests.error_messages import PERMISSION_ERR_MSG, REQUIRED_FIELD_MSG
 from tests.mock_serializers import TestMockSerializer
-from testy.tests_representation.choices import TestStatuses
 from testy.tests_representation.models import Test
-from testy.validators import BulkUpdateExcludeIncludeValidator, MoveTestsSameProjectValidator
+from testy.tests_representation.validators import BulkUpdateExcludeIncludeValidator, MoveTestsSameProjectValidator
 
 
 @pytest.mark.django_db
@@ -134,37 +134,35 @@ class TestTestEndpoints:
     @pytest.mark.parametrize('descending', [True, False], ids=['desc', 'asc'])
     def test_ordering_pagination(
         self, api_client, authorized_superuser, test_factory, test_result_factory, field_name,
-        descending, project,
+        descending, project, result_status_factory,
     ):
         number_of_pages = 2
         number_of_objects = constants.NUMBER_OF_OBJECTS_TO_CREATE_PAGE * number_of_pages
         tests = [test_factory(is_archive=idx % 2, project=project) for idx in range(number_of_objects)]
+        status_list = [
+            result_status_factory(project=project),
+            result_status_factory(project=project),
+            result_status_factory(project=project),
+        ]
         for idx, expected_instance in enumerate(tests):
-            if idx % 2:
-                expected_instance.last_status = TestStatuses.FAILED.value
-                test_result_factory(test=expected_instance, status=TestStatuses.FAILED)
-            elif idx % 3:
-                expected_instance.last_status = TestStatuses.BROKEN.value
-                test_result_factory(test=expected_instance, status=TestStatuses.BROKEN)
-            else:
-                expected_instance.last_status = TestStatuses.PASSED.value
-                test_result_factory(test=expected_instance, status=TestStatuses.PASSED)
-        ordering_condition = f'{"-" if descending else ""}{"case__name" if field_name == "name" else field_name}'
-        tests = (
-            TestSelector()
-            .test_list_with_last_status({'id__in': [test.id for test in tests]})
-            .order_by(ordering_condition)
-        )
+            status = status_list[idx % 3]
+            expected_instance.last_status = status.pk
+            expected_instance.last_status_name = status.name
+            expected_instance.last_status_color = status.color
+            expected_instance.name = expected_instance.case.name
+            test_result_factory(test=expected_instance, status=status)
+
         expected_instances = model_to_dict_via_serializer(
-            tests,
+            sorted(tests, key=lambda instance: getattr(instance, field_name), reverse=descending),
             TestMockSerializer,
             many=True,
         )
+
         for page_number in range(1, number_of_pages + 1):
             response = api_client.send_request(
                 self.view_name_list,
                 query_params={
-                    'ordering': f'{"-" if descending else ""}{"case_name" if field_name == "name" else field_name}',
+                    'ordering': f'{"-" if descending else ""}{field_name}',
                     'is_archive': True,
                     'page': page_number,
                     'project': project.id,
@@ -205,23 +203,33 @@ class TestTestEndpoints:
             response_dict = response.json()['results']
             assert sorted(expected_instances[idx], key=itemgetter('id')) == sorted(response_dict, key=itemgetter('id'))
 
-    def test_last_status_filter(self, api_client, authorized_superuser, test_factory, test_result_factory, project):
+    def test_last_status_filter(
+        self,
+        api_client,
+        authorized_superuser, test_factory,
+        test_result_factory,
+        project,
+        result_status_factory,
+    ):
         expected_instances = []
-        for status in TestStatuses:
+        result_statuses = [result_status_factory(project=project) for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE)]
+        for status in result_statuses:
             test = test_factory(project=project)
-            test.last_status = status.value
+            test.last_status = status.pk
+            test.last_status_name = status.name
+            test.last_status_color = status.color
             test_result_factory(test=test, status=status)
             expected_instances.append(model_to_dict_via_serializer(test, TestMockSerializer, many=False))
 
-        for expected_instance, status in zip(expected_instances, TestStatuses):
+        for expected_instance, status in zip(expected_instances, result_statuses):
             response = api_client.send_request(
                 self.view_name_list,
                 query_params={
-                    'last_status': status.value,
+                    'last_status': status.pk,
                     'project': project.id,
                 },
             )
-            assert response.json()['results'] == [expected_instance], f'Filter by {status.label} unexpected json'
+            assert response.json()['results'] == [expected_instance], f'Filter by {status.name} unexpected json'
 
     @pytest.mark.parametrize('page_size', [1, 2, 5])
     def test_page_size(self, api_client, authorized_superuser, test_factory, page_size, project):
@@ -281,7 +289,7 @@ class TestTestEndpoints:
         number_of_items,
         project,
     ):
-        labels, cases, test_plan = cases_with_labels
+        labels, cases, test_plan, _ = cases_with_labels
         query_params = {'plan': test_plan.id, 'project': project.id}
         if label_indexes:
             query_params['labels'] = ','.join([str(labels[i].id) for i in label_indexes])
@@ -296,6 +304,7 @@ class TestTestEndpoints:
 
     @pytest.mark.parametrize('payload_key', ['included_tests', 'excluded_tests'])
     @pytest.mark.parametrize('update_key', ['plan', 'assignee'])
+    @mock.patch('testy.root.celery.app.send_task', new=Mock())
     def test_bulk_update_tests(
         self,
         api_client,
@@ -333,6 +342,7 @@ class TestTestEndpoints:
         actual_count = Test.objects.filter(pk__in=affected_tests_pks, **payload).count()
         assert actual_count == expected_count
 
+    @mock.patch('testy.root.celery.app.send_task', new=Mock())
     def test_bulk_update_plan_forbidden(
         self,
         api_client,
@@ -356,6 +366,7 @@ class TestTestEndpoints:
         )
         assert MoveTestsSameProjectValidator.err_msg.format(second_plan.project.name) in response.json()['errors']
 
+    @mock.patch('testy.root.celery.app.send_task', new=Mock())
     def test_bulk_update_plan_both_include_exclude(
         self,
         api_client,
@@ -376,6 +387,7 @@ class TestTestEndpoints:
         )
         assert BulkUpdateExcludeIncludeValidator.err_msg in response.json()['errors']
 
+    @mock.patch('testy.root.celery.app.send_task', new=Mock())
     @pytest.mark.parametrize(
         'filter_keys',
         [
@@ -406,9 +418,10 @@ class TestTestEndpoints:
         labeled_item_factory,
         filter_keys,
         test_result_factory,
+        result_status_factory,
     ):
         case_name_for_search = 'case_name_for_search'
-        status_for_search = TestStatuses.BROKEN
+        status_for_search = result_status_factory(project=project)
         suite_for_search = test_suite_factory()
         case = test_case_factory(suite=suite_for_search, name=case_name_for_search)
         assignee = user_factory()
@@ -424,7 +437,7 @@ class TestTestEndpoints:
             'labels': labels_for_search,
             'not_labels': labels_for_search,
             'suite': str(suite_for_search.id),
-            'last_status': str(status_for_search),
+            'last_status': str(status_for_search.pk),
         }
         first_plan = test_plan_factory(project=project)
         tests_pk = []

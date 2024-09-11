@@ -1,8 +1,9 @@
 import { useAttributesTestResult } from "entities/custom-attribute/model"
+import { useStatuses } from "entities/status/model/use-statuses"
 import { useEffect, useState } from "react"
 import { UseFormSetValue } from "react-hook-form"
+import { useParams } from "react-router-dom"
 
-import { statusesObject } from "shared/config"
 import { makeRandomId } from "shared/libs"
 
 interface UseAttributesProps {
@@ -10,10 +11,11 @@ interface UseAttributesProps {
   setValue: UseFormSetValue<ResultFormData>
 }
 
-const allStatusesId = Object.keys(statusesObject).map((i) => Number(i))
-
 export const useAttributes = ({ mode, setValue }: UseAttributesProps) => {
   const [attributes, setAttributes] = useState<Attribute[]>([])
+
+  const { projectId } = useParams<ParamProjectId>()
+  const { allStatusesId } = useStatuses({ project: projectId })
 
   const attributesTestResult = useAttributesTestResult()
 

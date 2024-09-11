@@ -8,7 +8,9 @@ import { logout } from "entities/auth/model"
 import { config } from "shared/config"
 import { savePrevPageUrl } from "shared/libs/local-storage"
 
-const mutex = new Mutex()
+import { handleError } from "./slice"
+
+export const authMutex = new Mutex()
 
 const createQuery = (baseUrl: string) => {
   return fetchBaseQuery({
@@ -33,13 +35,13 @@ export const baseQueryAuth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQu
   api,
   extraOptions
 ) => {
-  await mutex.waitForUnlock()
+  await authMutex.waitForUnlock()
 
   const result = await authQuery(args, api, extraOptions)
 
   if (result.error?.status === 404) {
-    await mutex.waitForUnlock()
-    window.location.href = "/404"
+    await authMutex.waitForUnlock()
+    api.dispatch(handleError({ code: 404, message: "Sorry, the page you visited does not exist." }))
   }
 
   return result
@@ -50,23 +52,24 @@ export const baseQueryWithLogout: BaseQueryFn<
   unknown,
   FetchBaseQueryError
 > = async (args, api, extraOptions) => {
-  await mutex.waitForUnlock()
+  await authMutex.waitForUnlock()
 
   let result = await baseQuery(args, api, extraOptions)
 
   if (result.error?.status === 404) {
-    await mutex.waitForUnlock()
-    window.location.href = "/404"
+    await authMutex.waitForUnlock()
+    api.dispatch(handleError({ code: 404, message: "Sorry, the page you visited does not exist." }))
   }
 
   if (result?.error?.status === 403) {
-    const currentHref = window.location.href
-    window.location.href = "/?error=403&errorPage=" + currentHref
+    api.dispatch(
+      handleError({ code: 403, message: "You do not have permission to access this page." })
+    )
   }
 
   if (result?.error?.status === 401 && window.location.pathname !== "/login") {
-    if (!mutex.isLocked()) {
-      const release = await mutex.acquire()
+    if (!authMutex.isLocked()) {
+      const release = await authMutex.acquire()
       try {
         await authQuery("logout/", api, extraOptions)
       } finally {
@@ -76,7 +79,7 @@ export const baseQueryWithLogout: BaseQueryFn<
         release()
       }
     } else {
-      await mutex.waitForUnlock()
+      await authMutex.waitForUnlock()
       result = await baseQuery(args, api, extraOptions)
     }
   }

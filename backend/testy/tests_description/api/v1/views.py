@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -33,23 +33,15 @@ import orjson
 import rusty
 from django.db.models import F
 from django.http import HttpResponse
+from django_filters.rest_framework.backends import DjangoFilterBackend
 from mptt.exceptions import InvalidMove
 from rest_framework import status
 from rest_framework.decorators import action
-from rest_framework.filters import OrderingFilter
+from rest_framework.filters import SearchFilter
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from testy.core.services.copy import CopyService
-from testy.filters import (
-    CustomOrderingFilter,
-    CustomSearchFilter,
-    TestCaseFilter,
-    TestSuiteFilter,
-    TestSuiteSearchFilter,
-    TestyBaseSearchFilter,
-    TestyFilterBackend,
-)
 from testy.paginations import StandardSetPagination
 from testy.root.mixins import TestyArchiveMixin, TestyModelViewSet
 from testy.swagger.cases import (
@@ -77,6 +69,12 @@ from testy.tests_description.api.v1.serializers import (
     TestSuiteSerializer,
     TestSuiteTreeSerializer,
 )
+from testy.tests_description.filters import (
+    TestCaseFilter,
+    TestCaseHistoryFilter,
+    TestSuiteFilter,
+    TestSuiteSearchFilter,
+)
 from testy.tests_description.models import TestSuite
 from testy.tests_description.permissions import TestCaseCopyPermission, TestSuiteCopyPermission
 from testy.tests_description.selectors.cases import TestCaseSelector
@@ -84,6 +82,7 @@ from testy.tests_description.selectors.suites import TestSuiteSelector
 from testy.tests_description.services.cases import TestCaseService
 from testy.tests_description.services.suites import TestSuiteService
 from testy.tests_representation.api.v1.serializers import TestSerializer
+from testy.tests_representation.filters import TestFilterNested
 from testy.tests_representation.selectors.testplan import TestPlanSelector
 from testy.tests_representation.selectors.tests import TestSelector
 from testy.utilities.request import get_boolean
@@ -103,25 +102,29 @@ class TestCaseViewSet(TestyModelViewSet, TestyArchiveMixin):
     queryset = TestCaseSelector().case_list()
     serializer_class = TestCaseListSerializer
     permission_classes = [IsAuthenticated, TestCaseCopyPermission]
-    filter_backends = [TestyFilterBackend, TestyBaseSearchFilter, OrderingFilter]
-    filterset_class = TestCaseFilter
+    filter_backends = [DjangoFilterBackend, SearchFilter]
     pagination_class = StandardSetPagination
     http_method_names = [_GET, _POST, 'put', 'delete', 'head', 'options', 'trace']
     search_fields = [_NAME]
-    ordering_fields = [_ID, _NAME]
     schema_tags = ['Test cases']
+
+    @property
+    def filterset_class(self):
+        if self.action in {'list', 'cases_search'}:
+            return TestCaseFilter
+        elif self.action == 'get_tests':
+            return TestFilterNested
+        elif self.action == 'get_history':
+            return TestCaseHistoryFilter
 
     def get_queryset(self):
         if self.action in {'recovery_list', 'restore', 'delete_permanently'}:
             return TestCaseSelector().case_deleted_list()
         if self.action == 'restore_archived':
             return TestCaseSelector().case_list({_IS_ARCHIVE: True})
-        filter_condition = None
-        if self.request.method == 'GET' and not get_boolean(self.request, _IS_ARCHIVE):
-            filter_condition = {_IS_ARCHIVE: False}
         if self.action == 'cases_search':
-            return TestCaseSelector().case_list_with_label_names(filter_condition)
-        return TestCaseSelector().case_list(filter_condition)
+            return TestCaseSelector().case_list_with_label_names()
+        return TestCaseSelector().case_list()
 
     def get_serializer_class(self):
         if self.action == 'copy_cases':
@@ -190,10 +193,9 @@ class TestCaseViewSet(TestyModelViewSet, TestyArchiveMixin):
     @cases_tests_schema
     @action(methods=[_GET], url_path='tests', url_name='tests', detail=True)
     def get_tests(self, request, pk):
-        query = TestSelector().test_list_with_last_status({'case_id': pk})
-        filtered_query = CustomSearchFilter().filter_queryset(request, query, ['last_status'])
-        ordered_query = CustomOrderingFilter().filter_queryset(request, filtered_query)
-        page = self.paginate_queryset(ordered_query)
+        queryset = TestSelector().test_list_with_last_status({'case_id': pk})
+        queryset = self.filter_queryset(queryset)
+        page = self.paginate_queryset(queryset)
         serializer = TestSerializer(page, many=True, context=self.get_serializer_context())
         response_tests = []
         plan_ids = {test['plan'] for test in serializer.data}
@@ -205,13 +207,9 @@ class TestCaseViewSet(TestyModelViewSet, TestyArchiveMixin):
 
     @action(methods=[_GET], url_path='history', url_name='history', detail=True)
     def get_history(self, request, pk):
-        ordering_filter = CustomOrderingFilter()
         pagination = StandardSetPagination()
-
-        queryset = ordering_filter.filter_queryset(
-            request,
-            TestCaseSelector.get_history_by_case_id(pk),
-        )
+        queryset = TestCaseSelector.get_history_by_case_id(pk)
+        queryset = self.filter_queryset(queryset)
         page = pagination.paginate_queryset(queryset, request) or queryset
         serializer = TestCaseHistorySerializer(
             page,
@@ -226,7 +224,7 @@ class TestCaseViewSet(TestyModelViewSet, TestyArchiveMixin):
         instance = self.get_object()
         serializer = TestCaseRestoreSerializer(instance, data=request.data)
         serializer.is_valid(raise_exception=True)
-        updated_test_case = TestCaseService.restore_version(serializer.validated_data.get('version'), instance.pk)
+        updated_test_case = TestCaseService.restore_version(serializer.validated_data.get('version'), pk)
         return Response(TestCaseRetrieveSerializer(updated_test_case, context=self.get_serializer_context()).data)
 
     @cases_search_schema
@@ -261,14 +259,18 @@ class TestCaseViewSet(TestyModelViewSet, TestyArchiveMixin):
 @suite_list_schema
 @suite_retrieve_schema
 class TestSuiteViewSet(TestyModelViewSet):
+    permission_classes = [IsAuthenticated, TestSuiteCopyPermission]
     queryset = TestSuite.objects.none()
     serializer_class = TestSuiteSerializer
-    filter_backends = [TestyFilterBackend, TestSuiteSearchFilter, OrderingFilter]
-    filterset_class = TestSuiteFilter
+    filter_backends = [DjangoFilterBackend, TestSuiteSearchFilter]
     pagination_class = StandardSetPagination
-    permission_classes = [IsAuthenticated, TestSuiteCopyPermission]
     search_fields = [_NAME]
     schema_tags = ['Test suites']
+
+    @property
+    def filterset_class(self):
+        if self.action == 'list':
+            return TestSuiteFilter
 
     def perform_create(self, serializer: TestSuiteSerializer):
         serializer.instance = TestSuiteService().suite_create(serializer.validated_data)

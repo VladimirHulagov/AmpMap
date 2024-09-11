@@ -2,8 +2,9 @@ import { Table } from "antd"
 import { TableProps } from "antd/es/table"
 import { ColumnsType, TablePaginationConfig } from "antd/lib/table"
 import { FilterValue } from "antd/lib/table/interface"
+import { useStatuses } from "entities/status/model/use-statuses"
 import { useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useParams } from "react-router-dom"
 
 import { useGetTestCaseTestsListQuery } from "entities/test-case/api"
 
@@ -13,6 +14,7 @@ import { UserAvatar, UserUsername } from "entities/user/ui"
 
 import { antdSorterToTestySort } from "shared/libs/antd-sorter-to-testy-sort"
 import { ContainerLoader, Status } from "shared/ui"
+import { UntestedStatus } from "shared/ui/status"
 
 interface TableParams {
   sorter: string
@@ -20,12 +22,15 @@ interface TableParams {
 }
 
 export const TestCaseTestsList = ({ testCase }: { testCase: TestCase }) => {
+  const { projectId } = useParams<ParamProjectId>()
   const { renderBreadCrumbs } = useTestPlanActivityBreadcrumbs()
   const [tableParams, setTableParams] = useState<TableParams>({ sorter: "", filters: {} })
   const [pagination, setPagination] = useState({
     page: 1,
     page_size: 5,
   })
+
+  const { statusesFiltersWithUntested } = useStatuses({ project: projectId })
 
   const { data, isLoading } = useGetTestCaseTestsListQuery(
     {
@@ -71,37 +76,19 @@ export const TestCaseTestsList = ({ testCase }: { testCase: TestCase }) => {
       dataIndex: "last_status",
       key: "last_status",
       width: "150px",
-      filters: [
-        {
-          value: "0",
-          text: "Failed",
-        },
-        {
-          value: "1",
-          text: "Passed",
-        },
-        {
-          value: "2",
-          text: "Skipped",
-        },
-        {
-          value: "3",
-          text: "Broken",
-        },
-        {
-          value: "4",
-          text: "Blocked",
-        },
-        {
-          value: "5",
-          text: "Retest",
-        },
-        {
-          value: "null",
-          text: "Untested",
-        },
-      ],
-      render: (last_status: Statuses) => <Status value={last_status || "Untested"} />,
+      filters: statusesFiltersWithUntested,
+      render: (last_status, record) => {
+        if (!last_status) {
+          return <UntestedStatus />
+        }
+        return (
+          <Status
+            id={record.last_status}
+            name={record.last_status_name}
+            color={record.last_status_color}
+          />
+        )
+      },
     },
     {
       title: "Assignee",

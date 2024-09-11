@@ -1,3 +1,46 @@
+Version 1.3.3
+--------------
+*Status: General availability*
+
+*Released: 11-09-2024*
+
+- Implemented the ability to create custom statuses at the project level (TMS-545, TMS-678, TMS-733)
+- Added a backend for working with custom attributes at the Test Plan level (TMS-1034, TMS-1035)
+- Reworked Bulk Assignment test system
+- Reworked Attachment image system
+- Implemented a mechanism for notifying users about events in the system, with the ability to customize notifications (TMS-955)
+- Implemented ability to transfer tests from one Test Plan to another within a project while preserving the results (TMS-907)
+- Reworked mechanism for working with loading large amounts of data, fixed issues that caused tables lock
+- Reworked compose file and dockerfile for backend for faster deploy
+- Updated environment variables
+
+**Bug fixes**:
+
+- [QA]: sorting by name in plans (TMS-956)
+- 404 on 2nd page with label filter (TMS-958)
+- Table filter resets when creating Test-Case (TMS-959)
+- Invalid object passed in permissions (TMS-960)
+- White screen when entering the main page (TMS-961)
+- Does not find test plan when selecting test transfer (TMS-962)
+- Error 404 after filtering Test-Suite on page > 1 (TMS-967)
+- Filtering by labels in donut stopped working (TMS-977)
+- Restoring labels does not work when restoring (TMS-981)
+- Cannot transfer child test suite within one project from one parent suite to another (TMS-984)
+- Unexpected Application Error s.map is not a function (TMS-990)
+- 404 when deleting an archived test case (TMS-995)
+- Bulk assigning large chunk of tests is slow (TMS-999)
+- Out of postgres memory (TMS-1002)
+- Unable to add test cases to an existing test plan (TMS-1003)
+- When reassigning test cases for a specific component, all test cases from the test plan are reassigned (TMS-1004)
+- When copying a test suite that contains tests with steps, the steps are not copied (TMS-1009)
+- Problems with cache validation in custom attributes (TMS-1026)
+- Files do not work between different containers (TMS-1027)
+- Test suite is not reset when searching pagination (TMS-1028)
+- Bug in migrations when adding a new field (TMS-1031)
+- 504 When filtering by labels (TMS-1037)
+- 403 for new status creation in Private project (TMS-1046)
+
+
 Version 1.3.2
 --------------
 *Status: General availability*

@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -36,6 +36,7 @@ from rest_framework.request import Request
 
 from testy.core.models import Project
 from testy.core.permissions import MISSING_PROJECT_CODE, BaseProjectPermission, getter_to_method
+from testy.tests_representation.choices import ResultStatusType
 from testy.tests_representation.selectors.testplan import TestPlanSelector
 from testy.users.selectors.roles import RoleSelector
 
@@ -91,3 +92,20 @@ class TestPlanPermission(BaseProjectPermission):
             plan_ids.append(dst_plan_id)
         plans = TestPlanSelector.plan_list_by_ids(plan_ids)
         return all(self.has_object_permission(request, view, plan) for plan in plans)
+
+
+class ResultStatusPermission(BaseProjectPermission):
+
+    def has_permission(self, request, view):
+        conditions = [
+            view.action == 'create' and request.data.get('type') == ResultStatusType.SYSTEM,
+            view.action == 'delete_permanently',
+        ]
+        if any(conditions):
+            return request.user.is_superuser
+        return super().has_permission(request, view)
+
+    def has_object_permission(self, request, view, instance):
+        if instance.type == ResultStatusType.SYSTEM:
+            return request.user.is_superuser or request.method in SAFE_METHODS
+        return super().has_object_permission(request, view, instance)

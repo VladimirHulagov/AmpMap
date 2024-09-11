@@ -1,4 +1,3 @@
-import { getStatusTextByNumber } from "shared/libs"
 import { Status } from "shared/ui"
 
 import styles from "./styles.module.css"
@@ -23,7 +22,11 @@ export const StepResult = ({ stepsResult }: StepResultProps) => {
               <span>{stepResult.name}</span>
             </div>
             <div className={styles.resultStatus}>
-              <Status value={getStatusTextByNumber(stepResult.status)} />
+              <Status
+                name={stepResult.status_text}
+                id={stepResult.status}
+                color={stepResult.status_color}
+              />
             </div>
           </li>
         ))}

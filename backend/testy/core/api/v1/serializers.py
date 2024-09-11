@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -36,7 +36,15 @@ from django.urls import reverse
 from django.utils import timezone
 from notifications.models import Notification
 from rest_framework.exceptions import ValidationError
-from rest_framework.fields import BooleanField, CharField, DateTimeField, IntegerField, ListField, SerializerMethodField
+from rest_framework.fields import (
+    BooleanField,
+    CharField,
+    DateTimeField,
+    IntegerField,
+    JSONField,
+    ListField,
+    SerializerMethodField,
+)
 from rest_framework.relations import PrimaryKeyRelatedField
 from rest_framework.serializers import HyperlinkedIdentityField, ModelSerializer, Serializer
 
@@ -44,7 +52,7 @@ from testy.core.constants import CUSTOM_ATTRIBUTES_ALLOWED_APPS, CUSTOM_ATTRIBUT
 from testy.core.models import Attachment, CustomAttribute, Label, NotificationSetting, Project, SystemMessage
 from testy.core.selectors.notifications import NotificationSelector
 from testy.core.selectors.project_settings import ProjectSettings
-from testy.core.validators import CustomAttributeCreateValidator
+from testy.core.validators import CustomAttributeCreateValidator, ProjectStatusOrderValidator
 from testy.serializer_fields import EstimateField
 
 
@@ -118,6 +126,10 @@ class ProjectSettingsSerializer(Serializer):
         allow_null=True,
         default=ProjectSettings().result_edit_limit,
         to_workday=False,
+    )
+    status_order = JSONField(
+        default=dict,
+        validators=[ProjectStatusOrderValidator()],
     )
 
 

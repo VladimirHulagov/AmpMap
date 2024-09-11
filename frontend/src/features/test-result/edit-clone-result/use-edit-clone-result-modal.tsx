@@ -1,4 +1,5 @@
 import { notification } from "antd"
+import { useStatuses } from "entities/status/model/use-statuses"
 import { useEffect, useState } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
 import { useParams } from "react-router-dom"
@@ -11,6 +12,8 @@ import { useAttributes } from "entities/result/model"
 import { useErrors } from "shared/hooks"
 import { makeAttributesJson, showModalCloseConfirm } from "shared/libs"
 import { AlertSuccessChange } from "shared/ui"
+
+import { filterAttributesByStatus } from "../utils"
 
 interface ErrorData {
   status?: string
@@ -44,7 +47,7 @@ export const useEditCloneResultModal = ({
     mode: "all",
     defaultValues: {
       comment: testResult.comment,
-      status: testResult.status,
+      status: null,
       attributes: [],
       steps: [],
     },
@@ -52,6 +55,7 @@ export const useEditCloneResultModal = ({
   const watchStatus = watch("status")
 
   const { projectId, testPlanId } = useParams<ParamProjectId & ParamTestPlanId>()
+  const { statuses, getStatusById } = useStatuses({ project: projectId })
   const {
     setAttachments,
     onReset,
@@ -66,7 +70,7 @@ export const useEditCloneResultModal = ({
   const { onHandleError } = useErrors<ErrorData>(setErrors)
   const [updatedTestResult, { isLoading: isLoadingUpdateTestResult }] = useUpdateResultMutation()
   const [createResult, { isLoading: isLoadingCreateTestResult }] = useCreateResultMutation()
-  const [stepsResult, setStepsResult] = useState<Record<string, string>>({})
+  const [stepsResult, setStepsResult] = useState<Record<string, number>>({})
   const isLoading =
     isLoadingUpdateTestResult || isLoadingCreateTestResult || isLoadingCreateAttachment
 
@@ -80,18 +84,20 @@ export const useEditCloneResultModal = ({
     onAttributeRemove,
     loadAttributeJson,
   } = useAttributes({ mode: "edit", setValue })
-  const attributes = allAttributes.filter(
-    (attr) => attr.status_specific?.includes(Number(watchStatus))
-  )
+  const attributes = filterAttributesByStatus(allAttributes, statuses, watchStatus)
 
   useEffect(() => {
-    const resultSteps: Record<string, string> = {}
+    const resultSteps: Record<string, number> = {}
     testResult.steps_results.forEach((result) => {
       const stepId = String(result.id)
-      resultSteps[stepId] = String(result.status)
+      const isStatusAvailable = !!getStatusById(result.status)
+      if (isStatusAvailable) {
+        resultSteps[stepId] = result.status
+      }
     })
+
     setStepsResult(resultSteps)
-  }, [testResult])
+  }, [testResult, statuses])
 
   const onCloseModal = () => {
     setIsShow(false)
@@ -114,7 +120,7 @@ export const useEditCloneResultModal = ({
   }
 
   useEffect(() => {
-    if (testResult && isShow) {
+    if (testResult && isShow && statuses.length) {
       const testResultAttachesWithUid = testResult.attachments.map((attach) => ({
         ...attach,
         uid: String(attach.id),
@@ -123,11 +129,15 @@ export const useEditCloneResultModal = ({
         setAttachments(testResultAttachesWithUid)
       }
 
-      setValue("status", testResult.status)
+      const isStatusExist = !!getStatusById(testResult.status)
+      if (isStatusExist) {
+        setValue("status", testResult.status)
+      }
+
       setValue("comment", testResult.comment)
       loadAttributeJson(testResult.attributes)
     }
-  }, [testResult, isShow, isClone])
+  }, [testResult, isShow, isClone, statuses])
 
   const onSubmit: SubmitHandler<ResultFormData> = async (data) => {
     if (!testResult || !testPlanId) return
@@ -140,11 +150,11 @@ export const useEditCloneResultModal = ({
       return
     }
 
-    const stepsResultData: { id: string; status: string }[] = []
+    const stepsResultData: { id: string; status: number }[] = []
 
     if (Object.keys(stepsResult).length) {
       Object.entries(stepsResult).forEach(([id, status]) => {
-        stepsResultData.push({ id, status })
+        stepsResultData.push({ id, status: status })
       })
     }
 
@@ -160,13 +170,13 @@ export const useEditCloneResultModal = ({
         newResult = await updatedTestResult({
           id: testResult.id,
           testPlanId: Number(testPlanId),
-          body: dataReq,
+          body: dataReq as IResultUpdate,
         }).unwrap()
       } else {
-        const stepsResultCreate = stepsResultData.map((i) => ({ step: i.id, status: i.status }))
+        const stepsResultCreate = stepsResultData.map((i) => ({ step: i.id, status: 1 }))
         newResult = await createResult({
           testPlanId: Number(testPlanId),
-          body: { ...dataReq, steps_results: stepsResultCreate },
+          body: { ...dataReq, steps_results: stepsResultCreate } as IResultCreate,
         }).unwrap()
       }
       onCloseModal()
@@ -211,5 +221,6 @@ export const useEditCloneResultModal = ({
     onAttributeChangeName,
     onAttributeRemove,
     handleSubmitForm: handleSubmit(onSubmit),
+    statuses,
   }
 }

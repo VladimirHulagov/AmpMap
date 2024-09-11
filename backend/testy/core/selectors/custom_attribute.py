@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -34,7 +34,6 @@ from django.db.models import QuerySet
 from testy.core.constants import CUSTOM_ATTRIBUTES_ALLOWED_APPS, CUSTOM_ATTRIBUTES_ALLOWED_MODELS
 from testy.core.models import CustomAttribute, Project
 from testy.tests_description.models import TestSuite
-from testy.tests_representation.choices import TestStatuses
 
 _NAME = 'name'
 
@@ -55,19 +54,25 @@ class CustomAttributeSelector:
         return required_attr.values_list(_NAME, flat=True)
 
     @classmethod
+    def required_attribute_names_by_project(cls, project: Project, content_type_id: int) -> QuerySet[CustomAttribute]:
+        return cls._required_attributes_by_project(project).filter(
+            content_types__contains=[content_type_id],
+        ).values_list(_NAME, flat=True)
+
+    @classmethod
     def required_attributes_by_status(
         cls,
         project: Project,
         suite: TestSuite,
         content_type_id: int,
-        status: TestStatuses,
+        status,
     ) -> QuerySet[CustomAttribute]:
         required_attr = cls._required_attributes_by_project_and_suite(
             project,
             suite,
             content_type_id,
         ).filter(
-            status_specific__contains=[status],
+            status_specific__contains=[status.pk],
         )
         return required_attr.values_list(_NAME, flat=True)
 

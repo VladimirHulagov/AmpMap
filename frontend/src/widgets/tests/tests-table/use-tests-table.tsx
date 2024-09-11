@@ -3,6 +3,7 @@ import { Button, TablePaginationConfig } from "antd"
 import { ColumnsType } from "antd/es/table"
 import { FilterValue, Key, RowSelectMethod, SorterResult } from "antd/es/table/interface"
 import decodeUriComponent from "decode-uri-component"
+import { useStatuses } from "entities/status/model/use-statuses"
 import queryString from "query-string"
 import { useEffect, useMemo, useState } from "react"
 import { Link, useParams, useSearchParams } from "react-router-dom"
@@ -26,6 +27,7 @@ import { sortEstimate } from "shared/libs"
 import { antdSorterToTestySort } from "shared/libs/antd-sorter-to-testy-sort"
 import { HighLighterTesty, Status } from "shared/ui"
 import { ArchivedTag } from "shared/ui/archived-tag/archived-tag"
+import { UntestedStatus } from "shared/ui/status"
 
 import { AssigneeFiltersDrowdown } from "./filters/assignee-filters-dropdown"
 import { SuiteFiltersDrowdown } from "./filters/suite-filters-dropdown"
@@ -55,6 +57,8 @@ export const useTestsTable = ({ testPlanId }: Props) => {
   const dispatch = useAppDispatch()
   const selectedLabels = useAppSelector(selectSelectedLabels)
   const { setSearchText, getColumnSearch, searchText } = useTableSearch()
+
+  const { statusesFiltersWithUntested } = useStatuses({ project: projectId, plan: testPlanId })
 
   const isShowArchiveState = useAppSelector(selectArchivedTestsIsShow)
   const [selectedSuites, setSelectedSuites] = useState<Key[]>([])
@@ -98,8 +102,18 @@ export const useTestsTable = ({ testPlanId }: Props) => {
       not_labels: selectedLabels.not_labels,
       labels_condition: testsTableParams.filters?.labels_condition,
       suite: selectedSuites,
-    }
+    } as TableParamsData
   }, [tableParams, testsTableParams, selectedSuites])
+
+  useEffect(() => {
+    if (!testsTableParams.filters?.last_status) {
+      return
+    }
+    changeTableParams({
+      ...tableParams,
+      last_status: testsTableParams.filters?.last_status,
+    })
+  }, [testsTableParams.filters?.last_status])
 
   useEffect(() => {
     if (isCompleteSelectLabels) {
@@ -135,7 +149,7 @@ export const useTestsTable = ({ testPlanId }: Props) => {
     }
   }, [paramSuite])
 
-  useUrlSyncParams({ params: tableParamsMemo as typeof tableParams, setTableParams })
+  useUrlSyncParams({ params: tableParamsMemo, setTableParams })
 
   const { data, isFetching } = useGetTestsQuery(
     {
@@ -204,6 +218,7 @@ export const useTestsTable = ({ testPlanId }: Props) => {
   }
 
   const handleClearAll = async () => {
+    setSelectedSuites([])
     dispatch(
       setSelectedLabels({
         labels: [],
@@ -232,14 +247,14 @@ export const useTestsTable = ({ testPlanId }: Props) => {
     filters: Record<string, FilterValue | null>,
     sorter: SorterResult<T> | SorterResult<T>[]
   ) => {
-    const order = antdSorterToTestySort(sorter)
+    const ordering = antdSorterToTestySort(sorter)
 
     const settings: TableParamsData = {
       page: pagination.current ?? DEFAULT_PAGE,
       page_size: pagination.pageSize ?? DEFAULT_PAGE_SIZE,
-      order: order.length ? order : undefined,
+      ordering: ordering.length ? ordering : undefined,
       search: filters?.name ? (filters?.name[0] as string) : undefined,
-      last_status: filters?.last_status,
+      last_status: filters?.last_status ?? [],
       suite: tableParams?.suite,
       labels_condition: tableParams?.labels_condition,
       assignee: tableParams?.assignee,
@@ -297,6 +312,14 @@ export const useTestsTable = ({ testPlanId }: Props) => {
     setIsAllSelected(false)
   }
 
+  const handleChangeSuitesFilter = (keys: Key[]) => {
+    setTableParams({
+      page: DEFAULT_PAGE,
+      page_size: DEFAULT_PAGE_SIZE,
+    })
+    setSelectedSuites(keys)
+  }
+
   const columns: ColumnsType<Test> = [
     {
       title: "Id",
@@ -333,7 +356,7 @@ export const useTestsTable = ({ testPlanId }: Props) => {
       filterDropdown: ({ close }) =>
         SuiteFiltersDrowdown({
           selectedKeys: selectedSuites,
-          setSelectedKeys: setSelectedSuites,
+          setSelectedKeys: handleChangeSuitesFilter,
           close,
         }),
     },
@@ -363,38 +386,20 @@ export const useTestsTable = ({ testPlanId }: Props) => {
       dataIndex: "last_status",
       key: "last_status",
       width: "150px",
-      filters: [
-        {
-          value: "0",
-          text: "Failed",
-        },
-        {
-          value: "1",
-          text: "Passed",
-        },
-        {
-          value: "2",
-          text: "Skipped",
-        },
-        {
-          value: "3",
-          text: "Broken",
-        },
-        {
-          value: "4",
-          text: "Blocked",
-        },
-        {
-          value: "6",
-          text: "Retest",
-        },
-        {
-          value: "null",
-          text: "Untested",
-        },
-      ],
+      filters: statusesFiltersWithUntested,
       filteredValue: (tableParams.last_status as FilterValue) ?? undefined,
-      render: (last_status: Statuses) => <Status value={last_status || "Untested"} />,
+      render: (value, record) => {
+        if (!value) {
+          return <UntestedStatus />
+        }
+        return (
+          <Status
+            name={record.last_status_name}
+            color={record.last_status_color}
+            id={record.last_status}
+          />
+        )
+      },
     },
     {
       title: "Assignee",
@@ -461,14 +466,14 @@ export const useTestsTable = ({ testPlanId }: Props) => {
   const prepareBulkRequestData = () => {
     const commonFilters = {
       is_archive: tableParams.is_archived ?? isShowArchive,
-      last_status: (tableParams.last_status as string[])?.join(","),
-      search: tableParams.search,
-      labels: selectedLabels.labels,
-      not_labels: selectedLabels.not_labels,
-      labels_condition: tableParams.labels_condition,
-      suite: tableParams.suite,
-      assignee: tableParams.assignee_id as string,
-      unassigned: tableParams.unassigned,
+      last_status: (tableParamsMemo.last_status as string[])?.join(","),
+      search: tableParamsMemo.search,
+      labels: tableParamsMemo.labels,
+      not_labels: tableParamsMemo.not_labels,
+      labels_condition: tableParamsMemo.labels_condition,
+      suite: tableParamsMemo.suite,
+      assignee: tableParamsMemo.assignee_id as string,
+      unassigned: tableParamsMemo.unassigned,
     } as Partial<TestBulkUpdate>
 
     Object.keys(commonFilters).forEach((key) => {
@@ -514,7 +519,7 @@ export const useTestsTable = ({ testPlanId }: Props) => {
 
     handleClearAll()
     const result = await bulkUpdateTests(reqData)
-    //@ts-ignore
+    // @ts-ignore
     if (result.error) {
       //@ts-ignore
       throw new Error(result.error as unknown)

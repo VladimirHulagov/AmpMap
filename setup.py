@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -32,7 +32,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='testy',
-    version='1.3.2',
+    version='1.3.3',
     python_requires='==3.11.9',
     description='Test management system',
     packages=find_packages(
@@ -41,7 +41,6 @@ setup(
     install_requires=[
         'django==4.2.13',
         'python-dotenv==0.21.0',
-        'django-mptt==0.13.4',
         'djangorestframework==3.15.1',
         'django-simple-history==3.1.1',
         'django_filter==22.1',

@@ -3,17 +3,19 @@ import { TablePaginationConfig } from "antd/es/table"
 import { ColumnsType } from "antd/lib/table"
 import { FilterValue } from "antd/lib/table/interface"
 import dayjs from "dayjs"
+import { useStatuses } from "entities/status/model/use-statuses"
 import { useEffect, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 
 import { useLazyGetTestPlanActivityQuery } from "entities/test-plan/api"
-import { filterActionFormat, filterStatusFormat } from "entities/test-plan/lib"
+import { filterActionFormat } from "entities/test-plan/lib"
 
 import { UserAvatar } from "entities/user/ui"
 
 import { useTableSearch } from "shared/hooks"
 import { antdSorterToTestySort } from "shared/libs/antd-sorter-to-testy-sort"
 import { HighLighterTesty, Status } from "shared/ui"
+import { UntestedStatus } from "shared/ui/status"
 
 import { useTestPlanActivityBreadcrumbs } from "./index"
 
@@ -35,6 +37,11 @@ const initialTableParams: TableParams = {
 
 export const useTestPlanActivity = () => {
   const { testPlanId, projectId } = useParams<ParamTestPlanId & ParamProjectId>()
+  const { statusesFilters } = useStatuses({
+    project: projectId,
+    plan: testPlanId,
+    isActivity: true,
+  })
   const [getActivity, { data, isLoading }] = useLazyGetTestPlanActivityQuery()
   const { getColumnSearch, setSearchText, setSearchedColumn, searchText, searchedColumn } =
     useTableSearch()
@@ -99,41 +106,17 @@ export const useTestPlanActivity = () => {
     },
     {
       title: "Status",
-      dataIndex: "status_text",
-      key: "status_text",
+      dataIndex: "status",
+      key: "status",
       width: "150px",
-      filters: [
-        {
-          value: "Failed",
-          text: "Failed",
-        },
-        {
-          value: "Passed",
-          text: "Passed",
-        },
-        {
-          value: "Skipped",
-          text: "Skipped",
-        },
-        {
-          value: "Broken",
-          text: "Broken",
-        },
-        {
-          value: "Blocked",
-          text: "Blocked",
-        },
-        {
-          value: "Retest",
-          text: "Retest",
-        },
-        {
-          value: "Untested",
-          text: "Untested",
-        },
-      ],
-      render: (last_status: Statuses) => <Status value={last_status ?? "Untested"} />,
-      onFilter: (value, record) => record.status_text.includes(String(value)),
+      filters: statusesFilters,
+      render: (last_status: string[], record) => {
+        if (!last_status) {
+          return <UntestedStatus />
+        }
+        return <Status id={record.status} name={record.status_text} color={record.status_color} />
+      },
+      onFilter: (value, record) => record.status === value,
     },
     {
       title: "User",
@@ -165,9 +148,7 @@ export const useTestPlanActivity = () => {
       testPlanId,
       page_size: tableParams.pagination?.pageSize,
       page: tableParams.pagination?.current,
-      status: tableParams.filters?.status_text
-        ? filterStatusFormat((tableParams.filters.status_text as string[]) ?? [])
-        : undefined,
+      status: tableParams.filters?.status,
       history_type: tableParams.filters?.action
         ? filterActionFormat((tableParams.filters.action as string[]) ?? [])
         : undefined,
@@ -209,6 +190,10 @@ export const useTestPlanActivity = () => {
     sorter
   ) => {
     const sortTesty = antdSorterToTestySort(sorter, "plans")
+
+    if (filters?.status === null) {
+      delete filters.status
+    }
 
     setTableParams((prevState) => ({
       ...prevState,

@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -284,6 +284,9 @@ class BaseModel(ServiceModelMixin, SoftDeleteMixin, models.Model):
 class MPTTBaseModel(MPTTModel, BaseModel):
     objects = SoftDeleteTreeManager()
     deleted_objects = DeletedTreeManager()
+
+    class MPTTMeta:
+        root_node_ordering = False
 
     class Meta:
         abstract = True

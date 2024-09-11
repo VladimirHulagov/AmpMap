@@ -22,7 +22,7 @@ export const ChangeCustomAttribute = (props: PropsChangeCustomAttribute) => {
     errors,
     searchText,
     suitesData,
-    statusesOption,
+    statusesOptions,
     handleClose,
     handleSubmitForm,
     handleShow,
@@ -146,7 +146,7 @@ export const ChangeCustomAttribute = (props: PropsChangeCustomAttribute) => {
                     }}
                   >
                     <Checkbox.Group
-                      options={statusesOption}
+                      options={statusesOptions}
                       style={{ flexDirection: "column", gap: 4 }}
                       {...field}
                     />

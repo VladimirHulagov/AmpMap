@@ -22,7 +22,7 @@ export const TestPlanActivityTable = ({
           <Table
             columns={testPlanActivity.columns}
             dataSource={item}
-            rowKey="id"
+            rowKey="action_timestamp"
             pagination={false}
           />
         </li>

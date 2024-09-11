@@ -2,7 +2,6 @@ import { PlusOutlined } from "@ant-design/icons"
 import { Button, Col, Divider, Form, Modal, Row, Select, Upload } from "antd"
 import { Controller } from "react-hook-form"
 
-import { statusesWithoutUntested } from "shared/config"
 import { ErrorObj } from "shared/hooks/use-alert-error"
 import { AlertError, Attachment, Attribute, Status, Steps, TextAreaWithAttach } from "shared/ui"
 
@@ -34,6 +33,8 @@ export const CreateResultModal = (props: CreateResultModalProps) => {
     onAttributeRemove,
     setSteps,
     setAttachments,
+    statuses,
+    disabled,
   } = useCreateResultModal(props)
 
   const { isShow, testCase } = props
@@ -56,6 +57,7 @@ export const CreateResultModal = (props: CreateResultModalProps) => {
           type="primary"
           loading={isLoading || isLoadingCreateAttachment}
           onClick={handleSubmitForm}
+          disabled={disabled}
         >
           Create
         </Button>,
@@ -76,12 +78,11 @@ export const CreateResultModal = (props: CreateResultModalProps) => {
               <Controller
                 name="status"
                 control={control}
-                defaultValue={"1"}
                 render={({ field }) => (
                   <Select {...field} placeholder="Please select" style={{ width: "100%" }}>
-                    {statusesWithoutUntested.map((status) => (
-                      <Select.Option key={status.value} value={status.value}>
-                        <Status value={status.label} />
+                    {statuses.map((status) => (
+                      <Select.Option key={status.id} value={status.id}>
+                        <Status id={status.id} name={status.name} color={status.color} />
                       </Select.Option>
                     ))}
                   </Select>

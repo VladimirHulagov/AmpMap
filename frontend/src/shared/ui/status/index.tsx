@@ -1,47 +1,19 @@
 import { Tag } from "antd"
 
-import { colors } from "shared/config"
+type StatusProps = Pick<Status, "id" | "color" | "name">
 
-interface StatusProps {
-  value: StatusesCaps | Statuses
+export const Status = ({ id, name, color }: StatusProps) => {
+  return (
+    <Tag className="status" color={color} id={`status-${name}-${id}`}>
+      {name.toUpperCase()}
+    </Tag>
+  )
 }
 
-export const Status = ({ value }: StatusProps) => {
-  let color = "default"
-  switch (value.toLowerCase()) {
-    case "failed": {
-      color = colors.error
-      break
-    }
-    case "passed": {
-      color = colors.success
-      break
-    }
-    case "skipped": {
-      color = colors.skipped
-      break
-    }
-    case "broken": {
-      color = colors.broken
-      break
-    }
-    case "blocked": {
-      color = colors.bloked
-      break
-    }
-    case "untested": {
-      color = "default"
-      break
-    }
-    case "retest": {
-      color = colors.warning
-      break
-    }
-  }
-
+export const UntestedStatus = () => {
   return (
-    <Tag className="status" color={color} id="status">
-      {value.toUpperCase()}
+    <Tag className="status" color="default" id="status-untested">
+      UNTESTED
     </Tag>
   )
 }

@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -32,18 +32,15 @@
 import logging
 from typing import Any, Iterable
 
-from django.db.models import Case, Count, DateTimeField, F, FloatField, OuterRef, Q, QuerySet, Sum, When, expressions
-from django.db.models.functions import Cast, Coalesce
+from django.db.models import OuterRef, Q, QuerySet
 from mptt.querysets import TreeQuerySet
 
 from testy.root.selectors import MPTTSelector
-from testy.tests_representation.choices import TestStatuses
 from testy.tests_representation.models import Parameter, Test, TestPlan
 from testy.tests_representation.selectors.results import TestResultSelector
-from testy.tests_representation.services.statistics import HistogramProcessor, StatisticProcessor
+from testy.tests_representation.services.statistics import HistogramProcessor, LabelProcessor, PieChartProcessor
 from testy.utilities.request import PeriodDateTime
-from testy.utilities.sql import DateTrunc, SubCount
-from testy.utilities.time import Period
+from testy.utilities.sql import SubCount
 from testy.utilities.tree import form_tree_prefetch_lookups, form_tree_prefetch_objects, get_breadcrumbs_treeview
 
 logger = logging.getLogger(__name__)
@@ -53,6 +50,10 @@ _PARAMETERS = 'parameters'
 _STATUS = 'status'
 _ESTIMATES = 'estimates'
 _EMPTY_ESTIMATES = 'empty_estimates'
+_NAME = 'name'
+_ID = 'id'
+_COLOR = 'color'
+_VALUE = 'value'
 
 
 class TestPlanSelector:  # noqa: WPS214
@@ -98,7 +99,7 @@ class TestPlanSelector:  # noqa: WPS214
         )
 
     def testplan_project_root_list(self, project_id: int) -> QuerySet[TestPlan]:
-        return TestPlan.objects.filter(project=project_id, parent=None).order_by('name')
+        return TestPlan.objects.filter(project=project_id, parent=None).order_by(_NAME)
 
     def testplan_get_by_pk(self, pk) -> TestPlan | None:
         return TestPlan.objects.get(pk=pk)
@@ -106,7 +107,7 @@ class TestPlanSelector:  # noqa: WPS214
     @classmethod
     def testplan_breadcrumbs_by_ids(cls, ids: list[int]) -> dict[str, dict[str, Any]]:
         plans = TestPlan.objects.filter(pk__in=ids).prefetch_related(_PARAMETERS)
-        ancestors = plans.get_ancestors(include_self=False).prefetch_related(_PARAMETERS)
+        ancestors = plans.get_ancestors(include_self=False).prefetch_related(_PARAMETERS).order_by('lft')
         ids_to_breadcrumbs = {}
         for plan in plans:
             tree = [ancestor for ancestor in ancestors if ancestor.is_ancestor_of(plan)]
@@ -161,71 +162,23 @@ class TestPlanSelector:  # noqa: WPS214
     def testplan_statistics(
         self,
         test_plan: TestPlan,
-        filter_condition: dict[str, Any],
-        estimate_period: str | None = None,
+        parameters: dict[str, Any],
         is_archive: bool = False,
     ):
+        label_processor = LabelProcessor(parameters)
+        pie_chart_processor = PieChartProcessor(parameters)
         test_plan_child_ids = tuple(self.get_testplan_descendants_ids_by_testplan(test_plan))
-        seconds = Period.MINUTE.in_seconds(in_workday=True)
-        if estimate_period:
-            estimate_period = next(
-                (period for period in Period.list_of_workday() if period.name.lower() in estimate_period.lower()),
-                Period.SECOND,
-            )
-            seconds = estimate_period.in_seconds(in_workday=True)
+
         is_archive_condition = Q() if is_archive else Q(is_archive=False)
-        latest_status = TestResultSelector.get_last_status_subquery()
-        total_estimate = Sum(
-            Cast(F('case__estimate'), FloatField()) / seconds,
-            output_field=FloatField(),
-        )
         tests = Test.objects.filter(
             is_archive_condition,
             plan_id__in=test_plan_child_ids,
             is_deleted=False,
-        ).annotate(
-            status=Coalesce(latest_status, TestStatuses.UNTESTED),
-            estimates=Coalesce(total_estimate, 0, output_field=FloatField()),
-            is_empty_estimate=Case(
-                When(Q(case__estimate__isnull=True), then=1),
-                default=0,
-            ),
-            empty_estimates=Sum('is_empty_estimate'),
         )
-        statistic_processor = StatisticProcessor(filter_condition)
-        if statistic_processor.labels or statistic_processor.not_labels:
-            tests = statistic_processor.process_labels(tests)
 
-        rows = tests.values(
-            _STATUS, _ESTIMATES, _EMPTY_ESTIMATES,
-        ).annotate(
-            count=Count('id', distinct=True),
-        ).order_by(_STATUS)
-
-        result = []
-        presented_statuses = [row[_STATUS] for row in rows]
-        for status in TestStatuses:
-            if status.value in presented_statuses:
-                continue
-            result.append(
-                {
-                    'label': status.label.upper(),
-                    'value': 0,
-                    _ESTIMATES: 0,
-                    _EMPTY_ESTIMATES: 0,
-                },
-            )
-
-        for row in rows:
-            result.append(
-                {
-                    'label': TestStatuses(row[_STATUS]).name,
-                    'value': row['count'],
-                    'estimates': round(row[_ESTIMATES], 2),
-                    'empty_estimates': row[_EMPTY_ESTIMATES],
-                },
-            )
-        return sorted(result, key=lambda elem: elem['value'], reverse=True)
+        if label_processor.labels or label_processor.not_labels:
+            tests = label_processor.process_labels(tests)
+        return pie_chart_processor.process_statistic(tests, test_plan.project)
 
     def get_plan_progress(self, plan_id: int, period: PeriodDateTime):
         last_status_period = TestResultSelector.get_last_status_subquery(
@@ -255,51 +208,21 @@ class TestPlanSelector:  # noqa: WPS214
     def testplan_histogram(
         self,
         test_plan: TestPlan,
-        processor: HistogramProcessor,
-        filter_condition: dict[str, Any],
+        parameters: dict[str, Any],
         is_archive: bool = False,
     ):
+        histogram_processor = HistogramProcessor(parameters)
+        label_processor = LabelProcessor(parameters, 'test__case')
         test_plan_child_ids = tuple(self.get_testplan_descendants_ids_by_testplan(test_plan))
-        annotate_condition = {}
-        filters = {
-            'created_at__range': processor.period,
-        }
-        if not is_archive:
-            filters['is_archive'] = False
-        if processor.attribute:
-            order_condition = expressions.RawSQL(
-                'attributes->>%s', (processor.attribute,),
-            )
-            values_list = (f'attributes__{processor.attribute}', _STATUS)
-            filters['attributes__has_key'] = processor.attribute
-
-        else:
-            annotate_condition = {
-                'period_day': DateTrunc(
-                    'day',
-                    'created_at',
-                    output_field=DateTimeField(),
-                ),
-            }
-            order_condition = 'period_day'
-            values_list = ('period_day', _STATUS)
-
+        is_archive_condition = {} if is_archive else {'is_archive': False}
         test_results = (
             TestResultSelector()
-            .result_by_test_plan_ids(test_plan_child_ids, filters)
-            .annotate(**annotate_condition)
+            .result_by_test_plan_ids(test_plan_child_ids, is_archive_condition)
         )
-        statistic_processor = StatisticProcessor(filter_condition, 'test__case')
-        if statistic_processor.labels or statistic_processor.not_labels:
-            test_results = statistic_processor.process_labels(test_results)
+        if label_processor.labels or label_processor.not_labels:
+            test_results = label_processor.process_labels(test_results)
 
-        test_results_formatted = (
-            test_results.values(*values_list).distinct()
-            .annotate(status_count=Count(_STATUS))
-            .order_by(order_condition)
-        )
-
-        return processor.process_statistic(test_results_formatted)
+        return histogram_processor.process_statistic(test_results, test_plan.project)
 
     @classmethod
     def plan_list_by_ids(cls, ids: Iterable[int]) -> QuerySet[TestPlan]:

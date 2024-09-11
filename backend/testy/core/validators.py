@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -126,30 +126,14 @@ class TestCaseCustomAttributeValuesValidator(BaseCustomAttributeValuesValidator)
         self._validate(custom_attr, attr_getter)
 
 
-@deconstructible
-class TestResultCustomAttributeValuesValidator(BaseCustomAttributeValuesValidator):
-    app_name = 'tests_representation'
-    model_name = 'testresult'
-    requires_context = True
-
-    def __call__(self, attrs: dict[str, Any], serializer):
-        attributes = attrs.get('attributes', {})
-        if test := attrs.get('test'):
-            project = test.project
-            suite = test.case.suite
-        elif instance := serializer.instance:
-            project = instance.project
-            suite = instance.test.case.suite
-        else:
-            return
-        status = attrs.get('status')
-        attr_getter = partial(
-            CustomAttributeSelector.required_attributes_by_status,
-            project=project,
-            suite=suite,
-            status=status,
-        )
-        self._validate(attributes, attr_getter)
+class ProjectStatusOrderValidator:
+    def __call__(self, status_order):
+        if not isinstance(status_order, dict):
+            raise serializers.ValidationError('Status order must be dict')
+        for key, value in status_order.items():
+            if not (str(key).isdigit() and str(value).isdigit()):
+                raise serializers.ValidationError('Key and value in Status order should contain digits')
+        return status_order
 
 
 class CasesCopyProjectValidator:

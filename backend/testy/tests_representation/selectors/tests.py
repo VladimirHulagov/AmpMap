@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -28,7 +28,7 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from typing import Any
+from typing import Any, Iterable
 
 from django.conf import settings
 from django.contrib.postgres.aggregates import StringAgg
@@ -73,6 +73,8 @@ class TestSelector:
             .filter(**filter_condition)
             .annotate(
                 last_status=TestResultSelector.get_last_status_subquery(),
+                last_status_name=TestResultSelector.get_last_status_subquery(status_field='name'),
+                last_status_color=TestResultSelector.get_last_status_subquery(status_field='color'),
                 suite_path=Subquery(
                     subquery,
                     output_field=CharField(max_length=settings.CHAR_FIELD_MAX_LEN),
@@ -95,3 +97,7 @@ class TestSelector:
         if excluded_tests:
             queryset = queryset.exclude(pk__in=[test.pk for test in excluded_tests])
         return queryset
+
+    @classmethod
+    def test_list_by_ids(cls, ids: Iterable[int]) -> QuerySet[Test]:
+        return Test.objects.filter(pk__in=ids)

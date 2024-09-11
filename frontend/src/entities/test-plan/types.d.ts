@@ -71,10 +71,12 @@ interface TestPlanCreate extends TestPlan {
 }
 
 interface TestPlanStatistics {
-  label: StatusesCaps
+  label: string
   value: number
   estimates: number
   empty_estimates: number
+  color: string
+  id: number
 }
 
 interface TestPlanParents {
@@ -108,7 +110,9 @@ interface TestPlanActivityResult {
   action: "added" | "deleted" | "updated" | "unknown"
   action_timestamp: string
   breadcrumbs: BreadCrumbsActivityResult
-  status_text: Statuses
+  status_text: string
+  status_color: string
+  status: number
   test_id: number
   test_name: string
   username: string
@@ -145,15 +149,15 @@ interface TestPlanHistogramParams {
   is_archive?: boolean
 }
 
-interface TestPlanHistogramData {
-  point: string
-  failed: number
-  passed: number
-  skipped: number
-  broken: number
-  blocked: number
-  retest: number
+interface TestPlanHistogramDataPoint {
+  label: string
+  color: string
+  count: number
 }
+
+type TestPlanHistogramData = {
+  point: string
+} & Record<number, TestPlanHistogramDataPoint>
 
 interface TestPlanCopyItem {
   plan: number

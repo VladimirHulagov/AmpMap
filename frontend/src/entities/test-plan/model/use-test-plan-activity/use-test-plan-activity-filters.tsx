@@ -1,11 +1,19 @@
 import Search from "antd/lib/input/Search"
 import { ColumnsType } from "antd/lib/table"
+import { useStatuses } from "entities/status/model/use-statuses"
+import { useParams } from "react-router-dom"
 
 import { useTestPlanActivity } from "./use-test-plan-activity"
 
 export const useTestPlanActivityFilters = (
   testPlanActivity: ReturnType<typeof useTestPlanActivity>
 ) => {
+  const { testPlanId, projectId } = useParams<ParamTestPlanId & ParamProjectId>()
+  const { statusesFilters } = useStatuses({
+    project: projectId,
+    plan: testPlanId,
+    isActivity: true,
+  })
   const filters: ColumnsType<TestPlanActivityResult> = [
     {
       title: "Time",
@@ -38,40 +46,11 @@ export const useTestPlanActivityFilters = (
     },
     {
       title: "Status",
-      dataIndex: "status_text",
-      key: "status_text",
+      dataIndex: "status",
+      key: "status",
       width: "150px",
-      filteredValue: testPlanActivity.filteredInfo?.status_text ?? null,
-      filters: [
-        {
-          value: "Failed",
-          text: "Failed",
-        },
-        {
-          value: "Passed",
-          text: "Passed",
-        },
-        {
-          value: "Skipped",
-          text: "Skipped",
-        },
-        {
-          value: "Broken",
-          text: "Broken",
-        },
-        {
-          value: "Blocked",
-          text: "Blocked",
-        },
-        {
-          value: "Retest",
-          text: "Retest",
-        },
-        {
-          value: "Untested",
-          text: "Untested",
-        },
-      ],
+      filteredValue: testPlanActivity.filteredInfo?.status ?? null,
+      filters: statusesFilters,
     },
     {
       title: (

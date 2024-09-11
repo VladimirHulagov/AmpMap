@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -34,10 +34,12 @@ from django.conf import settings
 from django.db.models.fields.files import FieldFile
 from PIL import Image
 
+from testy.utilities.string import strip_suffixes
+
 
 class MediaService:
 
-    def populate_image_thumbnails(self, file: FieldFile, old_file: FieldFile = None):
+    def populate_image_thumbnails(self, file: FieldFile, old_file: FieldFile | None = None) -> None:
         """
         Create basic images thumbnails for resolutions specified in config.
 
@@ -51,16 +53,14 @@ class MediaService:
         if not file or not Path(file.path).exists():
             return
         full_image = Image.open(file.path)
-        old_path = Path(file.path)
+        path, suffixes = strip_suffixes(file.path)
         for resolution in settings.TESTY_THUMBNAIL_RESOLUTIONS:
             width, height = resolution
-            new_parts = list(old_path.parts[:-1])
-            new_parts.append(
-                f'{old_path.stem}@{width}x{height}{old_path.suffix}',
-            )
             thumbnail = full_image.copy()
             thumbnail.thumbnail(resolution)
-            thumbnail.save(Path(*new_parts))
+            thumbnail.save(
+                Path(f'{path}@{width}x{height}{suffixes}'),
+            )
 
     @classmethod
     def remove_media(cls, src_file_path: Path):
@@ -97,10 +97,10 @@ class MediaService:
         full_image = Image.open(file.path)
         cropped_img = full_image.crop(
             box=(
-                full_image.width * crop['left'],
-                full_image.height * crop['upper'],
-                full_image.width * crop['right'],
-                full_image.height * crop['lower'],
+                int(full_image.width * crop['left']),
+                int(full_image.height * crop['upper']),
+                int(full_image.width * crop['right']),
+                int(full_image.height * crop['lower']),
             ),
         )
         cropped_img.save(file.path)
