@@ -1,8 +1,9 @@
 interface IResult {
   id: Id
   project: number
-  status: string
+  status: number
   status_text: string
+  status_color: string
   test: number
   user: number
   comment: string
@@ -27,7 +28,7 @@ interface IResultQuery {
 
 interface IResultCreate {
   test: number
-  status?: string
+  status?: number
   comment?: string
   is_archive?: boolean
   execution_time?: number
@@ -38,7 +39,7 @@ interface IResultCreate {
 
 interface IResultUpdate {
   test: number
-  status?: string
+  status?: number
   comment?: string
   is_archive?: boolean
   execution_time?: number
@@ -52,22 +53,24 @@ interface StepResult {
   step: number
   name: string
   status: number
+  status_text: string
+  status_color: string
   sort_order: number
 }
 
 interface StepResultUpdate {
   id: string
-  status: string
+  status: number
 }
 
 interface StepResultCreate {
   step: string
-  status: string
+  status: number
 }
 
 interface ResultFormData {
   comment: string
-  status: string
+  status: number | null
   attachments?: number[]
   steps?: Step[]
   attributes?: Attribute[]

@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -38,6 +38,7 @@ from django.db import transaction
 from django.db.models import QuerySet
 from simple_history.utils import bulk_update_with_history
 
+from testy.root.celery import app
 from testy.tests_description.models import TestCase
 from testy.tests_representation.models import Test, TestPlan
 from testy.tests_representation.selectors.tests import TestSelector
@@ -65,25 +66,33 @@ class TestService:
         Test.objects.filter(plan=test_plan).filter(case__in=test_case_ids).delete()
 
     @transaction.atomic
-    def bulk_test_create(self, test_plans: list[TestPlan], cases: list[TestCase]):
+    def bulk_test_create(self, test_plans: list[TestPlan], cases: QuerySet[TestCase]):
         test_objects = [  # noqa: WPS361
             self._make_test_model({'case': case, 'plan': tp, 'project': tp.project}) for tp in test_plans
             for case in cases
         ]
         return Test.objects.bulk_create(test_objects)
 
-    def test_update(self, test: Test, data: dict[str, Any], user: User, commit: bool = True) -> Test:
-        old_assignee = test.assignee
-        assignee = data.get('assignee')
+    def test_update(
+        self,
+        test: Test,
+        data: dict[str, Any],
+        user: User,
+        commit: bool = True,
+        notify_user: bool = True,
+    ) -> Test:
+        old_assignee_id = test.assignee_id
         test, _ = test.model_update(
             fields=self.non_side_effect_fields,
             data=data,
             commit=commit,
         )
-        if old_assignee and assignee != old_assignee:
-            self.produce_action(test, old_assignee, user, 'test.unassigned')
-        if assignee:
-            self.produce_action(test, assignee, user, 'test.assigned')
+        if not notify_user:
+            return test
+        if assignee := data.get('assignee'):
+            assignee = assignee.pk
+        ct_id = ContentType.objects.get_for_model(test).pk
+        self.notify_assignee(test, old_assignee_id, assignee, user.pk, ct_id)
         return test
 
     def bulk_update_tests(self, queryset: QuerySet[Test], payload: dict[str, Any], user: User):
@@ -92,10 +101,19 @@ class TestService:
             included_tests=payload.pop('included_tests', None),
             excluded_tests=payload.pop('excluded_tests', None),
         )
-
         updated_tests = []
         for test in tests:
-            updated_tests.append(self.test_update(test, payload, commit=False, user=user))
+            updated_tests.append(self.test_update(test, payload, commit=False, user=user, notify_user=False))
+        if assignee := payload.get('assignee'):
+            assignee = assignee.pk
+        app.send_task(
+            'testy.tests_representation.tasks.notify_bulk_assign',
+            args=[
+                list(tests.values_list('id', flat=True)),
+                assignee,
+                user.pk,
+            ],
+        )
         bulk_update_with_history(
             updated_tests,
             Test,
@@ -108,15 +126,37 @@ class TestService:
     def get_testcase_ids_by_testplan(self, test_plan: TestPlan) -> QuerySet[int]:
         return test_plan.tests.values_list('case', flat=True)
 
-    def produce_action(self, test: Test, receiver, actor, action_type: str):
+    @classmethod
+    def notify_assignee(
+        cls,
+        test: Test,
+        old_assignee_id: int | None,
+        new_assignee_id: int | None,
+        actor_id: int,
+        ct_id: int,
+    ) -> None:
+        if old_assignee_id and new_assignee_id != old_assignee_id:
+            cls.produce_action(test, old_assignee_id, actor_id, 'test.unassigned', ct_id)
+        if new_assignee_id:
+            cls.produce_action(test, new_assignee_id, actor_id, 'test.assigned', ct_id)
+
+    @classmethod
+    def produce_action(
+        cls,
+        test: Test,
+        receiver_id: int,
+        actor_id: int,
+        action_type: str,
+        content_type_id: int,
+    ) -> None:
         async_to_sync(channel_layer.send)(
             'notifications',
             {
                 'type': action_type,
                 'object_id': test.pk,
-                'content_type_id': ContentType.objects.get_for_model(test).pk,
-                'receiver_id': receiver.pk,
-                'actor_id': actor.pk,
+                'content_type_id': content_type_id,
+                'receiver_id': receiver_id,
+                'actor_id': actor_id,
                 'project_id': test.project.pk,
                 'plan_id': test.plan.pk,
                 'name': test.case.name,

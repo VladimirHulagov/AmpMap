@@ -4,20 +4,15 @@ import {
   useGetCustomAttributeContentTypesQuery,
   useUpdateCustomAttributeMutation,
 } from "entities/custom-attribute/api"
+import { useStatuses } from "entities/status/model/use-statuses"
 import { useEffect, useMemo, useState } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
 import { useParams } from "react-router-dom"
 
 import { useTestSuitesSearch } from "entities/suite/model/use-test-suites-search"
 
-import { statusesWithoutUntested } from "shared/config"
 import { useErrors, useModal } from "shared/hooks"
 import { Status } from "shared/ui"
-
-const statusesOption = statusesWithoutUntested.map((status) => ({
-  value: Number(status.value),
-  label: <Status value={status.label} />,
-}))
 
 interface ErrorData {
   name?: string
@@ -42,6 +37,7 @@ export type PropsChangeCustomAttribute = PropsCreate | PropsEdit
 
 export const useChangeCustomAttribute = ({ formType, attribute }: PropsChangeCustomAttribute) => {
   const { projectId } = useParams<ParamProjectId>()
+  const { statuses } = useStatuses({ project: projectId })
   const { handleClose: handleCloseModal, handleShow, isShow } = useModal()
 
   const [createAttribute, { isLoading: isLoadingCreate }] = useCreateCustomAttributeMutation()
@@ -66,7 +62,7 @@ export const useChangeCustomAttribute = ({ formType, attribute }: PropsChangeCus
       is_suite_specific: attribute?.is_suite_specific ?? false,
       is_required: attribute?.is_required ?? false,
       content_types: attribute?.content_types ?? [],
-      status_specific: attribute?.status_specific ?? statusesOption.map((i) => i.value),
+      status_specific: attribute?.status_specific ?? statuses.map((i) => i.id),
       suite_ids: attribute?.suite_ids ?? [],
     },
   })
@@ -147,9 +143,27 @@ export const useChangeCustomAttribute = ({ formType, attribute }: PropsChangeCus
     setValue("is_required", attribute.is_required)
     setValue("content_types", attribute.content_types.map(Number))
     setValue("is_suite_specific", attribute.is_suite_specific)
-    setValue("status_specific", attribute?.status_specific ?? statusesOption.map((i) => i.value))
+    setValue("status_specific", attribute?.status_specific ?? statuses.map((i) => i.id))
     setValue("suite_ids", attribute.suite_ids)
   }, [attribute])
+
+  useEffect(() => {
+    if (attribute?.status_specific) {
+      return
+    }
+
+    setValue(
+      "status_specific",
+      statuses.map((i) => i.id)
+    )
+  }, [statuses, attribute])
+
+  const statusesOptions = useMemo(() => {
+    return statuses.map((status) => ({
+      label: <Status id={status.id} name={status.name} color={status.color} />,
+      value: status.id,
+    }))
+  }, [statuses])
 
   return {
     isShow,
@@ -163,7 +177,7 @@ export const useChangeCustomAttribute = ({ formType, attribute }: PropsChangeCus
     searchText,
     contentTypes,
     expandedRowKeys,
-    statusesOption,
+    statusesOptions,
     handleClose,
     handleShow,
     handleSubmitForm: handleSubmit(onSubmit),

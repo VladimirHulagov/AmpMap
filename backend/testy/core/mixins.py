@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -29,155 +29,65 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 import mimetypes
-from pathlib import Path
 from typing import TypeAlias
 
 from django.conf import settings
 from django.db.models.fields.files import FieldFile
 from django.http import FileResponse, HttpResponse
-from PIL import Image
 from rest_framework import status
-from rest_framework.response import Response
+from rest_framework.request import Request
+
+from testy.utilities.string import strip_suffixes
 
 suffix_properties: TypeAlias = tuple[str, str, str] | tuple[str, int, int]
 
 
 class MediaViewMixin:
-    def retrieve_filepath(
-        self,
-        file: FieldFile,
-        request,
-        generate_thumbnail: bool = True,
-        source_filename: str | None = None,
-    ) -> Response | FileResponse:
-        # TODO: Refactor this to single responsibility principal
-        """
-        Get filename to return in response, taking size from query parameters into account.
-
-        Args:
-            file: field file from model instance.
-            request: user request.
-            generate_thumbnail: defines if thumbnail with not existing parameters should be created or not.
-            source_filename: content type and filename of downloaded object and not by processed filepath.
-
-        Returns:
-            FileResponse or Response with nginx redirection header depending on your config.
-        """
-        try:
-            if source_filename:
-                content_type, _ = mimetypes.guess_type(source_filename, strict=False)
-            else:
-                content_type, _ = mimetypes.guess_type(file.path, strict=False)
-            if not content_type:
-                content_type = 'text/plain'
-            is_attachment = 'image/' not in content_type
-            old_path = Path(file.path)
-            old_file_name = old_path.name
-            new_file_name = self.get_filename(
-                file.path,
-                request,
-                generate_thumbnail,
-                is_attachment,
-            )
-            return self.get_formatted_response(
-                file,
-                is_attachment,
-                old_file_name != new_file_name,
-                new_file_name,
-                content_type,
-                source_filename,
-            )
-        except IOError:
-            return Response(status=status.HTTP_404_NOT_FOUND)
 
     @classmethod
-    def get_formatted_response(
+    def format_response(
         cls,
         file: FieldFile,
-        is_attachment: bool,
-        is_modified: bool,
-        new_file_name: str,
-        content_type: str,
-        name_for_downloading: str,
-    ) -> Response | FileResponse:
-        """
-        Get response to return for user.
-
-        Args:
-            file: field file from model instance.
-            is_attachment: defines if media file should be returned as attachment or not.
-            is_modified: defines if requested file is source or modified one (size params changed).
-            new_file_name: name of a new file.
-            content_type: type of media.
-            name_for_downloading: name for a file that will be downloaded.
-
-        Returns:
-            Response or File response depending on config parameters.
-        """
-        content_disposition = 'attachment' if is_attachment else 'inline'
-        if name_for_downloading:
-            content_disposition = f'{content_disposition}; filename={name_for_downloading}'
-        if settings.TESTY_ALLOW_FILE_RESPONSE:
-            if not is_modified:
-                return FileResponse(file, as_attachment=is_attachment, content_type=content_type)
-            new_parts = Path(file.path).parts[:-1] + (new_file_name,)
-            new_file_path = Path(*new_parts)
-            with open(new_file_path, 'rb') as new_file:
-                file_data = new_file.read()
-            response = HttpResponse(file_data, content_type=content_type)
-            response['Content-Disposition'] = content_disposition
-            return response
-        response = HttpResponse(content_type=content_type)
-        response['Content-Disposition'] = content_disposition
-        if not is_modified:
-            response['X-Accel-Redirect'] = file.url
-            return response
-        new_url = Path(
-            *Path(file.url).parts[:-1] + (new_file_name,),
-        )
-        response['X-Accel-Redirect'] = new_url
-        return response
-
-    def get_filename(self, filepath: str, request, generate_thumbnail: bool, is_attachment: bool) -> str:
-        """
-        Get filename depending on parameters provided in user request.
-
-        If file with provided files does not exist creates one if generate_thumbnail is set to True.
-
-        Args:
-            filepath: path to source file.
-            request: user request.
-            generate_thumbnail: defines if thumbnail with not existing parameters should be created or not.
-            is_attachment: defines if file should be returned as attachment or as render.
-
-        Returns:
-            Filename including extension as str.
-        """
-        old_path = Path(filepath)
-        if is_attachment:
-            return old_path.name
-        generated = False
-        full_image = Image.open(filepath)
-        new_parts = list(old_path.parts[:-1])
-        converted_suffix, width, height = self.get_modification_suffix_with_params(
-            request,
-        )
-        new_parts.append(f'{old_path.stem}{converted_suffix}{old_path.suffix}')
-        new_path = Path(*new_parts)
-        if not generate_thumbnail:
-            return new_path.name
-        thumbnail = full_image.copy()
-        if width or height:
-            generated = True
-            thumbnail.thumbnail(
-                (width if width else thumbnail.width, height if height else thumbnail.height),
-            )
-        if generated:
-            thumbnail.save(new_path)
-        return new_path.name
+        request: Request,
+        filename: str | None = None,
+    ) -> HttpResponse | FileResponse:
+        filename = filename or file.name
+        try:
+            if settings.TESTY_ALLOW_FILE_RESPONSE:
+                return cls.file_response(file, request, filename)
+            return cls.redirect_response(file, request, filename)
+        except IOError:
+            return HttpResponse(status=status.HTTP_404_NOT_FOUND)
 
     @classmethod
-    def get_modification_suffix_with_params(cls, request) -> suffix_properties:
+    def redirect_response(cls, file: FieldFile, request: Request, filename: str | None) -> HttpResponse:
+        content_type = cls._get_content_type(filename)
+        response = HttpResponse(content_type=content_type)
+        response['Content-Disposition'] = cls._get_content_disposition(filename, content_type)
+        response['X-Accel-Redirect'] = cls._populate_resolution(file.url, request)
+        return response
+
+    @classmethod
+    def file_response(cls, file: FieldFile, request: Request, filename: str | None) -> FileResponse:
+        content_type = cls._get_content_type(filename)
+        is_attachment = 'image/' not in content_type
+        path = cls._populate_resolution(file.path, request)
+        # https://docs.djangoproject.com/en/5.0/ref/request-response/#fileresponse-objects
+        return FileResponse(open(path, 'rb'), as_attachment=is_attachment, content_type=content_type)  # noqa: WPS515
+
+    @classmethod
+    def _get_content_type(cls, filename: str) -> str:
+        content_type, _ = mimetypes.guess_type(filename, strict=False)
+        return content_type or 'text/plain'
+
+    @classmethod
+    def _get_content_disposition(cls, filename: str, content_type: str) -> str:
+        is_attachment = 'image/' not in content_type
+        content_disposition = 'attachment' if is_attachment else 'inline'
+        return f'{content_disposition}; filename={filename}'
+
+    @classmethod
+    def _get_resolution(cls, request: Request) -> str:
         """
         Get file suffix and image parameters based on size from request parameters.
 
@@ -193,8 +103,14 @@ class MediaViewMixin:
             height = int(height)
         modification_params = (width, height)
         if not any(modification_params):
-            return '', '', ''
-        return f'@{width}x{height}', width, height
+            return ''
+        return f'@{width}x{height}'
+
+    @classmethod
+    def _populate_resolution(cls, filepath: str, request: Request) -> str:
+        path, suffix = strip_suffixes(filepath)
+        resolution_suffix = cls._get_resolution(request)
+        return f'{path}{resolution_suffix}{suffix}'
 
 
 class CallableChoicesMixin:

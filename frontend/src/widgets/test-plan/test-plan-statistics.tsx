@@ -53,6 +53,7 @@ export const TestPlanStatistics = ({ testPlanId }: TestPlanStatisticsProps) => {
   const [barType, setBarType] = useState<SegmentedValue>(
     userConfig.ui?.graph_base_bar_type || "by_time"
   )
+
   const [dateHistogram, setDateHistogram] = useState({
     start: userConfig.ui?.test_plan?.[testPlanId]?.start_date
       ? dayjs(userConfig.ui?.test_plan?.[testPlanId]?.start_date)

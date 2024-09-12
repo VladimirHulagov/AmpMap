@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -40,21 +40,27 @@ import pytest
 from django.db.models import Q, QuerySet
 from django.forms import model_to_dict
 from django.utils import timezone
-from validators import TestPlanCasesValidator
+from tests_representation.choices import TestStatuses
 
 from tests import constants
 from tests.commons import RequestType, model_to_dict_via_serializer
-from tests.error_messages import DATE_RANGE_ERROR, PERMISSION_ERR_MSG
+from tests.error_messages import (
+    DATE_RANGE_ERROR,
+    FOUND_EMPTY_REQUIRED_CUSTOM_ATTRIBUTES_ERR_MSG,
+    MISSING_REQUIRED_CUSTOM_ATTRIBUTES_ERR_MSG,
+    PERMISSION_ERR_MSG,
+)
 from testy.core.models import Label
 from testy.tests_description.models import TestCase
 from testy.tests_representation.api.v1.serializers import TestPlanOutputSerializer, TestPlanTreeSerializer
-from testy.tests_representation.choices import TestStatuses
 from testy.tests_representation.models import Test, TestPlan, TestResult
+from testy.tests_representation.selectors.status import ResultStatusSelector
 from testy.tests_representation.selectors.testplan import TestPlanSelector as TPSelector
+from testy.tests_representation.validators import TestPlanCasesValidator
 from testy.utilities.tree import form_tree_prefetch_objects
 
 
-@pytest.mark.django_db(reset_sequences=True)
+@pytest.mark.django_db
 @allure.parent_suite('Test plans')
 @allure.suite('Integration tests')
 @allure.sub_suite('Endpoints')
@@ -66,6 +72,7 @@ class TestPlanEndpoints:
     view_name_case_ids = 'api:v1:testplan-cases'
     view_name_histogram = 'api:v1:testplan-histogram'
     view_name_copy = 'api:v1:testplan-copy'
+    view_name_labels = 'api:v1:testplan-labels'
 
     @allure.title('Test list display')
     def test_list(self, superuser_client, several_test_plans_from_api, project):
@@ -77,7 +84,15 @@ class TestPlanEndpoints:
             )
         response = superuser_client.send_request(self.view_name_list, query_params={'project': project.id})
         with allure.step('Validate response is matching expected data'):
-            assert response.json_strip() == expected_response
+            for response_el, expected_el in zip(
+                    sorted(response.json_strip(), key=lambda x: x['id']),
+                    sorted(expected_response, key=lambda x: x['id']),
+            ):
+                response_el.pop('title')
+                expected_el.pop('title')
+                response_el['parameters'] = sorted(response_el['parameters'])
+                expected_el['parameters'] = sorted(expected_el['parameters'])
+                assert response_el == expected_el
 
     @allure.title('Test detail display')
     def test_retrieve(self, superuser_client, test_plan_from_api):
@@ -254,7 +269,7 @@ class TestPlanEndpoints:
         with allure.step('Validate error message from response'):
             assert response.json()['detail'] == PERMISSION_ERR_MSG
 
-    @pytest.mark.django_db(reset_sequences=True)
+    @pytest.mark.django_db
     def test_parameter_filter(
         self,
         superuser_client,
@@ -333,6 +348,7 @@ class TestPlanEndpoints:
         test_factory,
         test_case_factory,
         test_result_factory,
+        result_status_factory,
     ):
         number_of_statuses = {
             0: 6,
@@ -342,6 +358,7 @@ class TestPlanEndpoints:
             4: 0,
             5: 1,
             6: 15,
+            7: 1,
         }
         estimates = {
             1: 60,
@@ -353,16 +370,17 @@ class TestPlanEndpoints:
             2: 60.0,
             5: 963.0,
         }
-        for status_key, _ in TestStatuses.choices:
+        statuses = [result_status_factory(project=test_plan.project) for _ in range(len(number_of_statuses))]
+        for status_key, status in enumerate(statuses):
             for idx in range(number_of_statuses[status_key]):
                 estimate = estimates.get(status_key, None)
                 test_case = test_case_factory(estimate=estimate)
                 if idx % 2 == 0:
-                    test_result_factory(test=test_factory(plan=test_plan, case=test_case), status=status_key)
+                    test_result_factory(test=test_factory(plan=test_plan, case=test_case), status=status)
                 else:
                     test_result_factory(
                         test=test_factory(plan=test_plan, case=test_case),
-                        status=status_key,
+                        status=status,
                         is_archive=True,
                     )
         response_body = superuser_client.send_request(
@@ -372,25 +390,29 @@ class TestPlanEndpoints:
         label_to_stat = {}
         estimates_to_stat = {}
         empty_estimates = {}
+        colors = {}
         for elem in response_body:
             for dict_obj, key in zip(
-                [label_to_stat, estimates_to_stat, empty_estimates],
-                ['value', 'estimates', 'empty_estimates'],
+                    [label_to_stat, estimates_to_stat, empty_estimates, colors],
+                    ['value', 'estimates', 'empty_estimates', 'color'],
             ):
                 dict_obj[elem['label'].lower()] = elem[key]
-        for status_key, status_label, in TestStatuses.choices:
+        for status_key, status in enumerate(statuses):
+            if not number_of_statuses[status_key] and status.name.lower() not in label_to_stat:
+                continue
             with allure.step(f'Validate number of statuses for {status_key}'):
-                assert number_of_statuses[status_key] == label_to_stat[status_label.lower()], f'Statistics for ' \
-                                                                                              f'{status_label} is wrong'
+                assert number_of_statuses[status_key] == label_to_stat[status.name.lower()], f'Statistics for ' \
+                                                                                             f'{status.name} is wrong'
+                assert status.color == colors[status.name.lower()], f'Wrong color of status {status.name}'
                 if status_key not in estimates:
-                    assert empty_estimates[status_label.lower()] == label_to_stat[status_label.lower()], \
+                    assert empty_estimates[status.name.lower()] == label_to_stat[status.name.lower()], \
                         'Wrong empty estimates'
-                    assert estimates_to_stat[status_label.lower()] == 0, f'Incorrect estimate for status {status_label}'
+                    assert estimates_to_stat[status.name.lower()] == 0, f'Incorrect estimate for status {status.name}'
                 else:
-                    assert empty_estimates[status_label.lower()] == 0, 'Estimates is more than 0'
+                    assert empty_estimates[status.name.lower()] == 0, 'Estimates is more than 0'
                     expected = estimates_in_minutes[status_key] * number_of_statuses[status_key]
-                    assert estimates_to_stat[status_label.lower()] == expected, \
-                        f'Estimate not equal for status {status_label}'
+                    assert estimates_to_stat[status.name.lower()] == expected, \
+                        f'Estimate not equal for status {status.name}'
 
     @pytest.mark.parametrize(
         'estimate, period, expected_value',
@@ -416,17 +438,19 @@ class TestPlanEndpoints:
         period,
         expected_value,
         request,
+        result_status_factory,
     ):
         allure.dynamic.title(f'Test plans statics by estimate periods {request.node.callspec.id}')
         test_case = test_case_factory(estimate=estimate)
-        test_result_factory(test=test_factory(plan=test_plan, case=test_case))
+        status = result_status_factory(project=test_plan.project)
+        test_result_factory(test=test_factory(plan=test_plan, case=test_case), status=status)
         content = superuser_client.send_request(
             self.view_name_statistics,
             reverse_kwargs={'pk': test_plan.id},
             query_params={'estimate_period': period},
         ).json()
         actual_results = next(
-            (obj for obj in content if obj['label'] == TestStatuses.UNTESTED.label.upper()),
+            (obj for obj in content if obj['label'] == status.name.upper()),
         )
         with allure.step('Validate estimate value'):
             assert str(actual_results['estimates']) == expected_value, (
@@ -526,7 +550,7 @@ class TestPlanEndpoints:
                 labels_condition,
             ),
         )
-        labels, cases, test_plan = cases_with_labels
+        labels, cases, test_plan, _ = cases_with_labels
         query_params = {}
         if label_names:
             query_params['labels'] = self._label_query_params(label_names)
@@ -538,7 +562,8 @@ class TestPlanEndpoints:
             reverse_kwargs={'pk': test_plan.id},
             query_params=query_params,
         ).json()
-        assert content[0]['value'] == number_of_items
+        if number_of_items or content:
+            assert content[0]['value'] == number_of_items
 
     @pytest.mark.parametrize(
         'attribute, attr_values',
@@ -557,6 +582,7 @@ class TestPlanEndpoints:
         attribute,
         attr_values,
         request,
+        result_status_factory,
     ):
         allure.dynamic.title(f'Test histogram aggregation {request.node.callspec.id}')
         number_of_statuses = {
@@ -566,6 +592,8 @@ class TestPlanEndpoints:
             3: 10,
             4: 0,
             6: 16,
+            7: 1,
+            8: 11,
         }
         end_date = timezone.now()
         start_date = end_date - timezone.timedelta(days=1)
@@ -576,29 +604,39 @@ class TestPlanEndpoints:
                 {'point': start_date.strftime('%Y-%m-%d')},
                 {'point': end_date.strftime('%Y-%m-%d')},
             ]
-
-        statuses = ((obj.value, obj.label) for obj in TestStatuses if obj != TestStatuses.UNTESTED)
-        for status_key, status_value in statuses:
-            for _ in range(int(number_of_statuses[status_key] / 2)):
+        statuses = list(ResultStatusSelector().status_list_raw())
+        statuses.extend([
+            result_status_factory(project=test_plan.project)
+            for _ in range(len(number_of_statuses) - len(statuses))
+        ])
+        for status_key, status in zip(number_of_statuses, statuses):
+            count = int(number_of_statuses[status_key] / 2)
+            for _ in range(count):
                 attributes = {attribute: attr_values[0]} if attribute else {}
                 test_result_factory(
                     test=test_factory(plan=test_plan),
-                    status=status_key,
+                    status=status,
                     created_at=start_date,
                     attributes=attributes,
                 )
-                if expected_results[0].get(status_value.lower()):
-                    expected_results[0][status_value.lower()] += 1
-            for _ in range(int(number_of_statuses[status_key] / 2)):
+            expected_results[0][status.pk] = {
+                'label': status.name.lower(),
+                'color': status.color,
+                'count': count,
+            }
+            for _ in range(count):
                 attributes = {attribute: attr_values[1]} if attribute else {}
                 test_result_factory(
                     test=test_factory(plan=test_plan),
-                    status=status_key,
+                    status=status,
                     created_at=end_date,
                     attributes=attributes,
                 )
-                if expected_results[1].get(status_value.lower()):
-                    expected_results[1][status_value.lower()] += 1
+            expected_results[1][status.pk] = {
+                'label': status.name.lower(),
+                'color': status.color,
+                'count': count,
+            }
 
         content = superuser_client.send_request(
             self.view_name_histogram,
@@ -614,7 +652,7 @@ class TestPlanEndpoints:
         for idx in range(len(expected_results)):
             for key, value in expected_results[idx].items():
                 point = expected_results[idx]['point']
-                value_from_response = content[idx][key]
+                value_from_response = content[idx][str(key)]
                 assert value == value_from_response, (
                     f'Expect in point = {point}, '
                     f'{key} = {value}, get value = {value_from_response}'
@@ -643,7 +681,7 @@ class TestPlanEndpoints:
         labels_condition,
         number_of_items,
     ):
-        labels, cases, test_plan = cases_with_labels
+        labels, cases, test_plan, status = cases_with_labels
         now_date = timezone.now().date()
         query_params = {
             'start_date': now_date,
@@ -669,8 +707,9 @@ class TestPlanEndpoints:
             expected_status=HTTPStatus.OK,
         ).json()
         assert len(content), 'Get empty histogram data'
-        actual_result_value = content[-1][TestStatuses.PASSED.label.lower()]
-        assert actual_result_value == number_of_items, f'Expected {number_of_items} results, got {actual_result_value}'
+        actual_result_value = content[-1][str(status.pk)]
+        assert actual_result_value == {'count': number_of_items, 'color': status.color, 'label': status.name.lower()}, \
+            f'Expected {number_of_items} results, got {actual_result_value}'
 
     @allure.title('Test plan cannot be parent to itself')
     def test_child_parent_logic(self, superuser_client, test_plan_factory):
@@ -742,14 +781,14 @@ class TestPlanEndpoints:
                     'search': ' '.join([parameter.data for parameter in parameters]),
                     'treeview': 1,
                 },
-            ).json_strip(as_json=True)
+            ).json_strip()
             expected_output = model_to_dict_via_serializer(
                 self._get_search_qs_by_expected(expected_plans2),
                 TestPlanTreeSerializer,
                 many=True,
-                as_json=True,
             )
-            assert actual_data == expected_output, 'Parameters search got more elements than expected.'
+            assert sorted(actual_data, key=lambda x: x['id']) == sorted(expected_output, key=lambda x: x['id']), \
+                'Parameters search got more elements than expected.'
 
         with allure.step('Validate search with non-existent parameter returns empty body'):
             actual_data = api_client.send_request(
@@ -770,6 +809,7 @@ class TestPlanEndpoints:
         test_factory,
         test_result_factory,
         user_factory,
+        result_status_factory,
     ):
         parent_plan = test_plan_factory()
         inner_plan = test_plan_factory(parent=parent_plan)
@@ -777,19 +817,21 @@ class TestPlanEndpoints:
         test = test_factory(plan=plan)
         users_list = []
         result_list = []
+        status1 = result_status_factory(project=test.project)
+        status2 = result_status_factory(project=test.project)
         with allure.step('Create results by "Vasily Testovich{idx}" users'):
             for idx in range(int(constants.NUMBER_OF_OBJECTS_TO_CREATE / 2)):
                 user = user_factory(first_name='Vasily', last_name=f'Testovich{idx}')
                 users_list.append(user)
-                result_list.append(test_result_factory(user=user, status=0, test=test))
+                result_list.append(test_result_factory(user=user, status=status1, test=test))
         with allure.step('Create results by "Yana Albertovna{idx}" users with shifted result date'):
             for idx in range(int(constants.NUMBER_OF_OBJECTS_TO_CREATE / 2)):
                 user = user_factory(first_name='Yana', last_name=f'Albertovna{idx}')
                 users_list.append(user)
-                result = test_result_factory(user=user, status=1, test=test)
+                result = test_result_factory(user=user, status=status2, test=test)
                 with mock.patch(
-                    'django.utils.timezone.now',
-                    return_value=result.created_at + timezone.timedelta(days=3),
+                        'django.utils.timezone.now',
+                        return_value=result.created_at + timezone.timedelta(days=3),
                 ):
                     result.save()
         body = superuser_client.send_request(
@@ -805,45 +847,52 @@ class TestPlanEndpoints:
                     assert action['breadcrumbs']['parent']['title'] == inner_plan.name
                     assert action['breadcrumbs']['parent']['parent']['title'] == parent_plan.name
 
-    @pytest.mark.parametrize(
-        'filter_name, filter_values',
-        [
-            ('history_user', [('4', 1), ('4,6,8,10', 4), ('3524', 0)]),
-            ('test', [('1', 5), ('2', 10), ('3524', 0)]),
-            ('status', [('0', 5), ('1', 10), ('0,1', 15), ('3524', 0)]),
-            ('history_type', [('~', 5), ('%2B', 10), ('~,%2B', 15), ('ASD', 0)]),
-        ],
-    )
     def test_activity_filters(
         self,
         superuser_client,
-        filter_name,
-        filter_values,
         generate_historical_objects,
     ):
-        allure.dynamic.title(f'Test filter by {filter_name}')
-        parent_plan = generate_historical_objects
-        for filter_value in filter_values:
-            with allure.step(f'Validate filter by {filter_value}'):
-                args, number_of_objects = filter_value
-                response = superuser_client.send_request(
-                    self.view_name_activity,
-                    reverse_kwargs={'pk': parent_plan.id},
-                    query_params={filter_name: args},
-                ).json()
-                assert number_of_objects == response['count']
+        parent_plan, users_list, test_list, status_list = generate_historical_objects
+        conditions = [
+            ('history_user',
+             [
+                 (users_list[0].pk, 1),
+                 (f'{users_list[0].pk},{users_list[2].pk},{users_list[4].pk},{users_list[6].pk}', 4), ('0', 0),
+             ],
+             ),
+            ('test', [(test_list[0].pk, 5), (test_list[1].pk, 10), ('0', 0)]),
+            ('status',
+             [
+                 (status_list[0].pk, 5), (status_list[1].pk, 10), (f'{status_list[0].pk},{status_list[1].pk}', 15),
+                 ('0', 0),
+             ],
+             ),
+            ('history_type', [('~', 5), ('%2B', 10), ('~,%2B', 15), ('ASD', 0)]),
+        ]
+        for filter_name, filter_values in conditions:
+            allure.dynamic.title(f'Test filter by {filter_name}')
+            for filter_value in filter_values:
+                with allure.step(f'Validate filter by {filter_value}'):
+                    args, number_of_objects = filter_value
+                    response = superuser_client.send_request(
+                        self.view_name_activity,
+                        reverse_kwargs={'pk': parent_plan.id},
+                        query_params={filter_name: args},
+                    ).json()
+                    assert number_of_objects == response['count']
 
     @pytest.mark.parametrize('ordering', ['history_user', 'test__case__name', 'history_date', 'history_type'])
     def test_activity_ordering(self, superuser_client, generate_historical_objects, ordering):
         allure.dynamic.title(f'Test ordering by {ordering}')
-        parent_plan = generate_historical_objects
+        parent_plan, _, _, _ = generate_historical_objects
         for sign in ['', '-']:
             with allure.step(f'Validate {"asc" if sign else "desc"} ordering'):
                 results = TestResult.history.filter().order_by('history_date', f'{sign}{ordering}')
                 results = list(results)
                 content = superuser_client.send_request(
-                    self.view_name_activity, reverse_kwargs={'pk': parent_plan.id},
-                    query_params={'ordering': f'history_date, {sign}{ordering}'},
+                    self.view_name_activity,
+                    reverse_kwargs={'pk': parent_plan.id},
+                    query_params={'ordering': f'history_date,{sign}{ordering}'},
                 ).json()
                 response_results = []
                 for elem in content['results'].values():
@@ -866,7 +915,7 @@ class TestPlanEndpoints:
         number_of_objects,
     ):
         allure.dynamic.title(f'Test activity search filter by {search_data}')
-        parent_plan = generate_historical_objects
+        parent_plan, _, _, _ = generate_historical_objects
         response = superuser_client.send_request(
             self.view_name_activity,
             reverse_kwargs={'pk': parent_plan.id},
@@ -920,7 +969,7 @@ class TestPlanEndpoints:
                     self.view_name_case_ids,
                     reverse_kwargs={'pk': plan.id},
                 ).json()['case_ids']
-                assert case_ids == [test.case.id for test in expected_qs.order_by('case__id')]
+                assert sorted(case_ids) == sorted(test.case.id for test in expected_qs.order_by('case__id'))
         with allure.step('Validate nested plans cases not displayed with include_children=False'):
             for plan in plans:
                 case_ids = superuser_client.send_request(
@@ -928,7 +977,9 @@ class TestPlanEndpoints:
                     reverse_kwargs={'pk': plan.id},
                     query_params={'include_children': False},
                 ).json()['case_ids']
-                assert case_ids == [test.case.id for test in Test.objects.filter(plan=plan).order_by('case__id')]
+                assert sorted(case_ids) == sorted(
+                    (test.case.id for test in Test.objects.filter(plan=plan).order_by('case__id')),
+                )
 
     @pytest.mark.parametrize('to_plan', [True, False])
     def test_plan_copying_with_dst_plan(
@@ -978,8 +1029,8 @@ class TestPlanEndpoints:
         copied_plans = list(TestPlan.objects.filter(Q(pk__in=copied_plans_ids)))
         copied_tests = list(Test.objects.filter(Q(plan__pk__in=copied_plans_ids)))
         self._validate_copied_objects(
-            sorted(plans_to_copy, key=attrgetter('id')),
-            sorted(copied_plans, key=attrgetter('id')),
+            sorted(plans_to_copy, key=attrgetter('name')),
+            sorted(copied_plans, key=attrgetter('name')),
             excluded_fields=excluded_fields_plan,
         )
         self._validate_copied_objects(
@@ -1107,6 +1158,7 @@ class TestPlanEndpoints:
         self, superuser_client, test_plan,
         test_factory, test_result_factory,
         attribute, attr_values, to_str,
+        result_status_factory,
     ):
         if to_str:
             def value_to_str(obj):
@@ -1118,7 +1170,7 @@ class TestPlanEndpoints:
         for idx in range(len(attr_values)):
             test_result_factory(
                 test=test_factory(plan=test_plan),
-                status=TestStatuses.PASSED,
+                status=result_status_factory(project=test_plan.project),
                 attributes={attribute: attr_values[idx]},
             )
         content = superuser_client.send_request(
@@ -1156,6 +1208,136 @@ class TestPlanEndpoints:
         )
         with allure.step('validate response'):
             assert TestPlanCasesValidator.err_msg.format(test_cases) in response.json()['errors']
+
+    @allure.title('Test test plan labels endpoint')
+    def test_testplan_labels(
+        self,
+        superuser_client,
+        project,
+        test_plan,
+        test_case_factory,
+        labeled_item_factory,
+        test_factory,
+    ):
+        test_label_mapping = {}
+        for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
+            case = test_case_factory(project=project)
+            test = test_factory(plan=test_plan, case=case, project=project)
+            test_label_mapping[test.id] = labeled_item_factory(content_object=case).label_id
+        response_body = superuser_client.send_request(
+            self.view_name_labels,
+            reverse_kwargs={'pk': test_plan.id},
+        ).json()
+        assert len(response_body) == len(test_label_mapping)
+        deleted_test_ids = list(test_label_mapping.keys())[:constants.NUMBER_OF_OBJECTS_TO_CREATE // 2]
+        Test.objects.filter(pk__in=deleted_test_ids).delete()
+        response_body = superuser_client.send_request(
+            self.view_name_labels,
+            reverse_kwargs={'pk': test_plan.id},
+        ).json()
+        for test_id, label_id in test_label_mapping.items():
+            current_test = next((label for label in response_body if label['id'] == label_id), None)
+            if test_id in deleted_test_ids:
+                assert not current_test, 'Label from deleted list in response'
+            else:
+                assert current_test, 'Label not in response'
+
+    @pytest.mark.parametrize('is_parametrized', [False, True], ids=['not parametrized', 'parametrized'])
+    def test_plan_creation_with_custom_attributes(
+        self,
+        superuser_client,
+        project,
+        custom_attribute_factory,
+        is_parametrized,
+        request,
+        parameter_factory,
+    ):
+        allure.dynamic.title(f'Test {request.node.callspec.id} plan creation with custom attributes')
+        parameters_count = 3
+        custom_attribute_name = 'awesome_attribute'
+        custom_attribute_value = 'some_value'
+        with allure.step('Create custom attribute'):
+            custom_attribute_factory(project=project, name=custom_attribute_name, is_required=True)
+        attributes = {custom_attribute_name: custom_attribute_value}
+        payload = {
+            'name': constants.TEST_PLAN_NAME,
+            'project': project.id,
+            'due_date': constants.END_DATE,
+            'started_at': constants.DATE,
+            'attributes': {custom_attribute_name: custom_attribute_value},
+            'parameters': [parameter_factory().id for _ in range(parameters_count)] if is_parametrized else [],
+        }
+        superuser_client.send_request(self.view_name_list, payload, HTTPStatus.CREATED, RequestType.POST)
+        with allure.step('Validate plan attributes'):
+            for plan in TestPlan.objects.all():
+                assert plan.attributes == attributes
+
+    @pytest.mark.parametrize('is_parametrized', [False, True], ids=['not parametrized', 'parametrized'])
+    def test_blank_required_attr_validation(
+        self,
+        superuser_client,
+        project,
+        custom_attribute_factory,
+        is_parametrized,
+        request,
+        parameter_factory,
+    ):
+        allure.dynamic.title(f'Test {request.node.callspec.id} plan cannot be created with blank required attributes')
+        parameters_count = 3
+        custom_attribute_name = 'awesome_attribute'
+        with allure.step('Create custom attribute'):
+            custom_attribute_factory(project=project, name=custom_attribute_name, is_required=True)
+        payload = {
+            'name': constants.TEST_PLAN_NAME,
+            'project': project.id,
+            'due_date': constants.END_DATE,
+            'started_at': constants.DATE,
+            'attributes': {custom_attribute_name: ''},
+            'parameters': [parameter_factory().id for _ in range(parameters_count)] if is_parametrized else [],
+        }
+        response = superuser_client.send_request(
+            self.view_name_list,
+            payload,
+            HTTPStatus.BAD_REQUEST,
+            RequestType.POST,
+        )
+        with allure.step('Validate error message'):
+            assert response.json()['errors'][0] == FOUND_EMPTY_REQUIRED_CUSTOM_ATTRIBUTES_ERR_MSG.format(
+                [custom_attribute_name],
+            )
+
+    @pytest.mark.parametrize('is_parametrized', [False, True], ids=['not parametrized', 'parametrized'])
+    def test_required_attr_not_provided(
+        self,
+        superuser_client,
+        project,
+        custom_attribute_factory,
+        is_parametrized,
+        request,
+        parameter_factory,
+    ):
+        allure.dynamic.title(f'Test {request.node.callspec.id} plan cannot be created without required attributes')
+        parameters_count = 3
+        with allure.step('Generate custom attribute'):
+            custom_attribute = custom_attribute_factory(project=project, is_required=True)
+        payload = {
+            'name': constants.TEST_PLAN_NAME,
+            'project': project.id,
+            'due_date': constants.END_DATE,
+            'started_at': constants.DATE,
+            'attributes': {},
+            'parameters': [parameter_factory().id for _ in range(parameters_count)] if is_parametrized else [],
+        }
+        response = superuser_client.send_request(
+            self.view_name_list,
+            payload,
+            HTTPStatus.BAD_REQUEST,
+            RequestType.POST,
+        )
+        with allure.step('Validate error message'):
+            assert response.json()['errors'][0] == MISSING_REQUIRED_CUSTOM_ATTRIBUTES_ERR_MSG.format(
+                [custom_attribute.name],
+            )
 
     @classmethod
     @allure.step('Validate copied objects')

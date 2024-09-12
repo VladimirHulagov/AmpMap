@@ -143,6 +143,10 @@ export const useAntdTable = <T,>({
   }
 
   const handleSearch = (searchText: string) => {
+    setTableParams({
+      ...tableParams,
+      page: DEFAULT_PAGE,
+    })
     setSearchText(searchText.trim())
     if (!searchText.trim().length) {
       setExpandedRowKeys([])

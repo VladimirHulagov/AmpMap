@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -68,3 +68,4 @@ UPPERCASE_PASS = 'Password must have at least one uppercase character.'
 LOWERCASE_PASS = 'Password must have at least one lowercase character.'
 DIGIT_PASS = 'Password must have at least one digit.'
 SPECIAL_SYMB_PASS = 'Password must have at least one special character.'
+DUPLICATE_STATUS_ERR_MSG = 'Status name "{0}" clashes with already existing status name "{1}" in project {2}.'

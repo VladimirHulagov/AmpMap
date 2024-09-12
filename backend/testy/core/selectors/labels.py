@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -49,6 +49,7 @@ class LabelSelector:
             ).prefetch_related(
                 'tests', 'tests__case', 'tests__case__labeled_items', 'tests__case__labeled_items__label',
             ).filter(
+                tests__is_deleted=False,
                 tests__case__labeled_items__is_deleted=False,
             ).values_list(
                 'tests__case__labeled_items__label', flat=True,

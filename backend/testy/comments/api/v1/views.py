@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -31,7 +31,7 @@
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ObjectDoesNotExist
 from django.shortcuts import get_object_or_404
-from filters import TestyFilterBackend
+from django_filters.rest_framework.backends import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -48,7 +48,7 @@ class CommentsViewSet(viewsets.ModelViewSet):
     queryset = Comment.objects.none()
     serializer_class = CommentSerializer
     pagination_class = CommentSetPagination
-    filter_backends = [TestyFilterBackend, filters.OrderingFilter]
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     permission_classes = [IsAuthenticated]
     schema_tags = ['Comments']
 

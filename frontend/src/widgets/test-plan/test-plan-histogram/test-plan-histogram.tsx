@@ -9,10 +9,6 @@ import {
   YAxis,
 } from "recharts"
 
-import { colors } from "shared/config"
-
-type ValuesData = "passed" | "failed" | "skipped" | "broken" | "blocked" | "retest"
-
 interface Props {
   data: TestPlanHistogramData[]
 }
@@ -20,18 +16,47 @@ interface Props {
 const dataEmpty = [
   {
     point: "No results",
-    blocked: 0,
-    broken: 0,
-    failed: 0,
-    passed: 0,
-    retest: 0,
-    skipped: 0,
   },
 ]
 
+type TestPlanHistogramBarData = { point: string } & Record<string, number>
+
+const convertData = (data: TestPlanHistogramData[]): TestPlanHistogramBarData[] => {
+  const newResult = [] as TestPlanHistogramBarData[]
+  data.forEach((item) => {
+    const resultItem = {} as TestPlanHistogramBarData
+    Object.entries(item).forEach(([key, value]) => {
+      if (key !== "point") {
+        const v = value as TestPlanHistogramDataPoint
+        resultItem[v.label] = v.count
+      } else {
+        const v = value as string
+        resultItem.point = v
+      }
+    })
+    newResult.push(resultItem)
+  })
+
+  return newResult
+}
+
+const createStatuses = (data: TestPlanHistogramData[]): { name: string; color: string }[] => {
+  const result = {} as Record<string, string>
+  data.forEach((item) => {
+    Object.entries(item).forEach(([key, value]) => {
+      if (key !== "point") {
+        const v = value as TestPlanHistogramDataPoint
+        result[v.label.toLocaleLowerCase()] = v.color
+      }
+    })
+  })
+
+  return Object.entries(result).map(([name, color]) => ({ name, color }))
+}
+
 export const TestPlanHistogram = ({ data }: Props) => {
   const legendFormatter = (
-    value: Uppercase<ValuesData>,
+    value: Uppercase<keyof TestPlanHistogramBarData>,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     entry: any,
     index: number
@@ -47,12 +72,15 @@ export const TestPlanHistogram = ({ data }: Props) => {
 
   const interval = getPrettyInterval()
 
+  const convertedData = convertData(data)
+  const statuses = createStatuses(data)
+
   return (
     <ResponsiveContainer width="100%">
       <BarChart
         width={800}
         height={280}
-        data={data.length ? data : dataEmpty}
+        data={convertedData.length ? convertedData : dataEmpty}
         margin={{
           top: 20,
           right: 30,
@@ -64,54 +92,17 @@ export const TestPlanHistogram = ({ data }: Props) => {
         <XAxis dataKey="point" type="category" interval={interval} />
         <YAxis />
         <Tooltip />
-        <Bar
-          dataKey="passed"
-          stackId="a"
-          fill={colors.success}
-          barSize={40}
-          name="PASSED"
-          values="passed"
-        />
-        <Bar
-          dataKey="failed"
-          stackId="a"
-          fill={colors.error}
-          barSize={40}
-          name="FAILED"
-          values="failed"
-        />
-        <Bar
-          dataKey="skipped"
-          stackId="a"
-          fill={colors.skipped}
-          barSize={40}
-          name="SKIPPED"
-          values="skipped"
-        />
-        <Bar
-          dataKey="broken"
-          stackId="a"
-          fill={colors.broken}
-          barSize={40}
-          name="BROKEN"
-          values="broken"
-        />
-        <Bar
-          dataKey="blocked"
-          stackId="a"
-          fill={colors.bloked}
-          barSize={40}
-          name="BLOCKED"
-          values="blocked"
-        />
-        <Bar
-          dataKey="retest"
-          stackId="a"
-          fill={colors.warning}
-          barSize={40}
-          name="RETEST"
-          values="retest"
-        />
+        {statuses.map((status) => (
+          <Bar
+            dataKey={status.name}
+            stackId="a"
+            fill={status.color}
+            barSize={40}
+            name={status.name}
+            values={status.name}
+            key={status.name}
+          />
+        ))}
         <Legend formatter={legendFormatter} />
       </BarChart>
     </ResponsiveContainer>

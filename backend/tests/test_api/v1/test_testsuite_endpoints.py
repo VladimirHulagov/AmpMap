@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -161,12 +161,13 @@ class TestSuiteEndpoints:
             expected_status=HTTPStatus.BAD_REQUEST,
         )
 
+    @pytest.mark.parametrize('user_fixture', ['user', 'superuser'], ids=['from user', 'from superuser'])
     @pytest.mark.parametrize('is_project_specified', [False, True], ids=['project not specified', 'project specified'])
     @pytest.mark.parametrize('is_name_specified', [False, True], ids=['new name not specified', 'new name specified'])
     @pytest.mark.parametrize('is_suite_specified', [False, True], ids=['suite not specified', 'suite is specified'])
     def test_suites_copy(
         self,
-        superuser_client,
+        api_client,
         test_suite_factory,
         project_factory,
         test_case_factory,
@@ -177,7 +178,10 @@ class TestSuiteEndpoints:
         is_project_specified,
         is_name_specified,
         request,
+        user_fixture,
     ):
+        user = request.getfixturevalue(user_fixture)
+        api_client.force_login(user)
         allure.dynamic.title(f'Test suite copy with {request.node.callspec.id}')
         attach_reference = 'Some useful text about cats ![](https://possible-host.com/attachments/{attachment_id}/)'
         replacement_name = 'Suite replacement name'
@@ -228,14 +232,14 @@ class TestSuiteEndpoints:
 
         if is_suite_specified and not is_project_specified:
             with allure.step('Validate project is required to copy test suite'):
-                superuser_client.send_request(
+                api_client.send_request(
                     self.view_name_copy,
                     request_type=RequestType.POST,
                     data=data,
                     expected_status=HTTPStatus.BAD_REQUEST,
                 )
             return
-        superuser_client.send_request(
+        api_client.send_request(
             self.view_name_copy,
             request_type=RequestType.POST,
             data=data,
@@ -401,6 +405,79 @@ class TestSuiteEndpoints:
     def get_ids_from_list(cls, objs: list[models.Model]):
         return [obj.id for obj in objs]
 
+    @allure.title('Test copy suite with migrating back steps')
+    def test_copy_suite_with_migrating_steps(self, authorized_superuser_client, project, test_suite_factory):
+        suite = test_suite_factory(project=project)
+        copied_suite_name = 'copied_suite'
+        case_list_reverse = 'api:v1:testcase-list'
+        case_detail_reverse = 'api:v1:testcase-detail'
+        payload = {
+            'name': 'Case',
+            'attributes': {},
+            'attachments': [],
+            'is_steps': True,
+            'steps': [
+                {'name': '1', 'scenario': '1', 'expected': '', 'sort_order': 1, 'attachments': []},
+                {'name': '2', 'scenario': '2', 'expected': '', 'sort_order': 2, 'attachments': []},
+            ],
+            'labels': [{'name': 'new_label'}],
+            'project': project.pk,
+            'suite': suite.pk,
+        }
+        with allure.step('Create test case with steps via api'):
+            src_case_id = authorized_superuser_client.send_request(
+                case_list_reverse,
+                data=payload,
+                request_type=RequestType.POST,
+                expected_status=HTTPStatus.CREATED,
+            ).json()['id']
+        with allure.step('Bump version of test case via update'):
+            authorized_superuser_client.send_request(
+                case_detail_reverse,
+                reverse_kwargs={'pk': src_case_id},
+                data=payload,
+                request_type=RequestType.PUT,
+            )
+
+        with allure.step('Create copy of test suite via api'):
+            authorized_superuser_client.send_request(
+                self.view_name_copy,
+                data={'suites': [{'id': suite.id, 'new_name': copied_suite_name}], 'dst_project_id': project.id},
+                request_type=RequestType.POST,
+            )
+        copied_suite = TestSuite.objects.filter(name=copied_suite_name).first()
+        assert copied_suite
+        copied_case = TestCase.objects.filter(suite_id=copied_suite.id).first()
+        assert copied_case
+
+        with allure.step('Validate label history_id'):
+            label_history_id = LabeledItem.objects.get(object_id=copied_case.pk).content_object_history_id
+            assert label_history_id == copied_case.history.first().history_id
+
+        with allure.step('Bump copied case version'):
+            authorized_superuser_client.send_request(
+                self.view_name_detail,
+                reverse_kwargs={'pk': copied_case.pk},
+                data=payload,
+                request_type=RequestType.PUT,
+            )
+
+        copied_case_histories = copied_case.history.all().order_by('history_date').values_list('history_id', flat=True)
+        with allure.step('Validate steps count for all versions'):
+            for history_id in copied_case_histories:
+                resp_body = authorized_superuser_client.send_request(
+                    case_detail_reverse,
+                    reverse_kwargs={'pk': copied_case.pk},
+                    query_params={'version': history_id},
+                ).json()
+            assert len(resp_body['steps']) == 2
+        with allure.step('Validate steps count for case without version'):
+            resp_body = authorized_superuser_client.send_request(
+                case_detail_reverse,
+                reverse_kwargs={'pk': src_case_id},
+            ).json()
+            assert len(resp_body['steps']) == 2
+
     @classmethod
     def _validate_copied_objects(
         cls,
@@ -488,18 +565,19 @@ class TestSuiteEndpointsQueryParams:
                 assert actual_dict.sort(key=lambda x: x['id']) == expected_dict.sort(key=lambda x: x['id']), \
                     'Actual and expected dict are different.'
 
-    @pytest.mark.django_db(reset_sequences=True)
     @allure.title('Test search')
+    @pytest.mark.django_db(reset_sequences=True)
     def test_search(self, superuser_client, test_suite_factory, project):
         root_suite = test_suite_factory(project=project)
         inner_suite = test_suite_factory(project=project, parent=root_suite)
         expected_suites = []
         search_name = 'search_name'
         with allure.step('Create expected objects with name to be found'):
-            for _ in range(int(constants.NUMBER_OF_OBJECTS_TO_CREATE / 2)):
+            for idx in range(int(constants.NUMBER_OF_OBJECTS_TO_CREATE / 2)):
                 expected_suites.append(
                     test_suite_factory(
-                        parent=inner_suite, name=search_name,
+                        parent=inner_suite,
+                        name=f'search_name_{idx}',
                         project=project,
                     ),
                 )

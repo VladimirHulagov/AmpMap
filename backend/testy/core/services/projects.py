@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -41,13 +41,14 @@ from testy.users.services.roles import RoleService
 
 
 class ProjectService(MediaService):
-    non_side_effect_fields = ['name', 'description', 'is_archive', 'icon', 'settings', 'is_private']
+    non_side_effect_fields = ['name', 'description', 'is_archive', 'icon', 'is_private']
 
     @transaction.atomic
     def project_create(self, data: dict[str, Any], user: User) -> Project:
         project = Project.model_create(
-            fields=self.non_side_effect_fields,
+            fields=self.non_side_effect_fields + ['settings'],
             data=data,
+            commit=False,
         )
         self.populate_image_thumbnails(project.icon)
         project.save()
@@ -61,8 +62,15 @@ class ProjectService(MediaService):
         project, _ = project.model_update(
             fields=self.non_side_effect_fields,
             data=data,
+            commit=False,
         )
+        if settings := data.get('settings'):
+            self.update_settings(project, settings)
         if 'icon' in data:
             self.populate_image_thumbnails(project.icon, old_icon)
         project.save()
         return project
+
+    def update_settings(self, project, data) -> None:
+        for field, value in data.items():
+            project.settings[field] = value

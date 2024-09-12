@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -28,12 +28,10 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from contextlib import nullcontext
 
 from mptt.models import MPTTModel
 
-from testy.root.models import DeletedQuerySet, DeletedTreeQuerySet, MPTTBaseModel
-from testy.utilities.sql import lock_table
+from testy.root.models import DeletedQuerySet, DeletedTreeQuerySet
 
 _INSTANCE_IDS = 'instance_ids'
 
@@ -47,8 +45,7 @@ class RecoveryService:
 
     @classmethod
     def delete_permanently(cls, queryset: DeletedQuerySet | DeletedTreeQuerySet, data):
-        with lock_table(queryset.model) if issubclass(queryset.model, MPTTBaseModel) else nullcontext():
-            queryset.filter(id__in=data[_INSTANCE_IDS]).hard_delete()
+        queryset.filter(id__in=data[_INSTANCE_IDS]).hard_delete()
 
     @classmethod
     def get_objects_by_ids(cls, queryset, data):

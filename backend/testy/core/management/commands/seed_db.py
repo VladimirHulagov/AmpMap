@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -44,6 +44,7 @@ from testy.core.choices import ActionCode
 from testy.core.models import NotificationSetting, Project
 from testy.users.choices import RoleTypes, UserAllowedPermissionCodenames
 from testy.users.models import Role
+from allure_uploader_v2.models import ServiceType
 
 logger = logging.getLogger(__name__)
 UserModel = get_user_model()
@@ -59,6 +60,7 @@ class Command(BaseCommand):
         self.create_custom_permissions()
         self.create_default_roles()
         self.create_default_notification_settings()
+        self.create_default_uploader_services()
 
     @classmethod
     def create_default_notification_settings(cls):
@@ -147,6 +149,10 @@ class Command(BaseCommand):
                     UserAllowedPermissionCodenames.ADD_LABEL,
                     UserAllowedPermissionCodenames.CHANGE_LABEL,
                     UserAllowedPermissionCodenames.DELETE_LABEL,
+
+                    UserAllowedPermissionCodenames.ADD_STATUS,
+                    UserAllowedPermissionCodenames.CHANGE_STATUS,
+                    UserAllowedPermissionCodenames.DELETE_STATUS,
                 ],
             ),
             (
@@ -170,6 +176,10 @@ class Command(BaseCommand):
                     UserAllowedPermissionCodenames.ADD_LABEL,
                     UserAllowedPermissionCodenames.CHANGE_LABEL,
                     UserAllowedPermissionCodenames.DELETE_LABEL,
+
+                    UserAllowedPermissionCodenames.ADD_STATUS,
+                    UserAllowedPermissionCodenames.CHANGE_STATUS,
+                    UserAllowedPermissionCodenames.DELETE_STATUS,
                 ],
             ),
             (
@@ -178,12 +188,37 @@ class Command(BaseCommand):
                 ],
             ),
         ]
+
         for name, codenames in default_roles:
             permissions = Permission.objects.filter(codename__in=codenames)
             role_type = RoleTypes.SUPERUSER_ONLY if name == 'External user' else RoleTypes.SYSTEM
             created_role, is_created = Role.objects.get_or_create(name=name, type=role_type)
-            if not is_created:
+            role_difference = (
+                permissions.difference(created_role.permissions.all()).exists()
+                or created_role.permissions.difference(permissions).exists()
+            )
+            if not is_created and not role_difference:
                 logger.warning(f'Skipping creating role: {created_role.name}')
                 continue
             created_role.permissions.set(permissions)
             logger.info(f'Successfully created role: {created_role.name}')
+
+    @classmethod
+    def create_default_uploader_services(cls):
+        data = [
+            ('Default', 1, 'Default service for parsing reports, does not take into account suites hierarchy'),
+            ('Hierarchy service', 2, 'Creates hierarchy based on allure suites'),
+            ('Unique cases', 3, 'As default but takes into account history_id from allure'),
+            ('Hierarchy unique cases', 4, 'As Hierarchy service but takes into account history_id from allure'),
+            ('Performance service', 5, 'As hierarchy unique cases but for parsing large amount of data'),
+        ]
+        for verbose_name, service_code, description in data:
+            if ServiceType.objects.filter(service_code=service_code).first() is not None:
+                logger.info('Skipping creating service')
+                continue
+            service = ServiceType.objects.create(
+                verbose_name=verbose_name,
+                service_code=service_code,
+                description=description,
+            )
+            logger.info(f'Created allure-uploader-service with name "{service.verbose_name}"')

@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -43,7 +43,7 @@ from django.utils import timezone
 from pytest_factoryboy import register
 
 from tests import constants
-from tests.commons import CustomAPIClient, RequestType
+from tests.commons import CustomAPIClient, RequestType, model_to_dict_via_serializer
 from tests.factories import (
     AttachmentFactory,
     AttachmentTestCaseFactory,
@@ -63,6 +63,7 @@ from tests.factories import (
     ParameterFactory,
     PermissionFactory,
     ProjectFactory,
+    ResultStatusFactory,
     RoleFactory,
     SystemMessageFactory,
     TestCaseFactory,
@@ -77,8 +78,9 @@ from tests.factories import (
 )
 from testy.core.choices import ActionCode
 from testy.core.selectors.custom_attribute import CustomAttributeSelector
-from testy.tests_representation.choices import TestStatuses
-from testy.tests_representation.models import TestResult
+from testy.tests_representation.api.v1.serializers import ResultStatusSerializer
+from testy.tests_representation.choices import ResultStatusType
+from testy.tests_representation.models import ResultStatus, TestResult
 from testy.users.choices import UserAllowedPermissionCodenames
 
 register(ParameterFactory)
@@ -108,6 +110,7 @@ register(MembershipFactory)
 register(CustomAttributeFactory)
 register(PermissionFactory)
 register(TestResultWithStepsFactory)
+register(ResultStatusFactory)
 register(NotificationSettingFactory)
 register(NotificationFactory)
 
@@ -170,7 +173,7 @@ def several_test_plans_from_api(api_client, authorized_superuser, parameter_fact
     with allure.step('Create parameters'):
         parameters = []
         for _ in range(3):
-            parameters.append(parameter_factory().id)
+            parameters.append(parameter_factory(project=project).id)
 
     test_plan_ids = []
     with allure.step('Create plans with parameterization'):
@@ -255,12 +258,13 @@ def media_directory(settings):
 @pytest.fixture
 def data_for_cascade_tests_behaviour(
     project, test_plan_factory, test_suite_factory,
-    test_case_factory, test_factory, test_result_factory,
+    test_case_factory, test_factory, test_result_factory, result_status_factory,
 ):
     parent_plan = test_plan_factory(project=project)
     test_suite = test_suite_factory(project=project)
     test_case1 = test_case_factory(project=project, suite=test_suite)
     test_case2 = test_case_factory(project=project, suite=test_suite)
+    status = result_status_factory(project=project, name=constants.STATUS_NAME)
     expected_objects = {
         'project': [project],
         'testplan': [parent_plan],
@@ -280,12 +284,12 @@ def data_for_cascade_tests_behaviour(
             test = test_factory(case=case, plan=child_test_plans[0], project=project)
             expected_objects['test'].append(test)
             for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
-                expected_objects['result'].append(test_result_factory(test=test, project=project))
+                expected_objects['result'].append(test_result_factory(test=test, project=project, status=status))
         for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
             test = test_factory(case=case, plan=child_test_plans[-1], project=project)
             expected_objects['test'].append(test)
             for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
-                expected_objects['result'].append(test_result_factory(test=test, project=project))
+                expected_objects['result'].append(test_result_factory(test=test, project=project, status=status))
     objects_count = {}
     for key, value in expected_objects.items():
         objects_count[key] = len(value)
@@ -293,37 +297,45 @@ def data_for_cascade_tests_behaviour(
 
 
 @pytest.fixture
-def generate_historical_objects(test_plan_factory, test_factory, test_result_factory, user_factory):
+def generate_historical_objects(
+    test_plan_factory,
+    test_factory,
+    test_result_factory,
+    user_factory,
+    result_status_factory,
+):
     parent_plan = test_plan_factory()
     inner_plan = test_plan_factory(parent=parent_plan)
     plan = test_plan_factory(parent=inner_plan)
-    test = test_factory(plan=plan)
-    test2 = test_factory(plan=plan)
+    test_list = [test_factory(plan=plan), test_factory(plan=plan)]
+    status_list = [
+        result_status_factory(project=test_list[0].project), result_status_factory(project=test_list[1].project),
+    ]
     users_list = []
     result_list = []
     for idx in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
         if idx % 2 == 0:
             user = user_factory(username=f'v.testovich{idx}')
             users_list.append(user)
-            result_list.append(test_result_factory(user=user, status=0, test=test))
+            result_list.append(test_result_factory(user=user, status=status_list[0], test=test_list[0]))
         else:
             user = user_factory(username=f'y.testovich{idx}')
             users_list.append(user)
-            result = test_result_factory(user=user, status=1, test=test2)
+            result = test_result_factory(user=user, status=status_list[1], test=test_list[1])
             with mock.patch('django.utils.timezone.now', return_value=result.created_at + timezone.timedelta(days=3)):
                 result.save()
     for historical_result in TestResult.history.all():
         historical_result.history_user = historical_result.history_object.user
         historical_result.save()
-    return parent_plan
+    return parent_plan, users_list, test_list, status_list
 
 
 @pytest.fixture
 def multiple_plans_data_project_statistics(project, test_plan_factory, test_result_factory, test_factory):
     root_plans = []
     with mock.patch(
-        'django.utils.timezone.now',
-        return_value=timezone.make_aware(timezone.datetime(2000, 1, 2), timezone.utc),
+            'django.utils.timezone.now',
+            return_value=timezone.make_aware(timezone.datetime(2000, 1, 2), timezone.utc),
     ):
         for _ in range(5):
             plan = test_plan_factory(project=project)
@@ -331,8 +343,8 @@ def multiple_plans_data_project_statistics(project, test_plan_factory, test_resu
             root_plans.append(plan)
     plans_depth_1 = []
     with mock.patch(
-        'django.utils.timezone.now',
-        return_value=timezone.make_aware(timezone.datetime(2000, 1, 4), timezone.utc),
+            'django.utils.timezone.now',
+            return_value=timezone.make_aware(timezone.datetime(2000, 1, 4), timezone.utc),
     ):
         for parent_plan in root_plans:
             plan = test_plan_factory(project=project, parent=parent_plan)
@@ -340,8 +352,8 @@ def multiple_plans_data_project_statistics(project, test_plan_factory, test_resu
             plans_depth_1.append(plan)
     plans_depth_2 = []
     with mock.patch(
-        'django.utils.timezone.now',
-        return_value=timezone.make_aware(timezone.datetime(2000, 1, 4), timezone.utc),
+            'django.utils.timezone.now',
+            return_value=timezone.make_aware(timezone.datetime(2000, 1, 4), timezone.utc),
     ):
         for parent_plan in plans_depth_1:
             plan = test_plan_factory(project=project, parent=parent_plan)
@@ -365,14 +377,14 @@ def result_filter_data_project_statistics(project, test_plan_factory, test_resul
     root_plan = test_plan_factory(project=project)
     child_plan = test_plan_factory(project=project, parent=root_plan)
     with mock.patch(
-        'django.utils.timezone.now',
-        return_value=timezone.make_aware(timezone.datetime(2000, 1, 2), timezone.utc),
+            'django.utils.timezone.now',
+            return_value=timezone.make_aware(timezone.datetime(2000, 1, 2), timezone.utc),
     ):
         for _ in range(3):
             test_result_factory(test=test_factory(plan=child_plan), project=project)
     with mock.patch(
-        'django.utils.timezone.now',
-        return_value=timezone.make_aware(timezone.datetime(2000, 1, 4), timezone.utc),
+            'django.utils.timezone.now',
+            return_value=timezone.make_aware(timezone.datetime(2000, 1, 4), timezone.utc),
     ):
         test_result_factory(test=test_factory(plan=child_plan), project=project)
 
@@ -390,13 +402,20 @@ def result_filter_data_project_statistics(project, test_plan_factory, test_resul
 
 
 @pytest.fixture
-def data_different_statuses_project_statistics(project, test_plan_factory, test_result_factory, test_factory):
+def data_different_statuses_project_statistics(
+    project,
+    test_plan_factory,
+    test_result_factory,
+    test_factory,
+    result_status_factory,
+):
     root_plan = test_plan_factory(project=project)
     child_plan = test_plan_factory(project=project, parent=root_plan)
-    for day, status in zip(range(2, 12, 2), TestStatuses.values):
+    result_statuses = [result_status_factory(project=project) for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE)]
+    for day, status in zip(range(2, 12, 2), result_statuses):
         with mock.patch(
-            'django.utils.timezone.now',
-            return_value=timezone.make_aware(timezone.datetime(2000, 1, day), timezone.utc),
+                'django.utils.timezone.now',
+                return_value=timezone.make_aware(timezone.datetime(2000, 1, day), timezone.utc),
         ):
             test_result_factory(test=test_factory(plan=child_plan), project=project, status=status)
 
@@ -414,15 +433,24 @@ def data_different_statuses_project_statistics(project, test_plan_factory, test_
 
 
 @pytest.fixture
-def empty_plan_data_project_statistics(project, test_plan_factory, test_result_factory, test_factory):
+def empty_plan_data_project_statistics(
+    project,
+    test_plan_factory,
+    test_result_factory,
+    test_factory,
+    result_status_factory,
+):
     root_plan = test_plan_factory(project=project)
     root_plan_2 = test_plan_factory(project=project, parent=root_plan)
     with mock.patch(
-        'django.utils.timezone.now',
-        return_value=timezone.make_aware(timezone.datetime(2000, 1, 2), timezone.utc),
+            'django.utils.timezone.now',
+            return_value=timezone.make_aware(timezone.datetime(2000, 1, 2), timezone.utc),
     ):
-        test_result_factory(test=test_factory(plan=root_plan_2), project=project)
-
+        test_result_factory(
+            test=test_factory(plan=root_plan_2),
+            project=project,
+            status=result_status_factory(project=project),
+        )
     start_date = timezone.datetime(2000, 1, 1).isoformat()
     end_date = timezone.datetime(2000, 1, 3).isoformat()
     expected = [
@@ -460,12 +488,14 @@ def cases_with_labels(
     test_result_factory,
     test_factory,
     project,
+    result_status_factory,
 ):
     test_plan = test_plan_factory(project=project)
     label_blue_bank = label_factory(name='blue_bank')
     label_green_bank = label_factory(name='green_bank')
     label_red_bank = label_factory(name='red_bank')
     test_cases = [test_case_factory(project=project) for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE)]
+    status = result_status_factory(project=project)
     for idx in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
         if not idx % 2:
             labeled_item_factory(label=label_blue_bank, content_object=test_cases[idx])
@@ -475,10 +505,10 @@ def cases_with_labels(
             labeled_item_factory(label=label_red_bank, content_object=test_cases[idx])
         test_result_factory(
             test=test_factory(plan=test_plan, case=test_cases[idx], project=project),
-            status=TestStatuses.PASSED,
+            status=status,
             project=project,
         )
-    return [label_blue_bank, label_green_bank, label_red_bank], test_cases, test_plan
+    return [label_blue_bank, label_green_bank, label_red_bank], test_cases, test_plan, status
 
 
 @pytest.fixture
@@ -533,6 +563,15 @@ def generate_projects_and_suites(project_factory, test_suite_factory):
             for project in projects:
                 test_suite_factory(project=project)
     yield projects
+
+
+@pytest.fixture
+def system_statuses_dict():
+    return model_to_dict_via_serializer(
+        ResultStatus.objects.filter(type=ResultStatusType.SYSTEM),
+        ResultStatusSerializer,
+        many=True,
+    )
 
 
 @pytest.fixture

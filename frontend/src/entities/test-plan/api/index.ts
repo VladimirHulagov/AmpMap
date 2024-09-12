@@ -6,6 +6,8 @@ import { labelInvalidate } from "entities/label/api"
 
 import { systemStatsInvalidate } from "entities/system/api"
 
+import { testApi } from "entities/test/api"
+
 import { invalidatesList, providesList } from "shared/libs"
 
 const rootPath = "v1/testplans"
@@ -19,6 +21,7 @@ export const testPlanApi = createApi({
     "TestPlanLabels",
     "TestPlanCasesIds",
     "TestPlanHistogram",
+    "TestPlanStatuses",
   ],
   endpoints: (builder) => ({
     getTestPlans: builder.query<PaginationResponse<TestPlan[]>, QueryWithPagination<TestPlanQuery>>(
@@ -120,6 +123,7 @@ export const testPlanApi = createApi({
         dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanHistogram", id }]))
         dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanLabels", id: "LIST" }]))
         dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanCasesIds", id }]))
+        dispatch(testApi.util.invalidateTags([{ type: "Test", id: "LIST" }]))
         dispatch(labelInvalidate)
         dispatch(systemStatsInvalidate)
       },
@@ -185,12 +189,23 @@ export const testPlanApi = createApi({
       },
       invalidatesTags: [{ type: "TestPlan", id: "LIST" }],
     }),
+    getTestPlanStatuses: builder.query<Status[], string | number>({
+      query: (testPlanId) => `${rootPath}/${testPlanId}/statuses/`,
+      providesTags: (result, error, id) => [{ type: "TestPlanStatuses", id }],
+    }),
+    getTestPlanActivityStatuses: builder.query<Status[], string | number>({
+      query: (testPlanId) => `${rootPath}/${testPlanId}/activity/statuses/`,
+      providesTags: (result, error, id) => [{ type: "TestPlanStatuses", id }],
+    }),
   }),
 })
 
 export const testPlanInvalidate = testPlanApi.util.invalidateTags([
   { type: "TestPlanLabels", id: "LIST" },
 ])
+
+export const testPlanStatusesInvalidate = (id: string | number) =>
+  testPlanApi.util.invalidateTags([{ type: "TestPlanStatuses", id }])
 
 export const {
   useGetTestPlanQuery,
@@ -211,4 +226,6 @@ export const {
   useArchiveTestPlanMutation,
   useGetTestPlanHistogramQuery,
   useСopyTestPlanMutation,
+  useLazyGetTestPlanStatusesQuery,
+  useLazyGetTestPlanActivityStatusesQuery,
 } = testPlanApi

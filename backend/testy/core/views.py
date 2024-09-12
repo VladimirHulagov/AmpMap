@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -47,4 +47,4 @@ class AttachmentView(APIView, MediaViewMixin):
         attachment = get_object_or_404(Attachment, pk=pk)
         if not attachment.file or not attachment.file.storage.exists(attachment.file.path):
             return Response(status=status.HTTP_404_NOT_FOUND)
-        return self.retrieve_filepath(attachment.file, request, source_filename=attachment.filename)
+        return self.format_response(attachment.file, request, attachment.filename)

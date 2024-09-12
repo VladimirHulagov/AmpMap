@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -58,3 +58,6 @@ class UserAllowedPermissionCodenames(TextChoices):
     CHANGE_LABEL = 'change_label', 'User can change labels'
     DELETE_LABEL = 'delete_label', 'User can delete labels'
     VIEW_PROJECT_RESTRICTION = 'project_restricted', 'User can only see projects he is a member of'
+    ADD_STATUS = 'add_resultstatus', 'User can add status'
+    CHANGE_STATUS = 'change_resultstatus', 'User can change status'
+    DELETE_STATUS = 'delete_resultstatus', 'User can delete status'

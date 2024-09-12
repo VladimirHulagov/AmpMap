@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -70,6 +70,7 @@ class TestCaseEndpoints:
     view_name_tests = 'api:v1:testcase-tests'
     view_restore_version = 'api:v1:testcase-restore-version'
     view_name_search = 'api:v1:testcase-search'
+    view_name_delete_preview = 'api:v1:testcase-delete-preview'
 
     @allure.title('Test list display')
     def test_list(self, superuser_client, test_case_factory, project):
@@ -84,8 +85,10 @@ class TestCaseEndpoints:
         with allure.step('Validate response body'):
             assert response.json_strip(as_json=True) == expected
 
-    @allure.title('Test detail display')
-    def test_retrieve(self, superuser_client, test_case):
+    @pytest.mark.parametrize('is_archive', [True, False], ids=['Archived case', 'Case'])
+    def test_retrieve(self, request, superuser_client, test_case_factory, is_archive):
+        allure.dynamic.title(f'Test retrive {request.node.callspec.id}')
+        test_case = test_case_factory(is_archive=is_archive)
         expected_dict = model_to_dict_via_serializer(
             test_case,
             TestCaseMockSerializer,
@@ -410,6 +413,9 @@ class TestCaseEndpoints:
                 assert TestCaseStep.objects.count() == constants.NUMBER_OF_OBJECTS_TO_CREATE * expected_number_of_cases
         with allure.step('Validate number of labeled items'):
             assert LabeledItem.objects.count() == expected_number_of_cases
+        with allure.step('Validate labeled items history_id'):
+            history_ids = TestCase.history.filter(suite=test_suite).values_list('history_id', flat=True)
+            assert LabeledItem.objects.filter(content_object_history_id__in=history_ids).exists()
         with allure.step('Validate number of labels'):
             assert Label.objects.count() == 2
         with allure.step('Validate replacement name for case'):
@@ -643,7 +649,7 @@ class TestCaseEndpoints:
     def test_restore_version(self, superuser_client, test_case, attachment_factory):
         assert test_case.history.count(), 'History was not created'
         attachment = attachment_factory(content_object=test_case)
-        version = test_case.history.last().id
+        version = test_case.history.last().history_id
         old_name = test_case.name
         new_name = 'new_test_case_name'
         case_dict = {
@@ -984,6 +990,16 @@ class TestCaseEndpoints:
                 reverse_kwargs={'pk': pk},
                 query_params=query_params,
             ).json().get('labels'),
+        )
+
+    @allure.title('Test getting delete preview for archive test case')
+    def test_delete_preview_for_archived_case(self, superuser_client, test_case_factory, use_dummy_cache_backend):
+        test_case = test_case_factory(is_archive=True)
+        superuser_client.send_request(
+            self.view_name_delete_preview,
+            reverse_kwargs={'pk': test_case.id},
+            request_type=RequestType.GET,
+            expected_status=HTTPStatus.OK,
         )
 
 
@@ -1464,7 +1480,7 @@ class TestCaseWithStepsEndpoints:
                 {'name': '2', 'scenario': '2', 'expected': '', 'sort_order': 2, 'attachments': []},
             ],
             'project': project.pk,
-            'suite': suite.pk
+            'suite': suite.pk,
         }
         with allure.step('Create test case with steps via api'):
             src_case_id = authorized_client.send_request(

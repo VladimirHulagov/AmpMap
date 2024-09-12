@@ -66,7 +66,7 @@ export const EditTestResultsSettings = ({ project }: Props) => {
             action="updated"
             title="Project test results settings"
             link={`/administration/projects/${project.id}/settings`}
-            id={"project id"}
+            id={project.id.toString()}
           />
         ),
       })

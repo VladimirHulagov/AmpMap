@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -39,7 +39,6 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
-from testy.filters import UserFilter
 from testy.paginations import StandardSetPagination
 from testy.users.api.v1.serializers import (
     GroupSerializer,
@@ -54,6 +53,7 @@ from testy.users.api.v1.serializers import (
     UserSerializer,
     UserUpdateSerializer,
 )
+from testy.users.filters import UserFilter
 from testy.users.permissions import RolePermission, UserPermission
 from testy.users.selectors.groups import GroupSelector
 from testy.users.selectors.permissions import PermissionSelector
@@ -85,9 +85,13 @@ class UserViewSet(ModelViewSet):
     queryset = UserSelector().user_list()
     serializer_class = UserSerializer
     pagination_class = StandardSetPagination
-    filterset_class = UserFilter
     permission_classes = [IsAuthenticated, UserPermission]
     schema_tags = ['Users']
+
+    @property
+    def filterset_class(self):
+        if self.action == 'list':
+            return UserFilter
 
     def get_serializer_class(self):
         if self.action == 'create':

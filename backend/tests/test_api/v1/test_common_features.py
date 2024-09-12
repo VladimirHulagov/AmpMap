@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -73,7 +73,6 @@ class TestCommonFeatures:
             (project1, [factory(project=project1) for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE)]),
             (project2, [factory(project=project2) for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE)]),
         ]
-        api_client.send_request(view_name, expected_status=HTTPStatus.NOT_FOUND)
         for project, expected_instances in parent_to_expected_list:
             response = api_client.send_request(
                 view_name,
@@ -121,17 +120,11 @@ class TestCommonFeatures:
             expected_instances_parent_2.append(
                 factory(project=project, **{filter_name: parent_object2}),
             )
-        api_client.send_request(list_view_name, expected_status=HTTPStatus.NOT_FOUND)
 
         api_client.send_request(
             detail_view_name,
             expected_status=HTTPStatus.OK,
             reverse_kwargs={'pk': expected_instances_parent_1[0].id},
-        )
-        api_client.send_request(
-            list_view_name,
-            expected_status=HTTPStatus.NOT_FOUND,
-            query_params={filter_name: parent_object1.id},
         )
         parent_to_expected_list = [
             (parent_object1, expected_instances_parent_1),

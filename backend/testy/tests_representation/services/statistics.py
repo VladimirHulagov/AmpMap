@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -30,83 +30,168 @@
 # <http://www.gnu.org/licenses/>.
 import operator
 from datetime import datetime
+from functools import reduce
 from itertools import groupby
 from typing import Any
 
-from django.contrib.contenttypes.models import ContentType
-from django.db.models import F, Func, OuterRef, Q, QuerySet, Subquery
+from django.contrib.postgres.aggregates import ArrayAgg
+from django.db.models import Case, Count, DateTimeField, F, FloatField, Q, QuerySet, Sum, Value, When
+from django.db.models.functions import Cast, Coalesce
 from django.utils import timezone
+from tests_representation.choices import UNTESTED_STATUS
+from tests_representation.selectors.results import TestResultSelector
+from utilities.time import Period
 
-from testy.core.models import LabeledItem
+from testy.core.models import Project
 from testy.tests_description.models import TestCase
-from testy.tests_representation.choices import TestStatuses
 from testy.tests_representation.exceptions import DateRangeIsAbsent
 from testy.tests_representation.models import Test, TestResult
+from testy.tests_representation.selectors.status import ResultStatusSelector
+from testy.utilities.sql import DateTrunc
 
 _POINT = 'point'
+_COUNT = 'count'
+_COLOR = 'color'
+_RESULT_STATUS_NAME = 'status__name'
+_RESULT_STATUS_COLOR = 'status__color'
+_STATUS = 'status'
+_ESTIMATES = 'estimates'
+_EMPTY_ESTIMATES = 'empty_estimates'
+_PERIOD_DAY = 'period_day'
+_ID = 'id'
+_NAME = 'name'
+_VALUE = 'value'
+_LABEL = 'label'
 
 
-class StatisticProcessor:
+class LabelProcessor:
     def __init__(
         self,
-        filter_condition: dict[str, Any],
+        parameters: dict[str, Any],
         outer_ref_prefix: str | None = 'case',
     ):
-        self.labels = filter_condition.get('labels') or []
-        self.not_labels = filter_condition.get('not_labels') or []
-        self.labels_condition = filter_condition.get('labels_condition')
-        self.operation = operator.and_ if self.labels_condition == 'and' else operator.or_
-        self.content_type_instance = ContentType.objects.get_for_model(TestCase)
-        self.outer_ref_prefix = outer_ref_prefix
+        self.labels = []
+        self.not_labels = []
+        for key in ('labels', 'not_labels'):
+            raw_labels: str | list[int] = parameters.get(key)
+            if not raw_labels:
+                continue
+            labels = tuple(raw_labels.split(',') if isinstance(raw_labels, str) else raw_labels)
+            setattr(self, key, labels)
 
-    @property
-    def label_subquery(self) -> Subquery:
-        outer_ref_lookup = f'{self.outer_ref_prefix}_id' if self.outer_ref_prefix else 'id'
-        return Subquery(
-            LabeledItem.objects.filter(
-                object_id=OuterRef(outer_ref_lookup),
-                label_id__in=self.labels,
-                content_type=self.content_type_instance,
-                is_deleted=False,
-            ).order_by().annotate(
-                count=Func(F('id'), function='Count'),
-            ).values('count'),
-        )
-
-    @property
-    def not_condition(self) -> Q:
-        not_condition = Q()
-        labeled_item_outer_ref = f'{self.outer_ref_prefix}__labeled_items' if self.outer_ref_prefix else 'labeled_items'
-        for label in self.not_labels:
-            condition_dict = {
-                f'{labeled_item_outer_ref}__label_id': label,
-                f'{labeled_item_outer_ref}__content_type': self.content_type_instance,
-                f'{labeled_item_outer_ref}__is_deleted': False,
-            }
-            not_condition = self.operation(not_condition, ~Q(**condition_dict))
-        return not_condition
+        self.operation = operator.and_ if parameters.get('labels_condition') == 'and' else operator.or_
+        self.outer_ref_prefix = f'{outer_ref_prefix}__labeled_items' if outer_ref_prefix else 'labeled_items'
 
     def process_labels(
         self,
         instances: QuerySet[Test | TestResult | TestCase],
     ) -> QuerySet[Test | TestResult | TestCase]:
-        if self.labels_condition == 'and' and self.labels:
-            having_condition = Q(label_count=len(self.labels))
-        elif self.labels:
-            having_condition = Q(label_count__gte=1)
-        else:
-            having_condition = Q()
+        positive_condition = self._make_condition(self.labels)
+        negative_condition = self._make_condition(self.not_labels, is_negative=True)
 
-        final_condition = self.operation(self.not_condition, having_condition)
-        return instances.annotate(label_count=self.label_subquery).filter(final_condition)
+        final_condition = self.operation(positive_condition, negative_condition)
+        return instances.alias(
+            label_ids=ArrayAgg(f'{self.outer_ref_prefix}__label__pk', distinct=True),
+        ).filter(final_condition)
+
+    def _make_condition(self, labels: list[int], is_negative: bool = False) -> Q:
+        if not labels:
+            return Q()
+        lookups = [Q(label_ids__contains=[label_id]) for label_id in labels]
+        if is_negative:
+            lookups = list(map(operator.inv, lookups))
+
+        return reduce(self.operation, lookups)
+
+
+class PieChartProcessor:
+    def __init__(self, parameters: dict[str, Any]):
+        seconds = Period.MINUTE.in_seconds(in_workday=True)
+        if estimate_period := parameters.get('estimate_period'):
+            estimate_period = next(
+                (period for period in Period.list_of_workday() if period.name.lower() in estimate_period.lower()),
+                Period.SECOND,
+            )
+            seconds = estimate_period.in_seconds(in_workday=True)
+        self.seconds = seconds
+
+    def process_statistic(self, tests: QuerySet[Test], project: Project):
+        results = []
+        total_estimate = Sum(
+            Cast(F('case__estimate'), FloatField()) / self.seconds,
+            output_field=FloatField(),
+        )
+        rows = (
+            Test
+            .objects
+            .filter(pk__in=tests)
+            .annotate(
+                status=TestResultSelector.get_last_status_subquery(status_field=_ID),
+                status_name=Coalesce(
+                    TestResultSelector.get_last_status_subquery(status_field=_NAME),
+                    Value(UNTESTED_STATUS.name),
+                ),
+                status_color=Coalesce(
+                    TestResultSelector.get_last_status_subquery(status_field=_COLOR),
+                    Value(UNTESTED_STATUS.color),
+                ),
+                estimates=Coalesce(total_estimate, 0, output_field=FloatField()),
+                is_empty_estimate=Case(
+                    When(Q(case__estimate__isnull=True), then=1),
+                    default=0,
+                ),
+                empty_estimates=Sum('is_empty_estimate'),
+            )
+            .values(
+                _STATUS, 'status_color', 'status_name', _ESTIMATES, _EMPTY_ESTIMATES,
+            )
+            .annotate(count=Count(_ID, distinct=True))
+            .order_by('-count')
+        )
+        presented_statuses = set()
+        for row in rows:
+            results.append(
+                {
+                    _ID: row[_STATUS],
+                    _LABEL: row['status_name'].upper(),
+                    _COLOR: row['status_color'],
+                    _VALUE: row['count'],
+                    'estimates': round(row[_ESTIMATES], 2),
+                    'empty_estimates': row[_EMPTY_ESTIMATES],
+                },
+            )
+            presented_statuses.add(row[_STATUS])
+        for status in ResultStatusSelector.status_list(project=project).exclude(pk__in=presented_statuses):
+            results.append(
+                {
+                    _ID: status.pk,
+                    _LABEL: status.name.upper(),
+                    _COLOR: status.color,
+                    _VALUE: 0,
+                    _ESTIMATES: 0,
+                    _EMPTY_ESTIMATES: 0,
+                },
+            )
+        if None not in presented_statuses:
+            results.append(
+                {
+                    _ID: UNTESTED_STATUS.id,
+                    _LABEL: UNTESTED_STATUS.name.upper(),
+                    _COLOR: UNTESTED_STATUS.color,
+                    _VALUE: 0,
+                    _ESTIMATES: 0,
+                    _EMPTY_ESTIMATES: 0,
+                },
+            )
+        return results
 
 
 class HistogramProcessor:
-    def __init__(self, request_data: dict[str, Any]) -> None:
-        self.attribute = request_data.get('attribute', None)
+    def __init__(self, parameters: dict[str, Any]) -> None:
+        self.attribute = parameters.get('attribute', None)
         self.period = []
         for key in ('start_date', 'end_date'):
-            value = request_data.get(key, None)
+            value = parameters.get(key, None)
             if not value:
                 raise DateRangeIsAbsent
             date = datetime.strptime(value, '%Y-%m-%d')
@@ -122,17 +207,24 @@ class HistogramProcessor:
             )
         }
 
-    def fill_empty_points(self, result: list[dict[str, Any]]):
+    def fill_empty_points(self, result: list[dict[str, Any]], test_plan_statuses: QuerySet):
         for unused_date in self.all_dates:
             item = {_POINT: unused_date.date()}
             item.update(
-                {status.label.lower(): 0 for status in TestStatuses if status != TestStatuses.UNTESTED},
+                {
+                    status[_STATUS]: {
+                        _LABEL: status[_RESULT_STATUS_NAME].lower(),
+                        _COUNT: 0,
+                        _COLOR: status[_RESULT_STATUS_COLOR],
+                    }
+                    for status in test_plan_statuses
+                },
             )
             result.append(item)
         return result
 
     def group_by_date(self, instance):
-        return instance.get('period_day', None)
+        return instance.get(_PERIOD_DAY, None)
 
     def group_by_attribute(self, instance):
         key_name = f'attributes__{self.attribute}'
@@ -140,28 +232,83 @@ class HistogramProcessor:
 
     def process_statistic(
         self,
-        test_results_formatted: QuerySet[dict[str, Any]],
+        test_results: QuerySet[TestResult],
+        project: Project,
     ) -> list[dict[str, Any]]:
+        query_kwargs = self._get_query_kwargs()
+        test_results_formatted = (
+            TestResultSelector
+            .result_list_by_ids(test_results)
+            .filter(
+                created_at__range=self.period,
+                **query_kwargs.get('filter_condition', {}),
+            )
+            .annotate(**query_kwargs.get('annotate_condition', {}))
+            .values(*query_kwargs.get('values_list', [])).distinct()
+            .annotate(status_count=Count(_ID))
+            .order_by(query_kwargs.get('order_condition', _ID))
+        )
         group_func = self.group_by_attribute if self.attribute else self.group_by_date
         grouped_data = groupby(test_results_formatted, group_func)
         result = []
-
+        test_plan_statuses = (
+            ResultStatusSelector()
+            .status_list(project=project)
+            .annotate(status=F(_ID), status__name=F('name'), status__color=F(_COLOR))
+            .values(_STATUS, _RESULT_STATUS_NAME, _RESULT_STATUS_COLOR)
+        )
         for group_key, group_values in grouped_data:
             if not self.attribute:
                 self.all_dates.remove(group_key)
+
             histogram_bar_data = {
-                status.label.lower(): 0 for status in TestStatuses if status != TestStatuses.UNTESTED
+                obj[_STATUS]: {
+                    _LABEL: obj[_RESULT_STATUS_NAME].lower(),
+                    _COUNT: obj['status_count'],
+                    _COLOR: obj[_RESULT_STATUS_COLOR],
+                }
+                for obj in group_values
             }
-            histogram_bar_data.update({
-                TestStatuses(obj['status']).label.lower(): obj['status_count'] for obj in group_values
-            })
+            empty_statuses = {
+                empty_status[_STATUS]: {
+                    _LABEL: empty_status[_RESULT_STATUS_NAME].lower(),
+                    _COUNT: 0,
+                    _COLOR: empty_status[_RESULT_STATUS_COLOR],
+                }
+                for empty_status in test_plan_statuses.exclude(pk__in=histogram_bar_data.keys())
+            }
+            histogram_bar_data.update(empty_statuses)
             histogram_bar_data[_POINT] = group_key if self.attribute else group_key.date()
             result.append(histogram_bar_data)
 
         if not self.attribute:
-            result = self.fill_empty_points(result)
+            result = self.fill_empty_points(result, test_plan_statuses)
 
         if self.attribute and all(isinstance(obj[_POINT], int) for obj in result):
             return sorted(result, key=lambda obj: obj[_POINT])
 
         return sorted(result, key=lambda obj: str(obj[_POINT]))
+
+    def _get_query_kwargs(self):
+        query_kwargs = {}
+        if self.attribute:
+            query_kwargs['order_condition'] = f'attributes__{self.attribute}'
+            query_kwargs['values_list'] = (
+                f'attributes__{self.attribute}',
+                _STATUS,
+                _RESULT_STATUS_NAME,
+                _RESULT_STATUS_COLOR,
+            )
+            query_kwargs['filter_condition'] = {'attributes__has_key': self.attribute}
+
+        else:
+            query_kwargs['order_condition'] = _PERIOD_DAY
+            query_kwargs['values_list'] = (_PERIOD_DAY, _STATUS, _RESULT_STATUS_NAME, _RESULT_STATUS_COLOR)
+            query_kwargs['annotate_condition'] = {
+                _PERIOD_DAY: DateTrunc(
+                    'day',
+                    'created_at',
+                    output_field=DateTimeField(),
+                ),
+            }
+        return query_kwargs

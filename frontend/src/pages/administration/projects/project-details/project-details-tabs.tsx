@@ -29,6 +29,11 @@ const ProjectDetailsTabs = ({
       path: `/administration/projects/${projectId}/labels`,
     },
     {
+      label: "Statuses",
+      key: "statuses",
+      path: `/administration/projects/${projectId}/statuses`,
+    },
+    {
       label: "Custom Attributes",
       key: "attributes",
       path: `/administration/projects/${projectId}/attributes`,

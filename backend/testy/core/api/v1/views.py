@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -37,7 +37,6 @@ from notifications.models import Notification
 from rest_framework import mixins, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
-from rest_framework.filters import OrderingFilter
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
@@ -60,6 +59,15 @@ from testy.core.api.v1.serializers import (
     ProjectStatisticsSerializer,
     SystemMessageSerializer,
 )
+from testy.core.filters import (
+    AttachmentFilter,
+    CustomAttributeFilter,
+    LabelFilter,
+    NotificationFilter,
+    NotificationSettingFilter,
+    ProjectFilter,
+    ProjectOrderingFilter,
+)
 from testy.core.mixins import MediaViewMixin
 from testy.core.models import Project, SystemMessage
 from testy.core.permissions import (
@@ -78,17 +86,6 @@ from testy.core.services.custom_attribute import CustomAttributeService
 from testy.core.services.labels import LabelService
 from testy.core.services.notifications import NotificationService
 from testy.core.services.projects import ProjectService
-from testy.filters import (
-    AttachmentFilter,
-    CustomAttributeFilter,
-    LabelFilter,
-    NotificationFilter,
-    NotificationSettingFilter,
-    ProjectFilter,
-    ProjectOrderingFilter,
-    TestyFilterBackend,
-    UserFilter,
-)
 from testy.paginations import StandardSetPagination
 from testy.root.mixins import TestyArchiveMixin, TestyDestroyModelMixin, TestyModelViewSet, TestyRestoreModelMixin
 from testy.swagger.projects import (
@@ -107,12 +104,14 @@ from testy.tests_representation.api.v1.serializers import (
 from testy.tests_representation.selectors.parameters import ParameterSelector
 from testy.tests_representation.selectors.testplan import TestPlanSelector
 from testy.users.api.v1.serializers import UserRoleSerializer
+from testy.users.filters import UserFilter
 from testy.users.models import Membership, User
 from testy.users.selectors.roles import RoleSelector
 from testy.users.services.roles import RoleService
 from testy.utilities.request import PeriodDateTime
 
 _GET = 'get'
+_MEMBERS = 'members'
 _LIST = 'list'
 _POST = 'post'
 _SETTINGS = 'settings'
@@ -121,12 +120,18 @@ _SETTINGS = 'settings'
 class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin, MediaViewMixin):
     queryset = ProjectSelector.project_list_raw()
     serializer_class = ProjectSerializer
-    filter_backends = [TestyFilterBackend, ProjectOrderingFilter]
-    filterset_class = ProjectFilter
+    filter_backends = [DjangoFilterBackend, ProjectOrderingFilter]
     permission_classes = [permissions.IsAdminOrForbidArchiveUpdate, ProjectPermission, ProjectIsPrivatePermission]
     ordering_fields = ['name', 'is_archive']
     pagination_class = StandardSetPagination
     schema_tags = ['Projects']
+
+    @property
+    def filterset_class(self):
+        if self.action == _LIST:
+            return ProjectFilter
+        if self.action == _MEMBERS:
+            return UserFilter
 
     def get_queryset(self):
         project_selector = ProjectSelector(self.request.user)
@@ -141,20 +146,21 @@ class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin, MediaViewMixin):
             return ProjectRetrieveSerializer
         if self.action == _LIST:
             return ProjectStatisticsSerializer
-        if self.action == 'members':
+        if self.action == _MEMBERS:
             return UserRoleSerializer
         return ProjectSerializer
 
-    @action(methods=[_GET], url_path='members', url_name='members', detail=True)
+    @action(methods=[_GET], url_path=_MEMBERS, url_name=_MEMBERS, detail=True)
     def members(self, request, pk):
-        project = self.get_object()
+        project = get_object_or_404(Project, pk=pk)
+        self.check_object_permissions(request, project)
         users = User.objects.filter(memberships__project=project).distinct().prefetch_related(
             Prefetch('memberships', queryset=Membership.objects.filter(project=project)),
             'groups',
             'memberships__role',
             'memberships__role__permissions',
         ).order_by('-id')
-        qs = UserFilter.filter_queryset_flat(users, request)
+        qs = self.filter_queryset(users)
         page = self.paginate_queryset(qs)
         serializer = self.get_serializer(page, many=True, context=self.get_serializer_context())
         return self.get_paginated_response(serializer.data)
@@ -190,7 +196,7 @@ class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin, MediaViewMixin):
         project = get_object_or_404(Project, pk=pk)
         if not project.icon or not project.icon.storage.exists(project.icon.path):
             return Response(status=status.HTTP_404_NOT_FOUND)
-        return self.retrieve_filepath(project.icon, request, generate_thumbnail=False)
+        return self.format_response(project.icon, request)
 
     @project_progress_schema
     @action(methods=[_GET], url_path='progress', url_name='progress', detail=True)
@@ -248,8 +254,12 @@ class AttachmentViewSet(
     queryset = AttachmentSelector().attachment_list()
     serializer_class = AttachmentSerializer
     permission_classes = [IsAuthenticated, AttachmentPermission]
-    filter_backends = [TestyFilterBackend]
-    filterset_class = AttachmentFilter
+    filter_backends = [DjangoFilterBackend]
+
+    @property
+    def filterset_class(self):
+        if self.action == _LIST:
+            return AttachmentFilter
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -267,10 +277,14 @@ class AttachmentViewSet(
 class LabelViewSet(TestyModelViewSet):
     queryset = LabelSelector().label_list()
     serializer_class = LabelSerializer
-    filter_backends = [TestyFilterBackend, OrderingFilter]
-    filterset_class = LabelFilter
+    filter_backends = [DjangoFilterBackend]
     permission_classes = [IsAuthenticated, BaseProjectPermission]
     schema_tags = ['Labels']
+
+    @property
+    def filterset_class(self):
+        if self.action == _LIST:
+            return LabelFilter
 
     def perform_create(self, serializer: ProjectSerializer):
         serializer.instance = LabelService().label_create(serializer.validated_data)
@@ -301,8 +315,12 @@ class SystemStatisticViewSet(mixins.ListModelMixin, GenericViewSet):
 class CustomAttributeViewSet(TestyModelViewSet):
     queryset = CustomAttributeSelector().custom_attribute_list()
     serializer_class = CustomAttributeInputSerializer
-    filter_backends = [TestyFilterBackend]
-    filterset_class = CustomAttributeFilter
+    filter_backends = [DjangoFilterBackend]
+
+    @property
+    def filterset_class(self):
+        if self.action == _LIST:
+            return CustomAttributeFilter
 
     def get_serializer_class(self):
         if self.action in {_LIST, 'retrieve'}:

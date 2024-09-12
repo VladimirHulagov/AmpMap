@@ -1,12 +1,16 @@
 import { PieChartOutlined, SettingOutlined, TableOutlined, UserOutlined } from "@ant-design/icons"
-import { Layout, Menu, MenuProps, notification } from "antd"
+import { Layout, Menu, MenuProps } from "antd"
+import { ResultStatusType } from "antd/es/result"
 import { useEffect } from "react"
-import { Link, Outlet, useSearchParams } from "react-router-dom"
+import { Link, Outlet, useLocation } from "react-router-dom"
 import { FooterView as Footer, HeaderView, SystemMessages } from "widgets"
 
-import { useAppSelector } from "app/hooks"
+import { useAppDispatch, useAppSelector } from "app/hooks"
+import { handleError, selectAppError } from "app/slice"
 
 import { selectUser } from "entities/auth/model"
+
+import { ErrorPage } from "pages/error-page/error-page"
 
 import { MenuContext } from "."
 import { useMain } from "./model/use-main"
@@ -58,20 +62,14 @@ const getMenuProps = (user: User | null): MenuProps => ({
 export const Main = () => {
   const { collapsed, activeMenu, openSubMenu, onHandleCollapsed, setActiveMenu, setOpenSubMenu } =
     useMain()
+  const dispatch = useAppDispatch()
+  const location = useLocation()
   const user = useAppSelector(selectUser)
+  const appError = useAppSelector(selectAppError)
 
-  const [searchParams] = useSearchParams()
-  const { error, errorPage } = Object.fromEntries(searchParams)
   useEffect(() => {
-    if (error === "403") {
-      notification.error({
-        message: "Error",
-        description: `You do not have permission to access ${errorPage ?? "this"} page`,
-      })
-      searchParams.delete("errorPage")
-      searchParams.delete("error")
-    }
-  }, [error])
+    dispatch(handleError(null))
+  }, [location.pathname])
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
@@ -89,13 +87,17 @@ export const Main = () => {
         <Layout className="site-layout">
           <SystemMessages />
           <HeaderView />
-          <Content>
-            <MenuContext.Provider
-              value={{ activeMenu, setActiveMenu, openSubMenu, setOpenSubMenu }}
-            >
-              <Outlet />
-            </MenuContext.Provider>
-          </Content>
+          {appError ? (
+            <ErrorPage code={appError.code as ResultStatusType} message={appError.message} />
+          ) : (
+            <Content>
+              <MenuContext.Provider
+                value={{ activeMenu, setActiveMenu, openSubMenu, setOpenSubMenu }}
+              >
+                <Outlet />
+              </MenuContext.Provider>
+            </Content>
+          )}
           <Footer />
         </Layout>
       </Layout>

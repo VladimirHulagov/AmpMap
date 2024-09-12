@@ -2,7 +2,6 @@ import { PlusOutlined } from "@ant-design/icons"
 import { Button, Col, Divider, Form, Modal, Row, Select, Upload } from "antd"
 import { Controller } from "react-hook-form"
 
-import { statuses } from "shared/config"
 import { ErrorObj } from "shared/hooks/use-alert-error"
 import { AlertError, Attachment, Attribute, Status, Steps, TextAreaWithAttach } from "shared/ui"
 
@@ -48,6 +47,7 @@ export const TestResultEditCloneModal = ({
     handleAttachmentsChange,
     handleAttachmentsRemove,
     register,
+    statuses,
   } = useEditCloneResultModal({
     isShow,
     setIsShow,
@@ -100,8 +100,8 @@ export const TestResultEditCloneModal = ({
                   return (
                     <Select {...field} placeholder="Please select" style={{ width: "100%" }}>
                       {statuses.map((status) => (
-                        <Select.Option key={status.value} value={Number(status.value)}>
-                          <Status value={status.label} />
+                        <Select.Option key={status.id} value={Number(status.id)}>
+                          <Status name={status.name} color={status.color} id={status.id} />
                         </Select.Option>
                       ))}
                     </Select>

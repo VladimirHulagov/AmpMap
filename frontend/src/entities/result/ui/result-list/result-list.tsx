@@ -62,78 +62,86 @@ export const ResultList = ({ testId, testCase, isProjectArchive }: ResultListPro
 
   return (
     <div className={styles.resultList} id="test-result">
-      {results.map((result) => (
-        <div
-          id={`result-${result.id}`}
-          key={result.id}
-          className={classNames(styles.resultListItem, {
-            [styles.activeHashResult]: location.hash === `#result-${result.id}`,
-          })}
-        >
-          <div className={styles.resultListHeader}>
-            <div className={styles.resultListHeaderBase}>
+      {results.map((result) => {
+        return (
+          <div
+            id={`result-${result.id}`}
+            key={result.id}
+            className={classNames(styles.resultListItem, {
+              [styles.activeHashResult]: location.hash === `#result-${result.id}`,
+            })}
+          >
+            <div className={styles.resultListHeader}>
+              <div className={styles.resultListHeaderBase}>
+                <Space>
+                  <UserAvatar size={32} avatar_link={result.avatar_link} />
+                  <p style={{ margin: 0, fontWeight: 500 }} id="test-result-username">
+                    {result.user_full_name ? result.user_full_name : "-"}
+                  </p>
+                </Space>
+              </div>
               <Space>
-                <UserAvatar size={32} avatar_link={result.avatar_link} />
-                <p style={{ margin: 0, fontWeight: 500 }} id="test-result-username">
-                  {result.user_full_name ? result.user_full_name : "-"}
-                </p>
+                {result.is_archive ? (
+                  <div>
+                    <Tag color={colors.error}>Archived</Tag>
+                  </div>
+                ) : null}
+                <div className={styles.resultListHeaderStatus}>
+                  {result.status_text && (
+                    <Status
+                      name={result.status_text}
+                      id={result.status}
+                      color={result.status_color}
+                    />
+                  )}
+                </div>
               </Space>
             </div>
-            <Space>
-              {result.is_archive ? (
-                <div>
-                  <Tag color={colors.error}>Archived</Tag>
-                </div>
-              ) : null}
-              <div className={styles.resultListHeaderStatus}>
-                <Status value={result.status_text as Statuses} />
-              </div>
-            </Space>
-          </div>
-          <div className={styles.resultListBody}>
-            <TestResultComment result={result} />
-            {!!result.steps_results.length && (
-              <TestResultSteps stepsResult={result.steps_results} />
-            )}
-            <AttributesObjectView attributes={result.attributes} />
-            {!!result.attachments.length && <Attachment.Field attachments={result.attachments} />}
-          </div>
-          <div className={styles.resultListFooter}>
-            <span>
-              <HashLink
-                className={styles.link}
-                to={`/projects/${result.project}/plans/${testPlanId}/?test=${testId}#result-${result.id}`}
-              >
-                {dayjs(result.created_at).format("YYYY-MM-DD HH:mm")}
-              </HashLink>
-              <span className={styles.divider}>|</span>
-              {result.test_case_version && (
-                <Link
-                  className={styles.link}
-                  to={`/projects/${result.project}/suites/${testCase.suite}/?test_case=${testCase.id}&version=${result.test_case_version}`}
-                >
-                  ver. {result.test_case_version}
-                </Link>
+            <div className={styles.resultListBody}>
+              <TestResultComment result={result} />
+              {!!result.steps_results.length && (
+                <TestResultSteps stepsResult={result.steps_results} />
               )}
-            </span>
-            <span>
-              <EditCloneResult
-                isDisabled={isProjectArchive}
-                testCase={testCase}
-                testResult={result}
-                isClone={true}
-              />
-              <span className={styles.divider}>|</span>
-              <EditCloneResult
-                isDisabled={isProjectArchive}
-                testCase={testCase}
-                testResult={result}
-                isClone={false}
-              />
-            </span>
+              <AttributesObjectView attributes={result.attributes} />
+              {!!result.attachments.length && <Attachment.Field attachments={result.attachments} />}
+            </div>
+            <div className={styles.resultListFooter}>
+              <span>
+                <HashLink
+                  className={styles.link}
+                  to={`/projects/${result.project}/plans/${testPlanId}/?test=${testId}#result-${result.id}`}
+                >
+                  {dayjs(result.created_at).format("YYYY-MM-DD HH:mm")}
+                </HashLink>
+                <span className={styles.divider}>|</span>
+                {result.test_case_version && (
+                  <Link
+                    className={styles.link}
+                    to={`/projects/${result.project}/suites/${testCase.suite}/?test_case=${testCase.id}&version=${result.test_case_version}`}
+                  >
+                    ver. {result.test_case_version}
+                  </Link>
+                )}
+              </span>
+              <span>
+                <EditCloneResult
+                  isDisabled={isProjectArchive}
+                  testCase={testCase}
+                  testResult={result}
+                  isClone={true}
+                />
+                <span className={styles.divider}>|</span>
+                <EditCloneResult
+                  isDisabled={isProjectArchive}
+                  testCase={testCase}
+                  testResult={result}
+                  isClone={false}
+                />
+              </span>
+            </div>
           </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
 }

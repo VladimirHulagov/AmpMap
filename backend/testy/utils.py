@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -32,9 +32,11 @@ import logging
 import time
 from contextlib import contextmanager
 from hashlib import md5
-from pathlib import Path, PurePath
+from pathlib import PurePath
 
 from celery_progress.backend import ProgressRecorder
+
+from testy.utilities.string import strip_suffixes
 
 
 class ProgressRecorderContext(ProgressRecorder):
@@ -66,7 +68,8 @@ def get_attachments_file_path(instance, filename):  # Exists because we don't wa
 
 
 def get_media_file_path(instance, original_filename, media_name):
-    extension = Path(original_filename).suffix
-    timestamp_hash = md5(str(time.time()).encode(), usedforsecurity=False).hexdigest()
-    new_filename = f'{timestamp_hash}{extension}'
+    name, suffix = strip_suffixes(original_filename)
+    hash_source = str(time.time()) + str(name)
+    timestamp_hash = md5(hash_source.encode(), usedforsecurity=False).hexdigest()
+    new_filename = f'{timestamp_hash}{suffix}'
     return PurePath(media_name, new_filename[:2], new_filename)

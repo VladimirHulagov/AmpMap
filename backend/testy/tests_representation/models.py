@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -44,7 +44,7 @@ from testy.core.models import Attachment, Project
 from testy.root.mixins import TestyArchiveMixin
 from testy.root.models import BaseModel, MPTTBaseModel
 from testy.tests_description.models import TestCase, TestCaseStep
-from testy.tests_representation.choices import TestStatuses
+from testy.tests_representation.choices import ResultStatusType
 from testy.users.models import User
 
 UserModel = get_user_model()
@@ -74,6 +74,7 @@ class TestPlan(MPTTBaseModel, TestyArchiveMixin):
     is_archive = models.BooleanField(default=False)
     description = models.TextField('description', default='', blank=True)
     comments = GenericRelation(Comment)
+    attributes = models.JSONField(default=dict, blank=True)
 
     class Meta:
         default_related_name = 'test_plans'
@@ -92,9 +93,20 @@ class Test(BaseModel):
         default_related_name = 'tests'
 
 
+class ResultStatus(BaseModel):
+    name = models.CharField(max_length=settings.CHAR_FIELD_MAX_LEN)
+    color = models.CharField(max_length=settings.CHAR_FIELD_MAX_LEN, default='#000000')
+    type = models.IntegerField(choices=ResultStatusType.choices, default=ResultStatusType.CUSTOM)
+    project = models.ForeignKey(to=Project, on_delete=models.CASCADE, null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'Result status'
+        verbose_name_plural = 'Result statuses'
+
+
 class TestResult(BaseModel):
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
-    status = models.IntegerField(choices=TestStatuses.choices, default=TestStatuses.UNTESTED)
+    status = models.ForeignKey(to=ResultStatus, on_delete=models.SET_NULL, null=True)
     test = models.ForeignKey(Test, on_delete=models.CASCADE, related_name='results')
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     comment = models.TextField(blank=True)
@@ -140,5 +152,5 @@ class TestStepResult(BaseModel):
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
     test_result = models.ForeignKey(TestResult, on_delete=models.CASCADE, related_name='steps_results')
     step = models.ForeignKey(TestCaseStep, on_delete=models.CASCADE, related_name='result')
-    status = models.IntegerField(choices=TestStatuses.choices, default=TestStatuses.UNTESTED)
+    status = models.ForeignKey(to=ResultStatus, on_delete=models.SET_NULL, null=True)
     history = HistoricalRecords()

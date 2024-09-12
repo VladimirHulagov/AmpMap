@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -52,4 +52,5 @@ class V1RootView(APIRootView):
             'users': reverse('api:v1:user-list', request=request, format=format),
             'groups': reverse('api:v1:group-list', request=request, format=format),
             'attachments': reverse('api:v1:attachment-list', request=request, format=format),
+            'statuses': reverse('api:v1:status-list', request=request, format=format),
         })

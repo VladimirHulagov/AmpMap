@@ -1,11 +1,12 @@
 import { AnyAction, ThunkDispatch } from "@reduxjs/toolkit"
 import { createApi } from "@reduxjs/toolkit/dist/query/react"
+import { statusInvalidate } from "entities/status/api"
 
 import { baseQueryWithLogout } from "app/apiSlice"
 
 import { testApi } from "entities/test/api"
 
-import { testPlanApi } from "entities/test-plan/api"
+import { testPlanApi, testPlanStatusesInvalidate } from "entities/test-plan/api"
 
 import { invalidatesList, providesList } from "shared/libs"
 
@@ -18,6 +19,9 @@ const invalidateListTags = (
 
   dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanStatistics", id: testPlanId }]))
   dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanHistogram", id: testPlanId }]))
+
+  dispatch(statusInvalidate)
+  dispatch(testPlanStatusesInvalidate(testPlanId))
 }
 
 export const resultApi = createApi({

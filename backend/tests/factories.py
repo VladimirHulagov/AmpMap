@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -51,8 +51,9 @@ from testy.core.models import (
 )
 from testy.core.selectors.custom_attribute import CustomAttributeSelector
 from testy.tests_description.models import TestCase, TestCaseStep, TestSuite
-from testy.tests_representation.choices import TestStatuses
-from testy.tests_representation.models import Parameter, Test, TestPlan, TestResult, TestStepResult
+from testy.tests_representation.choices import ResultStatusType
+from testy.tests_representation.models import Parameter, ResultStatus, Test, TestPlan, TestResult, TestStepResult
+from testy.tests_representation.selectors.status import ResultStatusSelector
 from testy.users.choices import RoleTypes
 from testy.users.models import Group, Membership, Role
 
@@ -65,7 +66,7 @@ class ProjectFactory(DjangoModelFactory):
 
     name = Sequence(lambda n: f'{constants.PROJECT_NAME}{n}')
     description = constants.DESCRIPTION
-    settings = {'is_result_editable': True, 'result_edit_limit': 3600}
+    settings = {'is_result_editable': True, 'result_edit_limit': 3600, 'status_order': {}}
 
 
 class ParameterFactory(DjangoModelFactory):
@@ -81,7 +82,7 @@ class UserFactory(DjangoModelFactory):
     class Meta:
         model = UserModel
 
-    username = Sequence(lambda n: f'{constants.USERNAME}{n}@yadro.com')
+    username = Sequence(lambda n: f'{constants.USERNAME}{n}@example.com')
     first_name = constants.FIRST_NAME
     last_name = constants.LAST_NAME
     password = make_password(constants.PASSWORD)
@@ -203,17 +204,29 @@ class TestFactory(DjangoModelFactory):
     is_archive = False
 
 
+class ResultStatusFactory(DjangoModelFactory):
+    name = Sequence(lambda n: f'{constants.STATUS_NAME}{n}')
+    type = ResultStatusType.CUSTOM
+    color = Sequence(lambda n: f'{constants.STATUS_COLOR}{n}')
+    project = SubFactory(ProjectFactory)
+
+    class Meta:
+        model = ResultStatus
+
+
 class TestResultFactory(DjangoModelFactory):
     class Meta:
         model = TestResult
 
     test = SubFactory(TestFactory)
-    status = TestStatuses.UNTESTED
+    status = SubFactory(ResultStatusFactory)
     comment = constants.TEST_COMMENT
     project = SubFactory(ProjectFactory)
     execution_time = constants.EXECUTION_TIME
     user = SubFactory(UserFactory)
-    test_case_version = 1
+    test_case_version = LazyAttribute(
+        lambda obj: obj.test.case.history.first().history_id if isinstance(obj.test, Test) else None,
+    )
 
     @classmethod
     def _create(cls, target_class, *args, **kwargs):
@@ -229,7 +242,7 @@ class TestStepResultFactory(DjangoModelFactory):
     project = SubFactory(ProjectFactory)
     test_result = SubFactory(TestResultFactory)
     step = SubFactory(TestCaseStepFactory)
-    status = TestStatuses.PASSED
+    status = SubFactory(ResultStatusFactory)
 
     class Meta:
         model = TestStepResult
@@ -241,7 +254,10 @@ class TestResultWithStepsFactory(TestResultFactory):
         if extracted:
             self.steps_results.add(*extracted)
         for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
-            self.steps_results.add(TestStepResultFactory(project=self.project, test_result=self))
+            self.steps_results.add(TestStepResultFactory(
+                project=self.project, test_result=self, status=ResultStatusFactory(project=self.project),
+            ),
+            )
 
 
 class CommentBaseFactory(DjangoModelFactory):
@@ -376,6 +392,15 @@ class CustomAttributeFactory(DjangoModelFactory):
 
     class Meta:
         model = CustomAttribute
+
+    @post_generation
+    def status_specific(self, create, extracted, **kwargs):
+        if extracted:
+            self.status_specific = extracted
+        else:
+            self.status_specific = list(
+                ResultStatusSelector.status_list(project=self.project).values_list('id', flat=True),
+            )
 
 
 class PermissionFactory(DjangoModelFactory):

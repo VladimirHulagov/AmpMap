@@ -1,8 +1,6 @@
 type Modify<T, R> = Omit<T, keyof R> & R
 
 type Id = number
-type Statuses = "Failed" | "Passed" | "Skipped" | "Broken" | "Blocked" | "Untested" | "Retest"
-type StatusesCaps = "FAILED" | "PASSED" | "SKIPPED" | "BROKEN" | "BLOCKED" | "UNTESTED" | "RETEST"
 type BaseParams = Record<string, string | undefined>
 interface ParamTestSuiteId extends BaseParams {
   testSuiteId: string
@@ -108,4 +106,13 @@ interface WebSocketState<T> {
   connected: boolean
   messages: T[]
   lastMessage: T | null
+}
+
+interface AppState {
+  error: ErrorState | null
+}
+
+interface ErrorState {
+  code: number
+  message: string
 }

@@ -1,13 +1,13 @@
 import { Select } from "antd"
-
-import { statusesWithoutUntested } from "shared/config"
+import { useStatuses } from "entities/status/model/use-statuses"
+import { useParams } from "react-router-dom"
 
 import styles from "./styles.module.css"
 
 interface StepResultProps {
   stepResultsData: StepResult[]
-  stepResults: Record<string, string>
-  setStepsResult: React.Dispatch<React.SetStateAction<Record<string, string>>>
+  stepResults: Record<string, number>
+  setStepsResult: React.Dispatch<React.SetStateAction<Record<string, number>>>
 }
 
 export const StepResultInEditModal = ({
@@ -15,7 +15,9 @@ export const StepResultInEditModal = ({
   stepResults,
   setStepsResult,
 }: StepResultProps) => {
-  const handleStepChange = (stepId: string, value: string) => {
+  const { projectId } = useParams<ParamProjectId>()
+  const { statusesOptions } = useStatuses({ project: projectId })
+  const handleStepChange = (stepId: string, value: number) => {
     setStepsResult((prevState) => ({ ...prevState, [stepId]: value }))
   }
 
@@ -35,12 +37,11 @@ export const StepResultInEditModal = ({
             </div>
             <div className={styles.resultSelect}>
               <Select
-                value={stepResults[item.id]}
+                value={stepResults[item.id] ?? null}
                 placeholder="Please select"
                 style={{ width: "100%" }}
-                options={statusesWithoutUntested}
-                onSelect={(value) => handleStepChange(String(item.id), String(value))}
-                defaultValue={statusesWithoutUntested[1].value}
+                options={statusesOptions}
+                onSelect={(value) => handleStepChange(String(item.id), value)}
               />
             </div>
           </li>

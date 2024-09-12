@@ -34,15 +34,7 @@ export const testApi = createApi({
         url: `${rootPath}/`,
         params,
       }),
-      providesTags: (data) =>
-        data
-          ? [
-              ...data.results.map(({ id }) => ({
-                type: "Test" as const,
-                id: String(id),
-              })),
-            ]
-          : [{ type: "Test", id: "LIST" }],
+      providesTags: () => [{ type: "Test", id: "LIST" }],
     }),
     updateTest: builder.mutation<Test, { id: Id; body: TestUpdate }>({
       query: ({ id, body }) => ({

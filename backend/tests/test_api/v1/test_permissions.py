@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -626,6 +626,63 @@ class TestRolePermissions:
                         'roles': [role.pk],
                     },
                 )
+
+    @allure.title('Test user can copy suite in private project')
+    def test_private_project_permissions_allowing_copy_suite(
+        self,
+        role_factory,
+        project_factory,
+        authorized_client,
+        user,
+        test_suite_factory,
+    ):
+        copy_reverse = 'api:v1:testsuite-copy'
+        with allure.step('Create private project'):
+            project = project_factory(is_private=True)
+        with allure.step('Create test suites'):
+            test_suite_parent_1 = test_suite_factory(project=project)
+            test_suite_parent_2 = test_suite_factory(project=project)
+            test_suite_child = test_suite_factory(project=project, parent=test_suite_parent_1)
+
+        with allure.step('Create role without permissions'):
+            role_no_perms = role_factory()
+        with allure.step('Select permissions for suite'):
+            permissions = PermissionSelector.permission_by_codenames(
+                [
+                    'change_testsuite',
+                    'change_testcase',
+                    'view_project',
+                ],
+            )
+        with allure.step('Set permissions on role'):
+            role = role_factory(permissions=permissions)
+
+        payload_data = {
+            'suites': [
+                {
+                    'id': test_suite_child.pk,
+                    'new_name': 'child_Copy',
+                },
+            ],
+            'dst_project_id': project.pk,
+            'dst_suite_id': test_suite_parent_2.pk,
+        }
+
+        with self._role(project, user, role_no_perms):
+            authorized_client.send_request(
+                view_name=copy_reverse,
+                request_type=RequestType.POST,
+                expected_status=HTTPStatus.FORBIDDEN,
+                data=payload_data,
+            )
+
+        with self._role(project, user, role):
+            authorized_client.send_request(
+                view_name=copy_reverse,
+                data=payload_data,
+                request_type=RequestType.POST,
+                expected_status=HTTPStatus.OK,
+            )
 
     @contextmanager
     def _role(self, project: Project, user: User, role: Role):

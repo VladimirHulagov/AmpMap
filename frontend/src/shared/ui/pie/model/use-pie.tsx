@@ -1,29 +1,8 @@
+import { useStatuses } from "entities/status/model/use-statuses"
 import { useCallback, useMemo } from "react"
+import { useParams } from "react-router-dom"
 
 import { colors } from "shared/config"
-import { getStatusNumberByTextAndUndefinedNull } from "shared/libs"
-
-const getColorByStatus = (status: string) => {
-  switch (status) {
-    case "UNTESTED":
-      return colors.broken
-    case "PASSED":
-      return colors.success
-    case "FAILED":
-      return colors.error
-    case "RETEST":
-      return colors.warning
-    case "SKIPPED":
-      return colors.skipped
-    case "BROKEN":
-      return colors.broken
-    case "BLOCKED":
-      return colors.bloked
-
-    default:
-      return colors.broken
-  }
-}
 
 interface UsePieProps {
   data: TestPlanStatistics[]
@@ -34,17 +13,22 @@ interface UsePieProps {
 }
 
 export const usePie = ({ data, tableParams, setTableParams, type, period }: UsePieProps) => {
+  const { projectId, testPlanId } = useParams<ParamProjectId & ParamTestPlanId>()
+  const { getStatusNumberByText, isLoading } = useStatuses({ project: projectId, plan: testPlanId })
   const getNewLastStatuses = (label: string) => {
-    const status = getStatusNumberByTextAndUndefinedNull(label)
+    if (isLoading) {
+      return []
+    }
+    const status = getStatusNumberByText(label)
     const oldStatuses = tableParams.filters?.last_status ?? []
-    const isIncluded = oldStatuses.includes(status)
+    const isIncluded = status === null ? false : oldStatuses.includes(status)
     const isOne = oldStatuses.length === 1
 
     if (isIncluded) {
       return isOne ? [] : oldStatuses.filter((i) => i !== status)
     }
 
-    return [...oldStatuses, status]
+    return [...oldStatuses, status].filter(Boolean) as string[]
   }
 
   const isAllZero = useMemo(() => {
@@ -59,10 +43,10 @@ export const usePie = ({ data, tableParams, setTableParams, type, period }: UseP
   const formatData = useMemo(() => {
     return data.map((item) => ({
       ...item,
-      fill: getColorByStatus(item.label),
+      fill: item.color,
       [type]: isAllZero ? 1 : item[type],
     }))
-  }, [data, isAllZero])
+  }, [data, isAllZero, isLoading])
 
   // TODO need refactoring
   const legendFormatter = useCallback(
@@ -125,7 +109,7 @@ export const usePie = ({ data, tableParams, setTableParams, type, period }: UseP
         </span>
       )
     },
-    [isAllZero, tableParams, period]
+    [isAllZero, tableParams, period, getStatusNumberByText]
   )
 
   const tooltipFormatter = useCallback(
@@ -146,8 +130,8 @@ export const usePie = ({ data, tableParams, setTableParams, type, period }: UseP
   }
 
   const checkActive = (label: string) => {
-    const status = getStatusNumberByTextAndUndefinedNull(label)
-    return tableParams.filters?.last_status?.some((i) => String(i) === status) ?? false
+    const status = getStatusNumberByText(label)
+    return tableParams.filters?.last_status?.some((i) => i === status) ?? false
   }
 
   return {

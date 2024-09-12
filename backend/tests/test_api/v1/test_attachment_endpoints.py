@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -124,8 +124,8 @@ class TestAttachmentEndpoints:
                 self.attachment_file_response_view_name,
                 reverse_kwargs={'pk': attachment_id},
                 query_params={'width': resolution[0], 'height': resolution[1]},
-            ).content
-            img = Image.open(io.BytesIO(content))
+            ).streaming_content
+            img = Image.open(io.BytesIO(b''.join(content)))
             assert resolution[0] == img.width, 'width did not match'
             assert resolution[1] == img.height, 'height did not match'
             assert number_of_objects_to_create == number_of_objects_in_dir, 'Already existing file was created again.'
@@ -151,9 +151,9 @@ class TestAttachmentEndpoints:
         attachment_file_path = Path(media_directory, self.attachments_folder, files_folder)
         assert number_of_objects_to_create == len(os.listdir(attachment_file_path))
         test_mod_parameters = [
-            (350, 350),
-            (350, None),
-            (None, 350),
+            (16, 16),
+            (32, 32),
+            (512, 512),
         ]
         for width, height in test_mod_parameters:
             query_params = {}
@@ -165,12 +165,11 @@ class TestAttachmentEndpoints:
                 self.attachment_file_response_view_name,
                 reverse_kwargs={'pk': attachment_id},
                 query_params=query_params,
-            ).content
-            img = Image.open(io.BytesIO(content))
+            ).streaming_content
+            img = Image.open(io.BytesIO(b''.join(content)))
             # image is scaled saving aspect ratio
             assert width if width else height == img.width, 'width did not match'
             assert height if height else width == img.height, 'height did not match'
-            number_of_objects_to_create += 1
             assert number_of_objects_to_create == len(os.listdir(attachment_file_path)), \
                 'Already existing file was created again.'
 
@@ -265,3 +264,18 @@ class TestAttachmentEndpoints:
             expected_status=HTTPStatus.NO_CONTENT,
         )
         assert not Attachment.objects.count()
+
+
+@pytest.mark.django_db
+class TestAttachmentFilter:
+    list_view_name = 'api:v1:attachment-list'
+
+    def test_project_filter(self, attachment_factory, project_factory, authorized_client, test_case):
+        project_to_discover = project_factory()
+        attachment_factory(project=project_to_discover, content_object=test_case)
+        attachment_factory(project=project_factory(), content_object=test_case)
+        resp_body = authorized_client.send_request(
+            self.list_view_name,
+            query_params={'project': project_to_discover.id},
+        ).json_strip(is_paginated=False)
+        assert len(resp_body) == 1

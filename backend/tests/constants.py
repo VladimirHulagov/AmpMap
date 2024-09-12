@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -56,7 +56,8 @@ INPUT_ESTIMATE = '10d 2h'
 EXECUTION_TIME = 1000000
 DATE = timezone.now()
 END_DATE = DATE + timezone.timedelta(days=1)
-STATUS_NAME = 'PASSED'
+STATUS_NAME = 'NEW'
+STATUS_COLOR = '#00000'
 STATUS_CODE = 1
 TEST_COMMENT = 'TestComment'
 GROUP_NAME = 'TestGroup'
@@ -87,6 +88,7 @@ LIST_VIEW_NAMES = {
     'case-list': 'api:v1:testcase-list',
     'user-list': 'api:v1:user-list',
     'parameter-list': 'api:v1:parameter-list',
+    'status-list': 'api:v1:status-list',
 }
 DETAIL_VIEW_NAMES = {
     'project-list': 'api:v1:project-detail',
@@ -97,4 +99,5 @@ DETAIL_VIEW_NAMES = {
     'case-list': 'api:v1:testcase-detail',
     'user-list': 'api:v1:user-detail',
     'parameter-list': 'api:v1:parameter-detail',
+    'status-list': 'api:v1:status-detail',
 }

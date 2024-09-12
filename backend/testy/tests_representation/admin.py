@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2023 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -34,7 +34,7 @@ from mptt.admin import MPTTModelAdmin
 from simple_history.admin import SimpleHistoryAdmin
 
 from testy.root.admin import BaseAdmin
-from testy.tests_representation.models import Test, TestPlan, TestResult
+from testy.tests_representation.models import ResultStatus, Test, TestPlan, TestResult
 
 
 @admin.register(TestPlan)
@@ -54,3 +54,9 @@ class TestResultAdmin(SimpleHistoryAdmin):
     list_display = ('id', 'project', 'test', 'status', 'user', 'test_case_version', 'execution_time', 'is_archive')
     search_fields = ('id',)
     list_filter = ('project', 'status', 'is_archive')
+
+
+@admin.register(ResultStatus)
+class ResultStatusAdmin(admin.ModelAdmin):
+    fields = ('name', 'type', 'color', 'project')
+    search_fields = ('name',)

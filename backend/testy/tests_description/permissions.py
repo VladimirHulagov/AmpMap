@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -29,6 +29,7 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 from rest_framework.permissions import SAFE_METHODS
+from users.choices import UserAllowedPermissionCodenames
 
 from testy.core.permissions import BaseProjectPermission
 from testy.tests_description.api.v1.serializers import TestCaseCopySerializer, TestSuiteCopySerializer
@@ -108,6 +109,12 @@ class TestSuiteCopyPermission(BaseProjectPermission):
             )
         if suite := serializer.validated_data.get('dst_suite_id'):
             is_allowed_list.append(self.has_object_permission(request, view, suite))
-        if project := serializer.validated_data.get('dst_project_id'):
-            is_allowed_list.append(self.has_object_permission(request, view, project))
+        if (project := serializer.validated_data.get('dst_project_id')) and project.is_private:
+            is_allowed_list.append(
+                RoleSelector.action_allowed_for_instance(
+                    user=request.user,
+                    project=project,
+                    permission_code=UserAllowedPermissionCodenames.VIEW_PROJECT,
+                ),
+            )
         return all(is_allowed_list)

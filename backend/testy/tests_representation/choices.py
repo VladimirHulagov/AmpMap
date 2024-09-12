@@ -1,5 +1,5 @@
 # TestY TMS - Test Management System
-# Copyright (C) 2022 KNS Group LLC (YADRO)
+# Copyright (C) 2024 KNS Group LLC (YADRO)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License as published
@@ -28,18 +28,28 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
+from collections import namedtuple
 
 from django.db import models
-from django.utils.translation import gettext_lazy as _
 
 from testy.core.mixins import CallableChoicesMixin
 
 
 class TestStatuses(CallableChoicesMixin, models.IntegerChoices):
-    FAILED = 0, _('Failed')
-    PASSED = 1, _('Passed')
-    SKIPPED = 2, _('Skipped')
-    BROKEN = 3, _('Broken')
-    BLOCKED = 4, _('Blocked')
-    UNTESTED = 5, _('Untested')
-    RETEST = 6, _('Retest')
+    FAILED = 0, 'Failed'
+    PASSED = 1, 'Passed'
+    SKIPPED = 2, 'Skipped'
+    BROKEN = 3, 'Broken'
+    BLOCKED = 4, 'Blocked'
+    UNTESTED = 5, 'Untested'
+    RETEST = 6, 'Retest'
+    ROLLBACKED = 7, 'Rollbacked'
+
+
+class ResultStatusType(models.IntegerChoices):
+    SYSTEM = 0, 'System'
+    CUSTOM = 1, 'Custom'
+
+
+# Untested status does not exist in db
+UNTESTED_STATUS = namedtuple('Status', 'id name color')(None, TestStatuses.UNTESTED.label, 'rgba(160, 160, 160, 1)')

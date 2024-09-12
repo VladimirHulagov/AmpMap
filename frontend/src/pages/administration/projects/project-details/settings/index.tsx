@@ -43,7 +43,7 @@ export const ProjectDetailsSettingsPage = () => {
         <Field
           title="Is Editable"
           value={
-            <TagBoolean value={data.settings.is_result_editable} trueText="Yes" falseText="No" />
+            <TagBoolean value={!!data.settings.is_result_editable} trueText="Yes" falseText="No" />
           }
         />
         {data.settings.is_result_editable && <Field title="Edit time" value={editTime} />}
