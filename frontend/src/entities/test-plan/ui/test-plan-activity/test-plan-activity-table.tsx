@@ -29,7 +29,7 @@ export const TestPlanActivityTable = ({
       ))}
       <Pagination
         defaultCurrent={1}
-        pageSize={10}
+        pageSize={testPlanActivity.pagination?.pageSize ?? 10}
         total={testPlanActivity.data.count}
         style={{ width: "fit-content", marginLeft: "auto" }}
         onChange={testPlanActivity.handlePaginationChange}

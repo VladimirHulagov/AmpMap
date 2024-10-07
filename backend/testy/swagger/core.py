@@ -28,48 +28,27 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from django.utils.decorators import method_decorator
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
-from swagger.common_query_parameters import is_archive_parameter, ordering_param_factory, search_param_factory
-from swagger.custom_schema_generation import TestyPaginatorInspector
 
-from testy.tests_representation.api.v1.serializers import TestSerializer
-
-test_list_schema = method_decorator(
-    name='list',
-    decorator=swagger_auto_schema(
-        manual_parameters=[
-            is_archive_parameter,
-            ordering_param_factory(
-                'id',
-                'last_status',
-                'created_at',
-                'case_name',
-                'is_archive',
-                'assignee',
-                'suite_path',
-                'assignee_username',
-            ),
-            openapi.Parameter(
-                'labels_condition',
-                openapi.IN_QUERY,
-                type=openapi.TYPE_STRING,
-                description='Condition for boolean logic for labels, options are: and/or',
-            ),
-            openapi.Parameter(
-                'nested_search',
-                openapi.IN_QUERY,
-                type=openapi.TYPE_BOOLEAN,
-                description='Condition for suites nested search',
-            ),
-            search_param_factory('case__name'),
-        ],
-        paginator_inspectors=[TestyPaginatorInspector],
-    ),
+preview_model_schema = openapi.Schema(
+    type=openapi.TYPE_OBJECT,
+    properties={
+        'count': openapi.Schema(type=openapi.TYPE_INTEGER, description='Count of objects'),
+        'verbose_name': openapi.Schema(type=openapi.TYPE_STRING, description='Verbose name of model'),
+        'verbose_name_related_model': openapi.Schema(
+            type=openapi.TYPE_STRING,
+            description='Verbose name of related model',
+        ),
+    },
 )
 
-test_bulk_update_schema = swagger_auto_schema(
-    responses={status.HTTP_200_OK: TestSerializer()},
+preview_models_schema = openapi.Schema(
+    type=openapi.TYPE_ARRAY,
+    items=preview_model_schema,
+)
+
+preview_schema = swagger_auto_schema(
+    responses={status.HTTP_200_OK: preview_models_schema},
 )

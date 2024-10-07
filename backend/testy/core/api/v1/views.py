@@ -88,11 +88,22 @@ from testy.core.services.notifications import NotificationService
 from testy.core.services.projects import ProjectService
 from testy.paginations import StandardSetPagination
 from testy.root.mixins import TestyArchiveMixin, TestyDestroyModelMixin, TestyModelViewSet, TestyRestoreModelMixin
+from testy.swagger.custom_attributes import (
+    custom_attributes_allowed_content_types,
+    custom_attributes_create_schema,
+    custom_attributes_update_schema,
+)
+from testy.swagger.notifications import (
+    disable_notifications_schema,
+    enable_notifications_schema,
+    notification_list_schema,
+    notification_mark_as_schema,
+)
 from testy.swagger.projects import (
+    project_access_schema,
     project_create_schema,
     project_list_schema,
-    project_parameters_schema,
-    project_plans_schema,
+    project_members_schema,
     project_progress_schema,
     project_update_schema,
 )
@@ -148,8 +159,13 @@ class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin, MediaViewMixin):
             return ProjectStatisticsSerializer
         if self.action == _MEMBERS:
             return UserRoleSerializer
+        if self.action == 'testplans_by_project':
+            return TestPlanTreeSerializer
+        if self.action == 'parameters_by_project':
+            return ParameterSerializer
         return ProjectSerializer
 
+    @project_members_schema
     @action(methods=[_GET], url_path=_MEMBERS, url_name=_MEMBERS, detail=True)
     def members(self, request, pk):
         project = get_object_or_404(Project, pk=pk)
@@ -165,13 +181,13 @@ class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin, MediaViewMixin):
         serializer = self.get_serializer(page, many=True, context=self.get_serializer_context())
         return self.get_paginated_response(serializer.data)
 
-    @project_plans_schema
     @action(methods=[_GET], url_path='testplans', url_name='testplans', detail=True)
     def testplans_by_project(self, request, pk):
         qs = TestPlanSelector().testplan_project_root_list(project_id=pk)
-        serializer = TestPlanTreeSerializer(qs, many=True, context=self.get_serializer_context())
+        serializer = self.get_serializer(qs, many=True, context=self.get_serializer_context())
         return Response(serializer.data)
 
+    @project_access_schema
     @action(methods=[_POST], url_path='access', url_name='access', detail=True)
     def request_access(self, request, pk):
         project = get_object_or_404(Project, pk=pk)
@@ -184,11 +200,10 @@ class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin, MediaViewMixin):
         RoleService.access_request_create(project, request.user, serializer.validated_data.get('reason'))
         return Response(data='Request sent!')
 
-    @project_parameters_schema
     @action(methods=[_GET], url_path='parameters', url_name='parameters', detail=True)
     def parameters_by_project(self, request, pk):
         qs = ParameterSelector().parameter_project_list(project_id=pk)
-        serializer = ParameterSerializer(qs, many=True, context=self.get_serializer_context())
+        serializer = self.get_serializer(qs, many=True, context=self.get_serializer_context())
         return Response(serializer.data)
 
     @action(methods=[_GET], url_path='icon', url_name='icon', detail=True)
@@ -255,6 +270,7 @@ class AttachmentViewSet(
     serializer_class = AttachmentSerializer
     permission_classes = [IsAuthenticated, AttachmentPermission]
     filter_backends = [DjangoFilterBackend]
+    schema_tags = ['Attachments']
 
     @property
     def filterset_class(self):
@@ -316,6 +332,7 @@ class CustomAttributeViewSet(TestyModelViewSet):
     queryset = CustomAttributeSelector().custom_attribute_list()
     serializer_class = CustomAttributeInputSerializer
     filter_backends = [DjangoFilterBackend]
+    schema_tags = ['Custom attributes']
 
     @property
     def filterset_class(self):
@@ -327,11 +344,13 @@ class CustomAttributeViewSet(TestyModelViewSet):
             return CustomAttributeOutputSerializer
         return CustomAttributeInputSerializer
 
+    @custom_attributes_allowed_content_types
     @action(methods=[_GET], url_path='content-types', url_name='content-types', detail=False)
     def get_allowed_content_types(self, request):
         allowed_content_types = CustomAttributeSelector.get_allowed_content_types()
         return Response(ContentTypeSerializer(allowed_content_types, many=True).data, status=status.HTTP_200_OK)
 
+    @custom_attributes_create_schema
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -341,6 +360,7 @@ class CustomAttributeViewSet(TestyModelViewSet):
             status=status.HTTP_201_CREATED,
         )
 
+    @custom_attributes_update_schema
     def update(self, request, *args, **kwargs):
         partial = kwargs.get('partial', False)
         instance = self.get_object()
@@ -350,6 +370,7 @@ class CustomAttributeViewSet(TestyModelViewSet):
         return Response(CustomAttributeOutputSerializer(new_instance, context=self.get_serializer_context()).data)
 
 
+@notification_list_schema
 class NotificationViewSet(
     mixins.RetrieveModelMixin,
     TestyDestroyModelMixin,
@@ -389,6 +410,7 @@ class NotificationViewSet(
     def notification_settings(self, request):
         return Response(data=self.get_serializer(self.get_queryset(), many=True).data)
 
+    @notification_mark_as_schema
     @action(methods=[_POST], url_name='mark-as', url_path='mark-as', detail=False)
     def mark_as(self, request):
         serializer = self.get_serializer(data=request.data)
@@ -401,6 +423,7 @@ class NotificationViewSet(
             ),
         )
 
+    @enable_notifications_schema
     @action(methods=[_POST], url_name='enable', url_path='enable', detail=False)
     def enable_notifications(self, request):
         serializer = self.get_serializer(data=request.data)
@@ -410,6 +433,7 @@ class NotificationViewSet(
         message = ', '.join([code.verbose_name for code in codes])
         return Response(f'Enabled notifications for {message}')
 
+    @disable_notifications_schema
     @action(methods=[_POST], url_name='disable', url_path='disable', detail=False)
     def disable_notifications(self, request):
         serializer = self.get_serializer(data=request.data)

@@ -19,7 +19,7 @@ import { Space, Table } from "antd"
 import { ColumnsType } from "antd/es/table"
 import { useGetStatusesQuery } from "entities/status/api"
 import { getStatusTypeTextByNumber } from "entities/status/lib"
-import { DeleteStatusButton, EditStatusButton } from "features/status"
+import { DeleteStatusButton, EditStatusButton, SetDefaultStatusButton } from "features/status"
 import { useEffect, useState } from "react"
 import { useParams } from "react-router-dom"
 
@@ -101,7 +101,15 @@ export const StatusesTable = ({ onChangeOrder }: Props) => {
       render: (_, record) => getStatusTypeTextByNumber(record.type),
     },
     {
-      title: "Action",
+      title: "Default",
+      dataIndex: "default",
+      key: "default",
+      render: (_, record) => {
+        return <SetDefaultStatusButton record={record} />
+      },
+    },
+    {
+      title: "Actions",
       key: "action",
       width: 100,
       render: (_, record) => {

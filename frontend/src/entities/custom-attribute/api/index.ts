@@ -2,7 +2,6 @@ import { createApi } from "@reduxjs/toolkit/dist/query/react"
 
 import { baseQueryWithLogout } from "app/apiSlice"
 
-import { customAttributeContentTypeNames } from "shared/config/custom-attribute-types"
 import { invalidatesList, providesList } from "shared/libs"
 
 const rootPath = "v1/custom-attributes"
@@ -49,7 +48,7 @@ export const customAttributeApi = createApi({
       query: () => ({ url: `${rootPath}/content-types/` }),
       transformResponse: (response: CustomAttributeContentTypesResponse) =>
         response?.map((type) => ({
-          label: customAttributeContentTypeNames[type.model],
+          label: type.name,
           value: type.id,
         })) ?? [],
     }),

@@ -28,8 +28,11 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
+from typing import Optional
+
 from django.db.models import OuterRef, QuerySet, Subquery
 from django.db.models.functions import Trunc
+from tests_representation.exceptions import AttributeParameterIsAbsent
 
 from testy.tests_representation.models import Test, TestPlan, TestResult
 
@@ -67,6 +70,20 @@ class TestResultSelector:
     @classmethod
     def result_list_by_ids(cls, test_plan_ids: list[int]) -> QuerySet[TestResult]:
         return TestResult.objects.filter(pk__in=test_plan_ids)
+
+    @classmethod
+    def result_by_attributes(
+        cls,
+        test_plan_id: Optional[int] = None,
+        attribute_name: Optional[str] = None,
+        attribute_value: Optional[str] = None,
+    ) -> QuerySet[TestResult]:
+        if not all([test_plan_id, attribute_value, attribute_name]):
+            raise AttributeParameterIsAbsent
+        return TestResult.objects.filter(
+            test__plan_id=test_plan_id,
+            **{f'attributes__{attribute_name}__iexact': attribute_value},
+        )
 
     @classmethod
     def result_cascade_history_list_by_test_plan(cls, instance: TestPlan):

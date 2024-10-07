@@ -41,7 +41,8 @@ type CustomAttributeTypes = "Text" | "List" | "JSON"
 interface CustomAttributeContentTypeItemResponse {
   id: number
   app_label: string
-  model: "testcase" | "testresult"
+  model: string
+  name: string
 }
 
 type CustomAttributeContentTypesResponse = CustomAttributeContentTypeItemResponse[]

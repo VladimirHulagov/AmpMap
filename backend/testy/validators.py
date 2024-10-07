@@ -28,11 +28,9 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-import datetime
 import os
 from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping, Protocol
 
-import pytimeparse
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
@@ -116,41 +114,9 @@ def validator_launcher(
 
 
 @deconstructible
-class EstimateValidator:
-    def __call__(self, value):  # noqa: WPS238, WPS231
-        estimate = value.get('estimate')
-        if not estimate:
-            return
-        estimate = estimate.strip()
-        if estimate[0] == '-':
-            raise ValidationError('Estimate value cannot be negative.')
-        for week_alias in ('w', 'wk', 'week', 'weeks'):
-            if week_alias in estimate:
-                raise ValidationError('Max estimate period is a day')
-        estimate = f'{estimate}m' if estimate.isnumeric() else estimate
-        secs = pytimeparse.parse(estimate)
-        if not secs:
-            raise ValidationError('Invalid estimate format.')
-        try:
-            datetime.timedelta(seconds=secs)
-        except OverflowError:
-            raise ValidationError('Estimate value is too big.')
-
-
-@deconstructible
 class CaseInsensitiveUsernameValidator:
     def __call__(self, value):
         if get_user_model().objects.filter(username__iexact=value).exclude(username=value).exists():
             raise ValidationError(
                 [{'username': ['A user with that username in a different letter case already exists.']}],
             )
-
-
-@deconstructible
-class DateRangeValidator:
-    def __call__(self, attrs):
-        started_at = attrs.get('started_at')
-        due_date = attrs.get('due_date')
-
-        if started_at and due_date and started_at >= due_date:
-            raise ValidationError('End date must be greater than start date.')

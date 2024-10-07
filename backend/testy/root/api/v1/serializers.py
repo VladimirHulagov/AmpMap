@@ -28,14 +28,8 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from rest_framework.exceptions import APIException
+from rest_framework.serializers import ListField, Serializer
 
 
-class DateRangeIsAbsent(APIException):
-    status_code = 400
-    default_detail = {'errors': ['Date interval is not passed']}
-
-
-class AttributeParameterIsAbsent(APIException):
-    status_code = 400
-    default_detail = {'errors': ['Attribute parameters are not passed']}
+class RecoveryInputSerializer(Serializer):
+    instance_ids = ListField()

@@ -34,7 +34,6 @@ from core.selectors.projects import ProjectSelector
 from django.db.models import QuerySet
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_yasg.utils import swagger_auto_schema
 from mptt.exceptions import InvalidMove
 from rest_framework import status
 from rest_framework.decorators import action
@@ -52,15 +51,19 @@ from testy.permissions import ForbidChangesOnArchivedProject, IsAdminOrForbidArc
 from testy.root.mixins import TestyArchiveMixin, TestyModelViewSet
 from testy.swagger.results import result_list_schema
 from testy.swagger.testplans import (
+    get_plan_histogram_schema,
+    get_plan_statistic_schema,
     plan_activity_schema,
     plan_case_ids_schema,
+    plan_copy_schema,
     plan_create_schema,
     plan_labels_schema,
     plan_list_schema,
     plan_progress_schema,
+    plan_suites_ids_schema,
     plan_update_schema,
 )
-from testy.swagger.tests import test_list_schema
+from testy.swagger.tests import test_bulk_update_schema, test_list_schema
 from testy.tests_description.api.v1.serializers import TestSuiteTreeBreadcrumbsSerializer
 from testy.tests_description.selectors.cases import TestCaseSelector
 from testy.tests_description.selectors.suites import TestSuiteSelector
@@ -74,7 +77,6 @@ from testy.tests_representation.api.v1.serializers import (
     TestPlanOutputSerializer,
     TestPlanProgressSerializer,
     TestPlanRetrieveSerializer,
-    TestPlanStatisticsSerializer,
     TestPlanTreeSerializer,
     TestPlanUpdateSerializer,
     TestResultActivitySerializer,
@@ -142,7 +144,7 @@ class TestPLanStatisticsView(ViewSet):
     def get_object(self, pk):
         return get_object_or_404(TestPlan, pk=pk)
 
-    @swagger_auto_schema(responses={200: TestPlanStatisticsSerializer(many=True)})
+    @get_plan_statistic_schema
     def get(self, request, pk):
         test_plan = self.get_object(pk)
         is_archive = get_boolean(request, _IS_ARCHIVE)
@@ -155,6 +157,7 @@ class TestPLanStatisticsView(ViewSet):
             ),
         )
 
+    @get_plan_histogram_schema
     @action(detail=True)
     def get_histogram(self, request, pk):
         test_plan = self.get_object(pk)
@@ -201,10 +204,13 @@ class TestPlanViewSet(TestyModelViewSet, TestyArchiveMixin):
         if self.action in {'recovery_list', 'restore', 'delete_permanently'}:
             return TestPlanSelector().testplan_deleted_list()
         if get_boolean(self.request, 'treeview') and self.action == _LIST:
+            qs = TestPlanSelector.testplan_list_raw()
+            qs = self.filter_queryset(qs)
+            if not self.request.query_params.get('ordering'):
+                qs = qs.order_by('-started_at')
             return TestPlanSelector().testplan_treeview_list(
-                is_archive=get_boolean(self.request, _IS_ARCHIVE),
-                children_ordering=self.request.query_params.get('ordering'),
                 parent_id=get_integer(self.request, 'parent'),
+                qs=qs,
             )
         if self.action == 'breadcrumbs_view':
             return TestPlanSelector.testplan_list_raw()
@@ -247,6 +253,7 @@ class TestPlanViewSet(TestyModelViewSet, TestyArchiveMixin):
         labels = LabelSelector().label_list_by_testplan(instance.id)
         return Response(LabelSerializer(labels, many=True, context={_REQUEST: request}).data)
 
+    @plan_suites_ids_schema
     @action(methods=[_GET], url_path='suites', url_name='suites', detail=True)
     def suites_by_plan(self, request, pk):
         suites = TestSuiteSelector().suites_by_plan(pk)
@@ -302,6 +309,7 @@ class TestPlanViewSet(TestyModelViewSet, TestyArchiveMixin):
             status=status.HTTP_200_OK,
         )
 
+    @plan_copy_schema
     @action(methods=['post'], url_path='copy', url_name='copy', detail=False)
     def copy_plans(self, request):
         serializer = self.get_serializer(data=request.data)
@@ -384,6 +392,7 @@ class TestViewSet(TestyModelViewSet, TestyArchiveMixin):
             return BulkUpdateTestsSerializer
         return TestSerializer
 
+    @test_bulk_update_schema
     @action(methods=['put'], url_path='bulk-update', url_name='bulk-update', detail=False)
     def bulk_update_tests(self, request):
         serializer = self.get_serializer(data=request.data)
@@ -423,6 +432,15 @@ class TestResultViewSet(ModelViewSet, TestyArchiveMixin):
         request = serializer.context.get(_REQUEST)
         serializer.instance = TestResultService().result_create(serializer.validated_data, request.user)
 
+    @action(methods=['delete'], url_path='attributes', url_name='attributes', detail=False)
+    def destroy_by_attribute(self, request, *args, **kwargs):
+        TestResultSelector.result_by_attributes(
+            request.query_params.get('plan'),
+            request.query_params.get('attribute_name'),
+            request.query_params.get('attribute_value'),
+        ).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
     def get_serializer_class(self):
         if self.action in {'create', 'partial_update'}:
             return TestResultInputSerializer
@@ -456,3 +474,8 @@ class ResultStatusViewSet(TestyModelViewSet):
 
     def perform_update(self, serializer: ResultStatusSerializer):
         serializer.instance = ResultStatusService().status_update(serializer.instance, serializer.validated_data)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        ResultStatusService.delete_status(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)

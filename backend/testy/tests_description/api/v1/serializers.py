@@ -28,6 +28,8 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
+from functools import partial
+
 from rest_framework import serializers
 from rest_framework.fields import BooleanField, CharField, IntegerField, ListField, SerializerMethodField, empty
 from rest_framework.relations import HyperlinkedIdentityField, PrimaryKeyRelatedField
@@ -36,14 +38,18 @@ from testy.core.api.v1.serializers import AttachmentSerializer, CopyDetailSerial
 from testy.core.models import Label, LabeledItem
 from testy.core.selectors.attachments import AttachmentSelector
 from testy.core.selectors.projects import ProjectSelector
-from testy.core.validators import CasesCopyProjectValidator, TestCaseCustomAttributeValuesValidator
 from testy.serializer_fields import EstimateField
 from testy.tests_description.models import TestCase, TestCaseStep, TestSuite
 from testy.tests_description.selectors.cases import TestCaseSelector, TestCaseStepSelector
 from testy.tests_description.selectors.suites import TestSuiteSelector
+from testy.tests_description.validators import (
+    CasesCopyProjectValidator,
+    EstimateValidator,
+    TestCaseCustomAttributeValuesValidator,
+)
 from testy.users.api.v1.serializers import UserSerializer
 from testy.utilities.tree import get_breadcrumbs_treeview
-from testy.validators import EstimateValidator
+from testy.validators import validator_launcher
 
 
 class TestCaseStepBaseSerializer(serializers.ModelSerializer):
@@ -99,7 +105,14 @@ class TestCaseBaseSerializer(serializers.ModelSerializer):
             'attributes',
         )
 
-    validators = [EstimateValidator(), TestCaseCustomAttributeValuesValidator()]
+    validators = [
+        partial(
+            validator_launcher,
+            validator_instance=EstimateValidator(),
+            fields_to_validate=['estimate'],
+        ),
+        TestCaseCustomAttributeValuesValidator(),
+    ]
 
 
 class TestCaseLabelOutputSerializer(serializers.ModelSerializer):
@@ -286,7 +299,13 @@ class TestCaseCopySerializer(serializers.Serializer):
     dst_suite_id = serializers.PrimaryKeyRelatedField(queryset=TestSuiteSelector.suite_list_raw(), required=False)
 
     class Meta:
-        validators = [CasesCopyProjectValidator()]
+        validators = [
+            partial(
+                validator_launcher,
+                validator_instance=CasesCopyProjectValidator(),
+                fields_to_validate=['dst_suite_id', 'cases'],
+            ),
+        ]
 
 
 class TestSuiteCopySerializer(serializers.Serializer):

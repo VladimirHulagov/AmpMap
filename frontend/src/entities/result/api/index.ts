@@ -46,6 +46,7 @@ export const resultApi = createApi({
         try {
           const { data } = await queryFulfilled
           invalidateListTags(testPlanId, data.test, dispatch)
+          dispatch(testApi.util.invalidateTags([{ type: "Test", id: "LIST" }]))
         } catch (error) {
           console.error(error)
         }
@@ -62,6 +63,7 @@ export const resultApi = createApi({
         try {
           const { data } = await queryFulfilled
           invalidateListTags(testPlanId, data.test, dispatch)
+          dispatch(testApi.util.invalidateTags([{ type: "Test", id: "LIST" }]))
         } catch (error) {
           console.error(error)
         }

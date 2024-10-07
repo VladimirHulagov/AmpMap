@@ -40,6 +40,8 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from testy.paginations import StandardSetPagination
+from testy.swagger.roles import roles_assign_schema, roles_unassign_schema
+from testy.swagger.users import user_change_password_schema, user_delete_avatar_schema, user_post_avatar_schema
 from testy.users.api.v1.serializers import (
     GroupSerializer,
     MembershipSerializer,
@@ -67,6 +69,7 @@ UserModel = get_user_model()
 
 _ERRORS = 'errors'
 _POST = 'post'
+_AVATAR = 'avatar'
 
 
 class GroupViewSet(ModelViewSet):
@@ -100,6 +103,8 @@ class UserViewSet(ModelViewSet):
             return UserUpdateSerializer
         if self.action == 'change_password':
             return PasswordUpdateSerializer
+        if self.action == _AVATAR:
+            return UserAvatarSerializer
         return UserSerializer
 
     def get_queryset(self):
@@ -125,6 +130,7 @@ class UserViewSet(ModelViewSet):
         serializer.instance = UserService().user_update(serializer.instance, serializer.validated_data)
         return Response(serializer.data)
 
+    @user_change_password_schema
     @action(methods=[_POST], url_path='change-password', url_name='change-password', detail=False)
     def change_password(self, request):
         serializer = self.get_serializer(data=request.data)
@@ -143,9 +149,11 @@ class UserViewSet(ModelViewSet):
             return Response(UserService().config_update(request.user, request.data))
         return Response(request.user.config)
 
-    @action(methods=[_POST, 'delete'], url_path='me/avatar', url_name='avatar', detail=False)
+    @user_post_avatar_schema
+    @user_delete_avatar_schema
+    @action(methods=[_POST, 'delete'], url_path='me/avatar', url_name=_AVATAR, detail=False)
     def avatar(self, request):
-        serializer = UserAvatarSerializer(request.user, data=request.data, partial=True)
+        serializer = self.get_serializer(request.user, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         if request.method == 'POST':
             if 'avatar' not in serializer.validated_data:
@@ -156,7 +164,7 @@ class UserViewSet(ModelViewSet):
                 return Response(data={_ERRORS: ['Invalid image was provided']}, status=HTTPStatus.BAD_REQUEST)
             return Response(data={'detail': 'Avatar was updated successfully'}, status=HTTPStatus.OK)
         elif request.method == 'DELETE':
-            serializer.instance = UserService().update_avatar(serializer.instance, {'avatar': None})
+            serializer.instance = UserService().update_avatar(serializer.instance, {_AVATAR: None})
             return Response(data={'detail': 'Avatar was deleted successfully'}, status=HTTPStatus.OK)
         return Response(status=HTTPStatus.METHOD_NOT_ALLOWED)
 
@@ -167,6 +175,7 @@ class RoleViewSet(ModelViewSet):
     serializer_class = RoleSerializer
     pagination_class = StandardSetPagination
     filter_backends = [DjangoFilterBackend]
+    schema_tags = ['Roles']
 
     def get_serializer_class(self):
         if self.action == 'unassign':
@@ -189,6 +198,7 @@ class RoleViewSet(ModelViewSet):
             serializer.validated_data,
         )
 
+    @roles_assign_schema
     @action(methods=[_POST, 'put'], detail=False, url_path='assign', url_name='assign')
     def assign(self, request):
         serializer = self.get_serializer(data=request.data)
@@ -196,6 +206,7 @@ class RoleViewSet(ModelViewSet):
         memberships = RoleService.roles_assign(serializer.validated_data)
         return Response(MembershipSerializer(memberships, many=True).data)
 
+    @roles_unassign_schema
     @action(methods=[_POST], detail=False, url_path='unassign', url_name='unassign')
     def unassign(self, request):
         serializer = self.get_serializer(data=request.data)

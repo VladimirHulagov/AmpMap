@@ -1,3 +1,28 @@
+Version 1.3.4
+--------------
+*Status: General availability*
+
+*Released: 07-10-2024*
+
+- Bumped versions of dependencies (TMS-1102)
+- Added functionality to delete results based on specific attributes (TMS-1091)
+- Added ability to search by key in plan attributes (TMS-1065)
+- Updated Swagger documentation (TMS-970)
+- Added default status configuration to project settings (TMS-1070)
+- Added ordering and naming functionality to content types (TMS-1086)
+- Improved handling of broken images (TMS-616)
+- Introduced basic authentication(TMS-1075)
+- Added filtering by date range in histograms (TMS-1062)
+
+
+**Bug fixes**:
+
+- Fixed errors related to filtering by unavailable fields (TMS-1085)
+- Returned default ordering to test plans (TMS-1088)
+- Fixed sorting issues when the string attribute is a number (TMS-1093)
+- Fixed issues with doubled test executions (TMS-1077)
+
+
 Version 1.3.3
 --------------
 *Status: General availability*

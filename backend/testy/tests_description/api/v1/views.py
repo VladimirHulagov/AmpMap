@@ -47,6 +47,7 @@ from testy.root.mixins import TestyArchiveMixin, TestyModelViewSet
 from testy.swagger.cases import (
     cases_copy_schema,
     cases_create_schema,
+    cases_history_schema,
     cases_list_schema,
     cases_retrieve_schema,
     cases_search_schema,
@@ -205,6 +206,7 @@ class TestCaseViewSet(TestyModelViewSet, TestyArchiveMixin):
             response_tests.append(test)
         return self.get_paginated_response(response_tests)
 
+    @cases_history_schema
     @action(methods=[_GET], url_path='history', url_name='history', detail=True)
     def get_history(self, request, pk):
         pagination = StandardSetPagination()

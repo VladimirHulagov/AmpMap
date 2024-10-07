@@ -37,6 +37,7 @@ from django.utils import timezone
 from tests import constants, error_messages
 from tests.commons import RequestType, model_to_dict_via_serializer
 from tests.error_messages import (
+    ATTRIBUTES_PARAMETER_NOT_PASSED,
     CREATE_RESULT_IN_ARCHIVE_TEST,
     FOUND_EMPTY_REQUIRED_CUSTOM_ATTRIBUTES_ERR_MSG,
     MISSING_REQUIRED_CUSTOM_ATTRIBUTES_ERR_MSG,
@@ -56,6 +57,7 @@ class TestResultEndpoints:
     view_name_detail = 'api:v1:testresult-detail'
     project_view_name_detail = 'api:v1:project-detail'
     plan_view_name_detail = 'api:v1:testplan-detail'
+    view_name_attributes = 'api:v1:testresult-attributes'
 
     def test_list(self, api_client, authorized_superuser, test_result_factory, project, result_status_factory):
         test_results = []
@@ -702,3 +704,37 @@ class TestResultEndpoints:
         result.refresh_from_db()
         assert result.status.pk == update_dict['status']
         assert result.comment == update_dict['comment']
+
+    def test_delete_by_attributes(self, api_client, authorized_superuser, test, test_result_factory):
+        for idx in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
+            test_result_factory(test=test, attributes={'delete_me': bool(idx % 2)})
+        api_client.send_request(
+            self.view_name_attributes,
+            request_type=RequestType.DELETE,
+            expected_status=HTTPStatus.NO_CONTENT,
+            query_params={'plan': test.plan.pk, 'attribute_name': 'delete_me', 'attribute_value': True},
+        )
+        test_results = TestResult.objects.filter(test=test)
+        assert test_results.count() == constants.NUMBER_OF_OBJECTS_TO_CREATE // 2
+        assert test_results.filter(attributes__delete_me=True).count() == 0, 'Not all results were deleted'
+
+    @pytest.mark.parametrize('deleted_attribute', ['plan', 'attribute_name', 'attribute_value'])
+    def test_failed_delete_by_attributes(
+        self,
+        api_client,
+        authorized_superuser,
+        test,
+        test_result_factory,
+        deleted_attribute,
+    ):
+        query_params = {'plan': test.plan.pk, 'attribute_name': 'delete_me', 'attribute_value': True}
+        query_params.pop(deleted_attribute)
+        for idx in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
+            test_result_factory(test=test, attributes={'delete_me': bool(idx % 2)})
+        response = api_client.send_request(
+            self.view_name_attributes,
+            request_type=RequestType.DELETE,
+            expected_status=HTTPStatus.BAD_REQUEST,
+            query_params=query_params,
+        )
+        assert response.json()['errors'][0] == ATTRIBUTES_PARAMETER_NOT_PASSED

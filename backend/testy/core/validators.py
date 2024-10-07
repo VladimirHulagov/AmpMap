@@ -28,7 +28,6 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from functools import partial
 from typing import Any, Iterable, Protocol
 
 from django.contrib.contenttypes.models import ContentType
@@ -36,8 +35,8 @@ from django.utils.deconstruct import deconstructible
 from rest_framework import serializers
 
 from testy.core.models import CustomAttribute, Project
-from testy.core.selectors.custom_attribute import CustomAttributeSelector
-from testy.tests_description.models import TestCase, TestSuite
+from testy.tests_description.models import TestSuite
+from testy.tests_representation.selectors.status import ResultStatusSelector
 
 
 class ReturnsRequiredAttrs(Protocol):
@@ -100,30 +99,15 @@ class BaseCustomAttributeValuesValidator:
     def _validate(cls, attributes: dict, required_attrs_getter: ReturnsRequiredAttrs):
         content_type_id = ContentType.objects.get(app_label=cls.app_name, model=cls.model_name).id
         required_attributes = required_attrs_getter(content_type_id=content_type_id)
-        if diff := set(required_attributes).difference(set(attributes.keys())):
+        attribute_keys = set(attributes.keys())
+        if any(',' in attr_key for attr_key in attribute_keys):
+            raise serializers.ValidationError('Attribute key has comma')
+        if diff := set(required_attributes).difference(attribute_keys):
             diff_list = list(diff)
             raise serializers.ValidationError(f'Missing following required attributes: {diff_list}')
 
         if empty_attributes := [name for name in required_attributes if not attributes[name]]:
             raise serializers.ValidationError(f'Found empty required attributes: {empty_attributes}')
-
-
-@deconstructible
-class TestCaseCustomAttributeValuesValidator(BaseCustomAttributeValuesValidator):
-    app_name = 'tests_description'
-    model_name = 'testcase'
-
-    def __call__(self, attrs: dict[str, Any]):
-        custom_attr = attrs.get('attributes', {})
-        project = attrs['project']
-        suite = attrs['suite']
-
-        attr_getter = partial(
-            CustomAttributeSelector.required_attribute_names_by_project_and_suite,
-            project=project,
-            suite=suite,
-        )
-        self._validate(custom_attr, attr_getter)
 
 
 class ProjectStatusOrderValidator:
@@ -136,13 +120,14 @@ class ProjectStatusOrderValidator:
         return status_order
 
 
-class CasesCopyProjectValidator:
-    def __call__(self, attrs: dict[str, Any]):
-        dst_suite = attrs.get('dst_suite_id')
-        if not dst_suite:
+class DefaultStatusValidator:
+    requires_context = True
+
+    def __call__(self, attrs, serializer):
+        view = serializer.context.get('view')
+        default_status = attrs.get('default_status')
+        if default_status is None or view.action not in {'update', 'partial_update', 'create'}:
             return
-        cases_ids = [case['id'] for case in attrs.get('cases')]
-        cases = TestCase.objects.filter(pk__in=cases_ids)
-        cases_projects = cases.values_list('project_id', flat=True).distinct('project_id')
-        if cases_projects.count() != 1 or cases_projects[0] != dst_suite.project_id:
-            raise serializers.ValidationError('Cannot copy case to another project.')
+        project_id = view.kwargs.get('pk')
+        if not ResultStatusSelector.status_by_project_exists(default_status, project_id):
+            raise serializers.ValidationError('Status not available for project')

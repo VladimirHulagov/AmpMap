@@ -55,10 +55,11 @@ class TestAttachmentEndpoints:
             ('.txt', True),
             ('.png', False),
             ('.jpeg', False),
+            ('.jpg', False),
             ('.pdf', True),
             ('.zip', True),
         ],
-        ids=['txt', 'png', 'jpeg', 'pdf', 'zip'],
+        ids=['txt', 'png', 'jpeg', 'corrupted jpg', 'pdf', 'zip'],
     )
     def test_attachment_correct_output(self, api_client, authorized_superuser, create_file, project, as_attachment):
         attachment_json = {

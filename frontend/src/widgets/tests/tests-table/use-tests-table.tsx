@@ -110,8 +110,9 @@ export const useTestsTable = ({ testPlanId }: Props) => {
       return
     }
     changeTableParams({
-      ...tableParams,
-      last_status: testsTableParams.filters?.last_status,
+      page: 1,
+      page_size: tableParams.page_size,
+      last_status: testsTableParams.filters.last_status,
     })
   }, [testsTableParams.filters?.last_status])
 

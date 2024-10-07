@@ -123,8 +123,6 @@ class ResultStatusValidator:
 class TestPlanParentValidator:
     def __call__(self, attrs):
         parent = attrs.get('parent')
-        if not parent:
-            return
         archived_ancestors = parent.get_ancestors(include_self=True).filter(is_archive=True)
         if archived_ancestors:
             ids = list(archived_ancestors.values_list(_ID, flat=True))
@@ -201,8 +199,6 @@ class TestPlanCasesValidator:
 
     def __call__(self, attrs):
         cases_ids = attrs.get('test_cases')
-        if not cases_ids:
-            return
         cases = TestCaseSelector.cases_by_ids_list(cases_ids, 'pk')
         if archived_cases := [case.pk for case in cases if case.is_archive]:
             raise ValidationError(self.err_msg.format(archived_cases))
@@ -266,3 +262,13 @@ class TestPlanCustomAttributeValuesValidator(BaseCustomAttributeValuesValidator)
             project = instance.project
         attr_getter = partial(CustomAttributeSelector.required_attribute_names_by_project, project=project)
         self._validate(attributes, attr_getter)
+
+
+@deconstructible
+class DateRangeValidator:
+    def __call__(self, attrs):
+        started_at = attrs.get('started_at')
+        due_date = attrs.get('due_date')
+
+        if started_at >= due_date:
+            raise ValidationError('End date must be greater than start date.')

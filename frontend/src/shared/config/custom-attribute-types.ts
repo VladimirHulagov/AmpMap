@@ -10,8 +10,3 @@ export const customAttributeTypes = Object.entries(customAttributesObject).map(
     label: attributeText,
   })
 )
-
-export const customAttributeContentTypeNames = {
-  testcase: "Test Case",
-  testresult: "Test Result",
-}

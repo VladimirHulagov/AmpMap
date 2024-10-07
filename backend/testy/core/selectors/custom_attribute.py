@@ -29,9 +29,13 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import QuerySet
+from django.db.models import Case, IntegerField, QuerySet, When
 
-from testy.core.constants import CUSTOM_ATTRIBUTES_ALLOWED_APPS, CUSTOM_ATTRIBUTES_ALLOWED_MODELS
+from testy.core.constants import (
+    CONTENT_TYPES_POSITIONS,
+    CUSTOM_ATTRIBUTES_ALLOWED_APPS,
+    CUSTOM_ATTRIBUTES_ALLOWED_MODELS,
+)
 from testy.core.models import CustomAttribute, Project
 from testy.tests_description.models import TestSuite
 
@@ -78,8 +82,18 @@ class CustomAttributeSelector:
 
     @classmethod
     def get_allowed_content_types(cls) -> QuerySet[ContentType]:
-        return ContentType.objects.filter(
-            app_label__in=CUSTOM_ATTRIBUTES_ALLOWED_APPS, model__in=CUSTOM_ATTRIBUTES_ALLOWED_MODELS,
+        conditions_list = []
+        for model_name, position in CONTENT_TYPES_POSITIONS:
+            conditions_list.append(When(model=model_name, then=position))
+        return (
+            ContentType
+            .objects
+            .annotate(ordering=Case(*conditions_list, default=0, output_field=IntegerField()))
+            .filter(
+                app_label__in=CUSTOM_ATTRIBUTES_ALLOWED_APPS,
+                model__in=CUSTOM_ATTRIBUTES_ALLOWED_MODELS,
+            )
+            .order_by('ordering', 'id')
         )
 
     @classmethod

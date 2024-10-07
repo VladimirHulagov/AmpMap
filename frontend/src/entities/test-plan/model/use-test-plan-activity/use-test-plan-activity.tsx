@@ -219,6 +219,7 @@ export const useTestPlanActivity = () => {
     columns,
     searchText,
     filteredInfo,
+    pagination: tableParams.pagination,
     handlePaginationChange,
     handleSearch,
     handleSearchChange,

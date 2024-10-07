@@ -96,7 +96,7 @@ export const useTestPlanCopyModal = (testPlan: TestPlan) => {
             id={newPlan[0].id.toString()}
             link={`/projects/${newPlan[0].project}/plans/${newPlan[0].id}/`}
             action="copied"
-            title="Suite"
+            title="Test plan"
           />
         ),
       })

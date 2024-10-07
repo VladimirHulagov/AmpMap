@@ -36,7 +36,6 @@ from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from tests import constants
-from tests.test_api.v1.test_project_endpoints import TestProjectEndpoints
 
 
 @pytest.mark.django_db
@@ -92,7 +91,7 @@ class TestNumberOfQueries:
     def test_number_of_queries_projects(self, authorized_superuser_client, project_factory):
         for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
             project_factory()
-        view_name_list = TestProjectEndpoints.view_name_list
+        view_name_list = constants.LIST_VIEW_NAMES['project']
         with CaptureQueriesContext(connection) as context:
             authorized_superuser_client.send_request(view_name_list)
             num_of_queries_initial = len(context.captured_queries)

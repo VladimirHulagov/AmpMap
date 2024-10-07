@@ -30,6 +30,9 @@
 # <http://www.gnu.org/licenses/>.
 from typing import Any
 
+from django.db import transaction
+
+from testy.core.models import Project
 from testy.tests_representation.choices import ResultStatusType
 from testy.tests_representation.models import ResultStatus
 
@@ -51,3 +54,14 @@ class ResultStatusService:
     def status_update(self, status: ResultStatus, data: dict[str, Any]) -> ResultStatus:
         status, _ = status.model_update(fields=self.non_side_effects_fields, data=data)
         return status
+
+    @classmethod
+    @transaction.atomic
+    def delete_status(cls, status: ResultStatus) -> None:
+        projects_to_update = []
+        projects = Project.objects.filter(settings__default_status=status.pk)
+        for project in projects:
+            project.settings['default_status'] = None
+            projects_to_update.append(project)
+        Project.objects.bulk_update(projects_to_update, ['settings'])
+        status.delete()

@@ -34,28 +34,18 @@ from rest_framework import status
 from swagger.common_query_parameters import is_archive_parameter, ordering_param_factory
 from swagger.custom_schema_generation import TestyPaginatorInspector
 
-from testy.core.api.v1.serializers import ProjectRetrieveSerializer, ProjectSerializer, ProjectStatisticsSerializer
-from testy.tests_representation.api.v1.serializers import (
-    ParameterSerializer,
-    TestPlanProgressSerializer,
-    TestPlanTreeSerializer,
+from testy.core.api.v1.serializers import (
+    AccessRequestSerializer,
+    ProjectRetrieveSerializer,
+    ProjectSerializer,
+    ProjectStatisticsSerializer,
 )
+from testy.tests_representation.api.v1.serializers import TestPlanProgressSerializer
+from testy.users.api.v1.serializers import UserRoleSerializer
 
 project_list_schema = swagger_auto_schema(
     manual_parameters=[
         is_archive_parameter,
-        openapi.Parameter(
-            'name',
-            openapi.IN_QUERY,
-            type=openapi.TYPE_STRING,
-            description='Filter by name if it contains provided case-insensitive value',
-        ),
-        openapi.Parameter(
-            'favorites',
-            openapi.IN_QUERY,
-            type=openapi.TYPE_BOOLEAN,
-            description='Show only favorites plan of request user',
-        ),
         ordering_param_factory('name', 'is_archive'),
     ],
     responses={status.HTTP_200_OK: ProjectStatisticsSerializer(many=True)},
@@ -76,9 +66,46 @@ project_update_schema = swagger_auto_schema(
     },
 )
 
-project_plans_schema = swagger_auto_schema(responses={status.HTTP_200_OK: TestPlanTreeSerializer(many=True)})
+project_access_schema = swagger_auto_schema(
+    request_body=AccessRequestSerializer,
+    responses={status.HTTP_200_OK: 'Request sent!'},
+)
 
-project_parameters_schema = swagger_auto_schema(responses={status.HTTP_200_OK: ParameterSerializer(many=True)})
+project_members_schema = swagger_auto_schema(
+    manual_parameters=[
+        openapi.Parameter(
+            'users',
+            openapi.IN_QUERY,
+            type=openapi.TYPE_STRING,
+        ),
+        openapi.Parameter(
+            'email',
+            openapi.IN_QUERY,
+            type=openapi.TYPE_STRING,
+        ),
+        openapi.Parameter(
+            'first_name',
+            openapi.IN_QUERY,
+            type=openapi.TYPE_STRING,
+        ),
+        openapi.Parameter(
+            'last_name',
+            openapi.IN_QUERY,
+            type=openapi.TYPE_STRING,
+        ),
+        openapi.Parameter(
+            'is_active',
+            openapi.IN_QUERY,
+            type=openapi.TYPE_BOOLEAN,
+        ),
+        openapi.Parameter(
+            'is_superuser',
+            openapi.IN_QUERY,
+            type=openapi.TYPE_BOOLEAN,
+        ),
+    ],
+    responses={status.HTTP_200_OK: UserRoleSerializer(many=True)},
+)
 
 project_progress_schema = swagger_auto_schema(
     manual_parameters=[

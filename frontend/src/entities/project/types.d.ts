@@ -7,6 +7,7 @@ interface ProjectSettings {
   is_result_editable?: boolean
   result_edit_limit?: string | null
   status_order?: Record<string, number>
+  default_status?: number | null
 }
 
 interface Project {

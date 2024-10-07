@@ -29,47 +29,31 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 from django.utils.decorators import method_decorator
-from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
-from swagger.common_query_parameters import is_archive_parameter, ordering_param_factory, search_param_factory
+from swagger.common_query_parameters import ordering_param_factory
 from swagger.custom_schema_generation import TestyPaginatorInspector
 
-from testy.tests_representation.api.v1.serializers import TestSerializer
+from testy.core.api.v1.serializers import MarkNotificationSerializer
 
-test_list_schema = method_decorator(
+notification_list_schema = method_decorator(
     name='list',
     decorator=swagger_auto_schema(
         manual_parameters=[
-            is_archive_parameter,
-            ordering_param_factory(
-                'id',
-                'last_status',
-                'created_at',
-                'case_name',
-                'is_archive',
-                'assignee',
-                'suite_path',
-                'assignee_username',
-            ),
-            openapi.Parameter(
-                'labels_condition',
-                openapi.IN_QUERY,
-                type=openapi.TYPE_STRING,
-                description='Condition for boolean logic for labels, options are: and/or',
-            ),
-            openapi.Parameter(
-                'nested_search',
-                openapi.IN_QUERY,
-                type=openapi.TYPE_BOOLEAN,
-                description='Condition for suites nested search',
-            ),
-            search_param_factory('case__name'),
+            ordering_param_factory('id', 'unread'),
         ],
         paginator_inspectors=[TestyPaginatorInspector],
     ),
 )
 
-test_bulk_update_schema = swagger_auto_schema(
-    responses={status.HTTP_200_OK: TestSerializer()},
+disable_notifications_schema = swagger_auto_schema(
+    responses={status.HTTP_200_OK: 'Disabled notifications for <notifications_codes>'},
+)
+
+enable_notifications_schema = swagger_auto_schema(
+    responses={status.HTTP_200_OK: 'Enabled notifications for <notifications_codes>'},
+)
+
+notification_mark_as_schema = swagger_auto_schema(
+    request_body=MarkNotificationSerializer,
 )

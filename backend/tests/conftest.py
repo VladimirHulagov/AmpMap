@@ -230,10 +230,13 @@ def create_file(extension, media_directory):
         png_bin = file.read()
     with open(media_path / 'media_for_tests' / 'test.jpeg', 'rb') as file:
         jpeg_bin = file.read()
+    with open('tests/media_for_tests/broken_image.jpg', 'rb') as file:
+        broken_image = file.read()
     extension_to_content_type = {
         '.txt': ('text/plain', b'Test content'),
         '.png': ('image/png', png_bin),
         '.jpeg': ('image/jpeg', jpeg_bin),
+        '.jpg': ('image/jpeg', broken_image),
         '.pdf': ('application/pdf', b'Test content'),
         '.zip': ('application/zip', b'Test content'),
     }
