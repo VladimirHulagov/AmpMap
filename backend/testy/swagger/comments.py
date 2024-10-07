@@ -32,44 +32,38 @@ from django.utils.decorators import method_decorator
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
-from swagger.common_query_parameters import is_archive_parameter, ordering_param_factory, search_param_factory
+from swagger.common_query_parameters import ordering_param_factory
 from swagger.custom_schema_generation import TestyPaginatorInspector
 
-from testy.tests_representation.api.v1.serializers import TestSerializer
+from testy.comments.api.v1.serializers import CommentSerializer
 
-test_list_schema = method_decorator(
+comment_list_schema = method_decorator(
     name='list',
     decorator=swagger_auto_schema(
         manual_parameters=[
-            is_archive_parameter,
-            ordering_param_factory(
-                'id',
-                'last_status',
-                'created_at',
-                'case_name',
-                'is_archive',
-                'assignee',
-                'suite_path',
-                'assignee_username',
-            ),
             openapi.Parameter(
-                'labels_condition',
+                'model',
                 openapi.IN_QUERY,
                 type=openapi.TYPE_STRING,
-                description='Condition for boolean logic for labels, options are: and/or',
             ),
             openapi.Parameter(
-                'nested_search',
+                'comment_id',
                 openapi.IN_QUERY,
-                type=openapi.TYPE_BOOLEAN,
-                description='Condition for suites nested search',
+                type=openapi.TYPE_INTEGER,
             ),
-            search_param_factory('case__name'),
+            openapi.Parameter(
+                'object_id',
+                openapi.IN_QUERY,
+                type=openapi.TYPE_INTEGER,
+            ),
+            ordering_param_factory('-created_at'),
         ],
         paginator_inspectors=[TestyPaginatorInspector],
     ),
 )
 
-test_bulk_update_schema = swagger_auto_schema(
-    responses={status.HTTP_200_OK: TestSerializer()},
+comment_create_schema = swagger_auto_schema(
+    responses={
+        status.HTTP_201_CREATED: CommentSerializer(),
+    },
 )

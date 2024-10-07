@@ -5,6 +5,7 @@ import { Controller } from "react-hook-form"
 import { ErrorObj } from "shared/hooks/use-alert-error"
 import { AlertError, Attachment, Attribute, Status, Steps, TextAreaWithAttach } from "shared/ui"
 
+import { ApplyToStepsButton } from "../apply-to-steps-button/apply-to-steps-button"
 import { useEditCloneResultModal } from "./use-edit-clone-result-modal"
 
 const { Dragger } = Upload
@@ -32,7 +33,6 @@ export const TestResultEditCloneModal = ({
     control,
     attributes,
     stepsResult,
-    isDirty,
     setAttachments,
     setStepsResult,
     handleAttachmentsLoad,
@@ -48,6 +48,7 @@ export const TestResultEditCloneModal = ({
     handleAttachmentsRemove,
     register,
     statuses,
+    isDisabledSubmit,
   } = useEditCloneResultModal({
     isShow,
     setIsShow,
@@ -75,7 +76,7 @@ export const TestResultEditCloneModal = ({
           key="submit"
           type="primary"
           onClick={handleSubmitForm}
-          disabled={!isDirty}
+          disabled={isDisabledSubmit}
         >
           {!isClone ? "Update" : "Clone"}
         </Button>,
@@ -98,13 +99,20 @@ export const TestResultEditCloneModal = ({
                 control={control}
                 render={({ field }) => {
                   return (
-                    <Select {...field} placeholder="Please select" style={{ width: "100%" }}>
-                      {statuses.map((status) => (
-                        <Select.Option key={status.id} value={Number(status.id)}>
-                          <Status name={status.name} color={status.color} id={status.id} />
-                        </Select.Option>
-                      ))}
-                    </Select>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <Select {...field} placeholder="Please select" style={{ width: "100%" }}>
+                        {statuses.map((status) => (
+                          <Select.Option key={status.id} value={Number(status.id)}>
+                            <Status name={status.name} color={status.color} id={status.id} />
+                          </Select.Option>
+                        ))}
+                      </Select>
+                      <ApplyToStepsButton
+                        steps={testResult.steps_results}
+                        status={field.value}
+                        onApply={setStepsResult}
+                      />
+                    </div>
                   )
                 }}
               />

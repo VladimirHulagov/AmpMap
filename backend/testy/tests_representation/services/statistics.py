@@ -284,8 +284,9 @@ class HistogramProcessor:
         if not self.attribute:
             result = self.fill_empty_points(result, test_plan_statuses)
 
-        if self.attribute and all(isinstance(obj[_POINT], int) for obj in result):
-            return sorted(result, key=lambda obj: obj[_POINT])
+        is_decimal_attribute = all(str(obj[_POINT]).isdecimal() for obj in result)
+        if self.attribute and is_decimal_attribute:
+            return sorted(result, key=lambda obj: int(obj[_POINT]))
 
         return sorted(result, key=lambda obj: str(obj[_POINT]))
 

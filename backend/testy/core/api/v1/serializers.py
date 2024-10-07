@@ -36,15 +36,7 @@ from django.urls import reverse
 from django.utils import timezone
 from notifications.models import Notification
 from rest_framework.exceptions import ValidationError
-from rest_framework.fields import (
-    BooleanField,
-    CharField,
-    DateTimeField,
-    IntegerField,
-    JSONField,
-    ListField,
-    SerializerMethodField,
-)
+from rest_framework.fields import BooleanField, CharField, DateTimeField, IntegerField, JSONField, SerializerMethodField
 from rest_framework.relations import PrimaryKeyRelatedField
 from rest_framework.serializers import HyperlinkedIdentityField, ModelSerializer, Serializer
 
@@ -52,7 +44,7 @@ from testy.core.constants import CUSTOM_ATTRIBUTES_ALLOWED_APPS, CUSTOM_ATTRIBUT
 from testy.core.models import Attachment, CustomAttribute, Label, NotificationSetting, Project, SystemMessage
 from testy.core.selectors.notifications import NotificationSelector
 from testy.core.selectors.project_settings import ProjectSettings
-from testy.core.validators import CustomAttributeCreateValidator, ProjectStatusOrderValidator
+from testy.core.validators import CustomAttributeCreateValidator, DefaultStatusValidator, ProjectStatusOrderValidator
 from testy.serializer_fields import EstimateField
 
 
@@ -112,9 +104,14 @@ class CustomAttributeOutputSerializer(CustomAttributeBaseSerializer):
 
 
 class ContentTypeSerializer(ModelSerializer):
+    name = SerializerMethodField()
+
     class Meta:
         model = ContentType
-        fields = ['id', 'app_label', 'model']
+        fields = ['id', 'app_label', 'model', 'name']
+
+    def get_name(self, instance) -> str:
+        return instance.name.title()
 
 
 class ProjectSettingsSerializer(Serializer):
@@ -131,6 +128,15 @@ class ProjectSettingsSerializer(Serializer):
         default=dict,
         validators=[ProjectStatusOrderValidator()],
     )
+    default_status = IntegerField(
+        allow_null=True,
+        required=False,
+    )
+
+    class Meta:
+        validators = [
+            DefaultStatusValidator(),
+        ]
 
 
 class ProjectSerializer(ModelSerializer):
@@ -179,10 +185,6 @@ class AllProjectsStatisticSerializer(Serializer):
     suites_count = IntegerField()
     plans_count = IntegerField()
     tests_count = IntegerField()
-
-
-class RecoveryInputSerializer(Serializer):
-    instance_ids = ListField()
 
 
 class AttachmentSerializer(ModelSerializer):

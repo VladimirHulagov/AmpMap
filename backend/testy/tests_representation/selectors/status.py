@@ -77,3 +77,10 @@ class ResultStatusSelector:
     @classmethod
     def status_deleted_list(cls) -> QuerySet[ResultStatus]:
         return ResultStatus.deleted_objects.all()
+
+    @classmethod
+    def status_by_project_exists(cls, status_id: int, project_id: int) -> bool:
+        return ResultStatus.objects.filter(
+            Q(project_id=project_id) | Q(project_id__isnull=True),
+            id=status_id,
+        ).exists()

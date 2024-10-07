@@ -29,6 +29,7 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 from rest_framework import serializers
+from tests_representation.api.v1.serializers import TestSerializer
 
 
 class BreadcrumbsSerializer(serializers.Serializer):
@@ -39,3 +40,24 @@ class BreadcrumbsSerializer(serializers.Serializer):
 
 class CaseIdsSerializer(serializers.Serializer):
     case_ids = serializers.ListField(child=serializers.IntegerField())
+
+
+class TestPlanBreadcrumbsSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    title = serializers.CharField()
+    parent = serializers.JSONField()
+
+
+class TestWithBreadcrumbsSerializer(TestSerializer):
+    breadcrumbs = TestPlanBreadcrumbsSerializer()
+
+    class Meta(TestSerializer.Meta):
+        fields = TestSerializer.Meta.fields + ('breadcrumbs',)
+
+
+class TestPlanStatisticsSerializer(serializers.Serializer):
+    label = serializers.CharField()
+    color = serializers.CharField()
+    value = serializers.IntegerField()
+    estimates = serializers.FloatField()
+    empty_estimate = serializers.IntegerField()

@@ -1,6 +1,6 @@
 import { notification } from "antd"
 import { useStatuses } from "entities/status/model/use-statuses"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
 import { useParams } from "react-router-dom"
 
@@ -31,7 +31,7 @@ interface ErrorData {
   attributes?: string | null
 }
 
-export const useCreateResultModal = ({ setIsShow, testCase }: CreateResultModalProps) => {
+export const useCreateResultModal = ({ setIsShow, testCase, isShow }: CreateResultModalProps) => {
   const [errors, setErrors] = useState<ErrorData | null>(null)
   const [createResult, { isLoading }] = useCreateResultMutation()
   const {
@@ -54,7 +54,7 @@ export const useCreateResultModal = ({ setIsShow, testCase }: CreateResultModalP
   const watchStatus = watch("status")
   const test = useAppSelector(selectTest)
   const { projectId, testPlanId } = useParams<ParamProjectId & ParamTestPlanId>()
-  const { statuses } = useStatuses({ project: projectId })
+  const { statuses, defaultStatus } = useStatuses({ project: projectId })
   const {
     setAttachments,
     onReset,
@@ -82,6 +82,7 @@ export const useCreateResultModal = ({ setIsShow, testCase }: CreateResultModalP
 
   const onCloseModal = () => {
     setIsShow(false)
+    setSteps({})
     setErrors(null)
     onReset()
     removeAttachmentIds()
@@ -152,6 +153,22 @@ export const useCreateResultModal = ({ setIsShow, testCase }: CreateResultModalP
       onHandleError(err)
     }
   }
+
+  useEffect(() => {
+    if (defaultStatus && !watchStatus && isShow) {
+      setValue("status", defaultStatus.id, { shouldDirty: true })
+      const newSteps = testCase.steps.reduce(
+        (acc, step) => {
+          if (step.id) {
+            acc[step.id] = defaultStatus.id
+          }
+          return acc
+        },
+        {} as Record<string, number>
+      )
+      setSteps(newSteps)
+    }
+  }, [defaultStatus, isShow, watchStatus])
 
   const isAllStepsSelected = testCase.steps.every((step) => steps[step.id])
 

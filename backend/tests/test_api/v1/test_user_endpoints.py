@@ -39,6 +39,7 @@ from typing import Any
 
 import allure
 import pytest
+from aiohttp import BasicAuth
 from django.conf import settings
 from django.utils import timezone
 from PIL import Image
@@ -638,6 +639,20 @@ class TestUserAvatars:
             request_type=RequestType.DELETE,
         )
         assert len(os.listdir(avatar_file_path)) == 2
+
+    @allure.title('Test Basic auth')
+    def test_basic_auth(self, superuser, api_client, user):
+        auth = BasicAuth(superuser.username, constants.PASSWORD).encode()
+        with allure.step('Validate safe request'):
+            api_client.send_request(self.view_name_list, headers={'HTTP_AUTHORIZATION': auth})
+        with allure.step('Validate unsafe request'):
+            api_client.send_request(
+                self.view_name_detail,
+                data={},
+                reverse_kwargs={'pk': user.pk},
+                headers={'HTTP_AUTHORIZATION': auth},
+                request_type=RequestType.PATCH,
+            )
 
 
 @pytest.mark.django_db

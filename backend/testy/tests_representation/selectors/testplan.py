@@ -41,6 +41,7 @@ from testy.tests_representation.selectors.results import TestResultSelector
 from testy.tests_representation.services.statistics import HistogramProcessor, LabelProcessor, PieChartProcessor
 from testy.utilities.request import PeriodDateTime
 from testy.utilities.sql import SubCount
+from testy.utilities.string import parse_bool_from_str
 from testy.utilities.tree import form_tree_prefetch_lookups, form_tree_prefetch_objects, get_breadcrumbs_treeview
 
 logger = logging.getLogger(__name__)
@@ -119,21 +120,13 @@ class TestPlanSelector:  # noqa: WPS214
             )
         return ids_to_breadcrumbs
 
-    def testplan_treeview_list(
-        self,
-        is_archive: bool = False,
-        children_ordering: str = None,
-        parent_id: int = None,
-    ) -> QuerySet[TestPlan]:
+    def testplan_treeview_list(self, qs: QuerySet[TestPlan], parent_id: int = None) -> QuerySet[TestPlan]:
         max_level = self.get_max_level()
-        children_ordering = children_ordering.split(',') if children_ordering else ['-started_at']
         testplan_prefetch_objects = form_tree_prefetch_objects(
             nested_prefetch_field=_CHILD_TEST_PLANS,
             prefetch_field=_CHILD_TEST_PLANS,
             tree_depth=max_level,
-            queryset_class=TestPlan,
-            queryset_filter=None if is_archive else {'is_archive': False},
-            order_by_fields=children_ordering,
+            queryset=qs,
         )
         testplan_prefetch_objects.extend(
             form_tree_prefetch_objects(
@@ -167,7 +160,11 @@ class TestPlanSelector:  # noqa: WPS214
     ):
         label_processor = LabelProcessor(parameters)
         pie_chart_processor = PieChartProcessor(parameters)
-        test_plan_child_ids = tuple(self.get_testplan_descendants_ids_by_testplan(test_plan))
+        root_only = parse_bool_from_str(parameters.get('root_only', None))
+        if root_only:
+            test_plan_child_ids = [test_plan.pk]
+        else:
+            test_plan_child_ids = self.get_testplan_descendants_ids_by_testplan(test_plan)
 
         is_archive_condition = Q() if is_archive else Q(is_archive=False)
         tests = Test.objects.filter(
@@ -213,7 +210,11 @@ class TestPlanSelector:  # noqa: WPS214
     ):
         histogram_processor = HistogramProcessor(parameters)
         label_processor = LabelProcessor(parameters, 'test__case')
-        test_plan_child_ids = tuple(self.get_testplan_descendants_ids_by_testplan(test_plan))
+        root_only = parse_bool_from_str(parameters.get('root_only', None))
+        if root_only:
+            test_plan_child_ids = [test_plan.pk]
+        else:
+            test_plan_child_ids = self.get_testplan_descendants_ids_by_testplan(test_plan)
         is_archive_condition = {} if is_archive else {'is_archive': False}
         test_results = (
             TestResultSelector()

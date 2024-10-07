@@ -62,6 +62,7 @@ MISSING_REQUIRED_CUSTOM_ATTRIBUTES_ERR_MSG = 'Missing following required attribu
 FOUND_EMPTY_REQUIRED_CUSTOM_ATTRIBUTES_ERR_MSG = 'Found empty required attributes: {0}'
 CREATE_RESULT_IN_ARCHIVE_TEST = 'Cannot create a result in an archived test'
 UPDATE_ARCHIVE_RESULT = 'Cannot update result in an archived test/archived result'
+ATTRIBUTES_PARAMETER_NOT_PASSED = 'Attribute parameters are not passed'
 RESULTS_ARE_NOT_EDITABLE = 'Results in this project are not editable. Contact with project admin'
 SHORT_PASS = 'This password is too short. It must contain at least 8 characters.'
 UPPERCASE_PASS = 'Password must have at least one uppercase character.'

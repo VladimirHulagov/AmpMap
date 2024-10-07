@@ -55,7 +55,7 @@ export const useEditCloneResultModal = ({
   const watchStatus = watch("status")
 
   const { projectId, testPlanId } = useParams<ParamProjectId & ParamTestPlanId>()
-  const { statuses, getStatusById } = useStatuses({ project: projectId })
+  const { statuses, getStatusById, defaultStatus } = useStatuses({ project: projectId })
   const {
     setAttachments,
     onReset,
@@ -86,18 +86,38 @@ export const useEditCloneResultModal = ({
   } = useAttributes({ mode: "edit", setValue })
   const attributes = filterAttributesByStatus(allAttributes, statuses, watchStatus)
 
+  const isStatusAvailable = (status: number) => !!getStatusById(status)
+
   useEffect(() => {
     const resultSteps: Record<string, number> = {}
     testResult.steps_results.forEach((result) => {
       const stepId = String(result.id)
-      const isStatusAvailable = !!getStatusById(result.status)
-      if (isStatusAvailable) {
+      if (isStatusAvailable(result.status)) {
         resultSteps[stepId] = result.status
       }
     })
 
     setStepsResult(resultSteps)
   }, [testResult, statuses])
+
+  useEffect(() => {
+    const shouldSetDefaultStatus = defaultStatus && !watchStatus && isShow
+    if (shouldSetDefaultStatus) {
+      setValue("status", defaultStatus.id, { shouldDirty: true })
+
+      const newSteps = testResult.steps_results.reduce(
+        (acc, result) => {
+          if (result.id) {
+            acc[result.id] = isStatusAvailable(result.status) ? result.status : defaultStatus.id
+          }
+          return acc
+        },
+        {} as Record<string, number>
+      )
+
+      setStepsResult(newSteps)
+    }
+  }, [defaultStatus, isShow, watchStatus, testResult.steps_results])
 
   const onCloseModal = () => {
     setIsShow(false)
@@ -173,7 +193,13 @@ export const useEditCloneResultModal = ({
           body: dataReq as IResultUpdate,
         }).unwrap()
       } else {
-        const stepsResultCreate = stepsResultData.map((i) => ({ step: i.id, status: 1 }))
+        const findStep = (id: string) =>
+          testResult.steps_results.find((i) => i.id === parseInt(id))?.step
+        const stepsResultCreate = stepsResultData
+          .map((i) => {
+            return { step: findStep(i.id)?.toString(), status: i.status }
+          })
+          .filter((i) => i.step !== undefined) as StepResultCreate[]
         newResult = await createResult({
           testPlanId: Number(testPlanId),
           body: { ...dataReq, steps_results: stepsResultCreate } as IResultCreate,
@@ -196,6 +222,9 @@ export const useEditCloneResultModal = ({
       onHandleError(err)
     }
   }
+
+  const isAllStepsSelected = testResult.steps_results.every((result) => stepsResult[result.id])
+  const isDisabledSubmit = !isDirty || !isAllStepsSelected || !watchStatus
 
   return {
     isLoading,
@@ -222,5 +251,6 @@ export const useEditCloneResultModal = ({
     onAttributeRemove,
     handleSubmitForm: handleSubmit(onSubmit),
     statuses,
+    isDisabledSubmit,
   }
 }

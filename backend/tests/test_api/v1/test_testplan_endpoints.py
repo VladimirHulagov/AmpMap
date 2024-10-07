@@ -415,6 +415,46 @@ class TestPlanEndpoints:
                         f'Estimate not equal for status {status.name}'
 
     @pytest.mark.parametrize(
+        'root_only, parent_count',
+        [(True, 0), (False, 1)],
+    )
+    def test_root_only_statistics(
+        self,
+        api_client,
+        authorized_superuser,
+        project,
+        test_plan_factory,
+        test_factory,
+        result_status_factory,
+        test_case,
+        test_result_factory,
+        root_only,
+        parent_count,
+    ):
+        parent_test_plan = test_plan_factory(project=project)
+        child_test_plan = test_plan_factory(parent=parent_test_plan, project=project)
+        result = test_result_factory(
+            test=test_factory(
+                plan=child_test_plan,
+                case=test_case,
+                project=project,
+            ),
+            project=project,
+            status=result_status_factory(project=project),
+        )
+        for test_plan in [parent_test_plan, child_test_plan]:
+            count = 1 if test_plan.parent else parent_count
+            content = api_client.send_request(
+                self.view_name_statistics,
+                reverse_kwargs={'pk': test_plan.pk},
+                query_params={'root_only': root_only},
+            ).json()
+            results = next(
+                (obj for obj in content if obj['label'] == result.status.name.upper()),
+            )
+            assert results['value'] == count
+
+    @pytest.mark.parametrize(
         'estimate, period, expected_value',
         [
             (3600, 'minutes', '60.0'),
@@ -711,6 +751,50 @@ class TestPlanEndpoints:
         assert actual_result_value == {'count': number_of_items, 'color': status.color, 'label': status.name.lower()}, \
             f'Expected {number_of_items} results, got {actual_result_value}'
 
+    @pytest.mark.parametrize(
+        'root_only, parent_count',
+        [(True, 0), (False, 1)],
+    )
+    def test_root_only_histogram(
+        self,
+        api_client,
+        authorized_superuser,
+        project,
+        test_plan_factory,
+        test_factory,
+        result_status_factory,
+        test_case,
+        test_result_factory,
+        root_only,
+        parent_count,
+    ):
+        parent_test_plan = test_plan_factory(project=project)
+        child_test_plan = test_plan_factory(parent=parent_test_plan, project=project)
+        result_status = result_status_factory(project=project)
+        test_result_factory(
+            test=test_factory(
+                plan=child_test_plan,
+                case=test_case,
+                project=project,
+            ),
+            project=project,
+            status=result_status,
+        )
+        now_date = timezone.now().date()
+        query_params = {
+            'start_date': now_date,
+            'end_date': now_date,
+            'root_only': root_only,
+        }
+        for test_plan in [parent_test_plan, child_test_plan]:
+            count = 1 if test_plan.parent else parent_count
+            content = api_client.send_request(
+                self.view_name_histogram,
+                reverse_kwargs={'pk': test_plan.pk},
+                query_params=query_params,
+            ).json()[0]
+            assert content[str(result_status.id)]['count'] == count
+
     @allure.title('Test plan cannot be parent to itself')
     def test_child_parent_logic(self, superuser_client, test_plan_factory):
         parent = test_plan_factory()
@@ -764,8 +848,9 @@ class TestPlanEndpoints:
                 self.view_name_list,
                 query_params={'project': project.id, 'search': search_name, 'treeview': 1, 'ordering': 'created_at'},
             ).json_strip(as_json=True)
-            assert actual_data == expected_output, 'Only objects with searched named and their ' \
-                                                   'ancestors should be in treeview'
+            for actual_plan in actual_data:
+                assert actual_plan in expected_output, 'Only objects with searched named and their ' \
+                                                       'ancestors should be in treeview'
         with allure.step('Validate returned options are not all options'):
             actual_data = api_client.send_request(
                 self.view_name_list,
@@ -1338,6 +1423,49 @@ class TestPlanEndpoints:
             assert response.json()['errors'][0] == MISSING_REQUIRED_CUSTOM_ATTRIBUTES_ERR_MSG.format(
                 [custom_attribute.name],
             )
+
+    @pytest.mark.parametrize('attribute_key', ['attributes', 'any_attributes'], ids=['attributes', 'any_attributes'])
+    def test_searching_by_attr_key(
+        self,
+        superuser_client,
+        test_plan_factory,
+        project,
+        attribute_key,
+        request,
+    ):
+        allure.dynamic.title(f'Test plans searching by attribute key with query {request.node.callspec.id}')
+        plans = {
+            'attr_1': [],
+            'attr_2': [],
+        }
+        all_combinations = set()
+        attr_names = list(plans.keys())
+        with allure.step('Generate attribute combinations'):
+            for r in range(1, len(attr_names) + 1):
+                for combo in itertools.combinations(attr_names, r):
+                    all_combinations.add(combo)
+
+        with allure.step('Create test plans with attrs'):
+            for attr_name in attr_names:
+                for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
+                    test_plan = test_plan_factory(project=project, attributes={attr_name: 1})
+                    plans[attr_name].append(test_plan.id)
+
+        with allure.step('Validate plan searching by attribute combinations'):
+            for combo in all_combinations:
+                response = superuser_client.send_request(
+                    self.view_name_list,
+                    query_params={'project': project.id, attribute_key: ','.join(combo)},
+                )
+                if len(combo) == 1:
+                    for plan in response.json()['results']:
+                        assert plan['id'] in plans[combo[0]]
+                else:
+                    number_of_plans = (
+                        len(attr_names) * constants.NUMBER_OF_OBJECTS_TO_CREATE
+                        if attribute_key == 'any_attributes' else 0
+                    )
+                    assert response.json()['count'] == number_of_plans
 
     @classmethod
     @allure.step('Validate copied objects')

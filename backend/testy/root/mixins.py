@@ -46,10 +46,11 @@ from rest_framework.generics import QuerySet
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
-from testy.core.api.v1.serializers import RecoveryInputSerializer
 from testy.core.services.recovery import RecoveryService
 from testy.paginations import StandardSetPagination
+from testy.root.api.v1.serializers import RecoveryInputSerializer
 from testy.root.models import DeletedQuerySet, SoftDeleteQuerySet
+from testy.swagger.core import preview_schema
 
 UniqueRelationSet = set[ManyToOneRel | GenericRelation | ManyToManyRel]
 _TARGET_OBJECT = 'target_object'
@@ -264,6 +265,7 @@ class TestyDestroyModelMixin(RelationTreeMixin):
             model_class.objects.partial_rebuild(tree_id)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @preview_schema
     @action(
         methods=['get'],
         url_path='delete/preview',
@@ -338,6 +340,7 @@ class TestyDestroyModelMixin(RelationTreeMixin):
 
 class TestyArchiveMixin(RelationTreeMixin):
 
+    @preview_schema
     @action(
         methods=['get'],
         url_path='archive/preview',

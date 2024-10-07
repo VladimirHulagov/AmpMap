@@ -30,15 +30,7 @@
 # <http://www.gnu.org/licenses/>.
 from functools import partial
 
-from rest_framework.fields import (
-    BooleanField,
-    CharField,
-    DateTimeField,
-    FloatField,
-    IntegerField,
-    ListField,
-    SerializerMethodField,
-)
+from rest_framework.fields import BooleanField, CharField, DateTimeField, IntegerField, ListField, SerializerMethodField
 from rest_framework.relations import HyperlinkedIdentityField, PrimaryKeyRelatedField
 from rest_framework.reverse import reverse
 from rest_framework.serializers import JSONField, ModelSerializer, Serializer
@@ -54,6 +46,7 @@ from testy.tests_representation.selectors.testplan import TestPlanSelector
 from testy.tests_representation.selectors.tests import TestSelector
 from testy.tests_representation.validators import (
     BulkUpdateExcludeIncludeValidator,
+    DateRangeValidator,
     MoveTestsSameProjectValidator,
     ResultStatusValidator,
     TestPlanCasesValidator,
@@ -65,7 +58,7 @@ from testy.tests_representation.validators import (
 )
 from testy.users.selectors.users import UserSelector
 from testy.utilities.tree import get_breadcrumbs_treeview
-from testy.validators import DateRangeValidator, compare_related_manager, compare_steps, validator_launcher
+from testy.validators import compare_related_manager, compare_steps, validator_launcher
 
 
 class ParameterSerializer(ModelSerializer):
@@ -95,9 +88,21 @@ class TestPlanUpdateSerializer(ModelSerializer):
             'description',
         )
         validators = [
-            DateRangeValidator(),
-            TestPlanParentValidator(),
-            TestPlanCasesValidator(),
+            partial(
+                validator_launcher,
+                validator_instance=DateRangeValidator(),
+                fields_to_validate=['started_at', 'due_date'],
+            ),
+            partial(
+                validator_launcher,
+                validator_instance=TestPlanParentValidator(),
+                fields_to_validate=['parent'],
+            ),
+            partial(
+                validator_launcher,
+                validator_instance=TestPlanCasesValidator(),
+                fields_to_validate=['test_cases'],
+            ),
             TestPlanCustomAttributeValuesValidator(),
         ]
 
@@ -367,13 +372,6 @@ class TestPlanTreeSerializer(TestPlanOutputSerializer):
 
     def get_children(self, value):
         return self.__class__(value.child_test_plans.all(), many=True, context=self.context).data
-
-
-class TestPlanStatisticsSerializer(Serializer):
-    label = CharField()
-    color = CharField()
-    value = IntegerField()
-    estimates = FloatField()
 
 
 class TestPlanProgressSerializer(Serializer):

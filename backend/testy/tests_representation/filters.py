@@ -52,6 +52,8 @@ class TestPlanFilter(ArchiveFilterMixin):
     project = project_filter()
     parameters = filters.BaseCSVFilter('parameter_ids', method='filter_by_parameters')
     parent = filters.CharFilter('parent', method='filter_by_parent')
+    attributes = filters.BaseCSVFilter('attributes', lookup_expr='has_keys')
+    any_attributes = filters.BaseCSVFilter('attributes', lookup_expr='has_any_keys')
     ordering = filters.OrderingFilter(
         fields=(
             ('started_at', 'started_at'),

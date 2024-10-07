@@ -360,11 +360,89 @@ class TestProjectEndpoints:
             project_settings = ProjectSettings()
         with allure.step('Validate result is editable set correctly'):
             assert actual_dict['settings']['is_result_editable'] == project_settings.is_result_editable
-        with allure.step('Valdidate result edit limit set correctly'):
+        with allure.step('Validate result edit limit set correctly'):
             assert actual_dict['settings']['result_edit_limit'] == WorkTimeProcessor.format_duration(
                 project_settings.result_edit_limit,
                 to_workday=False,
             )
+        with allure.step('Validate project default status set correctly'):
+            assert actual_dict['settings']['default_status'] == project_settings.default_status
+
+    @allure.title('Test default status from foreign project cannot be selected')
+    def test_default_from_foreign_project_forbidden(
+        self,
+        project_factory,
+        result_status_factory,
+        superuser_client,
+    ):
+        project_factory(settings={})
+        project = project_factory()
+        foreign_project = project_factory()
+        foreign_status = result_status_factory(project=foreign_project)
+        valid_status_no_proj = result_status_factory(project=None)
+        valid_status_w_proj = result_status_factory(project=project)
+        project_dict = {
+            'name': constants.PROJECT_NAME,
+            'description': constants.DESCRIPTION,
+            'settings': {'default_status': None},
+        }
+        with allure.step('Validate creation with foreign status not possible'):
+            project_dict['settings']['default_status'] = foreign_status.pk
+            superuser_client.send_request(
+                self.view_name_list,
+                project_dict,
+                HTTPStatus.BAD_REQUEST,
+                RequestType.POST,
+            )
+        with allure.step('Validate creation with Not assign status possible'):
+            project_dict['settings']['default_status'] = valid_status_no_proj.pk
+            superuser_client.send_request(
+                self.view_name_list,
+                project_dict,
+                HTTPStatus.CREATED,
+                RequestType.POST,
+            )
+        with allure.step('Validate status can be updated by patch/put'):
+            project_dict['settings']['default_status'] = valid_status_w_proj.pk
+            for request_type in (RequestType.PATCH, RequestType.PATCH):
+                superuser_client.send_request(
+                    self.view_name_detail,
+                    project_dict,
+                    reverse_kwargs={'pk': project.pk},
+                    request_type=request_type,
+                )
+        with allure.step('Validate validation works by patch/put'):
+            project_dict['settings']['default_status'] = valid_status_no_proj.pk
+            for request_type in (RequestType.PATCH, RequestType.PATCH):
+                superuser_client.send_request(
+                    self.view_name_detail,
+                    project_dict,
+                    reverse_kwargs={'pk': project.pk},
+                    request_type=request_type,
+                )
+
+    @allure.title('Test status deleted from config on status_deletion')
+    def test_status_deleted_from_config(self, project_factory, result_status_factory, superuser_client):
+        with allure.step('Create project with empty settings'):
+            project_factory(settings={})
+        with allure.step('Create project to modify'):
+            modified_project = project_factory()
+            deleted_status = result_status_factory(project=modified_project)
+            modified_project.settings['default_status'] = deleted_status.pk
+            modified_project.save()
+        with allure.step('Create project with status that will not be modified'):
+            result = result_status_factory(project=None)
+            unmodified_project = project_factory(settings={'default_status': result.pk})
+            result_status_factory(project=unmodified_project)
+        superuser_client.send_request(
+            'api:v1:status-detail',
+            reverse_kwargs={'pk': deleted_status.pk},
+            request_type=RequestType.DELETE,
+            expected_status=HTTPStatus.NO_CONTENT,
+        )
+        project_count = Project.objects.filter(settings__default_status__isnull=True).count()
+        with allure.step('Validate only one project was modified after status deletion'):
+            assert project_count == 1
 
     @allure.title('Test is_visible on project')
     def test_is_visible_annotation(

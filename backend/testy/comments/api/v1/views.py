@@ -42,8 +42,10 @@ from testy.comments.models import Comment
 from testy.comments.paginations import CommentSetPagination
 from testy.comments.selectors.comments import CommentSelector
 from testy.comments.services.comment import CommentService
+from testy.swagger.comments import comment_create_schema, comment_list_schema
 
 
+@comment_list_schema
 class CommentsViewSet(viewsets.ModelViewSet):
     queryset = Comment.objects.none()
     serializer_class = CommentSerializer
@@ -83,6 +85,7 @@ class CommentsViewSet(viewsets.ModelViewSet):
         obj, ct_object = self.get_object_with_content_type()
         return Comment.objects.filter(content_type=ct_object, object_id=obj.id)
 
+    @comment_create_schema
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)

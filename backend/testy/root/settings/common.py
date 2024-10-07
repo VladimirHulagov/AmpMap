@@ -59,7 +59,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
-VERSION = '1.3.3'
+VERSION = '1.3.4'
 
 loaded_hosts = os.environ.get('ALLOWED_HOSTS', [])
 csrf_origins = os.environ.get('CSRF_TRUSTED_ORIGINS', [])
@@ -257,6 +257,7 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
         'rest_framework.authentication.SessionAuthentication',
         'testy.root.auth.TokenAuthenticationTTL',
+        'rest_framework.authentication.BasicAuthentication',
     ],
     'DEFAULT_FILTER_BACKENDS': [
         'django_filters.rest_framework.DjangoFilterBackend',

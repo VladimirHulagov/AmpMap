@@ -38,6 +38,7 @@ class ProjectSettings:
     is_result_editable: bool = settings.IS_RESULT_EDITABLE
     result_edit_limit: int = settings.RESULT_EDIT_LIMIT
     status_order: dict = field(default_factory=dict)
+    default_status: int | None = None
 
     def __init__(self, **kwargs):
         for setting_field in fields(self):

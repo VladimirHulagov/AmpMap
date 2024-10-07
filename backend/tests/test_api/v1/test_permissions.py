@@ -36,8 +36,7 @@ import pytest
 from django.contrib.contenttypes.models import ContentType
 
 from tests.commons import RequestType
-from tests.test_api.v1.test_project_endpoints import TestProjectEndpoints
-from tests.test_api.v1.test_testresult_endpoints import TestResultEndpoints
+from tests.constants import DETAIL_VIEW_NAMES, LIST_VIEW_NAMES
 from testy.core.models import Project
 from testy.tests_representation.models import TestResult
 from testy.users.choices import UserAllowedPermissionCodenames
@@ -69,13 +68,13 @@ class TestRolePermissions:
             role_no_perms = role_factory()
         with self._role(private_project, user, role_no_perms):
             authorized_client.send_request(
-                TestProjectEndpoints.view_name_detail,
+                DETAIL_VIEW_NAMES['project'],
                 reverse_kwargs={'pk': private_project.pk},
                 expected_status=HTTPStatus.FORBIDDEN,
             )
             for request_type in (RequestType.PUT, RequestType.PATCH, RequestType.GET):
                 authorized_client.send_request(
-                    TestProjectEndpoints.view_name_detail,
+                    DETAIL_VIEW_NAMES['project'],
                     reverse_kwargs={'pk': private_project.pk},
                     request_type=request_type,
                     expected_status=HTTPStatus.FORBIDDEN,
@@ -87,18 +86,18 @@ class TestRolePermissions:
         private_project = project_factory(is_private=True)
         with self._role(private_project, user, admin):
             authorized_client.send_request(
-                TestProjectEndpoints.view_name_detail,
+                DETAIL_VIEW_NAMES['project'],
                 reverse_kwargs={'pk': private_project.pk},
             )
             for request_type in (RequestType.PUT, RequestType.PATCH, RequestType.GET):
                 authorized_client.send_request(
-                    TestProjectEndpoints.view_name_detail,
+                    DETAIL_VIEW_NAMES['project'],
                     reverse_kwargs={'pk': private_project.pk},
                     request_type=request_type,
                     data={'name': 'New name'},
                 )
             authorized_client.send_request(
-                TestProjectEndpoints.view_name_detail,
+                DETAIL_VIEW_NAMES['project'],
                 reverse_kwargs={'pk': private_project.pk},
                 request_type=RequestType.DELETE,
                 expected_status=HTTPStatus.NO_CONTENT,
@@ -187,7 +186,7 @@ class TestRolePermissions:
         with self._role(project, user, role_no_perms):
             for request_type in (RequestType.PATCH, RequestType.PUT, RequestType.DELETE, RequestType.GET):
                 authorized_client.send_request(
-                    view_name=TestResultEndpoints.view_name_detail,
+                    DETAIL_VIEW_NAMES['result'],
                     reverse_kwargs={'pk': instance.pk},
                     request_type=request_type,
                     expected_status=HTTPStatus.FORBIDDEN,
@@ -195,13 +194,13 @@ class TestRolePermissions:
                 )
 
             authorized_client.send_request(
-                view_name=TestResultEndpoints.view_name_list,
+                LIST_VIEW_NAMES['result'],
                 request_type=RequestType.POST,
                 expected_status=HTTPStatus.FORBIDDEN,
                 data={'test': instance.test.pk},
             )
             authorized_client.send_request(
-                view_name=TestResultEndpoints.view_name_list,
+                LIST_VIEW_NAMES['result'],
                 request_type=RequestType.GET,
                 expected_status=HTTPStatus.FORBIDDEN,
                 query_params={'test': instance.test.pk},
@@ -327,18 +326,18 @@ class TestRolePermissions:
             with self._role(project_msk, user, member):
                 for project in [project_spb, project_msk]:
                     authorized_client.send_request(
-                        TestProjectEndpoints.view_name_detail,
+                        DETAIL_VIEW_NAMES['project'],
                         reverse_kwargs={'pk': project.pk},
                     )
                 authorized_client.send_request(
-                    TestProjectEndpoints.view_name_detail,
+                    DETAIL_VIEW_NAMES['project'],
                     reverse_kwargs={'pk': project_msk.pk},
                     request_type=RequestType.PATCH,
                     data={'name': 'New name'},
                     expected_status=HTTPStatus.FORBIDDEN,
                 )
                 authorized_client.send_request(
-                    TestProjectEndpoints.view_name_detail,
+                    DETAIL_VIEW_NAMES['project'],
                     reverse_kwargs={'pk': project_spb.pk},
                     request_type=RequestType.PATCH,
                     data={'name': 'New name'},
@@ -542,7 +541,7 @@ class TestRolePermissions:
     @allure.title('Test admin role added for user that creates project')
     def test_admin_role_added_for_created_user(self, authorized_client, admin):
         authorized_client.send_request(
-            TestProjectEndpoints.view_name_list,
+            LIST_VIEW_NAMES['project'],
             data={'name': 'new_project'},
             request_type=RequestType.POST,
             expected_status=HTTPStatus.CREATED,
@@ -581,7 +580,7 @@ class TestRolePermissions:
         api_client.force_login(user)
         with self._role(project, user, role):
             api_client.send_request(
-                TestProjectEndpoints.view_name_detail,
+                DETAIL_VIEW_NAMES['project'],
                 reverse_kwargs={'pk': project.pk},
                 data={'is_private': True},
                 request_type=RequestType.PATCH,

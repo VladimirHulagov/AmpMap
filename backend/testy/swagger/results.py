@@ -30,15 +30,13 @@
 # <http://www.gnu.org/licenses/>.
 from django.utils.decorators import method_decorator
 from drf_yasg.utils import swagger_auto_schema
-from swagger.common_query_parameters import filter_param_by_id, is_archive_parameter, project_param
+from swagger.common_query_parameters import is_archive_parameter
 
 result_list_schema = method_decorator(
     name='list',
     decorator=swagger_auto_schema(
         manual_parameters=[
             is_archive_parameter,
-            project_param,
-            filter_param_by_id('test'),
         ],
     ),
 )

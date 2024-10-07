@@ -30,3 +30,4 @@ nginx/*.key
 /.gitleaks.toml
 /.gitleaksignore
 /backend/user_activity.log
+celerybeat-schedule

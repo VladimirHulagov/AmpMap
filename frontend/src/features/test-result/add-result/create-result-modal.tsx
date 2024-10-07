@@ -5,6 +5,7 @@ import { Controller } from "react-hook-form"
 import { ErrorObj } from "shared/hooks/use-alert-error"
 import { AlertError, Attachment, Attribute, Status, Steps, TextAreaWithAttach } from "shared/ui"
 
+import { ApplyToStepsButton } from "../apply-to-steps-button/apply-to-steps-button"
 import { CreateResultModalProps, useCreateResultModal } from "./use-create-result-modal"
 
 const { Dragger } = Upload
@@ -79,13 +80,20 @@ export const CreateResultModal = (props: CreateResultModalProps) => {
                 name="status"
                 control={control}
                 render={({ field }) => (
-                  <Select {...field} placeholder="Please select" style={{ width: "100%" }}>
-                    {statuses.map((status) => (
-                      <Select.Option key={status.id} value={status.id}>
-                        <Status id={status.id} name={status.name} color={status.color} />
-                      </Select.Option>
-                    ))}
-                  </Select>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <Select {...field} placeholder="Please select" style={{ width: "100%" }}>
+                      {statuses.map((status) => (
+                        <Select.Option key={status.id} value={status.id}>
+                          <Status id={status.id} name={status.name} color={status.color} />
+                        </Select.Option>
+                      ))}
+                    </Select>
+                    <ApplyToStepsButton
+                      steps={testCase.steps}
+                      status={field.value}
+                      onApply={setSteps}
+                    />
+                  </div>
                 )}
               />
             </Form.Item>

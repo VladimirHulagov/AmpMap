@@ -32,14 +32,10 @@ from django.utils.decorators import method_decorator
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
-from swagger.common_query_parameters import (
-    common_ordering_filter,
-    ordering_param_factory,
-    project_param,
-    search_param_factory,
-)
-from swagger.custom_schema_generation import TestyPaginatorInspector
 
+from testy.swagger.common_query_parameters import is_archive_parameter, ordering_param_factory, search_param_factory
+from testy.swagger.custom_schema_generation import TestyPaginatorInspector
+from testy.swagger.serializers import TestWithBreadcrumbsSerializer
 from testy.tests_description.api.v1.serializers import (
     TestCaseCopySerializer,
     TestCaseHistorySerializer,
@@ -49,7 +45,6 @@ from testy.tests_description.api.v1.serializers import (
     TestCaseRetrieveSerializer,
     TestSuiteTreeCasesSerializer,
 )
-from testy.tests_representation.api.v1.serializers import TestSerializer
 
 _NAME = 'name'
 
@@ -58,9 +53,15 @@ cases_list_schema = method_decorator(
     decorator=swagger_auto_schema(
         operation_description='Returns list of test cases in different formats, depending on parameters.',
         manual_parameters=[
-            project_param,
+            is_archive_parameter,
             ordering_param_factory('id', _NAME),
             search_param_factory(_NAME),
+            openapi.Parameter(
+                'labels_condition',
+                openapi.IN_QUERY,
+                type=openapi.TYPE_STRING,
+                description='Condition for boolean logic for labels, options are: and/or',
+            ),
         ],
         responses={
             status.HTTP_200_OK: TestCaseListSerializer(many=True),
@@ -92,7 +93,7 @@ cases_retrieve_schema = swagger_auto_schema(
 
 cases_copy_schema = swagger_auto_schema(
     request_body=TestCaseCopySerializer,
-    responses={status.HTTP_200_OK: TestCaseListSerializer(many=True)},
+    responses={status.HTTP_200_OK: TestCaseRetrieveSerializer(many=True)},
 )
 
 parameter = openapi.Parameter(
@@ -105,16 +106,15 @@ parameter = openapi.Parameter(
 
 cases_tests_schema = swagger_auto_schema(
     manual_parameters=[
-        common_ordering_filter,
         search_param_factory(_NAME),
     ],
-    responses={status.HTTP_200_OK: TestSerializer(many=True)},
+    responses={status.HTTP_200_OK: TestWithBreadcrumbsSerializer(many=True)},
     paginator_inspectors=[TestyPaginatorInspector],
 )
 
 cases_history_schema = swagger_auto_schema(
     manual_parameters=[
-        common_ordering_filter,
+        ordering_param_factory('history_date', 'history_user', 'history_type'),
         search_param_factory(_NAME),
     ],
     responses={status.HTTP_200_OK: TestCaseHistorySerializer(many=True)},
@@ -128,6 +128,16 @@ cases_version_restore_schema = swagger_auto_schema(
 )
 cases_search_schema = swagger_auto_schema(
     operation_description='Return treeview of suites with displaying case.',
-    manual_parameters=[search_param_factory(_NAME)],
+    manual_parameters=[
+        is_archive_parameter,
+        ordering_param_factory('id', _NAME),
+        search_param_factory(_NAME),
+        openapi.Parameter(
+            'labels_condition',
+            openapi.IN_QUERY,
+            type=openapi.TYPE_STRING,
+            description='Condition for boolean logic for labels, options are: and/or',
+        ),
+    ],
     responses={status.HTTP_200_OK: TestSuiteTreeCasesSerializer(many=True)},
 )

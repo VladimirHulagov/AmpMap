@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react"
 
+import { useGetProjectQuery } from "entities/project/api"
+
 import {
   useLazyGetTestPlanActivityStatusesQuery,
   useLazyGetTestPlanStatusesQuery,
@@ -21,6 +23,9 @@ export const useStatuses = ({ project, plan, isActivity }: Props) => {
   const [getStatuses] = useLazyGetStatusesQuery()
   const [getStatusesFromTestPlan] = useLazyGetTestPlanStatusesQuery()
   const [getStatusesFromTestPlanActivity] = useLazyGetTestPlanActivityStatusesQuery()
+  const { data: projectData } = useGetProjectQuery(Number(project), {
+    skip: !project,
+  })
 
   const fetchData = async () => {
     if (!project) return
@@ -81,6 +86,10 @@ export const useStatuses = ({ project, plan, isActivity }: Props) => {
     return statuses.find((status) => status.id === id) ?? null
   }
 
+  const defaultStatus = projectData?.settings.default_status
+    ? getStatusById(projectData.settings.default_status)
+    : null
+
   return {
     statuses,
     statusesOptions,
@@ -93,5 +102,6 @@ export const useStatuses = ({ project, plan, isActivity }: Props) => {
     statusesFilters,
     statusesFiltersWithUntested,
     refetch: fetchData,
+    defaultStatus,
   }
 }

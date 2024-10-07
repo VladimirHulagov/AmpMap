@@ -32,9 +32,11 @@ from pathlib import Path
 
 from django.conf import settings
 from django.db.models.fields.files import FieldFile
-from PIL import Image
+from PIL import Image, ImageFile
 
 from testy.utilities.string import strip_suffixes
+
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
 class MediaService:

@@ -32,18 +32,12 @@ from django.utils.decorators import method_decorator
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
-from swagger.common_query_parameters import (
-    is_flat,
-    ordering_param_factory,
-    project_param,
-    search_param_factory,
-    treeview_param,
-)
+from swagger.common_query_parameters import is_flat, ordering_param_factory, treeview_param
 from swagger.custom_schema_generation import ResponseCodeTuple, TestyPaginatorInspector
-from swagger.serializers import BreadcrumbsSerializer
 
 from testy.tests_description.api.v1.serializers import (
     TestSuiteBaseSerializer,
+    TestSuiteCopySerializer,
     TestSuiteSerializer,
     TestSuiteTreeSerializer,
 )
@@ -53,25 +47,22 @@ treeview_response = openapi.Response(
     'Children field is an list of instances of treeview serializer.',
     TestSuiteTreeSerializer(many=True),
 )
-suite_breadcrumbs_response = openapi.Response(
-    'Serializer for displaying breadcrumbs recursively.',
-    BreadcrumbsSerializer(),
-)
 
 suite_list_schema = method_decorator(
     name='list',
     decorator=swagger_auto_schema(
         operation_description='Returns list of test suites in different formats, depending on parameters.',
         manual_parameters=[
-            project_param,
             treeview_param,
             is_flat,
-            ordering_param_factory('name', 'descendant_count', 'total_estimates'),
-            search_param_factory('name'),
+            ordering_param_factory(
+                'id', 'name', 'descendant_count', 'total_estimates', 'total_cases_count', 'total_estimates',
+            ),
         ],
         responses={
             ResponseCodeTuple(status.HTTP_200_OK, 'treeview'): treeview_response,
             ResponseCodeTuple(status.HTTP_200_OK, 'No parameters provided'): TestSuiteSerializer,
+            ResponseCodeTuple(status.HTTP_200_OK, 'is_flat'): TestSuiteBaseSerializer,
         },
         paginator_inspectors=[TestyPaginatorInspector],
     ),
@@ -90,14 +81,8 @@ suite_retrieve_schema = method_decorator(
 suite_copy_schema = swagger_auto_schema(
     operation_description='Copy suites with provided ids and all its dependant objects '
                           'to another suite within a project. If project is not provided src suite project is used',
+    request_body=TestSuiteCopySerializer,
     responses={
         status.HTTP_200_OK: TestSuiteBaseSerializer(many=True),
-    },
-)
-
-suites_breadcrumbs_schema = swagger_auto_schema(
-    operation_description='Get treelike breadcrumbs view from suite with id to root suite.',
-    responses={
-        status.HTTP_200_OK: suite_breadcrumbs_response,
     },
 )

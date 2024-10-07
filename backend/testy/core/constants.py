@@ -29,7 +29,10 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 CUSTOM_ATTRIBUTES_ALLOWED_APPS = ('tests_description', 'tests_representation')
-CUSTOM_ATTRIBUTES_ALLOWED_MODELS = ('testcase', 'testresult', 'testplan')
+CUSTOM_ATTRIBUTES_ALLOWED_MODELS = ('testcase', 'testplan', 'testresult')
+CONTENT_TYPES_POSITIONS = (
+    ('testresult', len(CUSTOM_ATTRIBUTES_ALLOWED_MODELS)),
+)
 
 # CHANNEL_GROUPS
 NOTIFICATION_COUNT_GROUP = 'notifications_count_{user_id}'
