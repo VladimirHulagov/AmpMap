@@ -4,7 +4,7 @@ import { baseQueryWithLogout } from "app/apiSlice"
 
 import { invalidatesList } from "shared/libs"
 
-const rootPath = "v1/comments"
+const rootPath = "comments"
 
 export const commentsApi = createApi({
   reducerPath: "commentsApi",

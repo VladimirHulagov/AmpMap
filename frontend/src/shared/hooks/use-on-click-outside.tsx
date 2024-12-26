@@ -1,19 +1,35 @@
-import { RefObject, useEffect } from "react"
+import { RefObject, useCallback, useEffect } from "react"
 
 type Event = MouseEvent | TouchEvent
 
 export const useOnClickOutside = <T extends HTMLElement = HTMLElement>(
   ref: RefObject<T>,
-  handler: (event: Event) => void
+  handler: (event: Event) => void,
+  isEnable = true,
+  ignoredList: string[] = []
 ) => {
-  useEffect(() => {
-    const listener = (event: Event) => {
+  const listener = useCallback(
+    (event: Event) => {
       const el = ref?.current
-      if (!el || el.contains((event?.target as Node) ?? null)) {
+      if (!el) {
+        return
+      }
+
+      const targetElement = event?.target as Element
+      const hasIgnored = ignoredList.some((item) => targetElement?.closest(item))
+
+      if (el.contains(targetElement ?? null) || hasIgnored) {
         return
       }
 
       handler(event)
+    },
+    [ref, handler]
+  )
+
+  useEffect(() => {
+    if (!isEnable) {
+      return
     }
 
     document.addEventListener("mousedown", listener)
@@ -23,5 +39,12 @@ export const useOnClickOutside = <T extends HTMLElement = HTMLElement>(
       document.removeEventListener("mousedown", listener)
       document.removeEventListener("touchstart", listener)
     }
-  }, [ref, handler])
+  }, [ref, handler, isEnable])
+
+  useEffect(() => {
+    if (!isEnable) {
+      document.removeEventListener("mousedown", listener)
+      document.removeEventListener("touchstart", listener)
+    }
+  }, [isEnable])
 }

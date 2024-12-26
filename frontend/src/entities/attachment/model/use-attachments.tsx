@@ -19,7 +19,7 @@ interface UploadFileExtend<T> extends UploadFile<T> {
 // prettier-ignore
 export const useAttachments = <T, >(
   control: Control<T & FieldValues, unknown>,
-  projectId: string | undefined
+  projectId: number
 ) => {
   const [attachments, setAttachments] = useState<IAttachmentWithUid[]>([])
   const [createAttachment, { isLoading }] = useCreateAttachmentMutation()
@@ -52,7 +52,7 @@ export const useAttachments = <T, >(
 
     const fmData = new FormData()
     fmData.append("file", file)
-    fmData.append("project", projectId)
+    fmData.append("project", String(projectId))
 
     await mutex.waitForUnlock()
     const release = await mutex.acquire()

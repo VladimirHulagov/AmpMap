@@ -3,12 +3,16 @@ import { useEffect } from "react"
 import { useAppDispatch, useAppSelector } from "app/hooks"
 
 import { useUpdateTestMutation } from "entities/test/api"
-import { selectTest, setTest } from "entities/test/model/slice"
+import { selectDrawerTest, setDrawerTest } from "entities/test/model/slice"
 
 import { useAssignToCommon } from "./use-assign-to-common"
 
-export const useAssignTo = () => {
-  const activeTest = useAppSelector(selectTest)
+interface Props {
+  onSuccess?: () => void
+}
+
+export const useAssignTo = ({ onSuccess }: Props) => {
+  const activeTest = useAppSelector(selectDrawerTest)
   const dispatch = useAppDispatch()
   const [updateTest, { isLoading: isLoadingUpdateTest }] = useUpdateTestMutation()
 
@@ -21,7 +25,8 @@ export const useAssignTo = () => {
         assignee: assignUserId,
       },
     }).unwrap()
-    dispatch(setTest(result))
+    dispatch(setDrawerTest(result))
+    onSuccess?.()
   }
 
   const {

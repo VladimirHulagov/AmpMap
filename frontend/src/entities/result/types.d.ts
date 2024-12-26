@@ -1,4 +1,4 @@
-interface IResult {
+interface Result {
   id: Id
   project: number
   status: number
@@ -20,13 +20,13 @@ interface IResult {
   steps_results: StepResult[]
 }
 
-interface IResultQuery {
+interface ResultQuery {
   testId: string | undefined
   project: string
   showArchive: boolean
 }
 
-interface IResultCreate {
+interface ResultCreate {
   test: number
   status?: number
   comment?: string
@@ -37,7 +37,7 @@ interface IResultCreate {
   steps_results?: StepResultCreate[]
 }
 
-interface IResultUpdate {
+interface ResultUpdate {
   test: number
   status?: number
   comment?: string
@@ -58,11 +58,6 @@ interface StepResult {
   sort_order: number
 }
 
-interface StepResultUpdate {
-  id: string
-  status: number
-}
-
 interface StepResultCreate {
   step: string
   status: number
@@ -72,6 +67,6 @@ interface ResultFormData {
   comment: string
   status: number | null
   attachments?: number[]
-  steps?: Step[]
+  steps?: Record<string, number>
   attributes?: Attribute[]
 }

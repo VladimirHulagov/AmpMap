@@ -17,6 +17,10 @@ export const userConfig: UserConfig = {
   test_plans: {
     is_show_archived: false,
     is_cases_filter_open: false,
+    filters: {},
+  },
+  test_suites: {
+    filters: {},
   },
   test_cases: {
     is_show_archived: false,

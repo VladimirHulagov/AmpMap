@@ -25,6 +25,9 @@ ___
 
 ## WARNING FOR PRODUCTION USAGE
 
+**UPGRADE WARNING, upgrade to 2.0.4 only tested from version 1.3.4, upgrade from earlier versions at your own risk, 
+before any upgrade make a backup of your current data**
+
 1. For real production deployment we highly recommend using working signed SSL certificates, you can set path to them
    inside .env files `SSL_CERT_KEY_PATH` for key file and `SSL_CERT_PATH` cert file accordingly.
 2. Change `VOLUMES_PATH` for some other path than root, because every hard redeployment or local repository deletion
@@ -32,13 +35,15 @@ ___
 3. Do not use default settings for database
 4. Do not leave superuser creds as it is.
 5. To set servername in nginx config we provide `HOST_NAME` env variable, by default it is `_`
+6. To start with `docker compose up` not as root user you need to add your user id as UID environment variable,   
+by default we are using user with id 0 (which is root or default user)
 
 ## Contribution and development deployment
 
 ___
 
 1. Docker deployment is almost the same as a production one but omit step with creating certificates
-as they are not used in development nginx config.
+   as they are not used in development nginx config.
 2. Run `docker-compose -f docker-compose-dev.yml up`
 3. UI is not served as static in development mode.
 4. Django settings are set to development mode, so you will see drf api view and detailed django Internal server errors.

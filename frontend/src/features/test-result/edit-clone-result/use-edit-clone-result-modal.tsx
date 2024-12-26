@@ -1,16 +1,19 @@
 import { notification } from "antd"
 import { useStatuses } from "entities/status/model/use-statuses"
-import { useEffect, useState } from "react"
+import { useContext, useEffect, useState } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 import { useParams } from "react-router-dom"
 
 import { useAttachments } from "entities/attachment/model"
 
 import { useCreateResultMutation, useUpdateResultMutation } from "entities/result/api"
-import { useAttributes } from "entities/result/model"
+import { useAttributesTestResult } from "entities/result/model"
 
-import { useErrors } from "shared/hooks"
-import { makeAttributesJson, showModalCloseConfirm } from "shared/libs"
+import { ProjectContext } from "pages/project"
+
+import { useErrors, useShowModalCloseConfirm } from "shared/hooks"
+import { makeAttributesJson } from "shared/libs"
 import { AlertSuccessChange } from "shared/ui"
 
 import { filterAttributesByStatus } from "../utils"
@@ -24,8 +27,9 @@ interface ErrorData {
 interface UseEditResultModalProps {
   isShow: boolean
   setIsShow: React.Dispatch<React.SetStateAction<boolean>>
-  testResult: IResult
+  testResult: Result
   isClone: boolean
+  onSubmit?: (newResult: Result, oldResult: Result) => void
 }
 
 export const useEditCloneResultModal = ({
@@ -33,7 +37,11 @@ export const useEditCloneResultModal = ({
   testResult,
   isShow,
   isClone,
+  onSubmit: onSubmitCb,
 }: UseEditResultModalProps) => {
+  const { t } = useTranslation()
+  const { project } = useContext(ProjectContext)!
+  const { showModal } = useShowModalCloseConfirm()
   const [errors, setErrors] = useState<ErrorData | null>(null)
   const {
     handleSubmit,
@@ -47,15 +55,17 @@ export const useEditCloneResultModal = ({
     mode: "all",
     defaultValues: {
       comment: testResult.comment,
-      status: null,
+      status: testResult.status,
       attributes: [],
-      steps: [],
+      steps: {},
+      attachments: [],
     },
   })
   const watchStatus = watch("status")
+  const watchSteps = watch("steps") ?? {}
 
-  const { projectId, testPlanId } = useParams<ParamProjectId & ParamTestPlanId>()
-  const { statuses, getStatusById, defaultStatus } = useStatuses({ project: projectId })
+  const { testPlanId } = useParams<ParamTestPlanId>()
+  const { statuses, getStatusById, defaultStatus } = useStatuses({ project: project.id })
   const {
     setAttachments,
     onReset,
@@ -66,11 +76,10 @@ export const useEditCloneResultModal = ({
     attachments,
     attachmentsIds,
     isLoading: isLoadingCreateAttachment,
-  } = useAttachments<ResultFormData>(control, projectId)
+  } = useAttachments<ResultFormData>(control, project.id)
   const { onHandleError } = useErrors<ErrorData>(setErrors)
   const [updatedTestResult, { isLoading: isLoadingUpdateTestResult }] = useUpdateResultMutation()
   const [createResult, { isLoading: isLoadingCreateTestResult }] = useCreateResultMutation()
-  const [stepsResult, setStepsResult] = useState<Record<string, number>>({})
   const isLoading =
     isLoadingUpdateTestResult || isLoadingCreateTestResult || isLoadingCreateAttachment
 
@@ -78,17 +87,19 @@ export const useEditCloneResultModal = ({
     attributes: allAttributes,
     setAttributes,
     addAttribute,
+    onAttributeChangeName,
     onAttributeChangeType,
     onAttributeChangeValue,
-    onAttributeChangeName,
     onAttributeRemove,
-    loadAttributeJson,
-  } = useAttributes({ mode: "edit", setValue })
+    getAttributeJson,
+  } = useAttributesTestResult({ mode: "edit", setValue })
+
   const attributes = filterAttributesByStatus(allAttributes, statuses, watchStatus)
 
   const isStatusAvailable = (status: number) => !!getStatusById(status)
 
   useEffect(() => {
+    if (!isShow) return
     const resultSteps: Record<string, number> = {}
     testResult.steps_results.forEach((result) => {
       const stepId = String(result.id)
@@ -97,8 +108,25 @@ export const useEditCloneResultModal = ({
       }
     })
 
-    setStepsResult(resultSteps)
-  }, [testResult, statuses])
+    const testResultAttachesWithUid = testResult.attachments.map((attach) => ({
+      ...attach,
+      uid: String(attach.id),
+    }))
+    if (testResultAttachesWithUid.length && !isClone) {
+      setAttachments(testResultAttachesWithUid)
+    }
+
+    const attrs = getAttributeJson(testResult.attributes)
+    setAttributes(attrs)
+
+    reset({
+      comment: testResult.comment,
+      status: getStatusById(testResult.status) ? testResult.status : undefined,
+      attributes: attrs,
+      steps: resultSteps,
+      attachments: testResult.attachments.map((i) => i.id),
+    })
+  }, [isShow, isClone, testResult, statuses])
 
   useEffect(() => {
     const shouldSetDefaultStatus = defaultStatus && !watchStatus && isShow
@@ -115,7 +143,12 @@ export const useEditCloneResultModal = ({
         {} as Record<string, number>
       )
 
-      setStepsResult(newSteps)
+      reset({
+        comment: testResult.comment,
+        status: testResult.status,
+        attributes: getAttributeJson(testResult.attributes),
+        steps: newSteps,
+      })
     }
   }, [defaultStatus, isShow, watchStatus, testResult.steps_results])
 
@@ -132,32 +165,12 @@ export const useEditCloneResultModal = ({
     if (isLoading) return
 
     if (isDirty) {
-      showModalCloseConfirm(onCloseModal)
+      showModal(onCloseModal)
       return
     }
 
     onCloseModal()
   }
-
-  useEffect(() => {
-    if (testResult && isShow && statuses.length) {
-      const testResultAttachesWithUid = testResult.attachments.map((attach) => ({
-        ...attach,
-        uid: String(attach.id),
-      }))
-      if (testResultAttachesWithUid.length && !isClone) {
-        setAttachments(testResultAttachesWithUid)
-      }
-
-      const isStatusExist = !!getStatusById(testResult.status)
-      if (isStatusExist) {
-        setValue("status", testResult.status)
-      }
-
-      setValue("comment", testResult.comment)
-      loadAttributeJson(testResult.attributes)
-    }
-  }, [testResult, isShow, isClone, statuses])
 
   const onSubmit: SubmitHandler<ResultFormData> = async (data) => {
     if (!testResult || !testPlanId) return
@@ -172,9 +185,9 @@ export const useEditCloneResultModal = ({
 
     const stepsResultData: { id: string; status: number }[] = []
 
-    if (Object.keys(stepsResult).length) {
-      Object.entries(stepsResult).forEach(([id, status]) => {
-        stepsResultData.push({ id, status: status })
+    if (Object.keys(watchSteps).length) {
+      Object.entries(watchSteps).forEach(([id, status]) => {
+        stepsResultData.push({ id, status })
       })
     }
 
@@ -190,7 +203,7 @@ export const useEditCloneResultModal = ({
         newResult = await updatedTestResult({
           id: testResult.id,
           testPlanId: Number(testPlanId),
-          body: dataReq as IResultUpdate,
+          body: dataReq as ResultUpdate,
         }).unwrap()
       } else {
         const findStep = (id: string) =>
@@ -202,28 +215,34 @@ export const useEditCloneResultModal = ({
           .filter((i) => i.step !== undefined) as StepResultCreate[]
         newResult = await createResult({
           testPlanId: Number(testPlanId),
-          body: { ...dataReq, steps_results: stepsResultCreate } as IResultCreate,
+          body: { ...dataReq, steps_results: stepsResultCreate } as ResultCreate,
         }).unwrap()
       }
       onCloseModal()
 
       notification.success({
-        message: "Success",
+        message: t("Success"),
+        closable: true,
         description: (
           <AlertSuccessChange
             action="updated"
-            title="Result"
-            link={`/projects/${projectId}/plans/${testPlanId}/?test=${newResult.test}#result-${newResult.id}`}
+            title={t("Result")}
+            link={`/projects/${project.id}/plans/${testPlanId}/?test=${newResult.test}#result-${newResult.id}`}
             id={String(newResult.id)}
           />
         ),
       })
+      onSubmitCb?.(newResult, testResult)
     } catch (err: unknown) {
       onHandleError(err)
     }
   }
 
-  const isAllStepsSelected = testResult.steps_results.every((result) => stepsResult[result.id])
+  const handleStepsChange = (stepsResult: Record<string, number>) => {
+    setValue("steps", stepsResult, { shouldDirty: true })
+  }
+
+  const isAllStepsSelected = testResult.steps_results.every((result) => watchSteps[result.id])
   const isDisabledSubmit = !isDirty || !isAllStepsSelected || !watchStatus
 
   return {
@@ -232,10 +251,10 @@ export const useEditCloneResultModal = ({
     control,
     attachments,
     attachmentsIds,
-    stepsResult,
+    watchSteps,
     isDirty,
     setAttachments,
-    setStepsResult,
+    handleStepsChange,
     handleAttachmentsChange: onChange,
     handleAttachmentsLoad: onLoad,
     handleAttachmentsRemove: onRemove,

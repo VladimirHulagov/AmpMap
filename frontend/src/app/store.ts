@@ -25,27 +25,25 @@ import { authApi } from "entities/auth/api"
 import authReducer from "entities/auth/model"
 
 import { labelApi } from "entities/label/api"
-import { labelReducer } from "entities/label/model"
 
 import { parameterApi } from "entities/parameter/api"
 import parameterReducer from "entities/parameter/model"
 
 import { projectApi } from "entities/project/api"
-import { projectReducer } from "entities/project/model"
+import { projectReducer } from "entities/project/model/slice"
 
 import { resultApi } from "entities/result/api"
 
 import { suiteApi } from "entities/suite/api"
-import { suiteReducer } from "entities/suite/model"
 
 import { systemApi } from "entities/system/api"
 import { systemReducer } from "entities/system/model/slice"
 
 import { testApi } from "entities/test/api"
-import { testReducer } from "entities/test/model"
+import { testReducer, testsfilterReducer } from "entities/test/model"
 
 import { testCaseApi } from "entities/test-case/api"
-import { testCaseReducer } from "entities/test-case/model"
+import { testCaseReducer, testCasesfilterReducer } from "entities/test-case/model"
 
 import { testPlanApi } from "entities/test-plan/api"
 import { testPlanReducer } from "entities/test-plan/model"
@@ -65,15 +63,15 @@ const rootReducer = combineReducers({
   app: appReducer,
   auth: authReducer,
   testCase: testCaseReducer,
-  testSuite: suiteReducer,
   user: userReducer,
   parameter: parameterReducer,
   project: projectReducer,
   testPlan: testPlanReducer,
   test: testReducer,
-  label: labelReducer,
   role: roleReducer,
   system: systemReducer,
+  testsFilter: testsfilterReducer,
+  testCasesFilter: testCasesfilterReducer,
   [systemApi.reducerPath]: systemApi.reducer,
   [authApi.reducerPath]: authApi.reducer,
   [usersApi.reducerPath]: usersApi.reducer,

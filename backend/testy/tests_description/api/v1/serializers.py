@@ -58,6 +58,7 @@ class TestCaseStepBaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = TestCaseStep
         fields = ('id', 'name', 'scenario', 'expected', 'sort_order')
+        ref_name = 'TestCaseStepBaseV1'
 
 
 class TestCaseStepInputSerializer(TestCaseStepBaseSerializer):
@@ -67,6 +68,7 @@ class TestCaseStepInputSerializer(TestCaseStepBaseSerializer):
 
     class Meta(TestCaseStepBaseSerializer.Meta):
         fields = TestCaseStepBaseSerializer.Meta.fields + ('attachments',)
+        ref_name = 'TestCaseStepInputV1'
 
 
 class TestCaseStepOutputSerializer(TestCaseStepBaseSerializer):
@@ -74,6 +76,7 @@ class TestCaseStepOutputSerializer(TestCaseStepBaseSerializer):
 
     class Meta(TestCaseStepBaseSerializer.Meta):
         fields = TestCaseStepBaseSerializer.Meta.fields + ('attachments',)
+        ref_name = 'TestCaseStepOutputV1'
 
     def get_attachments(self, instance):
         if (version := self.context.get('version', None)) is not None:
@@ -104,6 +107,7 @@ class TestCaseBaseSerializer(serializers.ModelSerializer):
             'is_archive',
             'attributes',
         )
+        ref_name = 'TestCaseBaseV1'
 
     validators = [
         partial(
@@ -122,6 +126,7 @@ class TestCaseLabelOutputSerializer(serializers.ModelSerializer):
     class Meta:
         model = LabeledItem
         fields = ('id', 'name')
+        ref_name = 'TestCaseLabelOutputV1'
 
 
 class TestCaseLabelInputSerializer(serializers.ModelSerializer):
@@ -130,6 +135,7 @@ class TestCaseLabelInputSerializer(serializers.ModelSerializer):
     class Meta:
         model = Label
         fields = ('id', 'name')
+        ref_name = 'TestCaseLabelInputV1'
 
 
 class TestCaseInputBaseSerializer(TestCaseBaseSerializer):
@@ -141,19 +147,23 @@ class TestCaseInputBaseSerializer(TestCaseBaseSerializer):
 
     class Meta(TestCaseBaseSerializer.Meta):
         fields = TestCaseBaseSerializer.Meta.fields + ('attachments', 'labels', 'skip_history')
+        ref_name = 'TestCaseInputV1'
 
     def validate(self, attrs):
         if attrs['skip_history']:
             request = self.context['request']
             history_latest = TestCaseSelector.get_last_history(self.instance.pk)
             if request.user != history_latest.history_user:
-                raise serializers.ValidationError('You cannot update version of Test Case')
+                raise serializers.ValidationError('Only author of latest change can skip version')
 
         return attrs
 
 
 class TestCaseInputSerializer(TestCaseInputBaseSerializer):
     scenario = serializers.CharField(required=True)
+
+    class Meta(TestCaseInputBaseSerializer.Meta):
+        ref_name = 'TestCaseBaseInputV1'
 
 
 class TestCaseInputWithStepsSerializer(TestCaseInputBaseSerializer):
@@ -162,6 +172,7 @@ class TestCaseInputWithStepsSerializer(TestCaseInputBaseSerializer):
 
     class Meta(TestCaseInputBaseSerializer.Meta):
         fields = TestCaseInputBaseSerializer.Meta.fields + ('steps',)
+        ref_name = 'TestCaseInputWithStepsV1'
 
     def validate_steps(self, value):
         if not len(value):
@@ -186,6 +197,7 @@ class TestCaseListSerializer(TestCaseBaseSerializer):
         fields = TestCaseBaseSerializer.Meta.fields + (
             'attachments', 'url', 'steps', 'labels', 'versions', 'current_version', 'suite_name',
         )
+        ref_name = 'TestCaseListSerializerV1'
 
     def get_current_version(self, instance):
         if self._version is not None:
@@ -228,6 +240,9 @@ class TestCaseRetrieveSerializer(TestCaseListSerializer):
             return self._version
         return instance.history.first().history_id
 
+    class Meta(TestCaseListSerializer.Meta):
+        ref_name = 'TestCaseRetrieveV1'
+
 
 class TestCaseTreeSerializer(serializers.ModelSerializer):
     class Meta:
@@ -243,11 +258,12 @@ class ParentSuiteSerializer(serializers.ModelSerializer):
 
 class TestSuiteBaseSerializer(serializers.ModelSerializer):
     url = HyperlinkedIdentityField(view_name='api:v1:testsuite-detail')
-    path = serializers.CharField(read_only=True)
+    suite_path = serializers.CharField(read_only=True)
 
     class Meta:
         model = TestSuite
-        fields = ('id', 'name', 'parent', 'project', 'url', 'description', 'path')
+        fields = ('id', 'name', 'parent', 'project', 'url', 'description', 'path', 'suite_path')
+        ref_name = 'TestSuiteBaseSerializerV1'
 
 
 class TestSuiteSerializer(TestSuiteBaseSerializer):
@@ -256,6 +272,7 @@ class TestSuiteSerializer(TestSuiteBaseSerializer):
     class Meta:
         model = TestSuite
         fields = TestSuiteBaseSerializer.Meta.fields + ('test_cases',)
+        ref_name = 'TestSuiteSerializerV1'
 
 
 class TestSuiteTreeSerializer(TestSuiteBaseSerializer):
@@ -284,6 +301,7 @@ class TestSuiteTreeBreadcrumbsSerializer(TestSuiteTreeSerializer):
     class Meta:
         model = TestSuite
         fields = ('id', 'title', 'children', 'is_used')
+        ref_name = 'TestSuiteTreeBreadcrumbsSerializerV1'
 
 
 class TestSuiteTreeCasesSerializer(TestSuiteTreeSerializer):
@@ -306,6 +324,7 @@ class TestCaseCopySerializer(serializers.Serializer):
                 fields_to_validate=['dst_suite_id', 'cases'],
             ),
         ]
+        ref_name = 'TestCaseCopyV1'
 
 
 class TestSuiteCopySerializer(serializers.Serializer):
@@ -320,6 +339,9 @@ class TestSuiteCopySerializer(serializers.Serializer):
         required=False,
         allow_null=True,
     )
+
+    class Meta:
+        ref_name = 'TestCaseCopyV1'
 
 
 class TestCaseHistorySerializer(serializers.Serializer):
@@ -341,6 +363,9 @@ class TestCaseHistorySerializer(serializers.Serializer):
     def get_action(self, instance):
         return self.HISTORY_TYPES.get(instance.history_type)
 
+    class Meta:
+        ref_name = 'TestCaseHistoryV1'
+
 
 class TestCaseRestoreSerializer(serializers.Serializer):
     version = IntegerField(required=True)
@@ -349,6 +374,9 @@ class TestCaseRestoreSerializer(serializers.Serializer):
         if not TestCaseSelector.version_exists(version=version, pk=self.instance.id):
             raise serializers.ValidationError('Incorrect version')
         return version
+
+    class Meta:
+        ref_name = 'TestCaseRestoreV1'
 
 
 class TestSuiteRetrieveSerializer(TestSuiteBaseSerializer):
@@ -373,12 +401,37 @@ class TestSuiteRetrieveSerializer(TestSuiteBaseSerializer):
             'total_estimates',
             'child_count',
         )
+        ref_name = 'TestSuiteRetrieveV1'
 
     @classmethod
     def get_breadcrumbs(cls, instance: TestSuite):
         tree = TestSuiteSelector.suite_list_ancestors(instance)
-        return get_breadcrumbs_treeview(instances=tree, depth=len(tree) - 1)
+        return get_breadcrumbs_treeview(
+            instances=tree,
+            depth=len(tree) - 1,
+            title_method=lambda obj: obj.name,
+        )
 
     @classmethod
     def get_child_count(cls, instance: TestSuite):
         return instance.child_test_suites.count()
+
+
+class TestSuiteTreeSerializer(TestSuiteBaseSerializer):
+    children = SerializerMethodField()
+    title = serializers.CharField(source='name')
+    descendant_count = IntegerField()
+    cases_count = IntegerField()
+    parent = ParentSuiteSerializer()
+    total_cases_count = IntegerField()
+    estimates = EstimateField()
+    total_estimates = EstimateField()
+
+    class Meta:
+        model = TestSuite
+        fields = TestSuiteBaseSerializer.Meta.fields + (
+            'children', 'title', 'descendant_count', 'cases_count', 'total_cases_count', 'total_estimates', 'estimates',
+        )
+
+    def get_children(self, value):
+        return self.__class__(value.child_test_suites.all(), many=True, context=self.context).data

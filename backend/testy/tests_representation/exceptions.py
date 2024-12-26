@@ -39,3 +39,8 @@ class DateRangeIsAbsent(APIException):
 class AttributeParameterIsAbsent(APIException):
     status_code = 400
     default_detail = {'errors': ['Attribute parameters are not passed']}
+
+
+class InvalidStatisticQueryParam(APIException):
+    status_code = 400
+    default_detail = {'errors': ['Invalid statistic query parameter, set parent or project']}

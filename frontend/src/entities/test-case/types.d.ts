@@ -1,30 +1,52 @@
 interface TestCaseState {
   drawerTestCase: TestCase | null
   editingTestCase: TestCase | null
+  settings: {
+    table: TestCaseTableParams
+    tree: TestCaseTreeParams
+  }
+}
+
+interface TestCaseTableParams {
+  page: number
+  page_size: number
+  visibleColumns: ColumnParam[]
+  columns: ColumnParam[]
+  sorter?: SorterResult<string>
+  _n?: number
+}
+
+interface TestCaseTreeParams {
+  columns: ColumnParam[]
+  visibleColumns: ColumnParam[]
 }
 
 interface TestCase {
   id: Id
   name: string
   project: number
-  suite: number
-  suite_name: string
+  suite_path: string
+  suite: { id: number; name: string }
   setup: string
   scenario?: string
   expected: string | null
   steps: Step[]
   is_steps: boolean
+  is_leaf: boolean
+  has_children: boolean
   teardown: string
   estimate?: string | null
   description: string
-  current_version: number
+  current_version: string
   versions: number[]
   attachments: IAttachment[]
   url: string
   labels: LabelInForm[]
   is_archive: boolean
+  source_archived: boolean
   test_suite_description?: string | null
   attributes: AttributesObject
+  parent: Parent | null
 }
 
 interface TestCaseCreate {
@@ -44,6 +66,7 @@ interface TestCaseCreate {
 }
 
 interface TestCaseUpdate extends TestCase {
+  suite: number
   attachments?: number[]
   steps: StepUpload[] | StepAttachNumber[]
   skip_history?: boolean
@@ -76,8 +99,9 @@ interface StepUpload {
 }
 
 interface GetTestCasesQuery {
+  testSuiteId: Id
   project: string
-  suite?: string
+  suite?: number[]
   search?: string
   ordering?: string
   page?: number
@@ -85,20 +109,17 @@ interface GetTestCasesQuery {
   is_archive?: boolean
   treeview?: boolean
   labels?: number[]
-  labels_condition?: "and" | "or"
+  not_labels?: number[]
+  labels_condition?: LabelCondition
+  show_descendants?: boolean
+  _n?: number
 }
 
-interface SearchTestCasesQuery {
-  project: string
-  id?: string
-  suite?: string
-  name?: string
-}
+type SearchTestCasesQuery = Omit<GetTestCasesQuery, "testSuiteId">
 
 interface TestCaseFormData {
   name: string
   scenario: string
-  project: number
   suite: number
   expected?: string
   setup?: string
@@ -133,6 +154,7 @@ interface TestCaseTestsList {
   testCaseId: number
   ordering?: string
   last_status?: string
+  is_archive?: boolean
 }
 
 interface GetTestCaseByIdParams {

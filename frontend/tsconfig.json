@@ -29,9 +29,6 @@
   },
   "include": [
     "src",
-    "env.d.ts",
-    ".eslintrc.json",
-    "vite.config.ts",
   ],
   "references": [
     {

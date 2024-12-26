@@ -1,7 +1,8 @@
 import { notification } from "antd"
 import { useStatuses } from "entities/status/model/use-statuses"
-import { useEffect, useState } from "react"
+import { useContext, useEffect, useState } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 import { useParams } from "react-router-dom"
 
 import { useAppSelector } from "app/hooks"
@@ -9,12 +10,14 @@ import { useAppSelector } from "app/hooks"
 import { useAttachments } from "entities/attachment/model"
 
 import { useCreateResultMutation } from "entities/result/api"
-import { useAttributes } from "entities/result/model/use-attributes"
+import { useAttributesTestResult } from "entities/result/model/use-attributes-test-result"
 
-import { selectTest } from "entities/test/model"
+import { selectDrawerTest } from "entities/test/model"
 
-import { useErrors } from "shared/hooks"
-import { makeAttributesJson, showModalCloseConfirm } from "shared/libs"
+import { ProjectContext } from "pages/project"
+
+import { useErrors, useShowModalCloseConfirm } from "shared/hooks"
+import { makeAttributesJson } from "shared/libs"
 import { AlertSuccessChange } from "shared/ui"
 
 import { filterAttributesByStatus } from "../utils"
@@ -23,6 +26,7 @@ export interface CreateResultModalProps {
   isShow: boolean
   setIsShow: React.Dispatch<React.SetStateAction<boolean>>
   testCase: TestCase
+  onSubmit?: (result: Result) => void
 }
 
 interface ErrorData {
@@ -31,7 +35,15 @@ interface ErrorData {
   attributes?: string | null
 }
 
-export const useCreateResultModal = ({ setIsShow, testCase, isShow }: CreateResultModalProps) => {
+export const useCreateResultModal = ({
+  setIsShow,
+  testCase,
+  isShow,
+  onSubmit: onSubmitCb,
+}: CreateResultModalProps) => {
+  const { t } = useTranslation()
+  const { project } = useContext(ProjectContext)!
+  const { showModal } = useShowModalCloseConfirm()
   const [errors, setErrors] = useState<ErrorData | null>(null)
   const [createResult, { isLoading }] = useCreateResultMutation()
   const {
@@ -48,13 +60,13 @@ export const useCreateResultModal = ({ setIsShow, testCase, isShow }: CreateResu
       status: null,
       attachments: [],
       attributes: [],
-      steps: [],
+      steps: {},
     },
   })
   const watchStatus = watch("status")
-  const test = useAppSelector(selectTest)
-  const { projectId, testPlanId } = useParams<ParamProjectId & ParamTestPlanId>()
-  const { statuses, defaultStatus } = useStatuses({ project: projectId })
+  const drawerTest = useAppSelector(selectDrawerTest)
+  const { testPlanId } = useParams<ParamTestPlanId>()
+  const { statuses, defaultStatus } = useStatuses({ project: project.id })
   const {
     setAttachments,
     onReset,
@@ -65,7 +77,8 @@ export const useCreateResultModal = ({ setIsShow, testCase, isShow }: CreateResu
     attachments,
     attachmentsIds,
     isLoading: isLoadingCreateAttachment,
-  } = useAttachments<ResultFormData>(control, projectId)
+  } = useAttachments<ResultFormData>(control, project.id)
+
   const {
     attributes: allAttributes,
     addAttribute,
@@ -74,7 +87,7 @@ export const useCreateResultModal = ({ setIsShow, testCase, isShow }: CreateResu
     onAttributeChangeValue,
     onAttributeRemove,
     resetAttributes,
-  } = useAttributes({ mode: "create", setValue })
+  } = useAttributesTestResult({ mode: "create", setValue })
   const attributes = filterAttributesByStatus(allAttributes, statuses, watchStatus)
 
   const [steps, setSteps] = useState<Record<string, number>>({})
@@ -96,7 +109,7 @@ export const useCreateResultModal = ({ setIsShow, testCase, isShow }: CreateResu
     }
 
     if (isDirty) {
-      showModalCloseConfirm(onCloseModal)
+      showModal(onCloseModal)
       return
     }
 
@@ -104,7 +117,7 @@ export const useCreateResultModal = ({ setIsShow, testCase, isShow }: CreateResu
   }
 
   const onSubmit: SubmitHandler<ResultFormData> = async (data) => {
-    if (!test) return
+    if (!drawerTest) return
     setErrors(null)
 
     const { isSuccess, attributesJson, errors } = makeAttributesJson(attributes)
@@ -129,9 +142,9 @@ export const useCreateResultModal = ({ setIsShow, testCase, isShow }: CreateResu
       const dataReq = {
         ...data,
         attributes: attributesJson,
-        test: test.id,
+        test: drawerTest.id,
         steps_results: stepsResult,
-      } as IResultCreate
+      } as ResultCreate
       const newResult = await createResult({
         testPlanId: Number(testPlanId),
         body: dataReq,
@@ -139,16 +152,18 @@ export const useCreateResultModal = ({ setIsShow, testCase, isShow }: CreateResu
       onCloseModal()
 
       notification.success({
-        message: "Success",
+        message: t("Success"),
+        closable: true,
         description: (
           <AlertSuccessChange
             action="created"
-            title="Result"
-            link={`/projects/${projectId}/plans/${testPlanId}/?test=${newResult.test}#result-${newResult.id}`}
+            title={t("Result")}
+            link={`/projects/${project.id}/plans/${testPlanId}/?test=${newResult.test}#result-${newResult.id}`}
             id={String(newResult.id)}
           />
         ),
       })
+      onSubmitCb?.(newResult)
     } catch (err: unknown) {
       onHandleError(err)
     }

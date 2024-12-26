@@ -29,8 +29,7 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 
-from mptt.models import MPTTModel
-
+from testy.root.ltree.models import LtreeModel
 from testy.root.models import DeletedQuerySet, DeletedTreeQuerySet
 
 _INSTANCE_IDS = 'instance_ids'
@@ -49,13 +48,13 @@ class RecoveryService:
 
     @classmethod
     def get_objects_by_ids(cls, queryset, data):
-        if issubclass(queryset.model, MPTTModel):
+        if issubclass(queryset.model, LtreeModel):
             return queryset.filter(id__in=data[_INSTANCE_IDS]).get_descendants(include_self=True)
         return queryset.filter(id__in=data[_INSTANCE_IDS])
 
     @classmethod
     def get_objects_by_instance(cls, instance):
         queryset = instance._meta.model.objects.filter(pk=instance.pk)
-        if issubclass(queryset.model, MPTTModel):
+        if issubclass(queryset.model, LtreeModel):
             return queryset.get_descendants(include_self=True)
         return queryset

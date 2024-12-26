@@ -1,34 +1,59 @@
 import { useStatuses } from "entities/status/model/use-statuses"
-import { useCallback, useMemo } from "react"
+import { useCallback, useEffect, useMemo, useRef } from "react"
 import { useParams } from "react-router-dom"
 
 import { colors } from "shared/config"
 
+import styles from "./styles.module.css"
+
 interface UsePieProps {
   data: TestPlanStatistics[]
-  tableParams: TestTableParams
-  setTableParams: (params: TestTableParams) => void
   type: "value" | "estimates"
+  statuses: string[]
+  updateStatuses: (statuses: string[]) => void
   period?: EstimatePeriod
+  onHeightChange?: (height: number) => void
 }
 
-export const usePie = ({ data, tableParams, setTableParams, type, period }: UsePieProps) => {
+export const usePie = ({
+  data,
+  statuses,
+  updateStatuses,
+  type,
+  period,
+  onHeightChange,
+}: UsePieProps) => {
   const { projectId, testPlanId } = useParams<ParamProjectId & ParamTestPlanId>()
   const { getStatusNumberByText, isLoading } = useStatuses({ project: projectId, plan: testPlanId })
+  const chartRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    setTimeout(() => {
+      if (!chartRef.current || !onHeightChange) {
+        return
+      }
+      const legend = chartRef.current.querySelector(
+        ".recharts-default-legend"
+      ) as unknown as HTMLElement | null
+      if (legend) {
+        onHeightChange(legend.clientHeight + 50)
+      }
+    }, 0)
+  }, [data])
+
   const getNewLastStatuses = (label: string) => {
     if (isLoading) {
       return []
     }
     const status = getStatusNumberByText(label)
-    const oldStatuses = tableParams.filters?.last_status ?? []
-    const isIncluded = status === null ? false : oldStatuses.includes(status)
-    const isOne = oldStatuses.length === 1
+    const isIncluded = status === null ? false : statuses.includes(status)
+    const isOne = statuses.length === 1
 
     if (isIncluded) {
-      return isOne ? [] : oldStatuses.filter((i) => i !== status)
+      return isOne ? [] : statuses.filter((i) => i !== status)
     }
 
-    return [...oldStatuses, status].filter(Boolean) as string[]
+    return [...statuses, status].filter(Boolean) as string[]
   }
 
   const isAllZero = useMemo(() => {
@@ -60,26 +85,22 @@ export const usePie = ({ data, tableParams, setTableParams, type, period }: UseP
       const percent = entry.payload?.percent
       const lastStatuses = getNewLastStatuses(label)
       const isActive = checkActive(label)
-      const estimateValue = type === "estimates" ? period?.slice(0, 1) ?? "m" : ""
+      const estimateValue = type === "estimates" ? (period?.slice(0, 1) ?? "m") : ""
 
       const handleClick = () => {
-        setTableParams({
-          filters: {
-            last_status: lastStatuses,
-          },
-        })
+        updateStatuses(lastStatuses)
       }
 
       if (isAllZero) {
         return (
           <span
+            className={styles.legendTitle}
             style={{
-              cursor: "pointer",
               borderBottom: isActive ? `1px solid ${colors.accent}` : "0",
             }}
             onClick={handleClick}
           >
-            {label} [0{estimateValue}] (0%)
+            {label} <span className={styles.legendValue}>[0{estimateValue}] (0%)</span>
           </span>
         )
       }
@@ -87,29 +108,38 @@ export const usePie = ({ data, tableParams, setTableParams, type, period }: UseP
       if (payloadValue === 0) {
         return (
           <span
+            className={styles.legendTitle}
             style={{
-              cursor: "pointer",
               borderBottom: isActive ? `1px solid ${colors.accent}` : "0",
             }}
             onClick={handleClick}
           >
-            {label} [{payloadValue ?? 0}
-            {estimateValue}] (0%)
+            {label}{" "}
+            <span className={styles.legendValue}>
+              [{payloadValue ?? 0}
+              {estimateValue}] (0%)
+            </span>
           </span>
         )
       }
 
       return (
         <span
-          style={{ cursor: "pointer", borderBottom: isActive ? `1px solid ${colors.accent}` : "0" }}
+          className={styles.legendTitle}
+          style={{
+            borderBottom: isActive ? `1px solid ${colors.accent}` : "0",
+          }}
           onClick={handleClick}
         >
-          {value} [{payloadValue ?? 0}
-          {estimateValue}] ({(percent * 100).toFixed(2)}%)
+          {value}{" "}
+          <span className={styles.legendValue}>
+            [{payloadValue ?? 0}
+            {estimateValue}] ({(percent * 100).toFixed(2)}%)
+          </span>
         </span>
       )
     },
-    [isAllZero, tableParams, period, getStatusNumberByText]
+    [isAllZero, period, getStatusNumberByText]
   )
 
   const tooltipFormatter = useCallback(
@@ -122,16 +152,12 @@ export const usePie = ({ data, tableParams, setTableParams, type, period }: UseP
 
   const handleCellClick = (entry: { fill: string; value: number; label: string }) => {
     const lastStatuses = getNewLastStatuses(entry.label)
-    setTableParams({
-      filters: {
-        last_status: lastStatuses,
-      },
-    })
+    updateStatuses(lastStatuses)
   }
 
   const checkActive = (label: string) => {
     const status = getStatusNumberByText(label)
-    return tableParams.filters?.last_status?.some((i) => i === status) ?? false
+    return statuses?.some((i) => String(i) === status) ?? false
   }
 
   return {
@@ -141,5 +167,6 @@ export const usePie = ({ data, tableParams, setTableParams, type, period }: UseP
     tooltipFormatter,
     handleCellClick,
     checkActive,
+    chartRef,
   }
 }

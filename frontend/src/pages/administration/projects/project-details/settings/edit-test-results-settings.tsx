@@ -2,12 +2,12 @@ import { EditOutlined } from "@ant-design/icons"
 import { Button, Form, Input, Modal, Switch, Tooltip, notification } from "antd"
 import { useEffect, useState } from "react"
 import { Controller, SubmitHandler, useForm } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 
 import { useUpdateProjectJsonMutation } from "entities/project/api"
 
 import { config } from "shared/config"
-import { useErrors } from "shared/hooks"
-import { ErrorObj } from "shared/hooks/use-alert-error"
+import { ErrorObj, useErrors } from "shared/hooks"
 import { AlertError, AlertSuccessChange } from "shared/ui"
 
 interface Props {
@@ -20,6 +20,7 @@ interface ErrorData {
 }
 
 export const EditTestResultsSettings = ({ project }: Props) => {
+  const { t } = useTranslation()
   const [errors, setErrors] = useState<ErrorData | null>(null)
   const { onHandleError } = useErrors<ErrorData>(setErrors)
   const [isShow, setIsShow] = useState(false)
@@ -60,11 +61,12 @@ export const EditTestResultsSettings = ({ project }: Props) => {
 
       onCloseModal()
       notification.success({
-        message: "Success",
+        message: t("Success"),
+        closable: true,
         description: (
           <AlertSuccessChange
             action="updated"
-            title="Project test results settings"
+            title={t("Project test results settings")}
             link={`/administration/projects/${project.id}/settings`}
             id={project.id.toString()}
           />
@@ -84,18 +86,18 @@ export const EditTestResultsSettings = ({ project }: Props) => {
   return (
     <>
       <Button type="default" icon={<EditOutlined />} onClick={() => setIsShow(true)}>
-        Edit
+        {t("Edit")}
       </Button>
       <Modal
         className="edit-test-results-settings-modal"
-        title="Edit project test results settings"
+        title={t("Edit project test results settings")}
         open={isShow}
         onCancel={() => setIsShow(false)}
         width="600px"
         centered
         footer={[
           <Button id="close-edit-test-results-settings" key="back" onClick={onCloseModal}>
-            Close
+            {t("Close")}
           </Button>,
           <Button
             id="edit-test-results-settings"
@@ -105,7 +107,7 @@ export const EditTestResultsSettings = ({ project }: Props) => {
             type="primary"
             disabled={!isDirty}
           >
-            Save
+            {t("Save")}
           </Button>,
         ]}
       >
@@ -122,7 +124,7 @@ export const EditTestResultsSettings = ({ project }: Props) => {
             onFinish={handleSubmit(onSubmit)}
           >
             <Form.Item
-              label="Is Editable"
+              label={t("Is Editable")}
               validateStatus={errors?.is_result_editable ? "error" : ""}
               help={errors?.is_result_editable ? errors.is_result_editable : ""}
             >
@@ -136,7 +138,7 @@ export const EditTestResultsSettings = ({ project }: Props) => {
               <Form.Item
                 label={
                   <Tooltip overlayStyle={{ minWidth: 460 }} title={config.estimateTooltip}>
-                    Edit time
+                    {t("Edit time")}
                   </Tooltip>
                 }
                 validateStatus={errors?.result_edit_limit ? "error" : ""}

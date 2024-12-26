@@ -2,7 +2,7 @@ import { DeleteOutlined } from "@ant-design/icons"
 import { Button } from "antd"
 import { useAdministrationStatusModal } from "entities/status/model"
 
-import { StatusCreateEditModal } from "../status-create-edit-modal"
+import { StatusCreateEditModal } from "../status-create-edit-modal/status-create-edit-modal"
 
 interface Props {
   record: Status

@@ -105,7 +105,7 @@ class CustomAPIClient(APIClient):
 
 
 def model_to_dict_via_serializer(
-    instances: Iterable[Model],
+    instances: Iterable[Model] | Model,
     serializer_class,
     many=False,
     nested_fields: list[str] = None,
@@ -113,6 +113,7 @@ def model_to_dict_via_serializer(
     fields_to_add: dict[str, Any] = None,
     requested_user: User | None = None,
     as_json: bool = False,
+    refresh_instances: bool = False,
 ) -> list[_JSON_SERIALIZABLE] | _JSON_SERIALIZABLE:
     if not nested_fields:
         nested_fields = []
@@ -120,6 +121,12 @@ def model_to_dict_via_serializer(
         nested_fields_simple_list = []
     request = RequestMock()
     setattr(request, 'user', requested_user)
+    if refresh_instances:
+        if isinstance(instances, Iterable):
+            for instance in instances:
+                instance.refresh_from_db()
+        else:
+            instances.refresh_from_db()
     serializer = serializer_class(instances, many=many, context={'request': request})
     if as_json:
         return JSONRenderer().render(serializer.data)

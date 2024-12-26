@@ -28,12 +28,15 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
+import re
 from collections import OrderedDict
 from typing import NamedTuple
 
 from drf_yasg import openapi
+from drf_yasg.errors import SwaggerGenerationError
+from drf_yasg.generators import OpenAPISchemaGenerator
 from drf_yasg.inspectors import PaginatorInspector, SwaggerAutoSchema
-from drf_yasg.utils import force_real_str, force_serializer_instance
+from drf_yasg.utils import force_real_str, force_serializer_instance, is_form_media_type
 from rest_framework.status import is_success
 
 
@@ -46,6 +49,35 @@ class ResponseCodeTuple(NamedTuple):
 
     def __int__(self):
         return self.status_code
+
+
+def param_list_to_odict(parameters):
+    """Reimplemented from drf_yasg"""
+    result = OrderedDict(((param.name, param.in_), param) for param in parameters)
+    return result
+
+
+def merge_params(parameters, overrides):
+    """Reimplemented from drf_yasg"""
+    parameters = param_list_to_odict(parameters)
+    parameters.update(param_list_to_odict(overrides))
+    return list(parameters.values())
+
+
+class SchemaGenerator(OpenAPISchemaGenerator):
+    def get_schema(self, request=None, public=False):
+        schema = super().get_schema(request, public)
+        paths = schema.paths
+        filtered_paths = {}
+        for path, path_item in paths.items():
+            if not re.match(r'/api/v\d', path):
+                filtered_paths[path] = path_item
+                continue
+            path_version = re.search(r'/api/(v\d+)', path).group(1)
+            if path_version == self.version:
+                filtered_paths[path] = path_item
+        schema.paths = filtered_paths
+        return schema
 
 
 class TestyPaginatorInspector(PaginatorInspector):
@@ -91,7 +123,6 @@ class TestyAutoSchema(SwaggerAutoSchema):
         tags = self.overrides.get('tags', None) or getattr(self.view, 'schema_tags', [])
         if not tags:
             tags = [operation_keys[0]]
-
         return tags
 
     def get_response_serializers(self):
@@ -105,7 +136,7 @@ class TestyAutoSchema(SwaggerAutoSchema):
             processed_manual_responses[str(sc)] = resp
 
         responses = OrderedDict()
-        if not any(is_success(int(sc)) for sc in processed_manual_responses if sc != 'default'):
+        if not any(is_success(int(sc.split(',')[0])) for sc in processed_manual_responses if sc != 'default'):
             responses = self.get_default_responses()
 
         responses.update((str(sc), resp) for sc, resp in processed_manual_responses.items())
@@ -152,3 +183,19 @@ class TestyAutoSchema(SwaggerAutoSchema):
             responses[str(sc)] = response
 
         return responses
+
+    def add_manual_parameters(self, parameters):
+        """Reimplemented from drf_yasg"""
+        manual_parameters = self.overrides.get('manual_parameters', None) or []
+
+        if any(param.in_ == openapi.IN_BODY for param in manual_parameters):  # pragma: no cover
+            raise SwaggerGenerationError('specify the body parameter as a Schema or Serializer in request_body')
+        if any(param.in_ == openapi.IN_FORM for param in manual_parameters):  # pragma: no cover
+            has_body_parameter = any(param.in_ == openapi.IN_BODY for param in parameters)
+            if has_body_parameter or not any(is_form_media_type(encoding) for encoding in self.get_consumes()):
+                raise SwaggerGenerationError('cannot add form parameters when the request has a request body; '
+                                             'did you forget to set an appropriate parser class on the view?')
+            if self.method not in self.body_methods:
+                raise SwaggerGenerationError('form parameters can only be applied to '
+                                             '(' + ','.join(self.body_methods) + ') HTTP methods')
+        return merge_params(parameters, manual_parameters)

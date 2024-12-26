@@ -4,7 +4,7 @@ import { baseQueryWithLogout } from "app/apiSlice"
 
 import { invalidatesList } from "shared/libs"
 
-const rootPath = "v1/roles"
+const rootPath = "roles"
 
 export const roleApi = createApi({
   reducerPath: "roleApi",

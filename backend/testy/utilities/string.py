@@ -30,6 +30,7 @@
 # <http://www.gnu.org/licenses/>.
 from hashlib import sha256
 from pathlib import Path
+from typing import Iterable
 
 
 def parse_bool_from_str(value):
@@ -55,3 +56,7 @@ def strip_suffixes(path: str) -> tuple[Path, str]:
     while path.suffix:
         path = path.with_suffix('')
     return path, suffixes
+
+
+def join_iterable(iterable: Iterable[any], separator: str = ',') -> str:
+    return separator.join(map(str, iterable))

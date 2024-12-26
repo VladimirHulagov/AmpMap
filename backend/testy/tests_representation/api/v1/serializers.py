@@ -67,6 +67,7 @@ class ParameterSerializer(ModelSerializer):
     class Meta:
         model = Parameter
         fields = ('id', 'project', 'data', 'group_name', 'url')
+        ref_name = 'ParameterV1'
 
 
 class TestPlanUpdateSerializer(ModelSerializer):
@@ -105,6 +106,7 @@ class TestPlanUpdateSerializer(ModelSerializer):
             ),
             TestPlanCustomAttributeValuesValidator(),
         ]
+        ref_name = 'TestPlanUpdateV1'
 
 
 class TestPlanInputSerializer(TestPlanUpdateSerializer):
@@ -112,14 +114,15 @@ class TestPlanInputSerializer(TestPlanUpdateSerializer):
 
     class Meta(TestPlanUpdateSerializer.Meta):
         fields = TestPlanUpdateSerializer.Meta.fields + ('parameters',)
+        ref_name = 'TestPlanInputV1'
 
 
 class TestSerializer(ModelSerializer):
     url = HyperlinkedIdentityField(view_name='api:v1:test-detail')
     name = SerializerMethodField(read_only=True)
-    last_status = IntegerField(read_only=True, default=None)
-    last_status_name = CharField(read_only=True, default=None)
-    last_status_color = CharField(read_only=True, default=None)
+    last_status = IntegerField(source='last_status.id', read_only=True, default=None)
+    last_status_name = CharField(source='last_status.name', read_only=True, default=None)
+    last_status_color = CharField(source='last_status.color', read_only=True, default=None)
     suite = SerializerMethodField(read_only=True)
     labels = SerializerMethodField()
     suite_path = CharField(read_only=True)
@@ -136,6 +139,7 @@ class TestSerializer(ModelSerializer):
             'suite_path', 'avatar_link', 'test_suite_description', 'estimate',
         )
         read_only_fields = ('project',)
+        ref_name = 'TestSerializerV1'
 
     def get_assignee_username(self, instance):
         if instance.assignee:
@@ -175,6 +179,7 @@ class TestStepResultSerializer(ModelSerializer):
     class Meta:
         model = TestStepResult
         fields = ('id', 'step', 'name', 'status', 'status_text', 'status_color', 'sort_order')
+        ref_name = 'TestStepResultV1'
 
     def get_name(self, instance):
         step = TestCaseStepSelector().get_step_by_step_result(instance)
@@ -211,6 +216,7 @@ class TestResultSerializer(ModelSerializer):
                 'allow_null': False,
             },
         }
+        ref_name = 'TestResultV1'
 
     def get_avatar_link(self, instance):
         if not instance.user:
@@ -249,6 +255,7 @@ class TestResultActivitySerializer(ModelSerializer):
             'id', 'status', 'status_text', 'status_color', 'username', 'action', 'plan_id', 'test_id', 'test_name',
             'action_day', 'action_timestamp', 'avatar_link',
         )
+        ref_name = 'TestResultActivityV1'
 
     @classmethod
     def get_test_name(cls, instance):
@@ -309,12 +316,14 @@ class TestResultInputSerializer(TestResultSerializer):
             ),
             TestResultCustomAttributeValuesValidator(),
         ]
+        ref_name = 'TestResultInputV1'
 
 
 class ParentPlanSerializer(ModelSerializer):
     class Meta:
         model = TestPlan
         fields = ('id', 'name')
+        ref_name = 'ParentPlanV1'
 
 
 class TestPlanOutputSerializer(ModelSerializer):
@@ -332,6 +341,7 @@ class TestPlanOutputSerializer(ModelSerializer):
             'url', 'title', 'description',
             'attributes',
         )
+        ref_name = 'TestPlanOutputV1'
 
     @classmethod
     def get_title(cls, instance: TestPlan):
@@ -347,6 +357,7 @@ class TestPlanRetrieveSerializer(TestPlanOutputSerializer):
 
     class Meta(TestPlanOutputSerializer.Meta):
         fields = TestPlanOutputSerializer.Meta.fields + ('breadcrumbs', 'child_count')
+        ref_name = 'TestPlanRetrieveV1'
 
     @classmethod
     def get_breadcrumbs(cls, instance: TestPlan):
@@ -369,23 +380,21 @@ class TestPlanTreeSerializer(TestPlanOutputSerializer):
     class Meta:
         model = TestPlan
         fields = TestPlanOutputSerializer.Meta.fields + ('children',)
+        ref_name = 'TestPlanRetrieveV1'
 
     def get_children(self, value):
         return self.__class__(value.child_test_plans.all(), many=True, context=self.context).data
 
 
 class TestPlanProgressSerializer(Serializer):
-    id = IntegerField()
-    title = SerializerMethodField()
-    tests_total = IntegerField()
-    tests_progress_period = IntegerField()
-    tests_progress_total = IntegerField()
+    id = IntegerField(read_only=True)
+    title = CharField(read_only=True)
+    tests_total = IntegerField(read_only=True)
+    tests_progress_period = IntegerField(read_only=True)
+    tests_progress_total = IntegerField(read_only=True)
 
-    @classmethod
-    def get_title(cls, instance: TestPlan):
-        if parameters := instance.parameters.all():
-            return '{0} [{1}]'.format(instance.name, ', '.join([parameter.data for parameter in parameters]))
-        return instance.name
+    class Meta:
+        ref_name = 'TestPlanProgressV1'
 
 
 class TestPlanDetailSerializer(Serializer):
@@ -393,6 +402,9 @@ class TestPlanDetailSerializer(Serializer):
     new_name = CharField(required=False)
     started_at = DateTimeField(required=False)
     due_date = DateTimeField(required=False)
+
+    class Meta:
+        ref_name = 'TestPlanDetailV1'
 
 
 class TestPlanCopySerializer(Serializer):
@@ -405,13 +417,17 @@ class TestPlanCopySerializer(Serializer):
     )
     keep_assignee = BooleanField(default=False)
 
+    class Meta:
+        ref_name = 'TestPlanCopyV1'
+
 
 class TestPlanMinSerializer(ModelSerializer):
     url = HyperlinkedIdentityField(view_name='api:v1:testplan-detail')
 
     class Meta:
         model = TestPlan
-        exclude = ('is_deleted', 'created_at', 'updated_at', 'lft', 'rght', 'tree_id', 'level')
+        exclude = ('is_deleted', 'created_at', 'updated_at', 'tree_id')
+        ref_name = 'TestPlanMinV1'
 
 
 class ResultStatusSerializer(ModelSerializer):
@@ -421,6 +437,7 @@ class ResultStatusSerializer(ModelSerializer):
         model = ResultStatus
         fields = 'id', 'url', 'name', 'color', 'type', 'project'
         validators = [ResultStatusValidator()]
+        ref_name = 'ResultStatusV1'
 
 
 class BulkUpdateTestsSerializer(Serializer):
@@ -472,3 +489,4 @@ class BulkUpdateTestsSerializer(Serializer):
                 none_valid_fields=['included_tests', 'excluded_tests', 'filter_conditions'],
             ),
         ]
+        ref_name = 'BulkUpdateTestsV1'

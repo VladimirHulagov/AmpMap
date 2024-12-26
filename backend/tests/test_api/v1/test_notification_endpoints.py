@@ -33,24 +33,23 @@ from http import HTTPStatus
 
 import allure
 import pytest
-import pytest_asyncio
 from channels.db import database_sync_to_async
 from channels.testing import WebsocketCommunicator
 from notifications.models import Notification
 
 from tests.commons import RequestType, model_to_dict_via_serializer
-from tests.mock_serializers import NotificationSettingMockSerializer
+from tests.mock_serializers.v2 import NotificationSettingMockSerializer
 from testy.core.api.v1.serializers import NotificationSerializer
 from testy.core.choices import ActionCode
 from testy.core.models import NotificationSetting
 from testy.core.services.notifications import NotificationService
 from testy.root.asgi import application
-from testy.users.models import User
 
 
 @allure.parent_suite('Test notifications')
 @allure.suite('Integration tests')
 @allure.sub_suite('Endpoints')
+@pytest.mark.usefixtures('notification_tests_teardown')
 @pytest.mark.django_db
 class TestNotificationEndpoints:
     view_name_list = 'api:v1:notification-list'
@@ -213,28 +212,6 @@ class TestNotificationEndpoints:
             yield communicator
         finally:
             await communicator.disconnect()
-
-    @pytest_asyncio.fixture
-    async def subscribed_user(self, notification_setting_factory, user_factory):
-        def wrapper():
-            user = user_factory()
-            setting = notification_setting_factory(
-                action_code=ActionCode.TEST_ASSIGNED,
-                message='{{{{placeholder}}}} was assigned to you by {actor}',
-                verbose_name='Test assigned',
-                placeholder_link='/projects/{project_id}/plans/{plan_id}?test={test_id}',
-                placeholder_text='Test {name}',
-            )
-            setting.subscribers.add(user)
-            return user
-
-        yield await database_sync_to_async(wrapper)()
-
-        def teardown_wrapper():
-            NotificationSetting.objects.all().delete()
-            User.objects.all().delete()
-
-        await database_sync_to_async(teardown_wrapper)()
 
     @allure.title('Test notifications sent')
     @pytest.mark.asyncio

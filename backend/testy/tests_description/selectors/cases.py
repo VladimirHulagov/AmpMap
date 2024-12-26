@@ -33,19 +33,24 @@ import logging
 from typing import Any, Iterable
 
 from django.contrib.postgres.aggregates import ArrayAgg
-from django.db.models import OuterRef, Q, QuerySet, Subquery
+from django.db.models import F, OuterRef, Q, QuerySet, Subquery, Value
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import ValidationError
 
 from testy.core.selectors.attachments import AttachmentSelector
+from testy.root.ltree.querysets import LtreeQuerySet
 from testy.root.models import DeletedQuerySet
-from testy.tests_description.models import TestCase, TestCaseStep
+from testy.tests_description.models import TestCase, TestCaseStep, TestSuite
 from testy.tests_representation.models import TestPlan, TestStepResult
 from testy.tests_representation.selectors.tests import TestSelector
 
 logger = logging.getLogger(__name__)
 
 _ID = 'id'
+_HISTORY_ID_DESC = '-history_id'
+_HISTORY_ID = 'history_id'
+_STEPS = 'steps'
+_SUITE = 'suite'
 
 
 class TestCaseSelector:  # noqa: WPS214
@@ -53,17 +58,17 @@ class TestCaseSelector:  # noqa: WPS214
         if not filter_condition:
             filter_condition = {}
         return TestCase.objects.filter(**filter_condition).prefetch_related(
-            'attachments', 'steps', 'steps__attachments', 'labeled_items', 'labeled_items__label',
-        ).select_related('suite').annotate(
+            'attachments', _STEPS, 'steps__attachments', 'labeled_items', 'labeled_items__label',
+        ).select_related(_SUITE).annotate(
             current_version=self._current_version_subquery(),
             versions=self._versions_subquery(),
-        ).order_by()
+        ).order_by('name')
 
     def case_list_with_label_names(self, filter_condition: dict[str, Any] | None = None) -> QuerySet[TestCase]:
         return self.case_list(filter_condition=filter_condition).annotate(
             labels=ArrayAgg('labeled_items__label__name', distinct=True, filter=Q(labeled_items__is_deleted=False)),
-            label_ids=ArrayAgg('labeled_items__label__id', distinct=True, filter=Q(labeled_items__is_deleted=False)),
-        )
+            label_ids=F('label__ids'),
+        ).order_by('name')
 
     @classmethod
     def case_by_id(cls, case_id: int) -> TestCase:
@@ -95,8 +100,17 @@ class TestCaseSelector:  # noqa: WPS214
         return TestSelector.test_list_by_testplan_ids(plan_ids).values_list('case__id', flat=True)
 
     @classmethod
-    def cases_by_ids_list(cls, ids: Iterable[int], field_name: str) -> QuerySet[TestCase]:
+    def cases_by_ids(cls, ids: Iterable[int], field_name: str) -> QuerySet[TestCase]:
         return TestCase.objects.filter(**{f'{field_name}__in': ids}).order_by(_ID)
+
+    @classmethod
+    def cases_for_union_data(cls, ids: Iterable[int]) -> QuerySet[TestCase]:
+        qs = cls.annotate_versions(cls.cases_by_ids(ids, 'pk'))
+        return (
+            qs.annotate(is_leaf=Value(True))
+            .select_related(_SUITE)
+            .prefetch_related('labeled_items__label', _STEPS, 'attachments', 'steps__attachments')
+        )
 
     @classmethod
     def case_by_version(cls, case: TestCase, version: str | None) -> tuple[TestCase, str | None]:
@@ -111,7 +125,7 @@ class TestCaseSelector:  # noqa: WPS214
 
     @classmethod
     def get_history_by_case_id(cls, pk: int):
-        return TestCase.history.select_related('history_user').filter(id=pk).order_by('-history_id')
+        return TestCase.history.select_related('history_user').filter(id=pk).order_by(_HISTORY_ID_DESC)
 
     @classmethod
     def get_case_history_by_version(cls, pk: int, version: int):
@@ -126,16 +140,72 @@ class TestCaseSelector:  # noqa: WPS214
         return TestCase.history.filter(id=pk, history_id=version).exists()
 
     @classmethod
+    def case_list_union(
+        cls,
+        suites: LtreeQuerySet[TestSuite],
+        parent_id: int | None,
+        has_common_filters: bool,
+    ) -> QuerySet[TestCase]:
+        cases = cls.case_list_raw()
+        lookup = Q(suite__in=suites.get_descendants(include_self=True))
+        if parent_id is not None:
+            lookup |= Q(suite=parent_id)
+        if not has_common_filters:
+            cases = cases.filter(lookup)
+        return (
+            cases
+            .select_related(_SUITE)
+            .prefetch_related(_STEPS)
+            .annotate(is_leaf=Value(True))
+        )
+
+    @classmethod
     def get_last_history(cls, pk: int):
         return TestCase.history.filter(id=pk).latest()
+
+    @classmethod
+    def case_list_raw(cls) -> QuerySet[TestCase]:
+        return TestCase.objects.all()
+
+    @classmethod
+    def annotate_versions(cls, qs: QuerySet[TestCase]) -> QuerySet[TestCase]:
+        current_version_subq = (
+            TestCase.history
+            .filter(id=OuterRef(_ID))
+            .order_by(_HISTORY_ID_DESC)
+            .values_list(_HISTORY_ID, flat=True)[:1]
+        )
+        versions_subq = (
+            TestCase.history
+            .filter(id=OuterRef(_ID))
+            .values(_ID)
+            .annotate(temp=ArrayAgg(_HISTORY_ID, ordering=_HISTORY_ID_DESC))
+            .values('temp')
+        )
+        return qs.annotate(
+            current_version=Subquery(current_version_subq),
+            versions=Subquery(versions_subq),
+        )
+
+    @classmethod
+    def case_list_by_suite_ids(cls, suite_ids: Iterable[int]) -> QuerySet[TestCase]:
+        cases = TestCase.objects.filter(suite__in=suite_ids).prefetch_related(
+            'attachments',
+            _STEPS,
+            'steps__attachments',
+            'labeled_items',
+            'labeled_items__label',
+        ).select_related(_SUITE)
+        cases = cls.annotate_versions(cases)
+        return cases.order_by('name')
 
     @classmethod
     def _current_version_subquery(cls):
         return (
             TestCase.history
             .filter(id=OuterRef(_ID))
-            .order_by('-history_id')
-            .values_list('history_id', flat=True)[:1]
+            .order_by(_HISTORY_ID_DESC)
+            .values_list(_HISTORY_ID, flat=True)[:1]
         )
 
     @classmethod
@@ -144,7 +214,7 @@ class TestCaseSelector:  # noqa: WPS214
             TestCase.history
             .filter(id=OuterRef(_ID))
             .values(_ID)
-            .annotate(temp=ArrayAgg('history_id', ordering='-history_id'))
+            .annotate(temp=ArrayAgg(_HISTORY_ID, ordering=_HISTORY_ID_DESC))
             .values('temp'),
         )
 
@@ -170,7 +240,7 @@ class TestCaseStepSelector:
         step_versions = list(
             TestCaseStep.history
             .filter(id=step.pk, test_case_history_id=version)
-            .values_list('history_id', flat=True),
+            .values_list(_HISTORY_ID, flat=True),
         )
         return AttachmentSelector.attachment_list_by_parent_object_and_history_ids(
             type(step), step.id, step_versions,

@@ -43,7 +43,7 @@ from django.db.models import QuerySet
 from tests import constants
 from tests.commons import RequestType, model_to_dict_via_serializer
 from tests.error_messages import REQUIRED_FIELD_MSG
-from tests.mock_serializers import (
+from tests.mock_serializers.v1 import (
     TestSuiteBaseMockSerializer,
     TestSuiteMockTreeSerializer,
     TestSuiteRetrieveMockSerializer,
@@ -52,6 +52,7 @@ from testy.core.models import Attachment, Label, LabeledItem
 from testy.tests_description.api.v1.serializers import TestSuiteTreeSerializer
 from testy.tests_description.models import TestCase, TestCaseStep, TestSuite
 from testy.tests_description.selectors.suites import TestSuiteSelector
+from testy.utilities.sql import get_max_level
 from testy.utilities.tree import form_tree_prefetch_objects
 
 
@@ -68,14 +69,23 @@ class TestSuiteEndpoints:
     def test_list(self, superuser_client, test_suite_factory, project):
         with allure.step(f'Generate {constants.NUMBER_OF_OBJECTS_TO_CREATE_PAGE} test suites'):
             instances = [test_suite_factory(project=project) for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE)]
-            expected_json = model_to_dict_via_serializer(instances, TestSuiteBaseMockSerializer, many=True)
+            expected_json = model_to_dict_via_serializer(
+                instances,
+                TestSuiteBaseMockSerializer,
+                many=True,
+                refresh_instances=True,
+            )
         response = superuser_client.send_request(self.view_name_list, query_params={'project': project.id}).json_strip()
         with allure.step('Validate response is matching expected data'):
             assert expected_json == response
 
     @allure.title('Test detail display')
     def test_retrieve(self, superuser_client, test_suite):
-        expected_dict = model_to_dict_via_serializer(test_suite, TestSuiteRetrieveMockSerializer)
+        expected_dict = model_to_dict_via_serializer(
+            test_suite,
+            TestSuiteRetrieveMockSerializer,
+            refresh_instances=True,
+        )
         response = superuser_client.send_request(self.view_name_detail, reverse_kwargs={'pk': test_suite.pk})
         actual_dict = response.json()
         with allure.step('Validate response is matching expected data'):
@@ -147,19 +157,6 @@ class TestSuiteEndpoints:
         )
         with allure.step('Validate suite was deleted'):
             assert not TestSuite.objects.count(), f'Test suite with id "{test_suite.id}" was not deleted.'
-
-    @allure.title('Test suite cannot be parent to itself')
-    @pytest.mark.parametrize('request_type', [RequestType.PUT, RequestType.PATCH])
-    def test_child_parent_logic(self, superuser_client, test_suite_factory, request_type):
-        parent = test_suite_factory()
-        child = test_suite_factory(parent=parent)
-        superuser_client.send_request(
-            self.view_name_detail,
-            reverse_kwargs={'pk': parent.id},
-            data={'parent': child.id},
-            request_type=request_type,
-            expected_status=HTTPStatus.BAD_REQUEST,
-        )
 
     @pytest.mark.parametrize('user_fixture', ['user', 'superuser'], ids=['from user', 'from superuser'])
     @pytest.mark.parametrize('is_project_specified', [False, True], ids=['project not specified', 'project specified'])
@@ -369,7 +366,7 @@ class TestSuiteEndpoints:
             self._validate_copied_objects(
                 source_suites[:1],
                 copied_suites[:1],
-                changed_attr_names=['id', 'name', 'parent', 'tree_id', 'level'],
+                changed_attr_names=['id', 'name', 'parent', 'tree_id'],
                 copied_attr_names=['description'],
                 project_id_changed=is_project_specified,
             )
@@ -384,7 +381,7 @@ class TestSuiteEndpoints:
                 self._validate_copied_objects(
                     source_suites,
                     copied_suites,
-                    changed_attr_names=['id', 'parent', 'tree_id', 'level'],
+                    changed_attr_names=['id', 'parent', 'tree_id'],
                     copied_attr_names=['name', 'description'],
                     project_id_changed=is_project_specified,
                 )
@@ -394,7 +391,7 @@ class TestSuiteEndpoints:
                     source_suites,
                     copied_suites,
                     changed_attr_names=['id', 'parent', 'tree_id'],
-                    copied_attr_names=['name', 'description', 'level'],
+                    copied_attr_names=['name', 'description'],
                     project_id_changed=is_project_specified,
                 )
             with allure.step('Validate tree was rebuilt'):
@@ -622,6 +619,7 @@ class TestSuiteEndpointsQueryParams:
         expected_output = model_to_dict_via_serializer(
             expected_suite,
             TestSuiteBaseMockSerializer,
+            refresh_instances=True,
         )
         actual_suite_list = superuser_client.send_request(
             self.view_name_list,
@@ -679,7 +677,12 @@ class TestSuiteEndpointsQueryParams:
             request_type=RequestType.GET,
             query_params={'project': project.pk, 'is_flat': True},
         ).json()['results']
-        expected_body = model_to_dict_via_serializer(expected_suites, TestSuiteBaseMockSerializer, many=True)
+        expected_body = model_to_dict_via_serializer(
+            expected_suites,
+            TestSuiteBaseMockSerializer,
+            many=True,
+            refresh_instances=True,
+        )
         with allure.step('Validate response body'):
             assert expected_body == actual_suite_list
 
@@ -689,7 +692,7 @@ class TestSuiteEndpointsQueryParams:
         pref_qs = TestSuite.objects.filter(
             pk__in=(suite.id for suite in expected_suites),
         ).get_ancestors(include_self=True).order_by('name')
-        max_level = TestSuiteSelector().get_max_level()
+        max_level = get_max_level(TestSuite)
         return deepcopy(pref_qs).filter(parent=None).prefetch_related(
             *form_tree_prefetch_objects(
                 'child_test_suites',

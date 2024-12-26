@@ -1,4 +1,5 @@
 import { Button, Space, Table, Typography } from "antd"
+import { useTranslation } from "react-i18next"
 
 import { useTestPlanActivity, useTestPlanActivityFilters } from "entities/test-plan/model"
 
@@ -7,6 +8,7 @@ export const TestPlanActivityFilers = ({
 }: {
   testPlanActivity: ReturnType<typeof useTestPlanActivity>
 }) => {
+  const { t } = useTranslation()
   const { filters, handleChange } = useTestPlanActivityFilters(testPlanActivity)
 
   return (
@@ -21,12 +23,12 @@ export const TestPlanActivityFilers = ({
         }}
       >
         <Typography.Paragraph strong style={{ marginBottom: 0 }}>
-          Common Filters
+          {t("Common Filters")}
         </Typography.Paragraph>
 
         <Space style={{ display: "flex", justifyContent: "right" }}>
           <Button id="clear-filters-and-sorters" onClick={testPlanActivity.clearFilters}>
-            Clear filters and sorters
+            {t("Clear filters and sorters")}
           </Button>
         </Space>
       </div>

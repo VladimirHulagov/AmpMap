@@ -1,14 +1,16 @@
 import { Button, Form, Modal, Select } from "antd"
 import { Controller } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 
 import { UserSearchInput } from "entities/user/ui"
 
-import { ErrorObj } from "shared/hooks/use-alert-error"
+import { ErrorObj } from "shared/hooks"
 import { AlertError } from "shared/ui"
 
 import { useUserProjectAccessModal } from "./use-user-project-access-modal"
 
 export const UserProjectAccessModal = () => {
+  const { t } = useTranslation()
   const {
     isOpenned,
     handleClose,
@@ -35,7 +37,7 @@ export const UserProjectAccessModal = () => {
       centered
       footer={[
         <Button id="close-create-edit-user" key="back" onClick={handleClose}>
-          Close
+          {t("Close")}
         </Button>,
         <Button
           id="user-project-access-submit"
@@ -45,7 +47,7 @@ export const UserProjectAccessModal = () => {
           type="primary"
           disabled={!isDirty}
         >
-          {isEditMode ? "Update" : "Create"}
+          {isEditMode ? t("Update") : t("Create")}
         </Button>,
       ]}
     >
@@ -54,7 +56,7 @@ export const UserProjectAccessModal = () => {
 
         <Form id="create-edit-user-form" layout="vertical" onFinish={handleSubmitForm}>
           <Form.Item
-            label="Name"
+            label={t("Name")}
             validateStatus={errors?.user ? "error" : ""}
             help={errors?.user ?? ""}
             required
@@ -66,7 +68,7 @@ export const UserProjectAccessModal = () => {
             />
           </Form.Item>
           <Form.Item
-            label="Roles"
+            label={t("Roles")}
             validateStatus={errors?.roles ? "error" : ""}
             help={errors?.roles ?? ""}
             required
@@ -79,7 +81,7 @@ export const UserProjectAccessModal = () => {
                   <Select
                     mode="multiple"
                     {...field}
-                    placeholder="Please select roles"
+                    placeholder={t("Please select roles")}
                     style={{ width: "100%" }}
                     id="user-project-access-roles"
                     filterOption={false}

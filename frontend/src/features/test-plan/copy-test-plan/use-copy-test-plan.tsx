@@ -2,12 +2,13 @@ import { notification } from "antd"
 import dayjs, { Dayjs } from "dayjs"
 import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 
 import { useСopyTestPlanMutation } from "entities/test-plan/api"
 
 import { useDatepicker } from "shared/hooks"
 import { initInternalError, isFetchBaseQueryError } from "shared/libs"
-import { AlertSuccessChange } from "shared/ui/alert-success-change"
+import { AlertSuccessChange } from "shared/ui"
 
 interface FormPlanCopy {
   new_name: string
@@ -24,7 +25,13 @@ interface ErrorData {
   }[]
 }
 
-export const useTestPlanCopyModal = (testPlan: TestPlan) => {
+interface Props {
+  testPlan: TestPlan
+  onSubmit?: (plan: TestPlan) => void
+}
+
+export const useTestPlanCopyModal = ({ testPlan, onSubmit }: Props) => {
+  const { t } = useTranslation()
   const [isShow, setIsShow] = useState(false)
   const [errors, setErrors] = useState<string[]>([])
   const [copyTestPlan, { isLoading }] = useСopyTestPlanMutation()
@@ -72,7 +79,7 @@ export const useTestPlanCopyModal = (testPlan: TestPlan) => {
 
   const handleSave = async ({ new_name, plan, keepAssignee, startedAt, dueDate }: FormPlanCopy) => {
     if (!new_name.trim().length) {
-      setErrors(["New plan name is required"])
+      setErrors([t("New plan name is required")])
       return
     }
 
@@ -90,17 +97,19 @@ export const useTestPlanCopyModal = (testPlan: TestPlan) => {
         keep_assignee: keepAssignee,
       }).unwrap()
       notification.success({
-        message: "Success",
+        message: t("Success"),
+        closable: true,
         description: (
           <AlertSuccessChange
             id={newPlan[0].id.toString()}
             link={`/projects/${newPlan[0].project}/plans/${newPlan[0].id}/`}
             action="copied"
-            title="Test plan"
+            title={t("Test Plan")}
           />
         ),
       })
       handleCancel()
+      onSubmit?.(newPlan[0])
     } catch (err) {
       onHandleError(err)
     }
@@ -111,11 +120,6 @@ export const useTestPlanCopyModal = (testPlan: TestPlan) => {
       setValue("plan", value, { shouldDirty: true })
       setSelectedPlan(value)
     }
-  }
-
-  const handleClearSelected = () => {
-    setValue("plan", null, { shouldDirty: true })
-    setSelectedPlan(null)
   }
 
   useEffect(() => {
@@ -132,7 +136,6 @@ export const useTestPlanCopyModal = (testPlan: TestPlan) => {
     isShow,
     isLoading,
     selectedPlan,
-    handleClearSelected,
     handleSelectPlan,
     handleSave,
     handleShow,

@@ -20,6 +20,7 @@ export const createWebsocketSlice = <T>(name: string, initialState: WebSocketSta
     name,
     initialState,
     reducers: {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       websocketConnected(state, action: PayloadAction<{ url: string }>) {
         state.connected = true
       },

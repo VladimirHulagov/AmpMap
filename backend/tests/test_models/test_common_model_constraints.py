@@ -52,10 +52,10 @@ from testy.tests_representation.models import Parameter, Test, TestPlan, TestRes
 
 @pytest.mark.django_db
 class TestCommonConstraints:
-    project_view_name = 'api:v1:project-detail'
-    suite_view_name = 'api:v1:testsuite-detail'
-    plan_view_name = 'api:v1:testplan-detail'
-    case_view_name = 'api:v1:testcase-detail'
+    project_view_name = 'api:v2:project-detail'
+    suite_view_name = 'api:v2:testsuite-detail'
+    plan_view_name = 'api:v2:testplan-detail'
+    case_view_name = 'api:v2:testcase-detail'
 
     @pytest.mark.parametrize(
         'instance, column_names', [

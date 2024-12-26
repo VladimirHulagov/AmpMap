@@ -1,14 +1,17 @@
 import { EditOutlined } from "@ant-design/icons"
 import { PageHeader } from "@ant-design/pro-layout"
-import { Breadcrumb, Button, Card, Col, Divider, Layout, Row } from "antd"
-import { ChangePassword } from "features/user/change-password/change-password"
+import { Button, Card, Col, Divider, Layout, Row } from "antd"
+import { MeContext } from "processes"
+import { useContext } from "react"
+import { useTranslation } from "react-i18next"
 import { useDispatch } from "react-redux"
 import { ProfileAvatar } from "widgets"
 
-import { useGetMeQuery } from "entities/user/api"
 import { showEditProfileModal } from "entities/user/model"
 
-import { ContainerLoader, Field } from "shared/ui"
+import { ChangePassword } from "features/user/change-password/change-password"
+
+import { Field } from "shared/ui"
 
 import { EditProfileModal } from "widgets/user"
 
@@ -17,20 +20,21 @@ import styles from "./styles.module.css"
 const { Content } = Layout
 
 export const ProfileFields = ({ profile }: { profile: User }) => {
+  const { t } = useTranslation()
   return (
     <>
-      <Field title="Username" value={profile.username} />
-      <Field title="Email" value={profile.email} />
-      <Field title="First Name" value={profile.first_name} />
-      <Field title="Last Name" value={profile.last_name} />
+      <Field title={t("Username")} value={profile.username} />
+      <Field title={t("Email")} value={profile.email} />
+      <Field title={t("First Name")} value={profile.first_name} />
+      <Field title={t("Last Name")} value={profile.last_name} />
     </>
   )
 }
 
 export const ProfilePage = () => {
+  const { t } = useTranslation()
   const dispatch = useDispatch()
-  const { data: profile, isLoading } = useGetMeQuery()
-  const breadcrumbItems = [<Breadcrumb.Item key="profile">Profile</Breadcrumb.Item>]
+  const { me } = useContext(MeContext)!
 
   const handleClickEdit = () => {
     dispatch(showEditProfileModal())
@@ -38,11 +42,7 @@ export const ProfilePage = () => {
 
   return (
     <>
-      <PageHeader
-        breadcrumbRender={() => <Breadcrumb>{breadcrumbItems}</Breadcrumb>}
-        title="Profile"
-        style={{ paddingBottom: 0 }}
-      ></PageHeader>
+      <PageHeader title={t("Profile")} ghost={false} style={{ paddingBottom: 0 }}></PageHeader>
       <Row style={{ margin: "24px" }}>
         <Col flex="0 1 260px">
           <div className={styles.avatarWrapper}>
@@ -54,17 +54,17 @@ export const ProfilePage = () => {
             <Card>
               <Row align={"middle"}>
                 <Col flex={"auto"}>
-                  <p style={{ margin: 0, fontSize: 18 }}>General Details</p>
+                  <p style={{ margin: 0, fontSize: 18 }}>{t("General Details")}</p>
                 </Col>
                 <Col flex={"none"}>
                   <Button id="edit-profile" onClick={handleClickEdit} icon={<EditOutlined />}>
-                    Edit
+                    {t("Edit")}
                   </Button>
-                  {profile && <ChangePassword />}
+                  {me && <ChangePassword />}
                 </Col>
               </Row>
               <Divider />
-              {isLoading || !profile ? <ContainerLoader /> : <ProfileFields profile={profile} />}
+              <ProfileFields profile={me} />
             </Card>
           </Content>
         </Col>

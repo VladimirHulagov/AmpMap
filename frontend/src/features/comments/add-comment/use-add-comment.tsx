@@ -1,10 +1,12 @@
 import { notification } from "antd"
 import { useAddCommentMutation } from "entities/comments/api"
-import { useState } from "react"
+import { useContext, useState } from "react"
 import { useForm } from "react-hook-form"
-import { useParams } from "react-router-dom"
+import { useTranslation } from "react-i18next"
 
 import { useAttachments } from "entities/attachment/model"
+
+import { ProjectContext } from "pages/project"
 
 import { useErrors } from "shared/hooks"
 
@@ -15,7 +17,8 @@ interface Props {
 }
 
 export const useAddComment = ({ setIsShowAdd, model, object_id }: Props) => {
-  const { projectId } = useParams<ParamProjectId>()
+  const { t } = useTranslation()
+  const { project } = useContext(ProjectContext)!
   const [comment, setComment] = useState("")
   const [errors, setErrors] = useState<{ errors: string[] } | null>(null)
   const { onHandleError } = useErrors<{ errors: string[] }>(setErrors)
@@ -27,14 +30,15 @@ export const useAddComment = ({ setIsShowAdd, model, object_id }: Props) => {
     onChange: handleLoadAttachmentChange,
     onRemove: handleAttachmentRemove,
     onLoad: handleAttachmentLoad,
-  } = useAttachments(control, projectId)
+  } = useAttachments(control, project.id)
 
   const handleAddClick = async () => {
     const attachmentsIds = attachments.map((attach) => String(attach.id))
     try {
       await addComment({ model, object_id, content: comment, attachments: attachmentsIds }).unwrap()
       notification.success({
-        message: "Success",
+        message: t("Success"),
+        closable: true,
       })
       setComment("")
       setIsShowAdd(false)

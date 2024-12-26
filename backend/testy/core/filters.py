@@ -31,12 +31,13 @@
 from django.db.models import Q
 from django_filters import rest_framework as filters
 from notifications.models import Notification
-from rest_framework.filters import OrderingFilter
+from rest_framework.filters import OrderingFilter, SearchFilter
 
 from testy.core.models import Attachment, CustomAttribute, Label, NotificationSetting, Project
 from testy.core.selectors.projects import ProjectSelector
-from testy.filters import ArchiveFilterMixin, project_filter
+from testy.filters import ArchiveFilterMixin, SearchView, case_insensitive_filter, ordering_filter, project_filter
 from testy.utilities.request import get_user_favorites
+from testy.utilities.string import parse_int
 
 
 class ProjectOrderingFilter(OrderingFilter):
@@ -52,8 +53,12 @@ class ProjectOrderingFilter(OrderingFilter):
 
 
 class ProjectFilter(ArchiveFilterMixin, filters.FilterSet):
-    name = filters.CharFilter(lookup_expr='icontains')
-    favorites = filters.BooleanFilter('pk', method='display_favorites')
+    name = case_insensitive_filter()
+    favorites = filters.BooleanFilter(
+        'pk',
+        method='display_favorites',
+        help_text='If True, display only favorite projects. If False, display all projects with favorites first',
+    )
 
     class Meta:
         model = Project
@@ -85,7 +90,7 @@ class AttachmentFilter(filters.FilterSet):
 class LabelFilter(filters.FilterSet):
     project = project_filter()
 
-    ordering = filters.OrderingFilter(
+    ordering = ordering_filter(
         fields=(
             ('id', 'id'),
             ('name', 'name'),
@@ -100,12 +105,16 @@ class LabelFilter(filters.FilterSet):
 
 class CustomAttributeFilter(filters.FilterSet):
     project = project_filter()
-    suite = filters.NumberFilter(field_name='suite_ids', method='filter_by_suite')
+    suite = filters.NumberFilter(
+        field_name='suite_ids',
+        method='filter_by_suite',
+        help_text='Related suite id',
+    )
 
     @classmethod
     def filter_by_suite(cls, queryset, field_name, val):
         non_suite_specific = queryset.filter(is_suite_specific__exact=False)
-        suite_specific = queryset.filter(**{f'{field_name}__icontains': val})
+        suite_specific = queryset.filter(**{f'{field_name}__contains': [val]})
         return non_suite_specific | suite_specific
 
     class Meta:
@@ -114,7 +123,7 @@ class CustomAttributeFilter(filters.FilterSet):
 
 
 class NotificationFilter(filters.FilterSet):
-    ordering = filters.OrderingFilter(
+    ordering = ordering_filter(
         fields=(
             ('id', 'id'),
             ('unread', 'unread'),
@@ -127,8 +136,32 @@ class NotificationFilter(filters.FilterSet):
 
 
 class NotificationSettingFilter(filters.FilterSet):
-    verbose_name = filters.CharFilter(lookup_expr='icontains')
+    verbose_name = case_insensitive_filter()
 
     class Meta:
         model = NotificationSetting
         fields = ('action_code',)
+
+
+class SearchFilterMixin(filters.FilterSet):
+    search_fields: list[str] | None = None
+
+    def filter_by_search(self, qs, field_name, value):
+        if not self.search_fields:
+            return qs
+        search_filter = SearchFilter()
+        if self.request.query_params.get('treesearch'):
+            search_filter.search_param = 'treesearch'
+        return search_filter.filter_queryset(self.request, qs, SearchView(*self.search_fields))
+
+
+class ParentFilterMixin(filters.FilterSet):
+
+    @classmethod
+    def filter_by_parent(cls, queryset, field_name, parent):
+        lookup = Q()
+        if parent == 'null':
+            lookup = Q(parent__isnull=True)
+        elif parent_id := parse_int(parent):
+            lookup = Q(parent__id=parent_id) | Q(id=parent_id)
+        return queryset.filter(lookup)

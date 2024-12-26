@@ -1,108 +1,119 @@
 import { Modal, notification } from "antd"
-import { useEffect, useMemo, useState } from "react"
+import { useContext, useEffect, useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
-import { useSearchParams } from "react-router-dom"
+import { useTranslation } from "react-i18next"
+import { useParams, useSearchParams } from "react-router-dom"
 
 import { useAppDispatch, useAppSelector } from "app/hooks"
 
-import { useGetTestCaseByIdQuery, useRestoreTestCaseMutation } from "entities/test-case/api"
+import { useLazyGetTestCaseByIdQuery, useRestoreTestCaseMutation } from "entities/test-case/api"
 import { selectDrawerTestCase, setDrawerTestCase } from "entities/test-case/model"
 
 import { initInternalError } from "shared/libs"
 import { AlertSuccessChange } from "shared/ui"
 
-interface UseTestCaseDetailProps {
-  testCase: TestCase | null
-  onClose: () => void
-}
+import { TestCasesTreeContext } from "../test-cases-tree"
 
-export const useTestCaseDetail = ({ testCase, onClose }: UseTestCaseDetailProps) => {
+export const useTestCaseDetail = () => {
+  const { t } = useTranslation()
+  const { testSuiteId } = useParams<ParamTestSuiteId>()
+  const { testCasesTree } = useContext(TestCasesTreeContext)!
+
   const dispatch = useAppDispatch()
-  const selectedTestCase = useAppSelector(selectDrawerTestCase)
+  const drawerTestCase = useAppSelector(selectDrawerTestCase)
   const [searchParams, setSearchParams] = useSearchParams()
   const version = searchParams.get("version")
   const testCaseId = searchParams.get("test_case")
-
-  const { data: testCaseData } = useGetTestCaseByIdQuery(
-    {
-      testCaseId: testCaseId ?? "",
-      version: version ?? "",
-    },
-    {
-      skip: !testCaseId || !version,
-    }
-  )
-  const [restoreTestCase] = useRestoreTestCaseMutation()
   const [showVersion, setShowVersion] = useState<number | null>(null)
   const { control } = useForm()
 
+  const [getTestCaseById, { isFetching }] = useLazyGetTestCaseByIdQuery()
+  const [restoreTestCase] = useRestoreTestCaseMutation()
+
+  const fetchTestCase = async (testCaseId: string, version?: string) => {
+    try {
+      const res = await getTestCaseById({
+        testCaseId,
+        version,
+      }).unwrap()
+      dispatch(setDrawerTestCase(res))
+    } catch (err: unknown) {
+      initInternalError(err)
+    }
+  }
+
   useEffect(() => {
-    if (!searchParams.get("test_case") && selectedTestCase) {
+    if (!drawerTestCase) {
+      return
+    }
+    setShowVersion(Number(drawerTestCase.current_version))
+  }, [drawerTestCase])
+
+  useEffect(() => {
+    if (!testCaseId || drawerTestCase) {
+      return
+    }
+
+    fetchTestCase(String(testCaseId), version ?? undefined)
+  }, [testCaseId, drawerTestCase, version])
+
+  useEffect(() => {
+    return () => {
       dispatch(setDrawerTestCase(null))
     }
-  }, [searchParams.get("test_case"), selectedTestCase])
-
-  useEffect(() => {
-    if (!testCase) {
-      return
-    }
-    setShowVersion(testCase.current_version)
-    dispatch(setDrawerTestCase(testCase))
-  }, [testCase])
-
-  useEffect(() => {
-    if (!testCaseData) {
-      return
-    }
-    dispatch(setDrawerTestCase(testCaseData))
-  }, [testCaseData])
+  }, [])
 
   const versionData = useMemo(() => {
-    if (!testCase?.versions) {
+    if (!drawerTestCase?.versions) {
       return []
     }
-    const sorted = [...testCase.versions].sort((a, b) => b - a)
+    const sorted = [...drawerTestCase.versions].sort((a, b) => b - a)
     return sorted.map((item) => ({
       value: item,
-      label: `ver. ${item}`,
+      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+      label: `${t("ver.")} ${item}`,
     }))
-  }, [testCase])
+  }, [drawerTestCase])
 
   const handleClose = () => {
-    setShowVersion(null)
     searchParams.delete("test_case")
     searchParams.delete("version")
     setSearchParams(searchParams)
-    onClose()
     dispatch(setDrawerTestCase(null))
   }
 
-  const handleChange = (value: number) => {
-    setShowVersion(value)
-    setSearchParams({ version: String(value), test_case: String(testCase?.id) })
+  const handleChangeVersion = async (version: number) => {
+    setShowVersion(version)
+    searchParams.set("version", String(version))
+    setSearchParams(searchParams)
+    await fetchTestCase(String(testCaseId), String(version))
   }
 
   const handleRestoreVersion = () => {
-    if (!showVersion || !testCase) return
+    if (!showVersion || !drawerTestCase) return
     Modal.confirm({
-      title: "Do you want to restore this version of test case?",
-      okText: "Restore",
-      cancelText: "Cancel",
+      title: t("Do you want to restore this version of test case?"),
+      okText: t("Restore"),
+      cancelText: t("Cancel"),
       onOk: async () => {
         try {
           const res = await restoreTestCase({
-            testCaseId: testCase.id,
+            testCaseId: drawerTestCase.id,
             version: showVersion,
           }).unwrap()
-          setSearchParams({ version: String(res.versions[0]), test_case: String(testCase.id) })
+          setSearchParams({
+            version: String(res.versions[0]),
+            test_case: String(drawerTestCase.id),
+          })
           notification.success({
-            message: "Success",
+            message: t("Success"),
+            closable: true,
             description: (
               <AlertSuccessChange
-                id={String(testCase.id)}
+                id={String(drawerTestCase.id)}
                 action="restore"
-                title="Test Case"
-                link={`/projects/${testCase.project}/suites/${testCase.suite}?version=${res.versions[0]}&test_case=${testCase.id}`}
+                title={t("Test Case")}
+                link={`/projects/${drawerTestCase.project}/suites/${drawerTestCase.suite.id}?version=${res.versions[0]}&test_case=${drawerTestCase.id}`}
               />
             ),
           })
@@ -113,12 +124,28 @@ export const useTestCaseDetail = ({ testCase, onClose }: UseTestCaseDetailProps)
     })
   }
 
+  const handleRefetch = async (testCase: TestCase) => {
+    if (!testCasesTree.current) {
+      return
+    }
+
+    if (String(testSuiteId) === String(testCase.suite.id)) {
+      await testCasesTree.current.initRoot()
+      return
+    }
+
+    await testCasesTree.current?.refetchNodeBy((node) => node.id === testCase.suite.id)
+  }
+
   return {
+    testCase: drawerTestCase,
     showVersion,
     versionData,
     control,
+    isFetching,
     handleClose,
-    handleChange,
+    handleChangeVersion,
     handleRestoreVersion,
+    handleRefetch,
   }
 }

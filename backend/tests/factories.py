@@ -82,7 +82,7 @@ class UserFactory(DjangoModelFactory):
     class Meta:
         model = UserModel
 
-    username = Sequence(lambda n: f'{constants.USERNAME}{n}@example.com')
+    username = Sequence(lambda n: f'{constants.USERNAME}{n}@yadro.com')
     first_name = constants.FIRST_NAME
     last_name = constants.LAST_NAME
     password = make_password(constants.PASSWORD)
@@ -131,6 +131,7 @@ class TestPlanFactory(DjangoModelFactory):
 class TestPlanWithParametersFactory(TestPlanFactory):
     @factory.post_generation
     def parameters(self, create, extracted, **kwargs):
+        self.refresh_from_db()
         if extracted:
             self.parameters.add(*extracted)
             return

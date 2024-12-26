@@ -2,14 +2,34 @@ interface TestState {
   test: Test | null
   settings: {
     table: TestTableParams
+    tree: TestTreeParams
   }
+}
+
+type TestStateSettings = TestState["settings"][keyof TestState["settings"]]
+
+interface SetSettings {
+  key: keyof TestState["settings"]
+  settings: TestStateSettings
+}
+
+interface UpdateSettings extends SetSettings {
+  settings: Partial<TestStateSettings>
+}
+
+interface SetPagination {
+  key: keyof TestState["settings"]
+  pagination: PaginationParams
 }
 
 interface Test {
   id: Id
   project: number
+  has_children: boolean
+  is_leaf: boolean
   case: number
   name: string
+  title: string
   last_status: number
   last_status_color: string
   last_status_name: string
@@ -21,37 +41,62 @@ interface Test {
   updated_at: string
   url: string
   suite_path: string
+  plan_path: string
   assignee: string | null
   assignee_username: string | null
   avatar_link: string | null
   test_suite_description?: string | null
-  estimate: string
+  estimate: string | null
   labels: Pick<Label, "id" | "name">[]
+  parent?: Parent | null
 }
 
-interface ITestGet {
-  plan: Id
-  project: string
+interface TestGet {
+  testPlanId?: Id
+  project: number
   is_archive: boolean
 }
 
-interface ITestGetWithFilters extends ITestGet {
-  last_status?: number[]
+interface TestGetFilters extends TestGet {
+  last_status?: string[]
   search?: string
   ordering?: string
-  labels?: string[]
-  not_labels?: string[]
+  labels?: number[]
+  not_labels?: number[]
   labels_condition?: string
-  nested_search?: boolean
   is_archive?: boolean
+  suite?: number[]
+  plan?: number[]
+  nested_search?: boolean
+  assignee?: string[]
+  unassigned?: boolean
+  show_descendants?: boolean
+  test_plan_started_before?: string
+  test_plan_started_after?: string
+  test_plan_created_before?: string
+  test_plan_created_after?: string
+  test_created_before?: string
+  test_created_after?: string
+  _n?: string | number
 }
 
 interface TestTableParams {
-  testPlanId?: number | null
-  filters?: TestTableFilters
-  pagination?: Partial<TablePaginationConfig>
+  page: number
+  page_size: number
+  testPlanId: number | null
+  visibleColumns: ColumnParam[]
+  columns: ColumnParam[]
   sorter?: SorterResult<string>
-  nonce?: number
+  hasBulk: boolean
+  isAllSelectedTableBulk: boolean
+  selectedRows: number[]
+  excludedRows: number[]
+  _n?: number
+}
+
+interface TestTreeParams {
+  columns: ColumnParam[]
+  visibleColumns: ColumnParam[]
 }
 
 interface TestTableFilters {
@@ -82,10 +127,10 @@ interface TestUpdate {
 interface TestBulkUpdate {
   included_tests: number[]
   excluded_tests: number[]
-  plan?: number
   current_plan: number
+  plan?: number
   assignee?: string
-  filter_conditions?: Partial<ITestGetWithFilters>
+  filter_conditions?: Partial<TestGetFilters>
 }
 
 interface TestsWithPlanBreadcrumbs extends Test {

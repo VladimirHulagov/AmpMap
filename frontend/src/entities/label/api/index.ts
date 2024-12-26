@@ -4,7 +4,7 @@ import { baseQueryWithLogout } from "app/apiSlice"
 
 import { invalidatesList, providesList } from "shared/libs"
 
-const rootPath = "v1/labels"
+const rootPath = "labels"
 
 export const labelApi = createApi({
   reducerPath: "labelApi",
@@ -12,9 +12,9 @@ export const labelApi = createApi({
   tagTypes: ["Label"],
   endpoints: (builder) => ({
     getLabels: builder.query<Label[], GetLabelsParams>({
-      query: ({ project }) => ({
+      query: (params) => ({
         url: `${rootPath}/`,
-        params: { project },
+        params,
       }),
       providesTags: (result) => providesList(result, "Label"),
     }),

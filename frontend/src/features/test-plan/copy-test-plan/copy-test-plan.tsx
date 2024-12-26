@@ -1,24 +1,34 @@
 import { CopyOutlined } from "@ant-design/icons"
 import { Alert, Button, Checkbox, Form, Input, Modal } from "antd"
 import dayjs from "dayjs"
+import { ReactNode, memo } from "react"
 import { Controller } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 import { useParams } from "react-router-dom"
 
-import { useLazyGetTestPlansQuery } from "entities/test-plan/api"
+import { useLazyGetTestPlanAncestorsQuery, useLazyGetTestPlansQuery } from "entities/test-plan/api"
 
-import { DateFormItem, SearchFormItem } from "shared/ui"
+import { DateFormItem } from "shared/ui"
+import { LazyTreeSearchFormItem } from "shared/ui/form-items"
 
 import styles from "./styles.module.css"
 import { useTestPlanCopyModal } from "./use-copy-test-plan"
 
-export const CopyTestPlan = ({ testPlan }: { testPlan: TestPlan }) => {
+interface Props {
+  as?: ReactNode
+  testPlan: TestPlan
+  onSubmit?: (plan: TestPlan) => void
+}
+
+export const CopyTestPlan = memo(({ as, testPlan, onSubmit }: Props) => {
+  const { t } = useTranslation()
   const { projectId } = useParams<ParamProjectId>()
   const [getPlans] = useLazyGetTestPlansQuery()
+  const [getAncestors] = useLazyGetTestPlanAncestorsQuery()
 
   const {
     isShow,
     isLoading,
-    handleClearSelected,
     handleCancel,
     handleShow,
     selectedPlan,
@@ -32,22 +42,29 @@ export const CopyTestPlan = ({ testPlan }: { testPlan: TestPlan }) => {
     setDateTo,
     disabledDateFrom,
     disabledDateTo,
-  } = useTestPlanCopyModal(testPlan)
+  } = useTestPlanCopyModal({ testPlan, onSubmit })
 
   return (
     <>
-      <Button id="copy-test-plan" icon={<CopyOutlined />} onClick={handleShow}>
-        Copy
-      </Button>
+      {as ? (
+        <div id="copy-test-plan" onClick={handleShow}>
+          {as}
+        </div>
+      ) : (
+        <Button id="copy-test-plan" icon={<CopyOutlined />} onClick={handleShow}>
+          {t("Copy")}
+        </Button>
+      )}
       <Modal
         className="copy-test-plan-modal"
-        title={`Copy Test Plan '${testPlan.name}'`}
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+        title={`${t("Copy Test Plan")} '${testPlan.name}'`}
         open={isShow}
         onCancel={handleCancel}
         centered
         footer={[
           <Button id="cancel-btn" key="back" onClick={handleCancel}>
-            Cancel
+            {t("Cancel")}
           </Button>,
           <Button
             id="save-btn"
@@ -57,50 +74,50 @@ export const CopyTestPlan = ({ testPlan }: { testPlan: TestPlan }) => {
             onClick={handleSubmitForm}
             disabled={isDisabled}
           >
-            Save
+            {t("Save")}
           </Button>,
         ]}
       >
         <Form id="copy-test-plan-form" layout="vertical" onFinish={handleSubmitForm}>
-          <Form.Item label="New plan name">
+          <Form.Item label={t("New Plan name")}>
             <Controller
               name="new_name"
               control={control}
               render={({ field }) => (
                 <Input
                   id="copy-test-plan-form-name"
-                  placeholder="Please enter a name"
+                  placeholder={t("Please enter a name")}
                   {...field}
-                  autoFocus={true}
+                  autoFocus
                 />
               )}
             />
           </Form.Item>
-          <SearchFormItem
+          <LazyTreeSearchFormItem
             id="copy-test-plan-select"
             control={control}
-            name="plan"
-            label="Parent plan"
+            // @ts-ignore
+            name="parent"
+            label={t("Parent plan")}
+            placeholder={t("Search a test plan")}
             formErrors={formErrors}
             externalErrors={errors}
-            options={{
-              //@ts-ignore
-              getData: getPlans,
-              onSelect: handleSelectPlan,
-              onClear: handleClearSelected,
-              dataParams: {
-                project: projectId,
-              },
-              selected: selectedPlan,
-              placeholder: "Search a test plan",
-              searchKey: "search",
+            // @ts-ignore
+            getData={getPlans}
+            // @ts-ignore
+            getAncestors={getAncestors}
+            dataParams={{
+              project: projectId,
             }}
+            skipInit={!isShow}
+            selected={selectedPlan}
+            onSelect={handleSelectPlan}
           />
           <div className={styles.datesRow}>
             <DateFormItem
               id="copy-test-plan-start-date"
               control={control}
-              label="Start date"
+              label={t("Start date")}
               name="startedAt"
               setDate={setDateFrom}
               disabledDate={disabledDateFrom}
@@ -113,7 +130,7 @@ export const CopyTestPlan = ({ testPlan }: { testPlan: TestPlan }) => {
             <DateFormItem
               id="copy-test-plan-due-date"
               control={control}
-              label="Due date"
+              label={t("Due date")}
               name="dueDate"
               setDate={setDateTo}
               disabledDate={disabledDateTo}
@@ -123,7 +140,7 @@ export const CopyTestPlan = ({ testPlan }: { testPlan: TestPlan }) => {
               defaultDate={dayjs().add(1, "day")}
             />
           </div>
-          <Form.Item name="Keep Assignee">
+          <Form.Item name={t("Keep Assignee")}>
             <Controller
               name="keepAssignee"
               control={control}
@@ -133,7 +150,7 @@ export const CopyTestPlan = ({ testPlan }: { testPlan: TestPlan }) => {
                   checked={field.value}
                   onChange={(e) => field.onChange(e.target.checked)}
                 >
-                  Include Test Cases Assignment
+                  {t("Include Test Cases Assignment")}
                 </Checkbox>
               )}
             />
@@ -145,4 +162,6 @@ export const CopyTestPlan = ({ testPlan }: { testPlan: TestPlan }) => {
       </Modal>
     </>
   )
-}
+})
+
+CopyTestPlan.displayName = "CopyTestPlan"

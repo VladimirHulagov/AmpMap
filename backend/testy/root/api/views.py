@@ -44,5 +44,5 @@ class APIRootView(APIView):
 
     def get(self, request, format=None):  # noqa: WPS125
         return Response({
-            'v1': reverse('api:v1:api-root', request=request, format=format),
+            'v2': reverse('api:v2:api-root', request=request, format=format),
         })

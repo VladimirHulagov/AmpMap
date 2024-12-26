@@ -13,6 +13,7 @@ import {
 } from "entities/roles/model"
 import { useEffect, useState } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 import { useParams } from "react-router-dom"
 
 import { useAppDispatch, useAppSelector } from "app/hooks"
@@ -27,6 +28,7 @@ interface UpdateData {
 }
 
 export const useUserProjectAccessModal = () => {
+  const { t } = useTranslation()
   const { projectId } = useParams<ParamProjectId>()
   const [selectedUser, setSelectedUser] = useState<SelectData | null>(null)
   const isOpenned = useAppSelector(selectIsRoleModalOpen)
@@ -83,9 +85,12 @@ export const useUserProjectAccessModal = () => {
         }).unwrap()
       }
 
-      const description = isEditMode ? "User updated successfully" : "User assigned successfully"
+      const description = isEditMode
+        ? t("User updated successfully")
+        : t("User assigned successfully")
       notification.success({
-        message: "Success",
+        message: t("Success"),
+        closable: true,
         description,
       })
 
@@ -96,8 +101,8 @@ export const useUserProjectAccessModal = () => {
     } catch (err) {
       onHandleError(err)
       notification.error({
-        message: "Error!",
-        description: "User assign error",
+        message: t("Error!"),
+        description: t("User assign error"),
       })
     }
   }
@@ -125,7 +130,7 @@ export const useUserProjectAccessModal = () => {
     setValue("user", "", { shouldDirty: true })
   }
 
-  const title = mode === "create" ? "Add user to project" : "Edit user project access"
+  const title = mode === "create" ? t("Add user to project") : t("Edit user project access")
 
   return {
     isOpenned,

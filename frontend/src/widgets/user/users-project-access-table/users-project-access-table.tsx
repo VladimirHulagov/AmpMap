@@ -1,4 +1,5 @@
 import { Button, Space, Table } from "antd"
+import { useTranslation } from "react-i18next"
 
 import { useUsersProjectAccessTable } from "./use-users-project-access-table"
 
@@ -7,6 +8,7 @@ interface Props {
 }
 
 export const UsersProjectAccessTable = ({ isManageable = false }: Props) => {
+  const { t } = useTranslation()
   const { columns, isLoading, users, paginationTable, handleChange, clearAll } =
     useUsersProjectAccessTable(isManageable)
 
@@ -14,7 +16,7 @@ export const UsersProjectAccessTable = ({ isManageable = false }: Props) => {
     <>
       <Space style={{ marginBottom: 16, display: "flex", justifyContent: "right" }}>
         <Button id="clear-filters-and-sorters" onClick={clearAll}>
-          Clear filters and sorters
+          {t("Clear filters and sorters")}
         </Button>
       </Space>
       <Table

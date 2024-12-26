@@ -1,5 +1,6 @@
 import { PlusOutlined } from "@ant-design/icons"
 import { Button } from "antd"
+import { useTranslation } from "react-i18next"
 import { ReactSortable } from "react-sortablejs"
 
 import {
@@ -12,7 +13,8 @@ import { Steps } from "shared/ui"
 import { TestCaseStepsModal } from "../test-case-steps-modal"
 import styles from "./styles.module.css"
 
-export const TestCaseStepsBlock = ({ steps, setSteps, setValue }: TestCaseStepsBlockProps) => {
+export const TestCaseStepsBlock = ({ steps, setSteps }: TestCaseStepsBlockProps) => {
+  const { t } = useTranslation()
   const {
     handleStep,
     handleSortSteps,
@@ -22,7 +24,7 @@ export const TestCaseStepsBlock = ({ steps, setSteps, setValue }: TestCaseStepsB
     isEdit,
     modalStep,
     handleSubmit,
-  } = useTestCaseStepsBlock({ steps, setSteps, setValue })
+  } = useTestCaseStepsBlock({ steps, setSteps })
 
   return (
     <div className={styles.wrapper}>
@@ -33,7 +35,7 @@ export const TestCaseStepsBlock = ({ steps, setSteps, setValue }: TestCaseStepsB
         icon={<PlusOutlined />}
         onClick={handleStep}
       >
-        Add step
+        {t("Add step")}
       </Button>
       <ul className={styles.ul}>
         <ReactSortable

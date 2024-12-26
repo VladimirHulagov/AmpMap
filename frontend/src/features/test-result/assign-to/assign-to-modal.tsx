@@ -1,6 +1,10 @@
 import { Button, Form, Modal } from "antd"
+import { useContext } from "react"
+import { useTranslation } from "react-i18next"
 
 import { UserSearchInput } from "entities/user/ui"
+
+import { ProjectContext } from "pages/project"
 
 import styles from "./styles.module.css"
 import { UpdateData } from "./use-assign-to-common"
@@ -33,15 +37,18 @@ export const AssingToModal = ({
   handleAssignToMe,
   isAssignToMe,
 }: Props) => {
+  const { t } = useTranslation()
+  const { project } = useContext(ProjectContext)!
+
   return (
     <Modal
       className="test-assign-to-modal"
-      title="Assign To"
+      title={t("Assign To")}
       open={isOpenModal}
       onCancel={handleClose}
       footer={[
         <Button key="back" onClick={handleClose}>
-          Cancel
+          {t("Cancel")}
         </Button>,
         <Button
           key="submit"
@@ -50,13 +57,13 @@ export const AssingToModal = ({
           disabled={!isDirty && !!selectedUser}
           loading={isLoadingUpdateTest}
         >
-          Save
+          {t("Save")}
         </Button>,
       ]}
     >
       <Form id="test-assign-form" layout="vertical" onFinish={handleSubmitForm}>
         <Form.Item
-          label="Name"
+          label={t("Name")}
           validateStatus={errors?.assignUserId ? "error" : ""}
           help={errors?.assignUserId ?? ""}
         >
@@ -64,10 +71,11 @@ export const AssingToModal = ({
             selectedUser={selectedUser}
             handleChange={handleAssignUserChange}
             handleClear={handleAssignUserClear}
+            project={project}
           />
           {!isAssignToMe && (
             <button className={styles.assignToMeModal} onClick={handleAssignToMe} type="button">
-              Assign To Me
+              {t("Assign To Me")}
             </button>
           )}
         </Form.Item>

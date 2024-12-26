@@ -4,9 +4,11 @@ import { baseQueryWithLogout } from "app/apiSlice"
 
 import { systemStatsInvalidate } from "entities/system/api"
 
+import { testPlanInvalidate } from "entities/test-plan/api"
+
 import { invalidatesList } from "shared/libs"
 
-const rootPath = "v1/projects"
+const rootPath = "projects"
 
 export const projectApi = createApi({
   reducerPath: "projectApi",
@@ -77,6 +79,7 @@ export const projectApi = createApi({
       async onQueryStarted(_, { dispatch, queryFulfilled }) {
         await queryFulfilled
         dispatch(systemStatsInvalidate)
+        dispatch(testPlanInvalidate())
       },
       invalidatesTags: (result, error, id) => [
         { type: "Project", id: Number(id) },
@@ -96,7 +99,7 @@ export const projectApi = createApi({
     }),
     getProjectProgress: builder.query<ProjectsProgress[], ProjectProgressParams>({
       query: ({ projectId, period_date_end, period_date_start }) => ({
-        url: `v1/projects/${projectId}/progress/`,
+        url: `${rootPath}/${projectId}/progress/`,
         method: "GET",
         params: { end_date: period_date_end, start_date: period_date_start },
       }),
@@ -104,7 +107,7 @@ export const projectApi = createApi({
     }),
     getMembers: builder.query<
       PaginationResponse<UserWithRoles[]>,
-      QueryWithPagination<{ id: string } & GetUsersQuery>
+      QueryWithPagination<GetUsersQuery>
     >({
       query: ({ id, ...rest }) => ({
         url: `${rootPath}/${id}/members/`,

@@ -40,12 +40,12 @@
 }
 
 .divider {
-  color: #999;
+  color: var(--y-grey-30);
   margin: 0 4px;
 }
 
 .link {
-  color: #999;
+  color: var(--y-grey-30);
   text-decoration: underline;
 }
 

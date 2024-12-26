@@ -1,17 +1,20 @@
 import { CopyOutlined } from "@ant-design/icons"
 import { Button, Tooltip } from "antd"
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 
 import { TestResultEditCloneModal } from "./test-result-edit-clone-modal"
 
 interface Props {
   testCase: TestCase
-  testResult: IResult
+  testResult: Result
   isDisabled: boolean
   isClone: boolean
+  onSubmit?: (newResult: Result, oldResult: Result) => void
 }
 
-export const EditCloneResult = ({ testCase, testResult, isDisabled, isClone }: Props) => {
+export const EditCloneResult = ({ testCase, testResult, isDisabled, isClone, onSubmit }: Props) => {
+  const { t } = useTranslation()
   const [isShow, setIsShow] = useState(false)
 
   return (
@@ -30,9 +33,9 @@ export const EditCloneResult = ({ testCase, testResult, isDisabled, isClone }: P
       >
         <span style={{ textDecoration: "underline" }}>
           {!isClone ? (
-            "Edit"
+            t("Edit")
           ) : (
-            <Tooltip placement="topRight" title="Clone test result">
+            <Tooltip placement="topRight" title={t("Clone test result")}>
               <CopyOutlined />
             </Tooltip>
           )}
@@ -44,6 +47,7 @@ export const EditCloneResult = ({ testCase, testResult, isDisabled, isClone }: P
         testResult={testResult}
         testCase={testCase}
         isClone={isClone}
+        onSubmit={onSubmit}
       />
     </>
   )

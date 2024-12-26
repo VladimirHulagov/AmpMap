@@ -6,7 +6,7 @@ import { getCsrfCookie } from "entities/auth/api"
 import { logout } from "entities/auth/model"
 
 import { config } from "shared/config"
-import { savePrevPageUrl } from "shared/libs/local-storage"
+import { savePrevPageUrl } from "shared/libs"
 
 import { handleError } from "./slice"
 
@@ -26,7 +26,7 @@ const createQuery = (baseUrl: string) => {
   })
 }
 
-const baseQuery = createQuery(`${config.apiRoot}/api/`)
+const baseQuery = createQuery(`${config.apiRoot}/api/${config.apiVersion}/`)
 
 export const authQuery = createQuery(`${config.apiRoot}/auth/`)
 
@@ -61,7 +61,7 @@ export const baseQueryWithLogout: BaseQueryFn<
     api.dispatch(handleError({ code: 404, message: "Sorry, the page you visited does not exist." }))
   }
 
-  if (result?.error?.status === 403) {
+  if (result?.error?.status === 403 && result?.meta?.request.redirect !== "manual") {
     api.dispatch(
       handleError({ code: 403, message: "You do not have permission to access this page." })
     )

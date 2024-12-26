@@ -29,19 +29,18 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 
-from django.db.models import Case, Exists, IntegerField, OuterRef, Q, QuerySet, Value, When
+from django.db.models import Case, Count, Exists, F, IntegerField, OuterRef, Q, QuerySet, Value, When
 from rest_framework.generics import get_object_or_404
 
 from testy.core.exceptions import UserMissingError
 from testy.core.models import Project
 from testy.tests_description.models import TestCase, TestSuite
 from testy.tests_representation.models import Test, TestPlan
-from testy.tests_representation.selectors.results import TestResultSelector
+from testy.tests_representation.selectors.testplan import TestPlanSelector
 from testy.users.choices import UserAllowedPermissionCodenames
 from testy.users.models import Membership, User
 from testy.users.selectors.roles import RoleSelector
 from testy.utilities.request import PeriodDateTime
-from testy.utilities.sql import SubCount
 
 _PK = 'pk'
 
@@ -68,10 +67,6 @@ class ProjectSelector:
         return get_object_or_404(Project, pk=project_id)
 
     def project_list_statistics(self):
-        cases_count = TestCase.objects.filter(project_id=OuterRef(_PK), is_archive=False).values(_PK)  # noqa: WPS204
-        suites_count = TestSuite.objects.filter(project_id=OuterRef(_PK)).values(_PK)
-        plans_count = TestPlan.objects.filter(project_id=OuterRef(_PK), is_archive=False).values(_PK)
-        tests_count = Test.objects.filter(project_id=OuterRef(_PK), is_archive=False).values(_PK)
         membership_exists = Exists(
             Membership.objects.filter(user__pk=self._user.pk, project=OuterRef(_PK)),
         )
@@ -84,10 +79,10 @@ class ProjectSelector:
         )
         qs = self._user_project_qs()
         return qs.annotate(
-            cases_count=SubCount(cases_count),
-            suites_count=SubCount(suites_count),
-            plans_count=SubCount(plans_count),
-            tests_count=SubCount(tests_count),
+            cases_count=F('projectstatistics__cases_count'),
+            suites_count=F('projectstatistics__suites_count'),
+            plans_count=F('projectstatistics__plans_count'),
+            tests_count=F('projectstatistics__tests_count'),
             is_visible=visible_condition,
             is_manageable=Value(True) if self._user.is_superuser else Exists(
                 Membership.objects.filter(
@@ -96,7 +91,7 @@ class ProjectSelector:
                     role__permissions__codename=UserAllowedPermissionCodenames.CHANGE_PROJECT,
                 ),
             ),
-        ).distinct()
+        ).distinct().order_by('name')
 
     def all_projects_statistic(self):
         projects = self._user_project_qs().filter(is_archive=False)
@@ -109,22 +104,25 @@ class ProjectSelector:
         }
 
     def project_progress(self, project_id: int, period: PeriodDateTime):
-        last_status_period = TestResultSelector.get_last_status_subquery(
-            filters=[Q(created_at__gte=period.start) & Q(created_at__lte=period.end)],
+        root_plans = (
+            TestPlan
+            .objects
+            .filter(parent=None, project=project_id, is_archive=False)
+            .prefetch_related('parameters')
         )
-        last_status_total = TestResultSelector.get_last_status_subquery()
-        tests_total_query = Test.objects.filter(plan__tree_id=OuterRef('tree_id')).values(_PK)
-        tests_progress_period = self._get_tests_subquery(last_status_period)
-        tests_progress_total = self._get_tests_subquery(last_status_total)
-        return TestPlan.objects.filter(
-            parent=None, project=project_id, is_archive=False,
-        ).prefetch_related(
-            'parameters',
-        ).annotate(
-            tests_total=SubCount(tests_total_query),
-            tests_progress_period=SubCount(tests_progress_period),
-            tests_progress_total=SubCount(tests_progress_total),
-        )
+        root_plans = TestPlanSelector.annotate_title(root_plans).order_by('-id')
+        tests_count_filter_mapping = {
+            'tests_total': None,
+            'tests_progress_period': [
+                Q(results__created_at__range=(period.start, period.end)),
+                Q(last_status_id__isnull=False),
+            ],
+            'tests_progress_total': [Q(last_status_id__isnull=False)],
+        }
+        for plan in root_plans:
+            for test_field, test_filter in tests_count_filter_mapping.items():
+                setattr(plan, test_field, self._test_count(plan, test_filter))
+        return root_plans
 
     @classmethod
     def favorites_annotation(cls, favorite_conditions: Q) -> Case:
@@ -136,10 +134,24 @@ class ProjectSelector:
 
     @classmethod
     def _get_tests_subquery(cls, last_status_subquery):
-        return Test.objects.annotate(last_status=last_status_subquery).filter(
+        return Test.objects.filter(
             plan__tree_id=OuterRef('tree_id'),
             last_status__isnull=False,
         ).values(_PK)
+
+    @classmethod
+    def _test_count(cls, plan: TestPlan, filter_conditions: list[Q] | None = None) -> int:
+        if not filter_conditions:
+            filter_conditions = []
+        return (
+            Test.objects
+            .filter(*filter_conditions, plan__tree_id=plan.tree_id)
+            .values('plan__tree_id')
+            .annotate(count=Count('id', distinct=True))
+            .values_list('count', flat=True)
+            .order_by('count')
+            .first() or 0
+        )
 
     def _user_project_qs(self, manager_name: str = 'objects') -> QuerySet[Project]:
         if not self._user:

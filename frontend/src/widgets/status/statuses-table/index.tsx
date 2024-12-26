@@ -1,10 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { DragEndEvent, SensorDescriptor, SensorOptions } from "@dnd-kit/core"
 import { DndContext, MouseSensor, useSensor, useSensors } from "@dnd-kit/core"
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers"
@@ -19,9 +12,11 @@ import { Space, Table } from "antd"
 import { ColumnsType } from "antd/es/table"
 import { useGetStatusesQuery } from "entities/status/api"
 import { getStatusTypeTextByNumber } from "entities/status/lib"
+import { useContext, useEffect, useState } from "react"
+
 import { DeleteStatusButton, EditStatusButton, SetDefaultStatusButton } from "features/status"
-import { useEffect, useState } from "react"
-import { useParams } from "react-router-dom"
+
+import { ProjectContext } from "pages/project"
 
 import { SYSTEM_TYPE } from "shared/config/status-types"
 import { Status } from "shared/ui"
@@ -52,11 +47,8 @@ interface Props {
 
 export const StatusesTable = ({ onChangeOrder }: Props) => {
   const [isDisabled, setIsDisabled] = useState(false)
-  const { projectId } = useParams<ParamProjectId>()
-  const { data, isLoading } = useGetStatusesQuery(
-    { project: projectId ?? "" },
-    { skip: !projectId }
-  )
+  const { project } = useContext(ProjectContext)!
+  const { data, isFetching } = useGetStatusesQuery({ project: project.id })
 
   const statuses =
     data?.map((status) => ({
@@ -157,7 +149,7 @@ export const StatusesTable = ({ onChangeOrder }: Props) => {
               row: Row,
             },
           }}
-          loading={isLoading}
+          loading={isFetching}
           dataSource={dataSource}
           columns={columns}
           rowKey="id"

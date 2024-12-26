@@ -4,7 +4,7 @@ import { baseQueryWithLogout } from "app/apiSlice"
 
 import { invalidatesList, providesList } from "shared/libs"
 
-const rootPath = "v1/custom-attributes"
+const rootPath = "custom-attributes"
 
 export const customAttributeApi = createApi({
   reducerPath: "customAttributeApi",

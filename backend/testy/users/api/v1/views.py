@@ -40,8 +40,8 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 
 from testy.paginations import StandardSetPagination
-from testy.swagger.roles import roles_assign_schema, roles_unassign_schema
-from testy.swagger.users import user_change_password_schema, user_delete_avatar_schema, user_post_avatar_schema
+from testy.swagger.v1.roles import roles_assign_schema, roles_unassign_schema
+from testy.swagger.v1.users import user_change_password_schema, user_delete_avatar_schema, user_post_avatar_schema
 from testy.users.api.v1.serializers import (
     GroupSerializer,
     MembershipSerializer,

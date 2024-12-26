@@ -28,9 +28,7 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-
-from django.db.models import Func, IntegerField, Q, Subquery, UniqueConstraint, Value, fields
-from mptt.models import MPTTModel
+from django.db.models import F, Func, IntegerField, Max, Model, Q, Subquery, UniqueConstraint, Value, fields
 
 
 class SubCount(Subquery):
@@ -60,11 +58,9 @@ class ConcatSubquery(Subquery):
         return sql, sql_params
 
 
-def rebuild_mptt(model: type[MPTTModel], tree_id: int):
-    try:
-        model.objects.partial_rebuild(tree_id)
-    except RuntimeError:
-        model.objects.rebuild()
+def get_next_max_int_value(model: type[Model], field: str) -> int:
+    max_val = model.objects.aggregate(Max(field))[f'{field}__max']
+    return 1 if max_val is None else max_val + 1
 
 
 def unique_soft_delete_constraint(field: str, model_name: str) -> UniqueConstraint:
@@ -73,3 +69,14 @@ def unique_soft_delete_constraint(field: str, model_name: str) -> UniqueConstrai
         condition=Q(is_deleted=False),
         name=f'unique_{field}_value_on_{model_name}_for_soft_delete',
     )
+
+
+def get_max_level(model: type[Model]) -> int:
+    max_level = (
+        model.objects.all()
+        .annotate(level=Func(F('path'), function='nlevel'))
+        .aggregate(
+            max_level=Max('level'),
+        )
+    ).get('max_level')
+    return max_level if max_level else 0

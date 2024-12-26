@@ -2,6 +2,7 @@ import { TablePaginationConfig, TableProps } from "antd"
 import { ColumnsType } from "antd/es/table"
 import { useLazyGetNotificationsListQuery, useMarkAsMutation } from "entities/notifications/api"
 import { useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
 
 import { initInternalError } from "shared/libs"
@@ -24,43 +25,44 @@ const convertToLinkText = (record: NotificationData["message"]) => {
   )
 }
 
-const columns: ColumnsType<NotificationData> = [
-  {
-    title: "Id",
-    dataIndex: "id",
-    key: "id",
-    width: "70px",
-  },
-  {
-    title: "Message",
-    dataIndex: "message",
-    key: "message",
-    render: (record: NotificationData["message"]) => {
-      if (!record) {
-        return null
-      }
-      return convertToLinkText(record)
-    },
-  },
-  {
-    title: "Actor",
-    dataIndex: "actor",
-    key: "actor",
-  },
-  {
-    title: "Time Ago",
-    dataIndex: "timeago",
-    key: "timeago",
-  },
-]
-
 export const useNotificationsTable = () => {
+  const { t } = useTranslation()
   const [isLoading, setIsLoading] = useState(false)
   const [data, setData] = useState<NotificationData[]>([])
   const [pagination, setPagination] = useState<TablePaginationConfig>({ current: 1, pageSize: 10 })
   const [getNotifications] = useLazyGetNotificationsListQuery()
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
   const [markAs] = useMarkAsMutation()
+
+  const columns: ColumnsType<NotificationData> = [
+    {
+      title: t("ID"),
+      dataIndex: "id",
+      key: "id",
+      width: "70px",
+    },
+    {
+      title: t("Message"),
+      dataIndex: "message",
+      key: "message",
+      render: (record: NotificationData["message"]) => {
+        if (!record) {
+          return null
+        }
+        return convertToLinkText(record)
+      },
+    },
+    {
+      title: t("Actor"),
+      dataIndex: "actor",
+      key: "actor",
+    },
+    {
+      title: t("Time"),
+      dataIndex: "timeago",
+      key: "timeago",
+    },
+  ]
 
   const fetchData = async ({
     force = false,

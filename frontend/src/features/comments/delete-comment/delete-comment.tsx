@@ -1,17 +1,20 @@
 import { Button, Modal, notification } from "antd"
 import { useDeleteCommentMutation } from "entities/comments/api"
+import { useTranslation } from "react-i18next"
 
 import { initInternalError } from "shared/libs"
 
 export const DeleteComment = ({ commentId }: { commentId: number }) => {
+  const { t } = useTranslation()
   const [deleteComment] = useDeleteCommentMutation()
 
   const handleDelete = async () => {
     try {
       await deleteComment(commentId).unwrap()
       notification.success({
-        message: "Success",
-        description: "Comment deleted successfully",
+        message: t("Success"),
+        closable: true,
+        description: t("Comment deleted successfully"),
       })
     } catch (err: unknown) {
       initInternalError(err)
@@ -30,14 +33,14 @@ export const DeleteComment = ({ commentId }: { commentId: number }) => {
       }}
       onClick={() => {
         Modal.confirm({
-          title: "Do you want to delete this comment?",
-          okText: "Delete",
-          cancelText: "Cancel",
+          title: t("Do you want to delete this comment?"),
+          okText: t("Delete"),
+          cancelText: t("Cancel"),
           onOk: handleDelete,
         })
       }}
     >
-      <span style={{ textDecoration: "underline" }}>Delete</span>
+      <span style={{ textDecoration: "underline" }}>{t("Delete")}</span>
     </Button>
   )
 }

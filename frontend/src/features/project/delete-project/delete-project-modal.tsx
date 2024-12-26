@@ -1,10 +1,11 @@
 import { notification } from "antd"
+import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 
 import { useDeleteProjectMutation, useGetProjectDeletePreviewQuery } from "entities/project/api"
 
 import { initInternalError } from "shared/libs"
-import { AlertSuccessChange } from "shared/ui/alert-success-change"
+import { AlertSuccessChange } from "shared/ui"
 
 import { ModalConfirmDeleteArchive } from "widgets/[ui]/modal-confirm-delete-archive"
 
@@ -15,6 +16,8 @@ interface Props {
 }
 
 export const DeleteProjectModal = ({ isShow, setIsShow, project }: Props) => {
+  const { t } = useTranslation()
+
   const navigate = useNavigate()
   const [deleteProject, { isLoading: isLoadingDelete }] = useDeleteProjectMutation()
   const { data, isLoading, status } = useGetProjectDeletePreviewQuery(String(project.id), {
@@ -29,7 +32,8 @@ export const DeleteProjectModal = ({ isShow, setIsShow, project }: Props) => {
     try {
       await deleteProject(Number(project.id)).unwrap()
       notification.success({
-        message: "Success",
+        message: t("Success"),
+        closable: true,
         description: (
           <AlertSuccessChange id={String(project.id)} action="deleted" title="Project" />
         ),
@@ -49,7 +53,7 @@ export const DeleteProjectModal = ({ isShow, setIsShow, project }: Props) => {
       isLoading={isLoading}
       isLoadingButton={isLoadingDelete}
       name={project.name}
-      typeTitle="Project"
+      typeTitle={t("Project")}
       type="project"
       data={data ?? []}
       handleClose={handleClose}

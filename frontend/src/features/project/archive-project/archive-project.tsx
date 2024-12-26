@@ -1,10 +1,12 @@
 import { Dropdown, MenuProps } from "antd"
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 
 import { DeleteProject } from "../delete-project/delete-project"
 import { ArchiveProjectModal } from "./archive-project-modal"
 
 export const ArchiveProject = ({ project }: { project: Project }) => {
+  const { t } = useTranslation()
   const [isShow, setIsShow] = useState(false)
 
   const items: MenuProps["items"] = [
@@ -22,7 +24,7 @@ export const ArchiveProject = ({ project }: { project: Project }) => {
         danger
         onClick={() => setIsShow(true)}
       >
-        Archive
+        {t("Archive")}
       </Dropdown.Button>
       <ArchiveProjectModal isShow={isShow} setIsShow={setIsShow} project={project} />
     </>

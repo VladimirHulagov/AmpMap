@@ -1,3 +1,6 @@
+import dayjs from "dayjs"
+import isToday from "dayjs/plugin/isToday"
+import updateLocale from "dayjs/plugin/updateLocale"
 import { useNotificationWS } from "entities/notifications/model/use-notification-ws"
 import "react-image-crop/dist/ReactCrop.css"
 import {
@@ -6,7 +9,8 @@ import {
   createBrowserRouter,
   createRoutesFromElements,
 } from "react-router-dom"
-import { Main, TestPlansView, TestSuitesView } from "widgets"
+import { Navigate } from "react-router-dom"
+import { Main } from "widgets"
 
 import { ProjectDetailsAccessManagementPage } from "pages/administration/projects/project-details/access-management"
 import { ProjectDetailsSettingsPage } from "pages/administration/projects/project-details/settings"
@@ -18,9 +22,15 @@ import {
   NotificationSettingsPage,
   NotificationsPage,
 } from "pages/notifications"
-import { ProjectMainPage } from "pages/project/project-main-page"
-import { TestPlanActivityPage } from "pages/project/test-plan-activity"
+import {
+  ProjectLayout,
+  ProjectMainPage,
+  TestPlanActivityPage,
+  TestPlansPage,
+  TestSuitesPage,
+} from "pages/project"
 
+import { getLang } from "shared/libs"
 import "shared/styles/global.css"
 
 import { RequireAuth } from "./entities/auth/ui/require-auth"
@@ -36,9 +46,13 @@ import { UsersPage } from "./pages/administration/users"
 import { DashboardPage } from "./pages/dashboard"
 import { LogoutPage } from "./pages/logout/logout"
 import { ProfilePage } from "./pages/profile/profile-page"
-import { ProjectOverviewTab } from "./pages/project/overview"
-import { ProjectTestPlans } from "./pages/project/test-plans"
-import { ProjectTestSuitesPage } from "./pages/project/test-suites"
+import { ProjectOverviewPage } from "./pages/project/overview/overview"
+
+dayjs.extend(isToday)
+dayjs.extend(updateLocale)
+dayjs.updateLocale(getLang(), {
+  weekStart: 1,
+})
 
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -47,38 +61,45 @@ const router = createBrowserRouter(
       <Route element={<RequireAuth />}>
         <Route path="/" element={<Main />}>
           <Route index element={<DashboardPage />} />
+          <Route path="administration/projects" element={<ProjectsMain />} />
+          <Route path="administration/users" element={<UsersPage />} />
 
-          {/* projects routes */}
-          <Route path="projects/:projectId" element={<ProjectMainPage />}>
-            <Route index element={<ProjectOverviewTab />} />
-            <Route path="suites" element={<ProjectTestSuitesPage />}>
-              <Route index element={<TestSuitesView />} />
-              <Route path=":testSuiteId" element={<TestSuitesView />} />
-              <Route path=":testSuiteId/new-test-case" element={<CreateTestCaseView />} />
-              <Route path=":testSuiteId/edit-test-case" element={<EditTestCaseView />} />
+          <Route element={<ProjectLayout />}>
+            {/* projects routes */}
+            <Route path="projects/:projectId">
+              <Route index element={<Navigate to="overview" replace />} />
+              <Route path="overview" element={<ProjectOverviewPage />} />
+
+              <Route element={<ProjectMainPage />}>
+                <Route path="suites">
+                  <Route index element={<TestSuitesPage />} />
+                  <Route path=":testSuiteId" element={<TestSuitesPage />} />
+                  <Route path=":testSuiteId/new-test-case" element={<CreateTestCaseView />} />
+                  <Route path=":testSuiteId/edit-test-case" element={<EditTestCaseView />} />
+                </Route>
+                <Route path="plans">
+                  <Route index element={<TestPlansPage />} />
+                  <Route path=":testPlanId" element={<TestPlansPage />} />
+                  <Route path=":testPlanId/activity" element={<TestPlanActivityPage />} />
+                </Route>
+              </Route>
             </Route>
-            <Route path="plans" element={<ProjectTestPlans />}>
-              <Route index element={<TestPlansView />} />
-              <Route path=":testPlanId" element={<TestPlansView />} />
-              <Route path=":testPlanId/activity" element={<TestPlanActivityPage />} />
+
+            {/* administrations routes */}
+            <Route path="administration">
+              <Route path="projects" element={<ProjectsMain />} />
+              <Route path="projects/:projectId" element={<ProjectDetailsMainPage />}>
+                <Route path="overview" element={<ProjectDetailsOverviewPage />} />
+                <Route path="parameters" element={<ProjectDetailsParametersPage />} />
+                <Route path="labels" element={<ProjectDetailsLabelsPage />} />
+                <Route path="statuses" element={<ProjectDetailsStatusesPage />} />
+                <Route path="access-management" element={<ProjectDetailsAccessManagementPage />} />
+                <Route path="attributes" element={<ProjectDetailsCustomAttributesPage />} />
+                <Route path="settings" element={<ProjectDetailsSettingsPage />} />
+              </Route>
+              <Route path="users" element={<UsersPage />} />
             </Route>
           </Route>
-
-          {/* administrations routes */}
-          <Route path="administration">
-            <Route path="projects" element={<ProjectsMain />} />
-            <Route path="projects/:projectId" element={<ProjectDetailsMainPage />}>
-              <Route path="overview" element={<ProjectDetailsOverviewPage />} />
-              <Route path="parameters" element={<ProjectDetailsParametersPage />} />
-              <Route path="labels" element={<ProjectDetailsLabelsPage />} />
-              <Route path="statuses" element={<ProjectDetailsStatusesPage />} />
-              <Route path="access-management" element={<ProjectDetailsAccessManagementPage />} />
-              <Route path="attributes" element={<ProjectDetailsCustomAttributesPage />} />
-              <Route path="settings" element={<ProjectDetailsSettingsPage />} />
-            </Route>
-            <Route path="users" element={<UsersPage />} />
-          </Route>
-
           <Route path="profile" element={<ProfilePage />} />
           <Route path="notifications" element={<NotificationsPage />}>
             <Route index element={<NotificationListPage />} />

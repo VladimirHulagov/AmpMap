@@ -18,13 +18,13 @@
 }
 
 .system-alert-type-info .ant-alert-message {
-  color: #425cd7;
+  color: var(--y-interactive-default);
 }
 
 .system-alert-type-warning .ant-alert-message {
-  color: #efb622;
+  color: var(--y-warning-block);
 }
 
 .system-alert-type-error .ant-alert-message {
-  color: #c44d56;
+  color: var(--y-error-block);
 }

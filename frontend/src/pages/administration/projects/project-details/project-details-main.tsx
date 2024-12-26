@@ -1,12 +1,10 @@
 import { PageHeader } from "@ant-design/pro-layout"
 import { Breadcrumb, Layout } from "antd"
-import React, { useContext, useEffect, useState } from "react"
-import { Link, Outlet, useParams } from "react-router-dom"
-import { MenuContext } from "widgets"
+import React, { useContext, useState } from "react"
+import { useTranslation } from "react-i18next"
+import { Link, Outlet } from "react-router-dom"
 
-import { useGetProjectQuery } from "entities/project/api"
-
-import { ContainerLoader } from "shared/ui"
+import { ProjectContext } from "pages/project"
 
 import ProjectDetailsTabs from "./project-details-tabs"
 
@@ -21,26 +19,16 @@ export const ProjectDetailsActiveTabContext =
   React.createContext<ProjectDetailsActiveTabContextType | null>(null)
 
 export const ProjectDetailsMainPage = () => {
-  const { setActiveMenu, setOpenSubMenu } = useContext(MenuContext)!
+  const { t } = useTranslation()
   const [projectDetailsActiveTab, setProjectDetailsActiveTab] = useState("")
-  const { projectId } = useParams<ParamProjectId>()
-  const { data: project, isLoading } = useGetProjectQuery(Number(projectId), { skip: !projectId })
-
-  useEffect(() => {
-    setOpenSubMenu(["administration"])
-    setActiveMenu(["administration.projects"])
-  }, [])
-
-  if (isLoading || !projectId) {
-    return <ContainerLoader />
-  }
+  const { project } = useContext(ProjectContext)!
 
   const breadcrumbItems = [
-    <Breadcrumb.Item key="administration">Administration</Breadcrumb.Item>,
+    <Breadcrumb.Item key="administration">{t("Administration")}</Breadcrumb.Item>,
     <Breadcrumb.Item key="projects">
-      <Link to="/administration/projects">Projects</Link>
+      <Link to="/administration/projects">{t("Projects")}</Link>
     </Breadcrumb.Item>,
-    <Breadcrumb.Item key={projectId}>{project?.name}</Breadcrumb.Item>,
+    <Breadcrumb.Item key={project.id}>{project.name}</Breadcrumb.Item>,
   ]
 
   return (
@@ -51,11 +39,12 @@ export const ProjectDetailsMainPage = () => {
         <PageHeader
           breadcrumbRender={() => <Breadcrumb>{breadcrumbItems}</Breadcrumb>}
           title={project?.name}
-          footer={<ProjectDetailsTabs projectId={projectId} />}
+          ghost={false}
+          footer={<ProjectDetailsTabs projectId={project.id} />}
           style={{ paddingBottom: 0 }}
         />
         <Content style={{ margin: "24px" }}>
-          <Outlet context={projectId} />
+          <Outlet context={project.id} />
         </Content>
       </ProjectDetailsActiveTabContext.Provider>
     </>

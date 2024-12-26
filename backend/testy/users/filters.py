@@ -29,19 +29,35 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 from django.contrib.auth import get_user_model
+from django.db.models import Q
 from django_filters import rest_framework as filters
 
-from testy.filters import FilterListMixin, FlatFilterMixin
+from testy.filters import FilterListMixin, case_insensitive_filter
+from testy.users.choices import UserAllowedPermissionCodenames
 
 UserModel = get_user_model()
 
 
-class UserFilter(filters.FilterSet, FilterListMixin, FlatFilterMixin):
-    username = filters.CharFilter(lookup_expr='icontains')
-    email = filters.CharFilter(lookup_expr='icontains')
-    first_name = filters.CharFilter(lookup_expr='icontains')
-    last_name = filters.CharFilter(lookup_expr='icontains')
-    project = filters.BaseCSVFilter(field_name='memberships__project', method='filter_by_list')
+class UserFilter(filters.FilterSet, FilterListMixin):
+    username = case_insensitive_filter()
+    email = case_insensitive_filter()
+    first_name = case_insensitive_filter()
+    last_name = case_insensitive_filter()
+    project = filters.BaseCSVFilter(
+        field_name='memberships__project',
+        method='filter_by_list',
+        help_text='Filter users by their projects using a comma-separated list of project IDs.',
+    )
+    exclude_external = filters.NumberFilter(method='filter_by_exclude_external')
+
+    def filter_by_exclude_external(self, queryset, name, value):
+        return queryset.exclude(
+            ~Q(
+                memberships__project_id=value,
+                memberships__role__permissions__codename=UserAllowedPermissionCodenames.VIEW_PROJECT,
+            ),
+            memberships__role__permissions__codename=UserAllowedPermissionCodenames.VIEW_PROJECT_RESTRICTION,
+        )
 
     class Meta:
         model = UserModel

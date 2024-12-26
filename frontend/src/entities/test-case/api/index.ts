@@ -8,27 +8,20 @@ import { suiteInvalidate } from "entities/suite/api"
 
 import { systemStatsInvalidate } from "entities/system/api"
 
-import { testPlanInvalidate } from "entities/test-plan/api"
+import { testPlanLabelsInvalidate } from "entities/test-plan/api"
 
 import { providesList } from "shared/libs"
 
 import { setDrawerTestCase, setDrawerTestCaseIsArchive } from "../model"
 
-const rootPath = "v1/cases"
+const rootPath = "cases"
 
 export const testCaseApi = createApi({
   reducerPath: "testCaseApi",
   baseQuery: baseQueryWithLogout,
   tagTypes: ["TestCase", "TestCaseHistoryChanges", "TestCaseTestsList"],
   endpoints: (builder) => ({
-    getTestCases: builder.query<PaginationResponse<TestCase[]>, GetTestCasesQuery>({
-      query: (params) => ({
-        url: `${rootPath}/`,
-        params,
-      }),
-      providesTags: (result) => providesList(result?.results, "TestCase"),
-    }),
-    searchTestCases: builder.query<SuiteWithCases[], GetTestCasesQuery>({
+    searchTestCases: builder.query<SuiteWithCases[], SearchTestCasesQuery>({
       query: (params) => ({
         url: `${rootPath}/search/`,
         params,
@@ -43,8 +36,8 @@ export const testCaseApi = createApi({
       async onQueryStarted(_, { dispatch, queryFulfilled }) {
         await queryFulfilled
         dispatch(labelInvalidate)
-        dispatch(testPlanInvalidate)
-        dispatch(suiteInvalidate)
+        dispatch(testPlanLabelsInvalidate)
+        dispatch(suiteInvalidate())
         dispatch(systemStatsInvalidate)
       },
       invalidatesTags: [{ type: "TestCase", id: "LIST" }],
@@ -57,8 +50,8 @@ export const testCaseApi = createApi({
       async onQueryStarted(_, { dispatch, queryFulfilled }) {
         await queryFulfilled
         dispatch(labelInvalidate)
-        dispatch(testPlanInvalidate)
-        dispatch(suiteInvalidate)
+        dispatch(testPlanLabelsInvalidate)
+        dispatch(suiteInvalidate())
         dispatch(systemStatsInvalidate)
       },
       invalidatesTags: [{ type: "TestCase", id: "LIST" }],
@@ -73,8 +66,8 @@ export const testCaseApi = createApi({
         try {
           const { data } = await queryFulfilled
           dispatch(labelInvalidate)
-          dispatch(testPlanInvalidate)
-          dispatch(suiteInvalidate)
+          dispatch(testPlanLabelsInvalidate)
+          dispatch(suiteInvalidate())
           dispatch(setDrawerTestCase(data))
         } catch (error) {
           console.error(error)
@@ -106,6 +99,7 @@ export const testCaseApi = createApi({
           await queryFulfilled
           dispatch(setDrawerTestCaseIsArchive(true))
           dispatch(systemStatsInvalidate)
+          dispatch(suiteInvalidate())
         } catch (error) {
           console.error(error)
         }
@@ -128,7 +122,7 @@ export const testCaseApi = createApi({
         url: `${rootPath}/${id}/archive/preview/`,
       }),
     }),
-    copyTestCase: builder.mutation<void, TestCaseCopyBody>({
+    copyTestCase: builder.mutation<TestCase[], TestCaseCopyBody>({
       query: (body) => ({
         url: `${rootPath}/copy/`,
         method: "POST",
@@ -137,8 +131,8 @@ export const testCaseApi = createApi({
       async onQueryStarted(_, { dispatch, queryFulfilled }) {
         await queryFulfilled
         dispatch(labelInvalidate)
-        dispatch(testPlanInvalidate)
-        dispatch(suiteInvalidate)
+        dispatch(testPlanLabelsInvalidate)
+        dispatch(suiteInvalidate())
       },
       invalidatesTags: [{ type: "TestCase", id: "LIST" }],
     }),
@@ -171,17 +165,25 @@ export const testCaseApi = createApi({
       async onQueryStarted(_, { dispatch, queryFulfilled }) {
         const { data } = await queryFulfilled
         dispatch(labelInvalidate)
-        dispatch(testPlanInvalidate)
-        dispatch(suiteInvalidate)
+        dispatch(testPlanLabelsInvalidate)
+        dispatch(suiteInvalidate())
         dispatch(setDrawerTestCase(data))
       },
       invalidatesTags: [{ type: "TestCase", id: "LIST" }],
+    }),
+    getTestPlanTestCases: builder.query<PaginationResponse<TestCase[]>, SearchTestCasesQuery>({
+      query: (params) => ({
+        url: `${rootPath}/`,
+        params: {
+          ...params,
+          parent: "null",
+        },
+      }),
     }),
   }),
 })
 
 export const {
-  useGetTestCasesQuery,
   useLazySearchTestCasesQuery,
   useGetTestCaseByIdQuery,
   useLazyGetTestCaseByIdQuery,
@@ -195,4 +197,5 @@ export const {
   useGetTestCaseTestsListQuery,
   useGetTestCaseArchivePreviewQuery,
   useRestoreTestCaseMutation,
+  useGetTestPlanTestCasesQuery,
 } = testCaseApi

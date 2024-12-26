@@ -1,6 +1,7 @@
 import { PlusOutlined } from "@ant-design/icons"
 import { Button, Col, Divider, Form, Modal, Row, Select, Upload } from "antd"
 import { Controller } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 
 import { ErrorObj } from "shared/hooks/use-alert-error"
 import { AlertError, Attachment, Attribute, Status, Steps, TextAreaWithAttach } from "shared/ui"
@@ -13,9 +14,10 @@ const { Dragger } = Upload
 interface TestResultEditCopyModalProps {
   isShow: boolean
   setIsShow: React.Dispatch<React.SetStateAction<boolean>>
-  testResult: IResult
+  testResult: Result
   testCase: TestCase
   isClone: boolean
+  onSubmit?: (newResult: Result, oldResult: Result) => void
 }
 
 export const TestResultEditCloneModal = ({
@@ -24,7 +26,9 @@ export const TestResultEditCloneModal = ({
   testResult,
   testCase,
   isClone,
+  onSubmit,
 }: TestResultEditCopyModalProps) => {
+  const { t } = useTranslation()
   const {
     isLoading,
     errors,
@@ -32,9 +36,9 @@ export const TestResultEditCloneModal = ({
     attachmentsIds,
     control,
     attributes,
-    stepsResult,
+    watchSteps,
     setAttachments,
-    setStepsResult,
+    handleStepsChange,
     handleAttachmentsLoad,
     setValue,
     handleCancel,
@@ -54,6 +58,7 @@ export const TestResultEditCloneModal = ({
     setIsShow,
     testResult,
     isClone,
+    onSubmit,
   })
 
   return (
@@ -64,12 +69,14 @@ export const TestResultEditCloneModal = ({
       open={isShow}
       onCancel={handleCancel}
       title={
-        !isClone ? `Edit Test Result '${testResult.id}'` : `Clone Test Result '${testResult.id}'`
+        !isClone
+          ? `${t("Edit Test Result")} '${testResult.id}'`
+          : `${t("Clone Test Result")} '${testResult.id}'`
       }
       destroyOnClose
       footer={[
         <Button key="back" onClick={handleCancel}>
-          Cancel
+          {t("Cancel")}
         </Button>,
         <Button
           loading={isLoading}
@@ -78,7 +85,7 @@ export const TestResultEditCloneModal = ({
           onClick={handleSubmitForm}
           disabled={isDisabledSubmit}
         >
-          {!isClone ? "Update" : "Clone"}
+          {!isClone ? t("Update") : t("Clone")}
         </Button>,
       ]}
     >
@@ -90,7 +97,7 @@ export const TestResultEditCloneModal = ({
         <Row>
           <Col flex="1 0">
             <Form.Item
-              label="Status"
+              label={t("Status")}
               validateStatus={errors?.status ? "error" : ""}
               help={errors?.status ? errors.status : "Set the test status (passed, failed etc.)."}
             >
@@ -100,17 +107,27 @@ export const TestResultEditCloneModal = ({
                 render={({ field }) => {
                   return (
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <Select {...field} placeholder="Please select" style={{ width: "100%" }}>
+                      <Select
+                        {...field}
+                        placeholder={t("Please select")}
+                        style={{ width: "100%" }}
+                        id={`${isClone ? "clone" : "edit"}-result-status`}
+                      >
                         {statuses.map((status) => (
                           <Select.Option key={status.id} value={Number(status.id)}>
-                            <Status name={status.name} color={status.color} id={status.id} />
+                            <Status
+                              name={status.name}
+                              color={status.color}
+                              id={status.id}
+                              extraId={`${isClone ? "clone" : "edit"}-result`}
+                            />
                           </Select.Option>
                         ))}
                       </Select>
                       <ApplyToStepsButton
                         steps={testResult.steps_results}
                         status={field.value}
-                        onApply={setStepsResult}
+                        onApply={handleStepsChange}
                       />
                     </div>
                   )
@@ -119,7 +136,7 @@ export const TestResultEditCloneModal = ({
             </Form.Item>
 
             <Form.Item
-              label="Comment"
+              label={t("Comment")}
               validateStatus={errors?.comment ? "error" : ""}
               help={errors?.comment ? errors.comment : ""}
             >
@@ -128,6 +145,8 @@ export const TestResultEditCloneModal = ({
                 control={control}
                 render={({ field }) => (
                   <TextAreaWithAttach
+                    uploadId={`${isClone ? "clone" : "edit"}-result-comment`}
+                    textAreaId={`${isClone ? "clone" : "edit"}-result-comment-textarea`}
                     fieldProps={field}
                     stateAttachments={{ attachments, setAttachments }}
                     customRequest={handleAttachmentsLoad}
@@ -155,7 +174,9 @@ export const TestResultEditCloneModal = ({
                 onChange={handleAttachmentsChange}
                 fileList={attachments}
               >
-                <p className="ant-upload-text">Drop files here to attach, or click to browse.</p>
+                <p className="ant-upload-text">
+                  {t("Drop files here to attach, or click to browse")}
+                </p>
               </Dragger>
             </div>
           </Col>
@@ -166,12 +187,13 @@ export const TestResultEditCloneModal = ({
             {!!testCase.steps.length && (
               <Row style={{ flexDirection: "column", marginTop: 0 }}>
                 <div className="ant-col ant-form-item-label">
-                  <label title="Steps">Steps</label>
+                  <label title="Steps">{t("Steps")}</label>
                 </div>
                 <Steps.ResultInEditModal
                   stepResultsData={testResult.steps_results}
-                  stepResults={stepsResult}
-                  setStepsResult={setStepsResult}
+                  stepResults={watchSteps}
+                  setStepsResult={handleStepsChange}
+                  id={`${isClone ? "clone" : "edit"}`}
                 />
               </Row>
             )}
@@ -181,7 +203,7 @@ export const TestResultEditCloneModal = ({
               render={({ field }) => (
                 <Row style={{ flexDirection: "column", marginTop: testCase.steps.length ? 24 : 0 }}>
                   <div className="ant-col ant-form-item-label">
-                    <label title="Attributes">Attributes</label>
+                    <label title="Attributes">{t("Attributes")}</label>
                   </div>
                   <Attribute.List
                     fieldProps={field}
@@ -196,7 +218,7 @@ export const TestResultEditCloneModal = ({
 
                   <div style={{ marginTop: 8 }}>
                     <Button type="dashed" block onClick={addAttribute}>
-                      <PlusOutlined /> Add attribute
+                      <PlusOutlined /> {t("Add attribute")}
                     </Button>
                   </div>
                 </Row>

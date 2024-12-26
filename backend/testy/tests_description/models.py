@@ -30,30 +30,44 @@
 # <http://www.gnu.org/licenses/>.
 from typing import Any
 
+import pgtrigger
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
-from mptt.models import TreeForeignKey
 from simple_history.models import HistoricalRecords
 
 from testy.comments.models import Comment
-from testy.core.models import Attachment, LabeledItem, Project
+from testy.core.models import Attachment, LabeledItem, LabelIds, Project
 from testy.fields import IntegerEstimateField
-from testy.root.models import BaseModel, MPTTBaseModel
+from testy.root.ltree.indexes import get_indexes
+from testy.root.ltree.managers import LtreeManager
+from testy.root.ltree.triggers import get_triggers
+from testy.root.models import BaseModel, LtreeBaseModel
+from testy.triggers import get_statistic_triggers
 
 
-class TestSuite(MPTTBaseModel):
-    parent = TreeForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='child_test_suites')
+class TestSuite(LtreeBaseModel):
+    parent = models.ForeignKey(
+        'self',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='child_test_suites',
+    )
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
     name = models.CharField(max_length=settings.CHAR_FIELD_MAX_LEN)
     description = models.TextField('description', default='', blank=True)
     comments = GenericRelation(Comment)
+    objects: LtreeManager
 
     class Meta:
         default_related_name = 'test_suites'
-
-    class MPTTMeta:
-        order_insertion_by = ('name',)
+        triggers = get_triggers('suite') + get_statistic_triggers(
+            'suites_count',
+            pgtrigger.Q(new__is_deleted=True, old__is_deleted=False),
+            pgtrigger.Q(new__is_deleted=False, old__is_deleted=True),
+        )
+        indexes = get_indexes('suite')
 
     def __str__(self):
         return self.name
@@ -91,11 +105,13 @@ class TestCase(BaseModel):
     is_archive = models.BooleanField(default=False)
     attributes = models.JSONField(default=dict, blank=True)
 
+    label = GenericRelation(LabelIds)
     labeled_items = GenericRelation(LabeledItem)
     comments = GenericRelation(Comment)
 
     class Meta:
         default_related_name = 'test_cases'
+        triggers = get_statistic_triggers('cases_count')
 
     def __str__(self):
         return self.name

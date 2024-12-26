@@ -42,7 +42,7 @@ from testy.comments.models import Comment
 from testy.comments.paginations import CommentSetPagination
 from testy.comments.selectors.comments import CommentSelector
 from testy.comments.services.comment import CommentService
-from testy.swagger.comments import comment_create_schema, comment_list_schema
+from testy.swagger.v1.comments import comment_create_schema, comment_list_schema
 
 
 @comment_list_schema

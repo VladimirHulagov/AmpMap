@@ -32,7 +32,7 @@ from rest_framework.permissions import SAFE_METHODS
 from users.choices import UserAllowedPermissionCodenames
 
 from testy.core.permissions import BaseProjectPermission
-from testy.tests_description.api.v1.serializers import TestCaseCopySerializer, TestSuiteCopySerializer
+from testy.tests_description.api.v2.serializers import TestCaseCopySerializer, TestSuiteCopySerializer
 from testy.tests_description.selectors.cases import TestCaseSelector
 from testy.tests_description.selectors.suites import TestSuiteSelector
 from testy.users.selectors.roles import RoleSelector

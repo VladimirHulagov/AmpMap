@@ -28,6 +28,8 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
+from typing import Iterable
+
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Model, QuerySet
 from django.db.models.functions import Lower
@@ -37,14 +39,16 @@ from testy.tests_representation.selectors.testplan import TestPlanSelector
 
 
 class LabelSelector:
-    def label_list(self) -> QuerySet[Label]:
+    @classmethod
+    def label_list(cls) -> QuerySet[Label]:
         return Label.objects.all().select_related('user').order_by(Lower('name'))
 
-    def label_list_by_testplan(self, testplan_id: int) -> QuerySet[Label]:
-        testplan = TestPlanSelector().testplan_get_by_pk(testplan_id)
+    @classmethod
+    def label_list_by_testplans(cls, testplan_ids: Iterable[int]) -> QuerySet[Label]:
+        testplans = TestPlanSelector().plans_by_ids(testplan_ids)
 
         return Label.objects.filter(
-            id__in=testplan.get_descendants(
+            id__in=testplans.get_descendants(
                 include_self=True,
             ).prefetch_related(
                 'tests', 'tests__case', 'tests__case__labeled_items', 'tests__case__labeled_items__label',
@@ -57,10 +61,8 @@ class LabelSelector:
         )
 
     @classmethod
-    def labels_by_ids_list(cls, ids: list[int], field_name: str) -> QuerySet[Label]:
-        return Label.objects.filter(
-            **{f'{field_name}__in': ids},
-        ).order_by('id')
+    def label_list_by_ids(cls, ids: Iterable[int], field_name: str) -> QuerySet[Label]:
+        return Label.objects.filter(**{f'{field_name}__in': ids}).order_by('id')
 
     @classmethod
     def label_list_by_parent_object_and_history_ids(cls, instance: Model, history_id: int):

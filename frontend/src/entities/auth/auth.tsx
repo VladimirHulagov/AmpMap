@@ -1,9 +1,11 @@
 import { Alert, Button, Checkbox, Form, Input } from "antd"
 import { Controller } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 
 import { useAuthLogic } from "./model/Auth.logic"
 
 export const Auth = () => {
+  const { t } = useTranslation()
   const { control, errMsg, onSubmit, isLoading } = useAuthLogic()
 
   return (
@@ -11,14 +13,14 @@ export const Auth = () => {
       {errMsg ? <Alert style={{ marginBottom: 24 }} description={errMsg} type="error" /> : null}
 
       <Form onFinish={onSubmit} layout="vertical">
-        <Form.Item label="Username">
+        <Form.Item label={t("Username")}>
           <Controller
             name="username"
             control={control}
             render={({ field }) => <Input {...field} />}
           />
         </Form.Item>
-        <Form.Item label="Password" name="password" style={{ marginBottom: 8 }}>
+        <Form.Item label={t("Password")} name="password" style={{ marginBottom: 8 }}>
           <Controller
             name="password"
             control={control}
@@ -35,7 +37,7 @@ export const Auth = () => {
                 checked={field.value}
                 onChange={(e) => field.onChange(e.target.checked)}
               >
-                Remember me
+                {t("Remember me")}
               </Checkbox>
             )}
           />
@@ -49,7 +51,7 @@ export const Auth = () => {
             block
             loading={isLoading}
           >
-            Login
+            {t("Login")}
           </Button>
         </Form.Item>
       </Form>

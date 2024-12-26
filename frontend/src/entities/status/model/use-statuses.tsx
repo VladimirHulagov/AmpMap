@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 import { useGetProjectQuery } from "entities/project/api"
 
@@ -11,7 +11,7 @@ import { useLazyGetStatusesQuery } from "../api"
 
 interface Props {
   project?: string | number
-  plan?: string | number
+  plan?: string | number | null
   isActivity?: boolean
 }
 
@@ -51,6 +51,8 @@ export const useStatuses = ({ project, plan, isActivity }: Props) => {
   const convertToOption = (status: Status) => ({
     label: status.name,
     value: status.id,
+    color: status.color,
+    id: status.id,
   })
 
   const convertToFilter = (status: Status) => ({
@@ -62,7 +64,10 @@ export const useStatuses = ({ project, plan, isActivity }: Props) => {
   const statusesOptionsWithUntested = [...statusesOptions, { label: UNTESTED_NAME, value: "null" }]
 
   const statusesFilters = statuses.map(convertToFilter)
-  const statusesFiltersWithUntested = [...statusesFilters, { text: UNTESTED_NAME, value: "null" }]
+  const statusesFiltersWithUntested = useMemo(
+    () => [...statusesFilters, { text: UNTESTED_NAME, value: "null" }],
+    [statuses]
+  )
 
   const statusesObject = statuses.reduce(
     (acc, status) => {

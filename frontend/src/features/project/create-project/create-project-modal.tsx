@@ -2,13 +2,13 @@ import { Button, Form, Input, Modal, Switch, Upload, notification } from "antd"
 import { RcFile, UploadChangeParam, UploadFile } from "antd/lib/upload"
 import { useState } from "react"
 import { Controller, SubmitHandler, useForm } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 
 import { useCreateProjectMutation } from "entities/project/api"
 import { ProjectIcon } from "entities/project/ui"
 
-import { useErrors } from "shared/hooks"
-import { ErrorObj } from "shared/hooks/use-alert-error"
-import { fileReader, showModalCloseConfirm } from "shared/libs"
+import { ErrorObj, useErrors, useShowModalCloseConfirm } from "shared/hooks"
+import { fileReader } from "shared/libs"
 import { AlertError, AlertSuccessChange } from "shared/ui"
 
 const { TextArea } = Input
@@ -26,6 +26,8 @@ interface Props {
 }
 
 export const CreateProjectModal = ({ isShow, setIsShow }: Props) => {
+  const { t } = useTranslation()
+  const { showModal } = useShowModalCloseConfirm()
   const [errors, setErrors] = useState<ErrorData | null>(null)
   const {
     handleSubmit,
@@ -64,12 +66,13 @@ export const CreateProjectModal = ({ isShow, setIsShow }: Props) => {
 
       onCloseModal()
       notification.success({
-        message: "Success",
+        message: t("Success"),
+        closable: true,
         description: (
           <AlertSuccessChange
             action="created"
             title="Project"
-            link={`/projects/${newProject.id}`}
+            link={`/administration/projects/${newProject.id}/overview/`}
             id={String(newProject.id)}
           />
         ),
@@ -90,7 +93,7 @@ export const CreateProjectModal = ({ isShow, setIsShow }: Props) => {
     if (isLoading) return
 
     if (isDirty) {
-      showModalCloseConfirm(onCloseModal)
+      showModal(onCloseModal)
       return
     }
 
@@ -111,8 +114,8 @@ export const CreateProjectModal = ({ isShow, setIsShow }: Props) => {
     const isCorrectType = file.type === "image/png" || file.type === "image/jpeg"
     if (!isCorrectType) {
       notification.error({
-        message: "Error!",
-        description: `${file.name} is not a png or jpg file`,
+        message: t("Error!"),
+        description: `${file.name} ${t("is not a png or jpg file")}`,
       })
     }
 
@@ -127,14 +130,14 @@ export const CreateProjectModal = ({ isShow, setIsShow }: Props) => {
   return (
     <Modal
       className="create-project-modal"
-      title="Create Project"
+      title={`${t("Create")} ${t("Project")}`}
       open={isShow}
       onCancel={handleCancel}
       width="600px"
       centered
       footer={[
         <Button id="close-create-project" key="back" onClick={handleCancel}>
-          Close
+          {t("Close")}
         </Button>,
         <Button
           id="create-project"
@@ -144,7 +147,7 @@ export const CreateProjectModal = ({ isShow, setIsShow }: Props) => {
           type="primary"
           disabled={!isDirty}
         >
-          Create
+          {t("Create")}
         </Button>,
       ]}
     >
@@ -157,7 +160,7 @@ export const CreateProjectModal = ({ isShow, setIsShow }: Props) => {
         ) : null}
 
         <Form id="create-edit-project-form" layout="vertical" onFinish={handleSubmit(onSubmit)}>
-          <Form.Item label="Icon">
+          <Form.Item label={t("Icon")}>
             <Controller
               name="icon"
               control={control}
@@ -175,11 +178,11 @@ export const CreateProjectModal = ({ isShow, setIsShow }: Props) => {
                       customRequest={() => {}}
                       beforeUpload={beforeUpload}
                     >
-                      <Button size="middle">Upload icon</Button>
+                      <Button size="middle">{t("Upload icon")}</Button>
                     </Upload>
                     {localIcon && (
                       <Button size="middle" danger onClick={handleDeleteIconClick}>
-                        Delete icon
+                        {t("Delete icon")}
                       </Button>
                     )}
                   </div>
@@ -188,7 +191,7 @@ export const CreateProjectModal = ({ isShow, setIsShow }: Props) => {
             />
           </Form.Item>
           <Form.Item
-            label="Name"
+            label={t("Name")}
             validateStatus={errors?.name ? "error" : ""}
             help={errors?.name ? errors.name : ""}
           >
@@ -199,7 +202,7 @@ export const CreateProjectModal = ({ isShow, setIsShow }: Props) => {
             />
           </Form.Item>
           <Form.Item
-            label="Description"
+            label={t("Description")}
             validateStatus={errors?.description ? "error" : ""}
             help={errors?.description ? errors.description : ""}
           >
@@ -210,7 +213,7 @@ export const CreateProjectModal = ({ isShow, setIsShow }: Props) => {
             />
           </Form.Item>
           <Form.Item
-            label="Private"
+            label={t("Private")}
             validateStatus={errors?.is_private ? "error" : ""}
             help={errors?.is_private ? errors.is_private : ""}
           >

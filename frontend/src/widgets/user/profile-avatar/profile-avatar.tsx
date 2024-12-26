@@ -1,14 +1,15 @@
 import { Button, UploadFile, notification } from "antd"
 import Upload, { RcFile, UploadChangeParam } from "antd/lib/upload"
 import { Mutex } from "async-mutex"
-import { useState } from "react"
+import { MeContext } from "processes"
+import { useContext, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Crop, PercentCrop, ReactCrop } from "react-image-crop"
 
-import { useDeleteAvatarMutation, useGetMeQuery, useUploadAvatarMutation } from "entities/user/api"
+import { useDeleteAvatarMutation, useUploadAvatarMutation } from "entities/user/api"
 import { UserAvatar } from "entities/user/ui/user-avatar/user-avatar"
 
 import { fileReader, getNumberToFixed } from "shared/libs"
-import { ContainerLoader } from "shared/ui"
 
 import styles from "./styles.module.css"
 
@@ -22,8 +23,10 @@ interface RequestError {
 const mutex = new Mutex()
 
 export const ProfileAvatar = () => {
+  const { t } = useTranslation()
+  const { me } = useContext(MeContext)!
+
   const [nonce, setNonce] = useState(1)
-  const { data: user, isLoading: isLoadingUser } = useGetMeQuery()
   const [isEdit, setIsEdit] = useState(false)
   const [image, setImage] = useState<{ url: string; file: RcFile | null }>({
     url: "",
@@ -55,7 +58,7 @@ export const ProfileAvatar = () => {
     const isCorrectType = file.type === "image/png" || file.type === "image/jpeg"
     if (!isCorrectType) {
       notification.error({
-        message: "Error!",
+        message: t("Error!"),
         description: `${file.name} is not a png or jpg file`,
       })
     }
@@ -102,16 +105,18 @@ export const ProfileAvatar = () => {
       await uploadAvatar(fmData).unwrap()
 
       notification.success({
-        message: "Success",
-        description: "Avatar was updated successfully",
+        message: t("Success"),
+        closable: true,
+        description: t("Avatar was updated successfully"),
       })
       setNonce(nonce + 1)
     } catch (err) {
       const error = err as RequestError
       console.error(error)
       notification.error({
-        message: "Error!",
-        description: `${error.data.errors[0]}. Showing detail in console log.`,
+        message: t("Error!"),
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+        description: `${error.data.errors[0]}. ${t("Showing detail in console log.")}`,
       })
     } finally {
       release()
@@ -120,13 +125,7 @@ export const ProfileAvatar = () => {
     }
   }
 
-  if (isLoadingUser || !user) {
-    return (
-      <div className={styles.avatarBlock}>
-        <ContainerLoader />
-      </div>
-    )
-  }
+
 
   if (isEdit && image.url) {
     return (
@@ -135,7 +134,7 @@ export const ProfileAvatar = () => {
           crop={percentCrop}
           onChange={handleChangeCrop}
           aspect={1}
-          circularCrop={true}
+          circularCrop
           disabled={false}
           minHeight={10}
           minWidth={10}
@@ -146,7 +145,7 @@ export const ProfileAvatar = () => {
         <div className={styles.btns}>
           <Button onClick={handleEditClick}>Edit</Button>
           <Button type="primary" onClick={handleSaveClick} loading={isLoading}>
-            Save
+            {t("Save")}
           </Button>
         </div>
       </div>
@@ -157,7 +156,7 @@ export const ProfileAvatar = () => {
     <div className={styles.wrapper}>
       <div className={styles.avatarBlock}>
         <div className={styles.imageView}>
-          <UserAvatar avatar_link={user.avatar_link} size={180} nonce={nonce} />
+          <UserAvatar avatar_link={me.avatar_link} size={180} nonce={nonce} />
         </div>
       </div>
       <div className={styles.wrapperBtns}>
@@ -170,12 +169,12 @@ export const ProfileAvatar = () => {
             customRequest={() => {}}
             beforeUpload={beforeUpload}
           >
-            <Button>Edit</Button>
+            <Button>{t("Edit")}</Button>
           </Upload>
 
-          {user?.avatar_link && (
+          {me.avatar_link && (
             <Button danger onClick={handleDeleteClick}>
-              Delete
+              {t("Delete")}
             </Button>
           )}
         </div>

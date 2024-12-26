@@ -1,10 +1,11 @@
-import { useEffect } from "react"
+import { useContext, useEffect } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
-import { useParams } from "react-router-dom"
 
 import { useAttachments } from "entities/attachment/model"
 
-import { showModalCloseConfirm } from "shared/libs"
+import { ProjectContext } from "pages/project"
+
+import { useShowModalCloseConfirm } from "shared/hooks"
 
 interface FormData {
   name: string
@@ -25,7 +26,8 @@ export const useTestCaseStepsModal = ({
   onSubmit,
   onCloseModal,
 }: TestCaseStepsModalProps) => {
-  const { projectId } = useParams<ParamProjectId>()
+  const { project } = useContext(ProjectContext)!
+  const { showModal } = useShowModalCloseConfirm()
   const {
     handleSubmit,
     control,
@@ -43,7 +45,7 @@ export const useTestCaseStepsModal = ({
   })
 
   const { attachments, attachmentsIds, isLoading, setAttachments, onRemove, onLoad, onChange } =
-    useAttachments<FormData>(control, projectId)
+    useAttachments<FormData>(control, project.id)
 
   const onCloseModalSteps = () => {
     onCloseModal()
@@ -52,7 +54,7 @@ export const useTestCaseStepsModal = ({
 
   const handleClose = () => {
     if (isDirty) {
-      showModalCloseConfirm(onCloseModalSteps)
+      showModal(onCloseModalSteps)
       return
     }
 

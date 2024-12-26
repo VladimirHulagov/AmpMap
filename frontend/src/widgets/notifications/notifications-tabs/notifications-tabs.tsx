@@ -1,17 +1,19 @@
 import { Tabs } from "antd"
 import { useContext } from "react"
+import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 
 import { NotificationsActiveTabContext } from "pages/notifications/notifications-page"
 
 export const NotificationsTabs = () => {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { activeTab, setActiveTab } = useContext(NotificationsActiveTabContext)!
 
   const tabItems = [
-    { label: "Overview", key: "overview", path: `/notifications` },
+    { label: t("Overview"), key: "overview", path: `/notifications` },
     {
-      label: "Settings",
+      label: t("Settings"),
       key: "settings",
       path: "/notifications/settings",
     },

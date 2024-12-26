@@ -1,13 +1,15 @@
 import { LockOutlined } from "@ant-design/icons"
 import { Button, Form, Input, Modal } from "antd"
 import { Controller } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 
-import { ErrorObj } from "shared/hooks/use-alert-error"
+import { ErrorObj } from "shared/hooks"
 import { AlertError } from "shared/ui"
 
 import { useChangePassword } from "./use-change-password"
 
 export const ChangePassword = () => {
+  const { t } = useTranslation()
   const {
     handleSave,
     handleCancel,
@@ -28,17 +30,17 @@ export const ChangePassword = () => {
         onClick={handleShow}
         style={{ marginLeft: 8 }}
       >
-        Change password
+        {t("Change password")}
       </Button>
       <Modal
         className="change-password-modal"
-        title={"Change password"}
+        title={t("Change password")}
         open={isShow}
         onCancel={handleCancel}
         centered
         footer={[
           <Button id="cancel-btn" key="back" onClick={handleCancel}>
-            Cancel
+            {t("Cancel")}
           </Button>,
           <Button
             id="save-btn"
@@ -47,13 +49,13 @@ export const ChangePassword = () => {
             onClick={handleSubmit(handleSave)}
             disabled={saveDisabled}
           >
-            Save
+            {t("Save")}
           </Button>,
         ]}
       >
         <Form id="change-password-form" layout="vertical" onFinish={handleSubmit(handleSave)}>
           <Form.Item
-            label="Password"
+            label={t("Password")}
             validateStatus={errors?.password ? "error" : ""}
             help={errors?.password ? errors.password : ""}
             required
@@ -68,7 +70,7 @@ export const ChangePassword = () => {
           </Form.Item>
           <Form.Item
             name="confirm"
-            label="Confirm Password"
+            label={t("Confirm Password")}
             dependencies={["password"]}
             validateStatus={errors?.confirm ? "error" : ""}
             help={errors?.confirm ? errors.confirm : ""}

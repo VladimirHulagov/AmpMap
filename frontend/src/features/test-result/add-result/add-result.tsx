@@ -1,16 +1,18 @@
 import { PlusOutlined } from "@ant-design/icons"
 import { Button } from "antd"
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 
 import { CreateResultModal } from "./create-result-modal"
 
-export const AddResult = ({
-  isDisabled,
-  testCase,
-}: {
+interface Props {
   isDisabled: boolean
   testCase: TestCase
-}) => {
+  onSubmit?: (result: Result) => void
+}
+
+export const AddResult = ({ isDisabled, testCase, onSubmit }: Props) => {
+  const { t } = useTranslation()
   const [isShow, setIsShow] = useState(false)
 
   return (
@@ -22,9 +24,14 @@ export const AddResult = ({
         icon={<PlusOutlined />}
         disabled={isDisabled}
       >
-        Add Result
+        {t("Add Result")}
       </Button>
-      <CreateResultModal isShow={isShow} setIsShow={setIsShow} testCase={testCase} />
+      <CreateResultModal
+        isShow={isShow}
+        setIsShow={setIsShow}
+        testCase={testCase}
+        onSubmit={onSubmit}
+      />
     </>
   )
 }

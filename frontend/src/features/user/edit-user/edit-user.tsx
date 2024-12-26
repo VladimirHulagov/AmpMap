@@ -3,13 +3,13 @@ import { Button } from "antd"
 
 import { useAppDispatch } from "app/hooks"
 
-import { setUser, showEditUserModal } from "entities/user/model"
+import { setUserModal, showEditUserModal } from "entities/user/model"
 
 export const EditUser = ({ user }: { user: User }) => {
   const dispatch = useAppDispatch()
 
   const showUserDetails = () => {
-    dispatch(setUser(user))
+    dispatch(setUserModal(user))
     dispatch(showEditUserModal())
   }
 

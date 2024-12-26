@@ -1,16 +1,16 @@
 import { Button, Form, Input, Modal, Switch, Upload, notification } from "antd"
 import { RcFile, UploadChangeParam, UploadFile } from "antd/lib/upload"
-import { useEffect, useState } from "react"
+import { MeContext } from "processes"
+import { useContext, useEffect, useState } from "react"
 import { Controller, SubmitHandler, useForm } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 
 import { useUpdateProjectMutation } from "entities/project/api"
 import { ProjectIcon } from "entities/project/ui"
 
-import { useErrors } from "shared/hooks"
-import { ErrorObj } from "shared/hooks/use-alert-error"
-import { fileReader, showModalCloseConfirm } from "shared/libs"
-import { AlertError } from "shared/ui"
-import { AlertSuccessChange } from "shared/ui/alert-success-change"
+import { ErrorObj, useErrors, useShowModalCloseConfirm } from "shared/hooks"
+import { fileReader } from "shared/libs"
+import { AlertError, AlertSuccessChange } from "shared/ui"
 
 const { TextArea } = Input
 
@@ -28,6 +28,9 @@ interface Props {
 }
 
 export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
+  const { t } = useTranslation()
+  const { me } = useContext(MeContext)!
+  const { showModal } = useShowModalCloseConfirm()
   const [errors, setErrors] = useState<ErrorData | null>(null)
   const {
     handleSubmit,
@@ -47,9 +50,12 @@ export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
   useEffect(() => {
     setValue("name", project.name)
     setValue("description", project.description)
-    setValue("is_archive", project.is_archive)
     setLocalIcon(project.icon ?? null)
     setValue("is_private", project.is_private ?? false)
+
+    if (me.is_superuser) {
+      setValue("is_archive", project.is_archive)
+    }
   }, [isShow, project])
 
   const onSubmit: SubmitHandler<Project> = async (data) => {
@@ -60,7 +66,9 @@ export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
 
       fmData.append("name", data.name)
       fmData.append("description", data.description)
-      fmData.append("is_archive", String(data.is_archive))
+      if (me.is_superuser) {
+        fmData.append("is_archive", String(data.is_archive))
+      }
 
       if (data.icon !== undefined) {
         fmData.append("icon", data.icon ?? "")
@@ -72,12 +80,13 @@ export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
 
       onCloseModal()
       notification.success({
-        message: "Success",
+        message: t("Success"),
+        closable: true,
         description: (
           <AlertSuccessChange
             action="updated"
-            title="Project"
-            link={`/projects/${newProject.id}`}
+            title={t("Project")}
+            link={`/administration/projects/${newProject.id}/overview/`}
             id={String(newProject.id)}
           />
         ),
@@ -98,7 +107,7 @@ export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
     if (isLoading) return
 
     if (isDirty) {
-      showModalCloseConfirm(onCloseModal)
+      showModal(onCloseModal)
       return
     }
 
@@ -135,14 +144,14 @@ export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
   return (
     <Modal
       className="edit-project-modal"
-      title={`Edit Project '${project.name}'`}
+      title={`${t("Edit Project")} '${project.name}'`}
       open={isShow}
       onCancel={handleCancel}
       width="600px"
       centered
       footer={[
         <Button id="close-update-project" key="back" onClick={handleCancel}>
-          Close
+          {t("Close")}
         </Button>,
         <Button
           id="update-project"
@@ -152,7 +161,7 @@ export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
           type="primary"
           disabled={!isDirty}
         >
-          Update
+          {t("Update")}
         </Button>,
       ]}
     >
@@ -165,7 +174,7 @@ export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
         ) : null}
 
         <Form id="create-edit-project-form" layout="vertical" onFinish={handleSubmit(onSubmit)}>
-          <Form.Item label="Icon">
+          <Form.Item label={t("Icon")}>
             <Controller
               name="icon"
               control={control}
@@ -183,11 +192,11 @@ export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
                       customRequest={() => {}}
                       beforeUpload={beforeUpload}
                     >
-                      <Button size="middle">Upload icon</Button>
+                      <Button size="middle">{t("Upload icon")}</Button>
                     </Upload>
                     {localIcon && (
                       <Button size="middle" danger onClick={handleDeleteIconClick}>
-                        Delete icon
+                        {t("Delete icon")}
                       </Button>
                     )}
                   </div>
@@ -196,7 +205,7 @@ export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
             />
           </Form.Item>
           <Form.Item
-            label="Name"
+            label={t("Name")}
             validateStatus={errors?.name ? "error" : ""}
             help={errors?.name ? errors.name : ""}
           >
@@ -207,7 +216,7 @@ export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
             />
           </Form.Item>
           <Form.Item
-            label="Description"
+            label={t("Description")}
             validateStatus={errors?.description ? "error" : ""}
             help={errors?.description ? errors.description : ""}
           >
@@ -217,20 +226,22 @@ export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
               render={({ field }) => <TextArea rows={4} {...field} />}
             />
           </Form.Item>
-          <Form.Item
-            label="Archive"
-            validateStatus={errors?.is_archive ? "error" : ""}
-            help={errors?.is_archive ? errors.is_archive : ""}
-          >
-            <Controller
-              name="is_archive"
-              control={control}
-              render={({ field }) => <Switch checked={is_archive} {...field} />}
-            />
-          </Form.Item>
+          {me.is_superuser && (
+            <Form.Item
+              label={t("Archive")}
+              validateStatus={errors?.is_archive ? "error" : ""}
+              help={errors?.is_archive ? errors.is_archive : ""}
+            >
+              <Controller
+                name="is_archive"
+                control={control}
+                render={({ field }) => <Switch checked={is_archive} {...field} />}
+              />
+            </Form.Item>
+          )}
           {project.is_manageable && (
             <Form.Item
-              label="Private"
+              label={t("Private")}
               validateStatus={errors?.is_private ? "error" : ""}
               help={errors?.is_private ? errors.is_private : ""}
             >

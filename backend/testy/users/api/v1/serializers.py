@@ -37,10 +37,10 @@ from rest_framework.reverse import reverse
 from rest_framework.serializers import HyperlinkedIdentityField, ModelSerializer, Serializer
 
 from testy.core.api.v1.serializers import ProjectSerializer
-from testy.users.api.v1.validators import UserPasswordValidator, PasswordValidator
 from testy.users.models import Group, Membership, Role
 from testy.users.selectors.permissions import PermissionSelector
 from testy.users.selectors.roles import RoleSelector
+from testy.users.validators import PasswordValidator
 
 UserModel = get_user_model()
 
@@ -51,6 +51,7 @@ class GroupSerializer(ModelSerializer):
     class Meta:
         model = Group
         fields = ('id', 'name', 'permissions', 'url')
+        ref_name = 'GroupV1'
 
 
 class UserSerializer(ModelSerializer):
@@ -69,6 +70,7 @@ class UserSerializer(ModelSerializer):
         extra_kwargs = {
             'avatar': {'write_only': True},
         }
+        ref_name = 'UserSerializerV1'
 
     def get_avatar_link(self, instance):
         if not instance.avatar:
@@ -85,13 +87,14 @@ class UserCreateSerializer(UserSerializer):
             'password': {'write_only': True, 'validators': [PasswordValidator()]},
             'avatar': {'write_only': True},
         }
+        ref_name = 'UserCreateSerializerV1'
 
 
 class PasswordUpdateSerializer(Serializer):
-    password = CharField(write_only=True)
+    password = CharField(write_only=True, validators=[PasswordValidator()])
 
     class Meta:
-        validators = [UserPasswordValidator()]
+        ref_name = 'PasswordUpdateSerializerV1'
 
 
 class UserUpdateSerializer(ModelSerializer):
@@ -104,6 +107,7 @@ class UserUpdateSerializer(ModelSerializer):
             'is_active',
             'is_superuser',
         )
+        ref_name = 'UserUpdateSerializerV1'
 
 
 class RoleFromMembershipSerializer(Serializer):
@@ -114,6 +118,9 @@ class RoleFromMembershipSerializer(Serializer):
 
     def get_permissions(self, instance):
         return PermissionSerializer(instance.role.permissions.all(), many=True).data
+
+    class Meta:
+        ref_name = 'RoleFromMembershipSerializerV1'
 
 
 class UserRoleSerializer(UserSerializer):
@@ -129,6 +136,7 @@ class UserAvatarSerializer(UserSerializer):
     class Meta:
         model = UserModel
         fields = ('avatar', 'crop')
+        ref_name = 'UserAvatarSerializerV1'
 
 
 class RoleSerializer(ModelSerializer):
@@ -143,6 +151,7 @@ class RoleSerializer(ModelSerializer):
     class Meta:
         model = Role
         fields: tuple[str, ...] = ('id', 'name', 'permissions', 'type', 'url')
+        ref_name = 'RoleSerializerV1'
 
 
 class RoleAssignSerializer(ModelSerializer):
@@ -154,12 +163,14 @@ class RoleAssignSerializer(ModelSerializer):
     class Meta:
         model = Membership
         fields: tuple[str, ...] = ('project', 'user', 'roles')
+        ref_name = 'RoleAssignSerializerV1'
 
 
 class RoleUnassignSerializer(ModelSerializer):
     class Meta:
         model = Membership
         fields: tuple[str, ...] = ('project', 'user')
+        ref_name = 'RoleUnassignSerializerV1'
 
 
 class MembershipSerializer(ModelSerializer):
@@ -171,9 +182,11 @@ class MembershipSerializer(ModelSerializer):
             'user': {'required': True, 'allow_null': False},
             'role': {'required': True, 'allow_null': False},
         }
+        ref_name = 'MembershipSerializerV1'
 
 
 class PermissionSerializer(ModelSerializer):
     class Meta:
         model = Permission
         fields: tuple[str, ...] = ('id', 'name', 'codename')
+        ref_name = 'PermissionSerializerV1'

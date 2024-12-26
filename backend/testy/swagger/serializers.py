@@ -29,7 +29,8 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 from rest_framework import serializers
-from tests_representation.api.v1.serializers import TestSerializer
+
+from testy.tests_representation.api.v2.serializers import TestSerializer
 
 
 class BreadcrumbsSerializer(serializers.Serializer):

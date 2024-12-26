@@ -3,6 +3,7 @@ import { ColumnsType, TableProps } from "antd/es/table"
 import { FilterValue } from "antd/lib/table/interface"
 import { resetOnSuccess, setOnSuccess } from "entities/roles/model"
 import { useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { useParams } from "react-router-dom"
 
 import { useAppDispatch } from "app/hooks"
@@ -18,6 +19,7 @@ import { DeleteUsetProjectAccess } from "../user-project-access-modal/delete-use
 import { EditUserProjectAccess } from "../user-project-access-modal/edit-user-project-access"
 
 export const useUsersProjectAccessTable = (isManageable: boolean) => {
+  const { t } = useTranslation()
   const dispatch = useAppDispatch()
   const [paginationParams, setPaginationParams] = useState({
     page: 1,
@@ -34,7 +36,7 @@ export const useUsersProjectAccessTable = (isManageable: boolean) => {
   } = useGetMembersQuery({
     ...paginationParams,
     ...filterInfoRequest,
-    id: projectId!,
+    id: Number(projectId),
   })
 
   const handleRefetch = async () => {
@@ -80,7 +82,7 @@ export const useUsersProjectAccessTable = (isManageable: boolean) => {
       render: (_, record) => <UserAvatar avatar_link={record.avatar_link} size={32} />,
     },
     {
-      title: "Username",
+      title: t("Username"),
       dataIndex: "username",
       key: "username",
       filteredValue: filteredInfo.username ?? null,
@@ -89,7 +91,7 @@ export const useUsersProjectAccessTable = (isManageable: boolean) => {
         record.username.toLowerCase().includes(String(value).toLowerCase()),
     },
     {
-      title: "Email",
+      title: t("Email"),
       dataIndex: "email",
       key: "email",
       filteredValue: filteredInfo.email ?? null,
@@ -97,7 +99,7 @@ export const useUsersProjectAccessTable = (isManageable: boolean) => {
       onFilter: (value, record) => record.email.toLowerCase().includes(String(value).toLowerCase()),
     },
     {
-      title: "First name",
+      title: t("First Name"),
       dataIndex: "first_name",
       key: "first_name",
       filteredValue: filteredInfo.first_name ?? null,
@@ -106,7 +108,7 @@ export const useUsersProjectAccessTable = (isManageable: boolean) => {
         record.first_name.toLowerCase().includes(String(value).toLowerCase()),
     },
     {
-      title: "Last name",
+      title: t("Last Name"),
       dataIndex: "last_name",
       key: "last_name",
       filteredValue: filteredInfo.last_name ?? null,
@@ -115,7 +117,7 @@ export const useUsersProjectAccessTable = (isManageable: boolean) => {
         record.last_name.toLowerCase().includes(String(value).toLowerCase()),
     },
     {
-      title: "Roles",
+      title: t("Roles"),
       key: "roles",
       render: (_, record) => {
         if (record.roles.length === 0) {
@@ -125,7 +127,7 @@ export const useUsersProjectAccessTable = (isManageable: boolean) => {
       },
     },
     {
-      title: "Actions",
+      title: t("Actions"),
       key: "action",
       width: 110,
       render: (_, record) => (

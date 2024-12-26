@@ -4,3 +4,13 @@
   align-items: center;
   gap: 14px;
 }
+
+.form {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.treeBlock :global(.ant-tree-node-content-wrapper) {
+  display: flex !important;
+}

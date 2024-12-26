@@ -55,6 +55,7 @@ class LabelSerializer(ModelSerializer):
     class Meta:
         model = Label
         fields = ('id', 'url', 'name', 'username', 'type', 'user', 'project')
+        ref_name = 'LabelV1'
 
     def get_username(self, instance) -> str | None:
         if instance.user is not None:
@@ -79,6 +80,7 @@ class CustomAttributeBaseSerializer(ModelSerializer):
             'suite_ids',
             'status_specific',
         )
+        ref_name = 'CustomAttributeBaseV1'
 
 
 class CustomAttributeInputSerializer(CustomAttributeBaseSerializer):
@@ -95,12 +97,14 @@ class CustomAttributeInputSerializer(CustomAttributeBaseSerializer):
         fields = CustomAttributeBaseSerializer.Meta.fields + ('content_types',)
 
         validators = [CustomAttributeCreateValidator()]
+        ref_name = 'CustomAttributeInputV1'
 
 
 class CustomAttributeOutputSerializer(CustomAttributeBaseSerializer):
     class Meta:
         model = CustomAttribute
         fields = CustomAttributeBaseSerializer.Meta.fields + ('content_types',)
+        ref_name = 'CustomAttributeOutputSerializerV1'
 
 
 class ContentTypeSerializer(ModelSerializer):
@@ -109,6 +113,7 @@ class ContentTypeSerializer(ModelSerializer):
     class Meta:
         model = ContentType
         fields = ['id', 'app_label', 'model', 'name']
+        ref_name = 'ContentTypeV1'
 
     def get_name(self, instance) -> str:
         return instance.name.title()
@@ -137,6 +142,7 @@ class ProjectSettingsSerializer(Serializer):
         validators = [
             DefaultStatusValidator(),
         ]
+        ref_name = 'ProjectSettingsV1'
 
 
 class ProjectSerializer(ModelSerializer):
@@ -146,6 +152,7 @@ class ProjectSerializer(ModelSerializer):
     class Meta:
         model = Project
         fields = ('id', 'url', 'name', 'description', 'is_archive', 'icon', 'settings', 'is_private')
+        ref_name = 'ProjectSerializerV1'
 
 
 class ProjectRetrieveSerializer(ProjectSerializer):
@@ -155,6 +162,7 @@ class ProjectRetrieveSerializer(ProjectSerializer):
 
     class Meta(ProjectSerializer.Meta):
         fields = ProjectSerializer.Meta.fields + ('is_manageable',)
+        ref_name = 'ProjectRetrieveV1'
 
     def get_icon(self, instance):
         if not instance.icon:
@@ -177,6 +185,7 @@ class ProjectStatisticsSerializer(ProjectRetrieveSerializer):
         fields = ProjectRetrieveSerializer.Meta.fields + (
             'cases_count', 'suites_count', 'plans_count', 'tests_count', 'is_visible',
         )
+        ref_name = 'ProjectStatisticsV1'
 
 
 class AllProjectsStatisticSerializer(Serializer):
@@ -185,6 +194,9 @@ class AllProjectsStatisticSerializer(Serializer):
     suites_count = IntegerField()
     plans_count = IntegerField()
     tests_count = IntegerField()
+
+    class Meta:
+        ref_name = 'AllProjectsStatisticV1'
 
 
 class AttachmentSerializer(ModelSerializer):
@@ -201,6 +213,7 @@ class AttachmentSerializer(ModelSerializer):
 
         read_only_fields = ('name', 'filename', 'file_extension', 'size', 'user', 'url')
         extra_kwargs = {'file': {'write_only': True}}
+        ref_name = 'AttachmentV1'
 
     def get_size_humanize(self, instance):
         return humanize.naturalsize(instance.size)
@@ -227,15 +240,22 @@ class SystemMessageSerializer(ModelSerializer):
     class Meta:
         model = SystemMessage
         fields = ('id', 'created_at', 'updated_at', 'content', 'level', 'is_closing')
+        ref_name = 'SystemMessageV1'
 
 
 class CopyDetailSerializer(Serializer):
     id = IntegerField(required=True)
     new_name = CharField(required=False)
 
+    class Meta:
+        ref_name = 'CopyDetailV1'
+
 
 class AccessRequestSerializer(Serializer):
     reason = CharField(required=False, allow_blank=True, allow_null=True)
+
+    class Meta:
+        ref_name = 'AccessRequestV1'
 
 
 class NotificationSerializer(ModelSerializer):
@@ -262,6 +282,7 @@ class NotificationSerializer(ModelSerializer):
             'timeago',
             'message',
         )
+        ref_name = 'NotificationV1'
 
 
 class NotificationSettingSerializer(ModelSerializer):
@@ -270,6 +291,7 @@ class NotificationSettingSerializer(ModelSerializer):
     class Meta:
         model = NotificationSetting
         fields = ('action_code', 'verbose_name', 'enabled')
+        ref_name = 'NotificationSettingV1'
 
 
 class ModifyNotificationsSettingsSerializer(Serializer):
@@ -278,6 +300,9 @@ class ModifyNotificationsSettingsSerializer(Serializer):
         many=True,
         required=True,
     )
+
+    class Meta:
+        ref_name = 'ModifyNotificationsSettingsV1'
 
 
 class MarkNotificationSerializer(Serializer):
@@ -291,3 +316,6 @@ class MarkNotificationSerializer(Serializer):
                 queryset=NotificationSelector.list_notifications(request.user),
                 allow_empty=True,
             )
+
+    class Meta:
+        ref_name = 'MarkNotificationV1'

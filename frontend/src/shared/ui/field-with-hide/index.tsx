@@ -1,5 +1,8 @@
 import { Col, Divider, Row } from "antd"
 import { useMemo, useState } from "react"
+import { useTranslation } from "react-i18next"
+
+import { colors } from "shared/config"
 
 import { Markdown } from ".."
 
@@ -10,6 +13,8 @@ interface Props {
 }
 
 export const FieldWithHide = ({ id, title, value }: Props) => {
+  const { t } = useTranslation()
+
   const valueLines = useMemo(() => {
     return value.split(/\r\n|\r|\n/) ?? []
   }, [value])
@@ -36,8 +41,11 @@ export const FieldWithHide = ({ id, title, value }: Props) => {
           <div style={{ padding: 8 }}>
             <Markdown content={isShowMore ? value : shortValue} />
             {(valueLines.length > 3 || value.length > 300) && (
-              <span style={{ color: "#425cd7", cursor: "pointer" }} onClick={handleShowMoreClick}>
-                {isShowMore ? "Hide more" : "Show more"}
+              <span
+                style={{ color: colors.accent, cursor: "pointer" }}
+                onClick={handleShowMoreClick}
+              >
+                {isShowMore ? t("Hide more") : t("Show more")}
               </span>
             )}
           </div>

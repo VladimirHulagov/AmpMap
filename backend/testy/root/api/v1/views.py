@@ -38,7 +38,7 @@ class V1RootView(APIRootView):
     def get_view_name(self):
         return 'v1'
 
-    def get(self, request, format=None):  # noqa: WPS125
+    def get(self, request, format=None, *args, **kwargs):  # noqa: WPS125
         return Response({
             'projects': reverse('api:v1:project-list', request=request, format=format),
             'labels': reverse('api:v1:label-list', request=request, format=format),

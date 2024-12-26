@@ -1,14 +1,12 @@
 import { useState } from "react"
-import { UseFormSetValue } from "react-hook-form"
 import { v4 as uuidv4 } from "uuid"
 
 export interface TestCaseStepsBlockProps {
   steps: Step[]
-  setSteps: React.Dispatch<React.SetStateAction<Step[]>>
-  setValue: UseFormSetValue<TestCaseFormData>
+  setSteps: (steps: Step[]) => void
 }
 
-export const useTestCaseStepsBlock = ({ steps, setSteps, setValue }: TestCaseStepsBlockProps) => {
+export const useTestCaseStepsBlock = ({ steps, setSteps }: TestCaseStepsBlockProps) => {
   const [modalStep, setModalStep] = useState<Step | null>(null)
   const [isEdit, setIsEdit] = useState(false)
   const [isInitialSteps, setIsInitiallSteps] = useState(true)
@@ -38,7 +36,6 @@ export const useTestCaseStepsBlock = ({ steps, setSteps, setValue }: TestCaseSte
   const handleAddStep = (step: Step) => {
     const newSteps = steps.concat(step)
     setSteps(newSteps)
-    setValue("steps", newSteps, { shouldDirty: true })
     setModalStep(null)
   }
 
@@ -57,7 +54,6 @@ export const useTestCaseStepsBlock = ({ steps, setSteps, setValue }: TestCaseSte
       return item
     })
 
-    setValue("steps", newSteps, { shouldDirty: true })
     setSteps(newSteps)
     setModalStep(null)
   }
@@ -84,22 +80,19 @@ export const useTestCaseStepsBlock = ({ steps, setSteps, setValue }: TestCaseSte
   const handleDeleteStep = (stepId: string) => {
     const newSteps = steps.filter((i) => i.id !== stepId)
     setSteps(newSteps)
-    setValue("steps", newSteps, { shouldDirty: true })
   }
 
   const handleSortSteps = (newSteps: Step[]) => {
+    if (isInitialSteps) {
+      setIsInitiallSteps(false)
+      return
+    }
+
     const newStepsList = newSteps.map((step, index) => ({
       ...step,
       sort_order: index + 1,
     }))
     setSteps(newStepsList)
-
-    if (isInitialSteps) {
-      setValue("steps", newStepsList)
-      setIsInitiallSteps(false)
-    } else {
-      setValue("steps", newStepsList, { shouldDirty: true })
-    }
   }
 
   return {

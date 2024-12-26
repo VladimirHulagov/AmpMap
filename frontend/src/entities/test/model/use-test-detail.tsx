@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react"
-import { useParams, useSearchParams } from "react-router-dom"
+import { useSearchParams } from "react-router-dom"
 
 import { useAppDispatch, useAppSelector } from "app/hooks"
 
-import { useGetProjectQuery } from "entities/project/api"
+import { useGetTestQuery } from "entities/test/api"
 
 import { useGetTestCaseByIdQuery } from "entities/test-case/api"
 
@@ -13,29 +13,51 @@ import {
   showArchivedResults,
 } from "entities/test-plan/model"
 
-import { setTest } from "./slice"
+import { selectDrawerTest, setDrawerTest } from "./slice"
 
 type TabTypes = "results" | "comments"
 
-export const useTestDetail = (test: Test | null) => {
+export const useTestDetail = () => {
   const dispatch = useAppDispatch()
   const [tab, setTab] = useState<TabTypes>("results")
   const [commentOrdering, setCommentOrdering] = useState<"asc" | "desc">("desc")
-  const { projectId } = useParams<ParamProjectId>()
   const tests = useAppSelector(selectTests)
-  const [testCaseData, setTestCaseData] = useState<TestCase | null>(null)
+  const drawerTest = useAppSelector(selectDrawerTest)
 
-  const { data: testCase, isLoading: isLoadingTestCase } = useGetTestCaseByIdQuery(
-    { testCaseId: String(test?.case) },
+  const [testCaseData, setTestCaseData] = useState<TestCase | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const testId = searchParams.get("test")
+
+  const { data: testCase, isFetching: isFetchingTestCase } = useGetTestCaseByIdQuery(
+    { testCaseId: String(drawerTest?.case) },
     {
-      skip: !test,
+      skip: !drawerTest,
     }
   )
-  const { data: project, isLoading: isLoadingProject } = useGetProjectQuery(Number(projectId), {
-    skip: !projectId,
+
+  const { data: testData, isFetching: isFetchingTest } = useGetTestQuery(testId ?? "", {
+    skip: !testId || !!drawerTest,
   })
+
   const showArchive = useAppSelector(selectArchivedResultsIsShow)
-  const [searchParams, setSearchParams] = useSearchParams()
+
+  const handleShowArchived = () => {
+    dispatch(showArchivedResults())
+  }
+
+  const handleCloseDetails = () => {
+    searchParams.delete("test")
+    setSearchParams(searchParams)
+    dispatch(setDrawerTest(null))
+  }
+
+  const handleTabChange = (activeKey: string) => {
+    setTab(activeKey as TabTypes)
+  }
+
+  const handleCommentOrderingClick = () => {
+    setCommentOrdering(commentOrdering === "asc" ? "desc" : "asc")
+  }
 
   useEffect(() => {
     const selectedCase = tests.find((t) => t.case === testCase?.id)
@@ -51,29 +73,24 @@ export const useTestDetail = (test: Test | null) => {
     setTestCaseData(testCase ?? null)
   }, [testCase, tests])
 
-  const handleShowArchived = () => {
-    dispatch(showArchivedResults())
-  }
+  useEffect(() => {
+    if (!testData || !testId || !!drawerTest) {
+      return
+    }
 
-  const handleCloseDetails = () => {
-    searchParams.delete("test")
-    setSearchParams(searchParams)
-    dispatch(setTest(null))
-  }
+    dispatch(setDrawerTest(testData))
+  }, [testData, testId, drawerTest])
 
-  const handleTabChange = (activeKey: string) => {
-    setTab(activeKey as TabTypes)
-  }
-
-  const handleCommentOrderingClick = () => {
-    setCommentOrdering(commentOrdering === "asc" ? "desc" : "asc")
-  }
+  useEffect(() => {
+    return () => {
+      dispatch(setDrawerTest(null))
+    }
+  }, [])
 
   return {
+    drawerTest,
     testCase: testCaseData,
-    isLoadingTestCase,
-    project,
-    isLoadingProject,
+    isFetching: isFetchingTestCase || isFetchingTest,
     showArchive,
     commentOrdering,
     tab,

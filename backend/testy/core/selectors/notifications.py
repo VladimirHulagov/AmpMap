@@ -49,4 +49,6 @@ class NotificationSelector:
 
     @classmethod
     def list_notifications(cls, user: User) -> QuerySet[Notification]:
+        if user.is_anonymous:
+            return Notification.objects.none()
         return user.notifications.all()

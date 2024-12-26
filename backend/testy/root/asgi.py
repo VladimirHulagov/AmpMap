@@ -46,7 +46,7 @@ asgi_app = get_asgi_application()
 
 from channels.routing import ChannelNameRouter, ProtocolTypeRouter, URLRouter  # noqa: E402
 
-from testy.core.api.v1.urls import websocket_urlpatterns  # noqa: E402
+from testy.core.api.v2.urls import websocket_urlpatterns  # noqa: E402
 from testy.core.consumers import NotificationConsumer  # noqa: E402
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'root.settings.production')

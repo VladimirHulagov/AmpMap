@@ -1,38 +1,27 @@
 import { Select, Spin } from "antd"
 import { useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { useInView } from "react-intersection-observer"
 
 import { useLazyGetUsersQuery } from "../api"
-import { UserAvatar } from "./user-avatar/user-avatar"
+import { UserSearchOption } from "./user-search-option"
 
 interface Props {
   handleChange: (value?: SelectData) => void
   handleClear: () => void
   selectedUser?: SelectData | null
   placeholder?: string
-}
-
-interface OptionProps {
-  user: User
-}
-
-export const UserSearchOption = ({ user }: OptionProps) => {
-  return (
-    <div style={{ display: "flex", alignItems: "center", flexDirection: "row", gap: 8 }}>
-      <div style={{ width: 20, height: 20 }}>
-        <UserAvatar avatar_link={user.avatar_link} size={20} />
-      </div>
-      <span>{user.username}</span>
-    </div>
-  )
+  project?: Project
 }
 
 export const UserSearchInput = ({
   selectedUser,
   handleClear,
   handleChange: handleChangeUserSearchInput,
-  placeholder = "Search a user",
+  placeholder,
+  project,
 }: Props) => {
+  const { t } = useTranslation()
   const [search, setSearch] = useState<string>("")
   const [data, setData] = useState<User[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -52,10 +41,16 @@ export const UserSearchInput = ({
     }
 
     setIsLoading(true)
+
+    const additionalFilter = project
+      ? { [project.is_private ? "project" : "exclude_external"]: project.id }
+      : {}
+
     const res = await getUsers({
       page: 1,
       page_size: 10,
       username: newValue,
+      ...additionalFilter,
     }).unwrap()
 
     if (!res.pages.next) {
@@ -108,13 +103,13 @@ export const UserSearchInput = ({
       value={selectedUser}
       showSearch
       labelInValue
-      placeholder={placeholder}
+      placeholder={placeholder ?? t("Search a user")}
       defaultActiveFirstOption={false}
       showArrow
       filterOption={false}
       onSearch={handleSearch}
       onChange={handleChange}
-      notFoundContent="No matches"
+      notFoundContent={t("No matches")}
       allowClear
       style={{ width: "100%" }}
     >

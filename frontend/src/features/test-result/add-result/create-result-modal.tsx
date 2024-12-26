@@ -1,6 +1,7 @@
 import { PlusOutlined } from "@ant-design/icons"
 import { Button, Col, Divider, Form, Modal, Row, Select, Upload } from "antd"
 import { Controller } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 
 import { ErrorObj } from "shared/hooks/use-alert-error"
 import { AlertError, Attachment, Attribute, Status, Steps, TextAreaWithAttach } from "shared/ui"
@@ -11,6 +12,7 @@ import { CreateResultModalProps, useCreateResultModal } from "./use-create-resul
 const { Dragger } = Upload
 
 export const CreateResultModal = (props: CreateResultModalProps) => {
+  const { t } = useTranslation()
   const {
     isLoading,
     isLoadingCreateAttachment,
@@ -45,12 +47,12 @@ export const CreateResultModal = (props: CreateResultModalProps) => {
       className="create-result-modal"
       width={1200}
       centered
-      title="Create Result"
+      title={`${t("Create")} ${t("Result")}`}
       open={isShow}
       onCancel={handleCancel}
       footer={[
         <Button id="cancel-create-result-modal" key="back" onClick={handleCancel}>
-          Cancel
+          {t("Cancel")}
         </Button>,
         <Button
           id="create-result-modal"
@@ -60,7 +62,7 @@ export const CreateResultModal = (props: CreateResultModalProps) => {
           onClick={handleSubmitForm}
           disabled={disabled}
         >
-          Create
+          {t("Create")}
         </Button>,
       ]}
     >
@@ -72,19 +74,31 @@ export const CreateResultModal = (props: CreateResultModalProps) => {
         <Row>
           <Col flex="1 0">
             <Form.Item
-              label="Status"
+              label={t("Status")}
               validateStatus={errors?.status ? "error" : ""}
-              help={errors?.status ? errors.status : "Set the test status (passed, failed etc.)."}
+              help={
+                errors?.status ? errors.status : t("Set the test status (passed, failed etc.).")
+              }
             >
               <Controller
                 name="status"
                 control={control}
                 render={({ field }) => (
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <Select {...field} placeholder="Please select" style={{ width: "100%" }}>
+                    <Select
+                      {...field}
+                      placeholder={t("Please select")}
+                      style={{ width: "100%" }}
+                      id="create-result-status"
+                    >
                       {statuses.map((status) => (
                         <Select.Option key={status.id} value={status.id}>
-                          <Status id={status.id} name={status.name} color={status.color} />
+                          <Status
+                            id={status.id}
+                            name={status.name}
+                            color={status.color}
+                            extraId="create-result"
+                          />
                         </Select.Option>
                       ))}
                     </Select>
@@ -98,16 +112,17 @@ export const CreateResultModal = (props: CreateResultModalProps) => {
               />
             </Form.Item>
             <Form.Item
-              label="Comment"
+              label={t("Comment")}
               validateStatus={errors?.comment ? "error" : ""}
-              help={errors?.comment ? errors.comment : "Describe your test result."}
+              help={errors?.comment ? errors.comment : t("Describe your test result.")}
             >
               <Controller
                 name="comment"
                 control={control}
                 render={({ field }) => (
                   <TextAreaWithAttach
-                    textAreaId="create-result-comment"
+                    uploadId="create-result-comment"
+                    textAreaId="create-result-comment-textarea"
                     fieldProps={field}
                     stateAttachments={{ attachments, setAttachments }}
                     customRequest={onLoad}
@@ -132,7 +147,9 @@ export const CreateResultModal = (props: CreateResultModalProps) => {
                 onChange={onChange}
                 fileList={attachments}
               >
-                <p className="ant-upload-text">Drop files here to attach, or click to browse.</p>
+                <p className="ant-upload-text">
+                  {t("Drop files here to attach, or click to browse")}
+                </p>
               </Dragger>
             </div>
           </Col>
@@ -143,7 +160,7 @@ export const CreateResultModal = (props: CreateResultModalProps) => {
             {!!testCase.steps.length && (
               <Row style={{ flexDirection: "column" }}>
                 <div className="ant-col ant-form-item-label">
-                  <label title="Steps">Steps</label>
+                  <label title="Steps">{t("Steps")}</label>
                 </div>
                 <Steps.ResultInCreateModal testCase={testCase} steps={steps} setSteps={setSteps} />
               </Row>
@@ -157,7 +174,7 @@ export const CreateResultModal = (props: CreateResultModalProps) => {
                     style={{ flexDirection: "column", marginTop: testCase.steps.length ? 24 : 0 }}
                   >
                     <div className="ant-col ant-form-item-label">
-                      <label title="Attributes">Attributes</label>
+                      <label title="Attributes">{t("Attributes")}</label>
                     </div>
                     <Attribute.List
                       fieldProps={field}
@@ -171,7 +188,7 @@ export const CreateResultModal = (props: CreateResultModalProps) => {
                     />
                     <div style={{ marginTop: 8 }}>
                       <Button id="add-attribute-btn" type="dashed" block onClick={addAttribute}>
-                        <PlusOutlined /> Add attribute
+                        <PlusOutlined /> {t("Add attribute")}
                       </Button>
                     </div>
                   </Row>

@@ -1,8 +1,10 @@
 import { WechatOutlined } from "@ant-design/icons"
 import { Button, Pagination } from "antd"
-import { useLazyGetCommentsQuery } from "entities/comments/api"
-import { AddComment } from "features/comments"
+import { useGetCommentsQuery } from "entities/comments/api"
 import { useEffect, useRef, useState } from "react"
+import { useTranslation } from "react-i18next"
+
+import { AddComment } from "features/comments"
 
 import { ContainerLoader } from "shared/ui"
 
@@ -17,6 +19,7 @@ interface Props {
 }
 
 export const Comments = ({ model, object_id, ordering, onUpdateCommentsCount }: Props) => {
+  const { t } = useTranslation()
   const [isShowAdd, setIsShowAdd] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const orderingRequest = ordering === "asc" ? "created_at" : "-created_at"
@@ -25,19 +28,14 @@ export const Comments = ({ model, object_id, ordering, onUpdateCommentsCount }: 
     page_size: 5,
   })
   const comment_id = window.location.hash.split("#comment-")[1]
-  const [dataComments, setDataComments] = useState<PaginationResponse<CommentType[]> | null>(null)
-  const [getComments, { data, isLoading }] = useLazyGetCommentsQuery()
-
-  useEffect(() => {
-    // first request need be without page parameter
-    getComments({
-      comment_id,
-      model,
-      object_id,
-      page_size: pagination.page_size,
-      ordering: orderingRequest,
-    })
-  }, [comment_id, orderingRequest])
+  const { data, isFetching } = useGetCommentsQuery({
+    comment_id,
+    model,
+    object_id,
+    page: pagination.page,
+    page_size: pagination.page_size,
+    ordering: orderingRequest,
+  })
 
   useEffect(() => {
     if (data && onUpdateCommentsCount) {
@@ -47,14 +45,6 @@ export const Comments = ({ model, object_id, ordering, onUpdateCommentsCount }: 
 
   const handlePaginationChange = (page: number, page_size: number) => {
     setPagination({ page, page_size })
-    getComments({
-      comment_id,
-      model,
-      object_id,
-      page: page,
-      page_size,
-      ordering: orderingRequest,
-    })
   }
 
   const handleAddCommentClick = () => {
@@ -69,29 +59,17 @@ export const Comments = ({ model, object_id, ordering, onUpdateCommentsCount }: 
     }
   }, [isShowAdd])
 
-  useEffect(() => {
-    if (!data) return
-    setDataComments(data)
-  }, [data])
-
-  useEffect(() => {
-    if (!data) return
-    if (data.pages.current !== pagination.page) {
-      setPagination({ ...pagination, page: data.pages.current })
-    }
-  }, [data, pagination, comment_id])
-
-  if (isLoading || !dataComments) {
+  if (isFetching || !data) {
     return <ContainerLoader />
   }
 
   return (
     <>
-      <CommentList comments={dataComments.results} />
+      <CommentList comments={data.results ?? []} />
       <div className={styles.footer}>
         {!isShowAdd && (
           <Button id="add-comment-btn" onClick={handleAddCommentClick} icon={<WechatOutlined />}>
-            Add comment
+            {t("Add comment")}
           </Button>
         )}
         <Pagination
@@ -99,7 +77,7 @@ export const Comments = ({ model, object_id, ordering, onUpdateCommentsCount }: 
           current={pagination.page}
           pageSize={pagination.page_size}
           size="small"
-          total={dataComments.count}
+          total={data.count}
           style={{ width: "fit-content", marginLeft: "auto" }}
           onChange={handlePaginationChange}
         />

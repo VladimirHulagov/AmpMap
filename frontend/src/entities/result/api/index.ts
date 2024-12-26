@@ -24,21 +24,23 @@ const invalidateListTags = (
   dispatch(testPlanStatusesInvalidate(testPlanId))
 }
 
+const rootPath = "results"
+
 export const resultApi = createApi({
   reducerPath: "resultApi",
   baseQuery: baseQueryWithLogout,
   tagTypes: ["Result"],
   endpoints: (builder) => ({
-    getResults: builder.query<IResult[], IResultQuery>({
+    getResults: builder.query<Result[], ResultQuery>({
       query: ({ testId, showArchive, project }) => ({
-        url: "v1/results/",
+        url: `${rootPath}/`,
         params: { test: testId, is_archive: showArchive, project },
       }),
       providesTags: (result) => providesList(result, "Result"),
     }),
-    updateResult: builder.mutation<IResult, { id: Id; testPlanId: Id; body: IResultUpdate }>({
+    updateResult: builder.mutation<Result, { id: Id; testPlanId: Id; body: ResultUpdate }>({
       query: ({ id, body }) => ({
-        url: `v1/results/${id}/`,
+        url: `${rootPath}/${id}/`,
         method: "PATCH",
         body,
       }),
@@ -47,15 +49,16 @@ export const resultApi = createApi({
           const { data } = await queryFulfilled
           invalidateListTags(testPlanId, data.test, dispatch)
           dispatch(testApi.util.invalidateTags([{ type: "Test", id: "LIST" }]))
+          dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanTest", id: "LIST" }]))
         } catch (error) {
           console.error(error)
         }
       },
-      invalidatesTags: (result) => invalidatesList(result, "Result"),
+      invalidatesTags: (result, error) => (!error ? invalidatesList(result, "Result") : []),
     }),
-    createResult: builder.mutation<IResult, { testPlanId: Id; body: IResultCreate }>({
+    createResult: builder.mutation<Result, { testPlanId: Id; body: ResultCreate }>({
       query: ({ body }) => ({
-        url: "v1/results/",
+        url: `${rootPath}/`,
         method: "POST",
         body,
       }),
@@ -64,6 +67,7 @@ export const resultApi = createApi({
           const { data } = await queryFulfilled
           invalidateListTags(testPlanId, data.test, dispatch)
           dispatch(testApi.util.invalidateTags([{ type: "Test", id: "LIST" }]))
+          dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanTest", id: "LIST" }]))
         } catch (error) {
           console.error(error)
         }

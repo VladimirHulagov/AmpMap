@@ -30,6 +30,9 @@
 # <http://www.gnu.org/licenses/>.
 from typing import Any
 
+from django.db.models import QuerySet
+
+from testy.core.models import CustomAttribute
 from testy.tests_description.models import TestSuite
 
 
@@ -37,17 +40,24 @@ class TestSuiteService:
     non_side_effect_fields = ['parent', 'project', 'name', 'description']
 
     def suite_create(self, data: dict[str, Any]) -> TestSuite:
-        suite = TestSuite.model_create(
+        return TestSuite.model_create(
             fields=self.non_side_effect_fields,
             data=data,
         )
-        TestSuite.objects.partial_rebuild(suite.tree_id)
-        return suite
 
     def suite_update(self, suite: TestSuite, data: dict[str, Any]) -> TestSuite:
         suite, _ = suite.model_update(
             fields=self.non_side_effect_fields,
             data=data,
         )
-        TestSuite.objects.partial_rebuild(suite.tree_id)
         return suite
+
+    @classmethod
+    def unlink_custom_attributes(cls, suites: QuerySet[TestSuite]) -> None:
+        ids = suites.values_list('id', flat=True)
+        attributes = CustomAttribute.objects.filter(suite_ids__overlap=ids)
+        attributes_to_update = []
+        for attribute in attributes:
+            attribute.suite_ids = list(set(attribute.suite_ids) - set(ids))
+            attributes_to_update.append(attribute)
+        CustomAttribute.objects.bulk_update(attributes_to_update, fields=['suite_ids'])

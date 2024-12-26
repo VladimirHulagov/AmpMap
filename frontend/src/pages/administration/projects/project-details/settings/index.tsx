@@ -1,53 +1,58 @@
 import { Divider, Space, Typography } from "antd"
+import { MeContext } from "processes"
 import { useContext, useEffect } from "react"
-import { useParams } from "react-router-dom"
+import { useTranslation } from "react-i18next"
 
-import { useGetProjectQuery } from "entities/project/api"
+import { ProjectContext } from "pages/project"
 
-import { ContainerLoader, Field, TagBoolean } from "shared/ui"
+import { Field, TagBoolean } from "shared/ui"
+
+import { LayoutView } from "widgets/[ui]"
 
 import { ProjectDetailsActiveTabContext } from "../project-details-main"
 import { EditTestResultsSettings } from "./edit-test-results-settings"
 
 export const ProjectDetailsSettingsPage = () => {
+  const { t } = useTranslation()
   const { setProjectDetailsActiveTab } = useContext(ProjectDetailsActiveTabContext)!
   useEffect(() => {
     setProjectDetailsActiveTab("settings")
   })
-  const { projectId } = useParams<ParamProjectId>()
-  const { data, isLoading } = useGetProjectQuery(Number(projectId), { skip: !projectId })
+  const { project } = useContext(ProjectContext)!
+  const { me } = useContext(MeContext)!
+  const editable = !project.is_archive || me.is_superuser
 
-  if (isLoading || !data) {
-    return <ContainerLoader />
-  }
-
-  const editTime = data?.settings.result_edit_limit
-    ? `${data.settings.result_edit_limit}`
+  const editTime = project.settings.result_edit_limit
+    ? `${project.settings.result_edit_limit}`
     : `Unlimited`
   return (
-    <div className="site-layout-background" style={{ padding: 24, minHeight: 360 }}>
-      {!isLoading && data?.is_manageable && (
+    <LayoutView style={{ padding: 24, minHeight: 360 }}>
+      {project.is_manageable && editable && (
         <Space style={{ marginBottom: "16px", float: "right" }}>
-          <EditTestResultsSettings project={data} />
+          <EditTestResultsSettings project={project} />
         </Space>
       )}
       <Divider orientation="left" orientationMargin={0}>
         <div style={{ display: "flex", alignItems: "center", margin: "12px 0" }}>
           <Typography.Title style={{ margin: "0 8px 0 0" }} level={4}>
-            Test Results
+            {t("Test Results")}
           </Typography.Title>
         </div>
       </Divider>
 
       <div style={{ padding: 8 }}>
         <Field
-          title="Is Editable"
+          title={t("Is Editable")}
           value={
-            <TagBoolean value={!!data.settings.is_result_editable} trueText="Yes" falseText="No" />
+            <TagBoolean
+              value={!!project.settings.is_result_editable}
+              trueText={t("Yes")}
+              falseText={t("No")}
+            />
           }
         />
-        {data.settings.is_result_editable && <Field title="Edit time" value={editTime} />}
+        {project.settings.is_result_editable && <Field title={t("Edit time")} value={editTime} />}
       </div>
-    </div>
+    </LayoutView>
   )
 }

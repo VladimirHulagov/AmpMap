@@ -1,75 +1,75 @@
 import { notification } from "antd"
-import { useEffect, useState } from "react"
+import { useState } from "react"
+import { SubmitHandler, useForm } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 import { useParams } from "react-router-dom"
 
 import { useCopyTestCaseMutation } from "entities/test-case/api"
 
 import { initInternalError } from "shared/libs"
-import { AlertSuccessChange } from "shared/ui/alert-success-change"
+import { AlertSuccessChange } from "shared/ui"
 
-export const useTestCaseCopyModal = (testCase: TestCase) => {
+interface FormTestCaseCopy {
+  newName: string
+  suite: SelectData | null
+}
+
+interface Props {
+  testCase: TestCase
+  onSubmit?: (suite: TestCase) => void
+}
+
+export const useTestCaseCopyModal = ({ testCase, onSubmit: cbOnSubmit }: Props) => {
+  const { t } = useTranslation()
   const { testSuiteId } = useParams<ParamProjectId & ParamTestSuiteId>()
   const [isShow, setIsShow] = useState(false)
   const [copyTestCase, { isLoading }] = useCopyTestCaseMutation()
-  const [newName, setNewName] = useState(testCase.name)
-  const [selectedSuite, setSelectedSuite] = useState<SelectData | null>(null)
+  const {
+    handleSubmit,
+    control,
+    formState: { errors: formErrors },
+  } = useForm<FormTestCaseCopy>({
+    defaultValues: {
+      newName: `${testCase.name}(Copy)`,
+      suite: null,
+    },
+  })
 
   const handleCancel = () => {
     setIsShow(false)
-    setSelectedSuite(null)
   }
 
   const handleShow = () => {
     setIsShow(true)
   }
 
-  const handleSave = async () => {
+  const onSubmit: SubmitHandler<FormTestCaseCopy> = async (data) => {
     try {
       const dstSuiteId = testSuiteId ?? ""
-      await copyTestCase({
-        cases: [{ id: String(testCase.id), new_name: newName }],
-        dst_suite_id: selectedSuite ? String(selectedSuite.value) : dstSuiteId,
-      })
+      const newTestCase = await copyTestCase({
+        cases: [{ id: String(testCase.id), new_name: data.newName }],
+        dst_suite_id: data.suite ? String(data.suite.value) : dstSuiteId,
+      }).unwrap()
       notification.success({
-        message: "Success",
+        message: t("Success"),
+        closable: true,
         description: (
-          <AlertSuccessChange id={String(testCase.id)} action="copied" title="Test Case" />
+          <AlertSuccessChange id={String(testCase.id)} action="copied" title={t("Test Case")} />
         ),
       })
       handleCancel()
+      cbOnSubmit?.(newTestCase[0])
     } catch (err) {
       initInternalError(err)
     }
   }
 
-  const handleSelectSuite = (value?: SelectData | null) => {
-    if (value) {
-      setSelectedSuite(value)
-    }
-  }
-
-  const handleChangeName = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setNewName(e.target.value)
-  }
-
-  const handleClearSelected = () => {
-    setSelectedSuite(null)
-  }
-
-  useEffect(() => {
-    if (!isShow) return
-    setNewName(`${testCase.name}(Copy)`)
-  }, [testCase, isShow])
-
   return {
     isShow,
     isLoading,
-    selectedSuite,
-    newName,
-    handleChangeName,
-    handleClearSelected,
-    handleSelectSuite,
-    handleSave,
+    control,
+    formErrors,
+    handleSubmit: handleSubmit(onSubmit),
     handleShow,
     handleCancel,
   }

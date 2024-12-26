@@ -5,13 +5,13 @@ import {
   useUpdateCustomAttributeMutation,
 } from "entities/custom-attribute/api"
 import { useStatuses } from "entities/status/model/use-statuses"
-import { useEffect, useMemo, useState } from "react"
+import { ChangeEvent, useContext, useEffect, useMemo, useState } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
-import { useParams } from "react-router-dom"
+import { useTranslation } from "react-i18next"
 
-import { useTestSuitesSearch } from "entities/suite/model/use-test-suites-search"
+import { ProjectContext } from "pages/project"
 
-import { useErrors, useModal } from "shared/hooks"
+import { useDebounce, useErrors, useModal } from "shared/hooks"
 import { Status } from "shared/ui"
 
 interface ErrorData {
@@ -36,8 +36,9 @@ interface PropsEdit {
 export type PropsChangeCustomAttribute = PropsCreate | PropsEdit
 
 export const useChangeCustomAttribute = ({ formType, attribute }: PropsChangeCustomAttribute) => {
-  const { projectId } = useParams<ParamProjectId>()
-  const { statuses } = useStatuses({ project: projectId })
+  const { t } = useTranslation()
+  const { project } = useContext(ProjectContext)!
+  const { statuses } = useStatuses({ project: project.id })
   const { handleClose: handleCloseModal, handleShow, isShow } = useModal()
 
   const [createAttribute, { isLoading: isLoadingCreate }] = useCreateCustomAttributeMutation()
@@ -47,6 +48,8 @@ export const useChangeCustomAttribute = ({ formType, attribute }: PropsChangeCus
   const { data: contentTypes } = useGetCustomAttributeContentTypesQuery()
 
   const [errors, setErrors] = useState<ErrorData | null>(null)
+  const [searchText, setSearchText] = useState("")
+  const searchDebounce = useDebounce(searchText, 250, true)
   const { onHandleError } = useErrors<ErrorData>(setErrors)
   const {
     handleSubmit,
@@ -67,17 +70,9 @@ export const useChangeCustomAttribute = ({ formType, attribute }: PropsChangeCus
     },
   })
 
-  const {
-    searchText,
-    data: suitesData,
-    expandedRowKeys,
-    onSearch,
-    onClearSearch,
-    onRowExpand,
-  } = useTestSuitesSearch({ isShow })
-
   const isSuiteSpecific = watch("is_suite_specific")
   const watchContentTypes = watch("content_types")
+  const watchSuiteIds = watch("suite_ids")
 
   const isTestResultActive = useMemo(() => {
     if (!contentTypes) {
@@ -97,7 +92,7 @@ export const useChangeCustomAttribute = ({ formType, attribute }: PropsChangeCus
 
     try {
       if (formType === "create") {
-        await createAttribute({ ...data, project: Number(projectId) }).unwrap()
+        await createAttribute({ ...data, project: project.id }).unwrap()
       } else if (formType === "edit") {
         await updateAttribute({
           id: Number(attribute.id),
@@ -106,8 +101,9 @@ export const useChangeCustomAttribute = ({ formType, attribute }: PropsChangeCus
       }
 
       notification.success({
-        message: "Success",
-        description: `Attribute ${formType === "create" ? "created" : "edited"} successfully`,
+        message: t("Success"),
+        closable: true,
+        description: `${formType === "create" ? t("Attribute created successfully") : t("Attribute edited successfully")}`,
       })
       handleClose()
     } catch (err) {
@@ -117,15 +113,28 @@ export const useChangeCustomAttribute = ({ formType, attribute }: PropsChangeCus
 
   const handleClose = () => {
     setErrors(null)
-    onClearSearch()
     reset()
     handleCloseModal()
   }
 
-  const onSuiteCheck = (checkedKeys: CheckboxChecked) => {
-    if ("checked" in checkedKeys) {
-      setValue("suite_ids", checkedKeys.checked, { shouldDirty: true })
+  const handleCheckSuite = (suiteId: number) => {
+    if (watchSuiteIds?.includes(suiteId)) {
+      setValue(
+        "suite_ids",
+        watchSuiteIds?.filter((i) => i !== suiteId),
+        {
+          shouldDirty: true,
+        }
+      )
+    } else {
+      setValue("suite_ids", [...(watchSuiteIds ?? []), suiteId], {
+        shouldDirty: true,
+      })
     }
+  }
+
+  const handleSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setSearchText(e.target.value)
   }
 
   // reset suite_ids when is_suite_specific becomes false
@@ -173,16 +182,15 @@ export const useChangeCustomAttribute = ({ formType, attribute }: PropsChangeCus
     isDirty,
     isSuiteSpecific,
     isTestResultActive,
-    suitesData,
-    searchText,
     contentTypes,
-    expandedRowKeys,
+    searchDebounce,
+    searchText,
     statusesOptions,
+    suiteSpecificIds: watchSuiteIds,
     handleClose,
     handleShow,
     handleSubmitForm: handleSubmit(onSubmit),
-    onSearch,
-    onRowExpand,
-    onSuiteCheck,
+    handleCheckSuite,
+    handleSearchChange,
   }
 }

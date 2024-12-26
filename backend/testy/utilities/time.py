@@ -28,13 +28,14 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
+import contextlib
+import time
 from collections import namedtuple
 from enum import Enum
 
 from django.conf import settings
 
 _DAYS = 'days'
-
 
 PeriodInfo = namedtuple('PeriodInfo', ['period', 'period_in_workday', 'is_period_in_workday'])
 
@@ -86,3 +87,10 @@ class WorkTimeProcessor:
         difference_in_seconds = n_days * (day_in_seconds - workday_in_seconds)
         seconds -= difference_in_seconds if to_workday else -difference_in_seconds
         return seconds
+
+
+@contextlib.contextmanager
+def timer(msg: str):
+    start_time = time.time()
+    yield
+    print(msg, time.time() - start_time)

@@ -1,12 +1,14 @@
 import { Button, Form, Input, Modal, Switch } from "antd"
 import { Controller } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 
 import { useUserModal } from "entities/user/model"
 
-import { ErrorObj } from "shared/hooks/use-alert-error"
+import { ErrorObj } from "shared/hooks"
 import { AlertError } from "shared/ui"
 
 export const CreateEditUserModal = () => {
+  const { t } = useTranslation()
   const {
     title,
     isEditMode,
@@ -20,7 +22,7 @@ export const CreateEditUserModal = () => {
     handleCancel,
     handleSubmitForm,
   } = useUserModal()
-  const formType = isEditMode ? "edit" : "create"
+  const formType = isEditMode ? t("Edit").toLowerCase() : t("Create").toLowerCase()
 
   return (
     <Modal
@@ -32,7 +34,7 @@ export const CreateEditUserModal = () => {
       centered
       footer={[
         <Button id={`close-${formType}-user`} key="back" onClick={handleCancel}>
-          Close
+          {t("Close")}
         </Button>,
         <Button
           id={`${formType}-user-btn`}
@@ -42,7 +44,7 @@ export const CreateEditUserModal = () => {
           type="primary"
           disabled={!isDirty}
         >
-          {isEditMode ? "Update" : "Create"}
+          {isEditMode ? t("Update") : t("Create")}
         </Button>,
       ]}
     >
@@ -65,7 +67,7 @@ export const CreateEditUserModal = () => {
 
         <Form id={`${formType}-user-form`} layout="vertical" onFinish={handleSubmitForm}>
           <Form.Item
-            label="Username"
+            label={t("Username")}
             validateStatus={errors?.username ? "error" : ""}
             help={errors?.username ? errors.username : ""}
             required={!isEditMode}
@@ -79,7 +81,7 @@ export const CreateEditUserModal = () => {
             />
           </Form.Item>
           <Form.Item
-            label="E-mail"
+            label={t("Email")}
             validateStatus={errors?.email ? "error" : ""}
             help={errors?.email ? errors.email : ""}
             required
@@ -93,7 +95,7 @@ export const CreateEditUserModal = () => {
           {!isEditMode && (
             <>
               <Form.Item
-                label="Password"
+                label={t("Password")}
                 validateStatus={errors?.password ? "error" : ""}
                 help={errors?.password ? errors.password : ""}
                 required={!isEditMode}
@@ -106,7 +108,7 @@ export const CreateEditUserModal = () => {
               </Form.Item>
               <Form.Item
                 name="confirm"
-                label="Confirm Password"
+                label={t("Confirm Password")}
                 dependencies={["password"]}
                 validateStatus={errors?.confirm ? "error" : ""}
                 help={errors?.confirm ? errors.confirm : ""}
@@ -121,7 +123,7 @@ export const CreateEditUserModal = () => {
             </>
           )}
           <Form.Item
-            label="First Name"
+            label={t("First Name")}
             validateStatus={errors?.first_name ? "error" : ""}
             help={errors?.first_name ? errors.first_name : ""}
           >
@@ -132,7 +134,7 @@ export const CreateEditUserModal = () => {
             />
           </Form.Item>
           <Form.Item
-            label="Last Name"
+            label={t("Last Name")}
             validateStatus={errors?.last_name ? "error" : ""}
             help={errors?.last_name ? errors.last_name : ""}
           >
@@ -143,7 +145,7 @@ export const CreateEditUserModal = () => {
             />
           </Form.Item>
           <Form.Item
-            label="Active"
+            label={t("Active")}
             validateStatus={errors?.is_active ? "error" : ""}
             help={errors?.is_active ? errors.is_active : ""}
           >
@@ -156,7 +158,7 @@ export const CreateEditUserModal = () => {
             />
           </Form.Item>
           <Form.Item
-            label="Admin"
+            label={t("Admin")}
             validateStatus={errors?.is_superuser ? "error" : ""}
             help={errors?.is_superuser ? errors.is_superuser : ""}
           >

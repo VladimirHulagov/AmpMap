@@ -1,6 +1,7 @@
 import { ControllerRenderProps } from "react-hook-form"
 
 import { AttributForm } from "./form"
+import styles from "./styles.module.css"
 
 interface AttributeListProps {
   errors?: Record<string, Record<string, string>>
@@ -25,7 +26,7 @@ export const AttributeList = ({
 }: AttributeListProps) => {
   if (attributes.length === 0) return null
   return (
-    <>
+    <div className={styles.list}>
       {attributes.map((attribut, index) => {
         return (
           <AttributForm
@@ -41,6 +42,6 @@ export const AttributeList = ({
           />
         )
       })}
-    </>
+    </div>
   )
 }

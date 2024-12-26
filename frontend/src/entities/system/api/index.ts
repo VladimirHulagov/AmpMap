@@ -4,7 +4,7 @@ import { baseQueryWithLogout } from "app/apiSlice"
 
 import { providesList } from "shared/libs"
 
-const rootPath = "v1/system"
+const rootPath = "system"
 
 export const systemApi = createApi({
   reducerPath: "systemApi",

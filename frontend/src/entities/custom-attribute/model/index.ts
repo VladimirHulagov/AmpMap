@@ -1,2 +1,1 @@
-export * from "./use-attributes-test-case"
-export * from "./use-attributes-test-result"
+export * from "./use-attributes"

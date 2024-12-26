@@ -1,215 +1,201 @@
-import { LeftOutlined } from "@ant-design/icons"
-import { Button, TablePaginationConfig, Tag } from "antd"
-import type { FilterValue } from "antd/es/table/interface"
+import { TablePaginationConfig } from "antd"
 import { ColumnsType } from "antd/lib/table"
-import { useEffect, useMemo, useState } from "react"
+import dayjs from "dayjs"
+import { useMemo } from "react"
+import { useTranslation } from "react-i18next"
 import { Link, useParams, useSearchParams } from "react-router-dom"
 
 import { useAppDispatch, useAppSelector } from "app/hooks"
 
-import { useGetTestCasesQuery, useLazyGetTestCaseByIdQuery } from "entities/test-case/api"
-import { selectDrawerTestCase, setDrawerTestCase } from "entities/test-case/model"
+import { Label } from "entities/label/ui"
 
-import { useUserConfig } from "entities/user/model"
+import { useGetSuiteTestCasesQuery } from "entities/suite/api"
+
+import { useGetTestPlanTestCasesQuery } from "entities/test-case/api"
+import {
+  selectDrawerTestCase,
+  selectFilter,
+  selectOrdering,
+  selectSettings,
+  setDrawerTestCase,
+  setPagination,
+  updateSettings,
+} from "entities/test-case/model"
 
 import { colors, config } from "shared/config"
-import { useAntdTable, useTableSearch } from "shared/hooks"
-import { HighLighterTesty } from "shared/ui"
+import { paginationSchema } from "shared/config/query-schemas"
+import { useUrlSyncParams } from "shared/hooks"
+import { ArchivedTag, HighLighterTesty } from "shared/ui"
+
+import styles from "./styles.module.css"
 
 export const useTestCasesTable = () => {
+  const { t } = useTranslation()
   const { testSuiteId, projectId } = useParams<ParamTestSuiteId & ParamProjectId>()
   const dispatch = useAppDispatch()
-  const { userConfig, updateConfig } = useUserConfig()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [isShowArchive, setIsShowArchive] = useState<boolean>(
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    searchParams.get("show_archived")
-      ? JSON.parse(searchParams.get("show_archived") ?? "")
-      : userConfig.test_cases.is_show_archived
+
+  const testCasesFilter = useAppSelector(selectFilter)
+  const testCasesOrdering = useAppSelector(selectOrdering)
+  const tableSettings = useAppSelector(selectSettings<TestTableParams>("table"))
+
+  const syncObject = { page: tableSettings.page, page_size: tableSettings.page_size }
+  useUrlSyncParams({
+    params: syncObject as unknown as Record<string, unknown>,
+    queryParamsSchema: paginationSchema,
+    updateParams: (params) => {
+      const paramsData = params as { page?: number; page_size?: number }
+      dispatch(
+        setPagination({
+          key: "table",
+          pagination: {
+            page: paramsData?.page ?? 1,
+            page_size: paramsData?.page_size ?? tableSettings.page_size,
+          },
+        })
+      )
+    },
+  })
+
+  const queryParams = {
+    project: projectId ?? "",
+    suite: testCasesFilter.suites,
+    is_archive: testCasesFilter.is_archive,
+    labels: testCasesFilter.labels,
+    not_labels: testCasesFilter.not_labels,
+    labels_condition: testCasesFilter.labels_condition,
+    page: tableSettings.page,
+    page_size: tableSettings.page_size,
+    ordering: testCasesOrdering,
+    search: testCasesFilter.name_or_id,
+    show_descendants: true,
+    _n: testCasesFilter._n,
+  }
+
+  const { data: suitesData, isFetching: isSuitesFetching } = useGetSuiteTestCasesQuery(
+    {
+      testSuiteId: Number(testSuiteId),
+      ...queryParams,
+    },
+    {
+      skip: !projectId || !testSuiteId,
+    }
   )
+  const { data: suitesFromRoot, isFetching: isSuitesFromRootFetching } =
+    useGetTestPlanTestCasesQuery(queryParams, {
+      skip: !projectId || !!testSuiteId,
+    })
 
-  const [isRefreshingTable, setIsRefreshingTable] = useState(false)
+  const data = testSuiteId ? suitesData : suitesFromRoot
+  const isFetching = testSuiteId ? isSuitesFetching : isSuitesFromRootFetching
 
-  const searchTestCase = searchParams.get("test_case")
-
-  const showTestCaseDetail = (testCase: TestCase) => {
-    handleAddTableParam("test_case", testCase.id.toString())
+  const handleRowClick = (testCase: TestCase) => {
+    searchParams.set("test_case", String(testCase.id))
+    setSearchParams(searchParams)
     dispatch(setDrawerTestCase(testCase))
   }
 
-  const onRowClick = (testCaseRow: TestCase) => {
-    if (!searchTestCase) {
-      searchParams.set("test_case", String(testCaseRow.id))
-      setSearchParams(searchParams)
-      showTestCaseDetail(testCaseRow)
-    } else if (searchTestCase && testCaseRow.id === selectedTestCase?.id) {
-      searchParams.delete("test_case")
-      setSearchParams(searchParams)
-      hideTestCaseDetail()
-    } else {
-      searchParams.set("test_case", String(testCaseRow.id))
-      setSearchParams({ test_case: String(testCaseRow.id) })
-      showTestCaseDetail(testCaseRow)
-    }
+  const handleTableChange = (pagination: TablePaginationConfig) => {
+    dispatch(
+      updateSettings({
+        key: "table",
+        settings: {
+          page: pagination.current,
+          page_size: pagination.pageSize,
+        },
+      })
+    )
   }
 
-  const {
-    data,
-    tableParams,
-    total,
-    isLoading,
-    handleChange,
-    handleRowClick,
-    handleClearAll,
-    handleDeleteTableParam,
-    handleAddTableParam,
-  } = useAntdTable<TestCase>({
-    key: "test-cases-table",
-    // @ts-ignore
-    getData: useGetTestCasesQuery,
-    onRowClick,
-    requestParams: {
-      suite: testSuiteId,
-      project: projectId,
-      is_archive: isShowArchive,
-    },
-    requestOptions: {
-      skip: !projectId,
-    },
-    filtersMapping: (filters) => ({
-      name: filters?.name ? (filters?.name[0] as string) : undefined,
-    }),
-    hasSearch: false,
-  })
-
-  const { searchText, onClear: onSearchClear, getColumnSearch } = useTableSearch()
   const selectedTestCase = useAppSelector(selectDrawerTestCase)
 
-  const [filteredInfo, setFilteredInfo] = useState<Record<string, FilterValue | null>>({})
-  const [getTestCase] = useLazyGetTestCaseByIdQuery()
-
-  const clearAll = async () => {
-    await handleChangeShowArchive(false)
-    setFilteredInfo({})
-    onSearchClear()
-    handleClearAll()
-
-    //dirty fix to refresh table filters
-    setIsRefreshingTable(true)
-    setTimeout(() => {
-      setIsRefreshingTable(false)
-    }, 0)
+  const paginationTable: TablePaginationConfig = {
+    hideOnSinglePage: false,
+    pageSizeOptions: config.pageSizeOptions,
+    showLessItems: true,
+    showSizeChanger: true,
+    current: tableSettings.page,
+    pageSize: tableSettings.page_size,
+    total: data?.count ?? 0,
   }
 
-  const hideTestCaseDetail = () => {
-    handleDeleteTableParam(["test_case", "version"])
-    dispatch(setDrawerTestCase(null))
-  }
+  const columns: ColumnsType<TestCase> = useMemo(() => {
+    return (
+      [
+        {
+          title: t("ID"),
+          dataIndex: "id",
+          key: "id",
+          width: "70px",
+        },
+        {
+          title: t("Name"),
+          dataIndex: "name",
+          key: "name",
+          render: (text: string, record) => {
+            const queryParams = new URLSearchParams(location.search)
+            queryParams.delete("test_case")
 
-  const handleChangeShowArchive = async (value: boolean) => {
-    setIsShowArchive(value)
-    await updateConfig({
-      test_cases: { is_show_archived: value },
-    })
-    const urlParams = Object.fromEntries([...searchParams])
-    setSearchParams({
-      ...urlParams,
-      show_archived: String(value),
-    })
-  }
-
-  const handleShowArchived = async () => {
-    await handleChangeShowArchive(!isShowArchive)
-  }
-
-  const paginationTable: TablePaginationConfig = useMemo(() => {
-    return {
-      hideOnSinglePage: false,
-      pageSizeOptions: config.pageSizeOptions,
-      showLessItems: true,
-      showSizeChanger: true,
-      current: tableParams.page,
-      pageSize: tableParams.page_size,
-      total,
-    }
-  }, [tableParams, total])
-
-  useEffect(() => {
-    if (!searchTestCase || selectedTestCase) return
-    const fetchTestCase = async () => {
-      const testCase = await getTestCase({ testCaseId: searchTestCase ?? "" }).unwrap()
-      showTestCaseDetail(testCase)
-    }
-    fetchTestCase()
-  }, [searchTestCase, selectedTestCase])
-
-  const columns: ColumnsType<TestCase> = [
-    {
-      title: "Id",
-      dataIndex: "id",
-      key: "id",
-      width: "70px",
-      sorter: true,
-    },
-    {
-      title: "Name",
-      dataIndex: "name",
-      key: "name",
-      sorter: true,
-      ...getColumnSearch("name"),
-      render: (text, record) => (
-        <Link
-          id={record.name}
-          to={`/projects/${record.project}/suites/${record.suite}?test_case=${record.id}`}
-        >
-          {/* eslint-disable-next-line @typescript-eslint/no-unsafe-assignment */}
-          <HighLighterTesty searchWords={searchText} textToHighlight={text} />
-        </Link>
-      ),
-    },
-    {
-      key: "archived",
-      width: "100px",
-      align: "right",
-      render: (_, record) => {
-        return record.is_archive ? <Tag color={colors.error}>Archived</Tag> : null
-      },
-    },
-    {
-      key: "action",
-      width: "50px",
-      align: "right",
-      render: (_, record) => {
-        const isCurrent = selectedTestCase?.id === record.id
-        return (
-          <Button
-            size={"middle"}
-            type={"text"}
-            onClick={() => (isCurrent ? hideTestCaseDetail : showTestCaseDetail(record))}
-          >
-            <LeftOutlined style={{ transform: `rotate(${isCurrent ? 0 : 180}deg)` }} />
-          </Button>
-        )
-      },
-    },
-  ]
+            return (
+              <Link
+                id={record.name}
+                to={`/projects/${record.project}/suites/${testSuiteId ?? ""}?test_case=${record.id}${queryParams.size ? `&${queryParams.toString()}` : ""}`}
+                className={styles.link}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  dispatch(setDrawerTestCase(record))
+                }}
+              >
+                {record.is_archive && <ArchivedTag />}
+                <HighLighterTesty searchWords={testCasesFilter.name_or_id} textToHighlight={text} />
+              </Link>
+            )
+          },
+        },
+        {
+          title: t("Test Suite"),
+          dataIndex: "suite_path",
+          key: "suite_path",
+        },
+        {
+          title: t("Labels"),
+          dataIndex: "labels",
+          key: "labels",
+          render: (labels: Test["labels"]) => (
+            <ul className={styles.list}>
+              {labels.map((label) => (
+                <li key={label.id}>
+                  <Label content={label.name} color={colors.accent} />
+                </li>
+              ))}
+            </ul>
+          ),
+        },
+        {
+          title: t("Estimate"),
+          dataIndex: "estimate",
+          key: "estimate",
+          width: "100px",
+          render: (estimate: string | null) => estimate ?? "-",
+        },
+        {
+          title: t("Created At"),
+          dataIndex: "created_at",
+          key: "created_at",
+          width: 150,
+          render: (value: string) => dayjs(value).format("YYYY-MM-DD HH:mm"),
+        },
+      ] as ColumnsType<TestCase>
+    ).filter((col) => tableSettings.visibleColumns.some((i) => i.key === col.key))
+  }, [testCasesFilter, tableSettings, testSuiteId])
 
   return {
+    data: data?.results,
     columns,
-    isShowArchive,
-    isLoading,
+    isLoading: isFetching,
     selectedTestCase,
-    testCases: data,
-    filteredInfo,
-    searchText,
     paginationTable,
-    getColumnSearch,
-    handleChange,
-    clearAll,
+    handleTableChange,
     handleRowClick,
-    hideTestCaseDetail,
-    handleShowArchived,
-    showTestCaseDetail,
-    isRefreshingTable,
   }
 }

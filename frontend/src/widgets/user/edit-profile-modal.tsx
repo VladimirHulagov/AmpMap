@@ -1,6 +1,7 @@
 import { Button, Form, Input, Modal, notification } from "antd"
 import { useEffect, useState } from "react"
 import { Controller, SubmitHandler, useForm } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 import { useDispatch, useSelector } from "react-redux"
 
 import { useAppSelector } from "app/hooks"
@@ -10,9 +11,7 @@ import { selectUser } from "entities/auth/model"
 import { useUpdateMeMutation } from "entities/user/api"
 import { hideEditProfileModal, selectProfileModalIsShow } from "entities/user/model"
 
-import { useErrors } from "shared/hooks"
-import { ErrorObj } from "shared/hooks/use-alert-error"
-import { showModalCloseConfirm } from "shared/libs"
+import { ErrorObj, useErrors, useShowModalCloseConfirm } from "shared/hooks"
 import { AlertError } from "shared/ui"
 
 interface Inputs {
@@ -26,6 +25,8 @@ interface ErrorData {
 }
 
 export const EditProfileModal = () => {
+  const { t } = useTranslation()
+  const { showModal } = useShowModalCloseConfirm()
   const dispatch = useDispatch()
   const isShow = useAppSelector(selectProfileModalIsShow)
   const user = useSelector(selectUser)
@@ -57,7 +58,7 @@ export const EditProfileModal = () => {
     if (isLoading) return
 
     if (isDirty) {
-      showModalCloseConfirm(onCloseModal)
+      showModal(onCloseModal)
       return
     }
 
@@ -70,8 +71,9 @@ export const EditProfileModal = () => {
       await updateProfile(data).unwrap()
       onCloseModal()
       notification.success({
-        message: "Success",
-        description: "Profile updated successfully",
+        message: t("Success"),
+        closable: true,
+        description: t("Profile updated successfully"),
       })
     } catch (err: unknown) {
       onHandleError(err)
@@ -81,14 +83,14 @@ export const EditProfileModal = () => {
   return (
     <Modal
       className="edit-profile-modal"
-      title="Edit Profile"
+      title={t("Edit Profile")}
       open={isShow}
       onCancel={handleCancel}
       width="600px"
       centered
       footer={[
         <Button id="close-edit-profile" key="back" onClick={handleCancel}>
-          Close
+          {t("Close")}
         </Button>,
         <Button
           id="update-edit-profile"
@@ -98,7 +100,7 @@ export const EditProfileModal = () => {
           type="primary"
           disabled={!isDirty}
         >
-          Update
+          {t("Update")}
         </Button>,
       ]}
     >
@@ -109,7 +111,7 @@ export const EditProfileModal = () => {
 
         <Form id="edit-profile-form" layout="vertical" onFinish={handleSubmit(onSubmit)}>
           <Form.Item
-            label="First Name"
+            label={t("First Name")}
             validateStatus={errors?.first_name ? "error" : ""}
             help={errors?.first_name ? errors.first_name : ""}
           >
@@ -120,7 +122,7 @@ export const EditProfileModal = () => {
             />
           </Form.Item>
           <Form.Item
-            label="Last Name"
+            label={t("Last Name")}
             validateStatus={errors?.last_name ? "error" : ""}
             help={errors?.last_name ? errors.last_name : ""}
           >

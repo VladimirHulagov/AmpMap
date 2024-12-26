@@ -1,6 +1,6 @@
 import { Alert } from "antd"
 
-import { ErrorObj, useAlertError } from "shared/hooks/use-alert-error"
+import { ErrorObj, useAlertError } from "shared/hooks"
 
 interface AlertErrorProps {
   error: ErrorObj

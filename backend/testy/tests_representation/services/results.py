@@ -29,13 +29,14 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 
-from typing import Any
+from typing import Any, Iterable
 
 from django.db import transaction
+from simple_history.utils import bulk_create_with_history, bulk_update_with_history
 
 from testy.core.services.attachments import AttachmentService
 from testy.tests_description.selectors.cases import TestCaseSelector
-from testy.tests_representation.models import TestResult, TestStepResult
+from testy.tests_representation.models import Test, TestResult, TestStepResult
 from testy.tests_representation.signals import pre_create_result
 from testy.users.models import User
 
@@ -76,16 +77,16 @@ class TestResultService:
 
     @transaction.atomic
     def result_update(self, test_result: TestResult, data: dict[str, Any]) -> TestResult:
-        test_result, has_updated = test_result.model_update(
+        test_result, updated_fields = test_result.model_update(
             fields=self.non_side_effect_fields,
             data=data,
             commit=False,
         )
 
-        if has_updated:
+        if updated_fields:
             test_result.test_case_version = TestCaseSelector().case_version(test_result.test.case)
         test_result.full_clean()
-        test_result.save()
+        test_result.save(update_fields=updated_fields)
 
         AttachmentService().attachments_update_content_object(data.get('attachments', []), test_result)
 
@@ -97,3 +98,22 @@ class TestResultService:
             )
 
         return test_result
+
+    @classmethod
+    @transaction.atomic
+    def result_bulk_create(cls, results: Iterable[TestResult], user: User, batch_size: int = 500) -> list[TestResult]:
+        results = bulk_create_with_history(results, TestResult, batch_size=batch_size, default_user=user)
+        id_to_status = {result.test_id: result.status for result in results}
+        tests = Test.objects.filter(id__in=id_to_status.keys())
+        tests_to_update = []
+        for test in tests:
+            test.last_status = id_to_status[test.id]
+            tests_to_update.append(test)
+        bulk_update_with_history(
+            tests_to_update,
+            Test,
+            batch_size=batch_size,
+            default_user=user,
+            fields=['last_status'],
+        )
+        return results

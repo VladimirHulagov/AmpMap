@@ -36,6 +36,9 @@ export const Markdown = ({ content }: MarkdownProps) => {
             </code>
           )
         },
+        p: ({ children }) => {
+          return <p style={{ whiteSpace: "pre-wrap" }}>{children}</p>
+        },
       }}
       remarkPlugins={[remarkGfm]}
     />

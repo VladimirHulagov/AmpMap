@@ -1,8 +1,8 @@
 import { notification } from "antd"
-import { useState } from "react"
+import { MeContext } from "processes"
+import { useContext, useState } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
-
-import { useGetMeQuery } from "entities/user/api"
+import { useTranslation } from "react-i18next"
 
 import { useErrors } from "shared/hooks"
 
@@ -15,8 +15,10 @@ export interface UpdateData {
 }
 
 export const useAssignToCommon = ({ onSubmit }: Props) => {
+  const { t } = useTranslation()
+  const { me } = useContext(MeContext)!
+
   const [selectedUser, setSelectedUser] = useState<SelectData | null>(null)
-  const { data: me } = useGetMeQuery()
 
   const [isOpenModal, setIsOpenModal] = useState(false)
   const {
@@ -44,8 +46,9 @@ export const useAssignToCommon = ({ onSubmit }: Props) => {
       handleClose()
 
       notification.success({
-        message: "Success",
-        description: "User assigned successfully",
+        message: t("Success"),
+        closable: true,
+        description: t("User assigned successfully"),
       })
     } catch (err) {
       onHandleError(err)

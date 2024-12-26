@@ -1,24 +1,29 @@
 import { Select } from "antd"
 import { useStatuses } from "entities/status/model/use-statuses"
+import { useTranslation } from "react-i18next"
 import { useParams } from "react-router-dom"
 
+import { Status } from "../status"
 import styles from "./styles.module.css"
 
 interface StepResultProps {
   stepResultsData: StepResult[]
   stepResults: Record<string, number>
-  setStepsResult: React.Dispatch<React.SetStateAction<Record<string, number>>>
+  setStepsResult: (steps: Record<string, number>) => void
+  id: string
 }
 
 export const StepResultInEditModal = ({
   stepResultsData,
   stepResults,
   setStepsResult,
+  id,
 }: StepResultProps) => {
+  const { t } = useTranslation()
   const { projectId } = useParams<ParamProjectId>()
   const { statusesOptions } = useStatuses({ project: projectId })
   const handleStepChange = (stepId: string, value: number) => {
-    setStepsResult((prevState) => ({ ...prevState, [stepId]: value }))
+    setStepsResult({ ...stepResults, [stepId]: value })
   }
 
   if (!stepResultsData.length) return <></>
@@ -38,11 +43,22 @@ export const StepResultInEditModal = ({
             <div className={styles.resultSelect}>
               <Select
                 value={stepResults[item.id] ?? null}
-                placeholder="Please select"
+                placeholder={t("Please select")}
                 style={{ width: "100%" }}
-                options={statusesOptions}
                 onSelect={(value) => handleStepChange(String(item.id), value)}
-              />
+                id={`${id}-result-step-${item.name}`}
+              >
+                {statusesOptions.map((status) => (
+                  <Select.Option key={status.id} value={Number(status.id)}>
+                    <Status
+                      name={status.label}
+                      color={status.color}
+                      id={status.id}
+                      extraId={`${id}-result-step-${item.name}`}
+                    />
+                  </Select.Option>
+                ))}
+              </Select>
             </div>
           </li>
         ))}

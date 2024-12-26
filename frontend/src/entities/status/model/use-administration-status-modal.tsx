@@ -1,6 +1,7 @@
 import { Modal, notification } from "antd"
 import { useEffect, useMemo, useState } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 import { useParams } from "react-router-dom"
 
 import { CUSTOM_TYPE } from "shared/config/status-types"
@@ -16,6 +17,7 @@ interface ErrorData {
 }
 
 export const useAdministrationStatusModal = () => {
+  const { t } = useTranslation()
   const { projectId } = useParams<ParamProjectId>()
 
   const [createStatus, { isLoading: isLoadingCreating }] = useCreateStatusMutation()
@@ -71,8 +73,11 @@ export const useAdministrationStatusModal = () => {
         await createStatus({ ...data, project: Number(projectId) }).unwrap()
       }
       notification.success({
-        message: "Success",
-        description: `Status ${modalState.mode === "edit" ? "updated" : "created"} successfully`,
+        message: t("Success"),
+        description:
+          modalState.mode === "edit"
+            ? t("Status updated successfully")
+            : t("Status created successfully"),
       })
       handleCloseModal()
     } catch (err) {
@@ -82,15 +87,15 @@ export const useAdministrationStatusModal = () => {
 
   const handleDeleteStatus = (statusId: Id) => {
     Modal.confirm({
-      title: "Do you want to delete these status?",
-      okText: "Delete",
-      cancelText: "Cancel",
+      title: t("Do you want to delete these status?"),
+      okText: t("Delete"),
+      cancelText: t("Cancel"),
       onOk: async () => {
         try {
           await deleteStatus(statusId).unwrap()
           notification.success({
-            message: "Success",
-            description: "Status deleted successfully",
+            message: t("Success"),
+            description: t("Status deleted successfully"),
           })
         } catch (err: unknown) {
           initInternalError(err)
@@ -112,7 +117,10 @@ export const useAdministrationStatusModal = () => {
   }
 
   const title = useMemo(() => {
-    return modalState.mode === "edit" ? `Edit Status ${modalState.status?.name}` : "Create Status"
+    return modalState.mode === "edit"
+      ? // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+        `${t("Edit status")} ${modalState.status?.name}`
+      : t("Create status")
   }, [modalState])
 
   // use effect for edit modal

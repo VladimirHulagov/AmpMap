@@ -2,30 +2,35 @@ import { notification } from "antd"
 import dayjs from "dayjs"
 import { useEffect } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 
-import { useTestsTableParams } from "entities/test/model"
+import { useAttachments } from "entities/attachment/model"
 
 import { useGetTestPlanCasesQuery, useUpdateTestPlanMutation } from "entities/test-plan/api"
 import { getTestCaseChangeResult } from "entities/test-plan/lib"
 
-import { showModalCloseConfirm } from "shared/libs"
-import { AlertSuccessChange } from "shared/ui/alert-success-change"
+import { useShowModalCloseConfirm } from "shared/hooks"
+import { AlertSuccessChange } from "shared/ui"
 
 import { ModalForm, useTestPlanCommonModal } from "../create-test-plan/use-test-plan-common-modal"
 
 type IForm = ModalForm<TestPlanUpdate>
 
-interface UseTestPlanEditModalProps {
+export interface UseTestPlanEditModalProps {
   testPlan: TestPlan
   isShow: boolean
   setIsShow: (isShow: boolean) => void
+  onSubmit?: (updatedPlan: TestPlan, oldPlan: TestPlan) => void
 }
 
 export const useTestPlanEditModal = ({
   testPlan,
   isShow,
   setIsShow,
+  onSubmit: onSubmitCb,
 }: UseTestPlanEditModalProps) => {
+  const { t } = useTranslation()
+  const { showModal } = useShowModalCloseConfirm()
   const {
     handleSubmit,
     reset,
@@ -33,7 +38,16 @@ export const useTestPlanEditModal = ({
     setValue,
     watch,
     formState: { isDirty, errors: formErrors },
-  } = useForm<IForm>()
+  } = useForm<IForm>({
+    defaultValues: {
+      name: testPlan.name,
+      description: testPlan.description,
+      started_at: dayjs(testPlan.started_at),
+      due_date: dayjs(testPlan.due_date),
+      parent: testPlan.parent ? testPlan.parent.id : null,
+      test_cases: [],
+    },
+  })
   const testCasesWatch = watch("test_cases")
 
   const { data: tests, isLoading: isLoadingTestCases } = useGetTestPlanCasesQuery(
@@ -43,7 +57,6 @@ export const useTestPlanEditModal = ({
     { skip: !isShow }
   )
   const [updateTestPlan, { isLoading: isLoadingUpdate }] = useUpdateTestPlanMutation()
-  const { trigger } = useTestsTableParams()
 
   const {
     selectedLables,
@@ -55,9 +68,6 @@ export const useTestPlanEditModal = ({
     projectId,
     errors,
     setErrors,
-    isLastPage,
-    isLoadingTestPlans,
-    dataTestPlans,
     onHandleError,
     selectedParent,
     setSelectedParent,
@@ -65,7 +75,6 @@ export const useTestPlanEditModal = ({
     setDateTo,
     disabledDateFrom,
     disabledDateTo,
-    handleLoadNextPageData,
     searchText,
     treeData,
     expandedRowKeys,
@@ -73,35 +82,41 @@ export const useTestPlanEditModal = ({
     onSearch,
     onRowExpand,
     onClearSearch,
-    handleSearchTestPlan,
   } = useTestPlanCommonModal({ isShow })
 
-  useEffect(() => {
-    if (!isShow || !tests) return
-    const ids = tests.case_ids.map((i) => String(i))
-    setValue("test_cases", ids)
-  }, [testPlan, isShow, tests])
+  const {
+    attachments,
+    attachmentsIds,
+    isLoading: isLoadingAttachments,
+    setAttachments,
+    onLoad,
+  } = useAttachments<IForm>(control, Number(projectId))
 
   useEffect(() => {
     if (!isShow) return
-    setValue("name", testPlan.name)
-    setValue("description", testPlan.description)
-    setValue("started_at", dayjs(testPlan.started_at))
+
+    const ids = tests?.case_ids.map((i) => String(i)) ?? []
+    reset({
+      name: testPlan.name,
+      description: testPlan.description,
+      started_at: dayjs(testPlan.started_at),
+      due_date: dayjs(testPlan.due_date),
+      parent: testPlan.parent ? testPlan.parent.id : null,
+      test_cases: ids,
+    })
+
     setDateFrom(dayjs(testPlan.started_at))
-    setValue("due_date", dayjs(testPlan.due_date))
     setDateTo(dayjs(testPlan.due_date))
 
     if (testPlan.parent) {
       setSelectedParent({ value: testPlan.parent.id, label: testPlan.parent.name })
-      setValue("parent", testPlan.parent.id)
     }
-  }, [testPlan, isShow])
+  }, [testPlan, tests, isShow])
 
   const onCloseModal = () => {
     setIsShow(false)
     setErrors(null)
     onClearSearch()
-    handleClearTestPlan()
     reset()
   }
 
@@ -109,7 +124,7 @@ export const useTestPlanEditModal = ({
     if (isLoadingTestCases) return
 
     if (isDirty) {
-      showModalCloseConfirm(onCloseModal)
+      showModal(onCloseModal)
       return
     }
 
@@ -120,7 +135,7 @@ export const useTestPlanEditModal = ({
     setErrors(null)
     const newTestCases = data.test_cases?.filter((item) => !item.startsWith("TS"))
     try {
-      await updateTestPlan({
+      const newPlan = await updateTestPlan({
         id: testPlan.id,
         body: {
           ...data,
@@ -130,40 +145,33 @@ export const useTestPlanEditModal = ({
           test_cases: newTestCases,
         },
       }).unwrap()
-      trigger()
-      onCloseModal()
       notification.success({
-        message: "Success",
+        message: t("Success"),
+        closable: true,
         description: (
           <AlertSuccessChange
             id={String(testPlan.id)}
             action="updated"
-            title="Test Plan"
+            title={t("Test Plan")}
             link={`/projects/${projectId}/plans/${testPlan.id}`}
           />
         ),
       })
+      onCloseModal()
+      onSubmitCb?.(newPlan, testPlan)
     } catch (err) {
       onHandleError(err)
     }
   }
 
-  const handleSelectTestPlan = (value?: SelectData) => {
+  const handleSelectTestPlan = (value: SelectData | null) => {
     setErrors({ parent: "" })
     if (value?.value === testPlan.id) {
-      setErrors({ parent: "Test Plan не может быть родителем для самого себя." })
-      return
+      setErrors({ parent: t("Test Plan cannot be its own parent.") })
     }
 
-    if (value) {
-      setValue("parent", value.value, { shouldDirty: true })
-      setSelectedParent({ value: value.value, label: value.label?.toString() ?? "" })
-    }
-  }
-
-  const handleClearTestPlan = () => {
-    setSelectedParent(null)
-    setValue("parent", null, { shouldDirty: true })
+    setValue("parent", value ? value.value : null, { shouldDirty: true })
+    setSelectedParent(value ? { value: value.value, label: value.label?.toString() ?? "" } : null)
   }
 
   const handleTestCaseChange = (checked: CheckboxChecked, info: TreeCheckboxInfo) => {
@@ -172,6 +180,11 @@ export const useTestPlanEditModal = ({
   }
 
   return {
+    attachments,
+    attachmentsIds,
+    isLoading: isLoadingAttachments,
+    setAttachments,
+    onLoad,
     errors,
     formErrors,
     control,
@@ -182,10 +195,7 @@ export const useTestPlanEditModal = ({
     isDirty,
     isLoadingTestCases,
     isLoadingUpdate,
-    isLoadingTestPlans,
     isLoadingSearch,
-    isLastPage,
-    dataTestPlans,
     handleClose,
     handleRowExpand: onRowExpand,
     handleSubmitForm: handleSubmit(onSubmit),
@@ -196,10 +206,7 @@ export const useTestPlanEditModal = ({
     disabledDateTo,
     setValue,
     handleTestCaseChange,
-    handleClearTestPlan,
-    handleSearchTestPlan,
     handleSelectTestPlan,
-    handleLoadNextPageData,
     selectedLables,
     labelProps,
     lableCondition,

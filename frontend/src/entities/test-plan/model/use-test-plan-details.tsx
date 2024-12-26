@@ -1,57 +1,40 @@
-import { useEffect } from "react"
-import { useParams, useSearchParams } from "react-router-dom"
-
-import { useAppDispatch, useAppSelector } from "app/hooks"
-
-import { useLazyGetTestQuery } from "entities/test/api"
-import { selectTest, setTest } from "entities/test/model"
+import { MeContext } from "processes"
+import { useContext } from "react"
+import { useParams } from "react-router-dom"
 
 import { useGetTestPlanQuery } from "entities/test-plan/api"
 
-import { useUserConfig } from "entities/user/model"
+import { useCacheState } from "shared/hooks"
+
+type EntityView = "list" | "tree"
 
 export const useTestPlanDetails = () => {
-  const dispatch = useAppDispatch()
-  const test = useAppSelector(selectTest)
-  const { userConfig } = useUserConfig()
+  const { userConfig } = useContext(MeContext)!
   const { projectId, testPlanId } = useParams<ParamProjectId & ParamTestPlanId>()
-  const { data: testPlan, isLoading } = useGetTestPlanQuery(
+  const [dataView, setDataView] = useCacheState<EntityView>("test-plan-detail-tests-view", "tree")
+
+  const {
+    data: testPlan,
+    isFetching,
+    refetch,
+  } = useGetTestPlanQuery(
     {
       testPlanId: testPlanId ?? "",
-      is_archive: userConfig.test_plans.is_show_archived,
+      is_archive: userConfig.test_plans?.is_show_archived,
+      project: Number(projectId),
+      parent: null,
     },
     {
-      skip: !testPlanId,
+      skip: !testPlanId || !projectId,
     }
   )
-  const [getTest] = useLazyGetTestQuery()
-
-  const [searchParams] = useSearchParams()
-
-  useEffect(() => {
-    const testUrl = searchParams.get("test")
-
-    if (!testUrl) {
-      dispatch(setTest(null))
-      return
-    }
-
-    if (!testUrl || test) return
-    getTest(testUrl)
-  }, [searchParams.get("test")])
-
-  useEffect(() => {
-    return () => {
-      dispatch(setTest(null))
-    }
-  }, [])
 
   return {
-    isLoading,
+    isLoading: isFetching,
     testPlanId,
-    testPlan,
-    test,
-    projectId,
-    setTest,
+    testPlan: testPlanId ? testPlan : undefined,
+    dataView,
+    setDataView,
+    refetch,
   }
 }

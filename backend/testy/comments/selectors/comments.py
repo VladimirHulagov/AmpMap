@@ -28,10 +28,12 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
+from django.contrib.auth.models import AnonymousUser
 from django.db.models import QuerySet
 from rest_framework.exceptions import NotFound
 
 from testy.comments.models import Comment
+from testy.users.models import User
 
 
 class CommentSelector:
@@ -41,3 +43,9 @@ class CommentSelector:
         if not comment:
             raise NotFound
         return Comment.objects.filter(content_type=comment.content_type, object_id=comment.object_id)
+
+    @classmethod
+    def list_comments_by_user(cls, user: User | AnonymousUser) -> QuerySet[Comment]:
+        if not user.is_authenticated:
+            return Comment.objects.none()
+        return Comment.objects.filter(user=user)

@@ -1,6 +1,7 @@
 import { Button, Form, Input, Modal, notification } from "antd"
 import { useEffect, useState } from "react"
 import { Controller, SubmitHandler, useForm } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 import { useDispatch, useSelector } from "react-redux"
 
 import { useAppSelector } from "app/hooks"
@@ -13,9 +14,7 @@ import {
   selectParameter,
 } from "entities/parameter/model"
 
-import { useErrors } from "shared/hooks"
-import { ErrorObj } from "shared/hooks/use-alert-error"
-import { showModalCloseConfirm } from "shared/libs"
+import { ErrorObj, useErrors, useShowModalCloseConfirm } from "shared/hooks"
 import { AlertError } from "shared/ui"
 
 interface ErrorData {
@@ -28,6 +27,8 @@ interface CreateParameterModalProps {
 }
 
 export const CreateEditParameterModal = ({ projectId }: CreateParameterModalProps) => {
+  const { t } = useTranslation()
+  const { showModal } = useShowModalCloseConfirm()
   const dispatch = useDispatch()
   const isShow = useAppSelector(selectModalIsShow)
   const isEditMode = useAppSelector(selectModalIsEditMode)
@@ -68,8 +69,11 @@ export const CreateEditParameterModal = ({ projectId }: CreateParameterModalProp
           }).unwrap()
       onCloseModal()
       notification.success({
-        message: "Success",
-        description: `Parameter ${isEditMode ? "updated" : "created"} successfully`,
+        message: t("Success"),
+        closable: true,
+        description: isEditMode
+          ? t("Parameter updated successfully")
+          : t("Parameter created successfully"),
       })
     } catch (err: unknown) {
       onHandleError(err)
@@ -86,14 +90,16 @@ export const CreateEditParameterModal = ({ projectId }: CreateParameterModalProp
     if (isLoading) return
 
     if (isDirty) {
-      showModalCloseConfirm(onCloseModal)
+      showModal(onCloseModal)
       return
     }
 
     onCloseModal()
   }
 
-  const title = isEditMode ? `Edit Parameter ${parameter?.data}` : "Create Parameter"
+  const title = isEditMode
+    ? `${t("Edit")} ${t("Parameter")} ${parameter?.data}`
+    : `${t("Create")} ${t("Parameter")}`
 
   return (
     <Modal
@@ -105,7 +111,7 @@ export const CreateEditParameterModal = ({ projectId }: CreateParameterModalProp
       centered
       footer={[
         <Button id="close-update-create-parameter" key="back" onClick={handleCancel}>
-          Close
+          {t("Close")}
         </Button>,
         <Button
           id="update-create-parameter"
@@ -115,7 +121,7 @@ export const CreateEditParameterModal = ({ projectId }: CreateParameterModalProp
           type="primary"
           disabled={!isDirty}
         >
-          {isEditMode ? "Update" : "Create"}
+          {isEditMode ? t("Update") : t("Create")}
         </Button>,
       ]}
     >
