@@ -1,10 +1,12 @@
 import { notification } from "antd"
 import { useEffect, useState } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
-import { useSelector } from "react-redux"
+import { useTranslation } from "react-i18next"
+
+import { useAppSelector } from "app/hooks"
 
 import { useUpdatePasswordMutation } from "entities/user/api"
-import { selectUser } from "entities/user/model"
+import { selectUserModal } from "entities/user/model"
 
 import { useErrors } from "shared/hooks"
 
@@ -39,7 +41,8 @@ const validatePassword = (value: string) => {
 }
 
 export const useChangePassword = () => {
-  const user = useSelector(selectUser)
+  const { t } = useTranslation()
+  const user = useAppSelector(selectUserModal)
   const [errors, setErrors] = useState<ErrorData | null>(null)
   const {
     handleSubmit,
@@ -70,7 +73,7 @@ export const useChangePassword = () => {
     }
 
     if (password !== passwordConfirm) {
-      setErrors({ confirm: "The passwords that you entered do not match!" })
+      setErrors({ confirm: t("The passwords that you entered do not match!") })
     } else {
       setErrors(validatePassword(password))
     }
@@ -96,8 +99,9 @@ export const useChangePassword = () => {
 
       await updatePassword({ password }).unwrap()
       notification.success({
-        message: "Success",
-        description: "Password updated successfully",
+        message: t("Success"),
+        closable: true,
+        description: t("Password updated successfully"),
       })
       handleCancel()
     } catch (err: unknown) {

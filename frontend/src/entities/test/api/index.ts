@@ -6,9 +6,7 @@ import { testPlanApi } from "entities/test-plan/api"
 
 import { invalidatesList } from "shared/libs"
 
-import { setTest } from "../model"
-
-const rootPath = "v1/tests"
+const rootPath = "tests"
 
 export const testApi = createApi({
   reducerPath: "testApi",
@@ -20,16 +18,8 @@ export const testApi = createApi({
         url: `${rootPath}/${testId}/`,
       }),
       providesTags: (result, error, id) => [{ type: "Test", id }],
-      async onQueryStarted(id, { dispatch, queryFulfilled }) {
-        try {
-          const { data } = await queryFulfilled
-          dispatch(setTest(data))
-        } catch (error) {
-          console.error(error)
-        }
-      },
     }),
-    getTests: builder.query<PaginationResponse<Test[]>, QueryWithPagination<ITestGetWithFilters>>({
+    getTests: builder.query<PaginationResponse<Test[]>, QueryWithPagination<TestGetFilters>>({
       query: (params) => ({
         url: `${rootPath}/`,
         params,
@@ -43,6 +33,10 @@ export const testApi = createApi({
         body,
       }),
       invalidatesTags: (result) => invalidatesList(result, "Test"),
+      async onQueryStarted({ id }, { dispatch, queryFulfilled }) {
+        await queryFulfilled
+        dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanTest", id }]))
+      },
     }),
     bulkUpdate: builder.mutation<Test[], TestBulkUpdate>({
       query: (body) => ({
@@ -55,13 +49,31 @@ export const testApi = createApi({
         dispatch(
           testPlanApi.util.invalidateTags([{ type: "TestPlanStatistics", id: current_plan }])
         )
-        dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanHistogram", id: current_plan }]))
-        dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanLabels", id: "LIST" }]))
-        dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanCasesIds", id: current_plan }]))
+        dispatch(
+          testPlanApi.util.invalidateTags([
+            { type: "TestPlanHistogram", id: current_plan },
+            { type: "TestPlanHistogram", id: plan },
+          ])
+        )
+        dispatch(
+          testPlanApi.util.invalidateTags([
+            { type: "TestPlanLabels", id: "LIST" },
+            { type: "TestPlanLabels", id: plan },
+          ])
+        )
+        dispatch(
+          testPlanApi.util.invalidateTags([
+            { type: "TestPlanCasesIds", id: current_plan },
+            { type: "TestPlanCasesIds", id: plan },
+          ])
+        )
 
-        dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanStatistics", id: plan }]))
-        dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanHistogram", id: plan }]))
-        dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanCasesIds", id: plan }]))
+        dispatch(
+          testPlanApi.util.invalidateTags([
+            { type: "TestPlanTest", id: "LIST" },
+            { type: "TestPlanTest", id: current_plan },
+          ])
+        )
       },
       invalidatesTags: (result) => invalidatesList(result, "Test"),
     }),
@@ -69,6 +81,7 @@ export const testApi = createApi({
 })
 
 export const {
+  useGetTestQuery,
   useLazyGetTestsQuery,
   useLazyGetTestQuery,
   useUpdateTestMutation,

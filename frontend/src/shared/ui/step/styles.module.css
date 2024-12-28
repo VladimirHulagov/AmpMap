@@ -14,7 +14,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background-color: #425cd7;
+  background-color: var(--y-interactive-default);
   color: #fff;
   font-size: 12px;
 }
@@ -23,6 +23,8 @@
   margin-left: 14px;
   text-wrap: wrap;
   word-break: normal;
+  margin-top: 0;
+  margin-bottom: 0;
 }
 
 .actions {
@@ -39,6 +41,8 @@
   max-height: 200px;
   overflow: hidden;
   overflow-y: scroll;
+  padding: 0;
+  margin: 0;
 }
 
 .scenarioBtn {
@@ -76,7 +80,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background-color: #425cd7;
+  background-color: var(--y-interactive-default);
   color: #fff;
   font-size: 12px;
   position: absolute;
@@ -115,7 +119,7 @@
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background-color: #425cd7;
+  background-color: var(--y-interactive-default);
   color: #fff;
   font-size: 12px;
 }

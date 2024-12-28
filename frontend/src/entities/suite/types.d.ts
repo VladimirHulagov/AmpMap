@@ -1,26 +1,29 @@
-interface SuiteState {
-  testSuite: Suite | null
-}
-
 interface Suite {
   id: Id
   name: string
-  title: string
+  description: string
   parent: Parent | null
   project: number
-  url: string
+  path: string
+  has_children: boolean
+  is_leaf: boolean
   cases_count: number
-  total_cases_count: number
   descendant_count: number
-  description: string
-  child_count: number
+  total_cases_count: number
   estimates: string | null
   total_estimates: string | null
-  breadcrumbs: Breadcrumbs
+  url: string
+  created_at: string
 }
 
-interface SuiteTree extends Suite {
-  children: SuiteTree[]
+interface SuiteResponseUpdate {
+  id: number
+  name: string
+  description: string
+  parent: Parent | null
+  project: number
+  suite_path: string
+  url: string
 }
 
 interface SuiteWithCases extends Suite {
@@ -31,13 +34,13 @@ interface SuiteWithCases extends Suite {
 interface SuiteUpdate {
   name: string
   description: string
-  parent: string | null
+  parent: number | null
 }
 
 interface SuiteCreate {
   name: string
   project: number
-  parent?: string | null
+  parent?: number | null
   description?: string
 }
 
@@ -45,23 +48,32 @@ interface GetTestSuiteQuery {
   suiteId: string
 }
 
-interface GetTestSuitesTreeViewQuery {
-  project?: string
-  parent?: string
-  treeview?: boolean
-  search?: string
+interface GetTestSuitesQuery {
+  project: number
+  parent?: number | null
+  suite?: number[]
+  treesearch?: string
+  is_archive?: boolean
   ordering?: string
-  is_flat?: boolean
   page?: number
   page_size?: number
-  _cacheInvalidation?: number
+  labels?: number[]
+  not_labels?: number[]
+  labels_condition?: string
+  test_case_created_after?: string
+  test_case_created_before?: string
+  test_suite_created_after?: string
+  test_suite_created_before?: string
+  _n?: string | number
 }
+
+type GetTestSuitesUnionQuery = Omit<GetTestSuitesQuery, "treesearch"> & { search?: string }
 
 interface CopySuiteResponse {
   id: Id
   description: string
   name: string
-  parent: number | null
+  parent: Parent | null
   project: number | null
   url: string
   path: string
@@ -76,4 +88,10 @@ interface SuiteCopyBody {
 interface SuiteCopyItem {
   id: string
   new_name: string
+}
+
+interface SuiteDescendantsTree {
+  id: number
+  name: string
+  children: SuiteDescendantsTree[]
 }

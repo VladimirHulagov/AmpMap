@@ -37,6 +37,6 @@ from testy.core.models import LabeledItem
 
 class LabeledItemSelector:
     @classmethod
-    def items_by_ids_list(cls, ids: list[int], model: type[Model]) -> QuerySet[LabeledItem]:
+    def items_list_by_ids(cls, ids: list[int], model: type[Model]) -> QuerySet[LabeledItem]:
         content_type = ContentType.objects.get_for_model(model)
         return LabeledItem.objects.filter(content_type=content_type, object_id__in=ids)

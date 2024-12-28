@@ -8,7 +8,7 @@ interface StepResultProps {
 
 export const StepResult = ({ stepsResult }: StepResultProps) => {
   return (
-    <ul style={{ paddingLeft: 0 }} className={styles.fieldUl}>
+    <ul className={styles.fieldUl}>
       {[...stepsResult]
         .sort((a, b) => a.sort_order - b.sort_order)
         .map((stepResult) => (

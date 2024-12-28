@@ -2,17 +2,20 @@ import { Button, Space, Table, TableProps } from "antd"
 import { ColumnsType } from "antd/es/table"
 import type { FilterValue, TablePaginationConfig } from "antd/es/table/interface"
 import { useGetCustomAttributesQuery } from "entities/custom-attribute/api"
-import { ChangeCustomAttribute, DeleteCustomAttribute } from "features/custom-attribute"
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 import { useParams } from "react-router-dom"
+
+import { ChangeCustomAttribute, DeleteCustomAttribute } from "features/custom-attribute"
 
 import { customAttributeTypes, customAttributesObject } from "shared/config/custom-attribute-types"
 import { useTableSearch } from "shared/hooks"
 
 export const CustomAttributesTable = () => {
+  const { t } = useTranslation()
   const { projectId } = useParams<ParamProjectId>()
 
-  const { data, isLoading } = useGetCustomAttributesQuery({ project: projectId ?? "" })
+  const { data, isFetching } = useGetCustomAttributesQuery({ project: projectId ?? "" })
 
   const [filteredInfo, setFilteredInfo] = useState<Record<string, FilterValue | null>>({})
   const { setSearchText, getColumnSearch } = useTableSearch()
@@ -31,7 +34,7 @@ export const CustomAttributesTable = () => {
 
   const columns: ColumnsType<CustomAttribute> = [
     {
-      title: "Name",
+      title: t("Name"),
       dataIndex: "name",
       key: "name",
       filteredValue: filteredInfo.name ?? null,
@@ -40,7 +43,7 @@ export const CustomAttributesTable = () => {
       onFilter: (value, record) => record.name.toLowerCase().includes(String(value).toLowerCase()),
     },
     {
-      title: "Type",
+      title: t("Type"),
       dataIndex: "type",
       key: "type",
       filteredValue: filteredInfo.type ?? null,
@@ -49,13 +52,13 @@ export const CustomAttributesTable = () => {
       render: (_, record) => <Space>{customAttributesObject[record.type]}</Space>,
     },
     {
-      title: "Required",
+      title: t("Required"),
       dataIndex: "is_required",
       key: "is_required",
       render: (_, record) => <Space>{String(record.is_required)}</Space>,
     },
     {
-      title: "Action",
+      title: t("Action"),
       key: "action",
       width: 100,
       render: (_, record) => (
@@ -71,11 +74,11 @@ export const CustomAttributesTable = () => {
     <>
       <Space style={{ marginBottom: 16, display: "flex", justifyContent: "right" }}>
         <Button id="clear-filters-and-sorters" onClick={clearAll}>
-          Clear filters and sorters
+          {t("Clear filters and sorters")}
         </Button>
       </Space>
       <Table
-        loading={isLoading}
+        loading={isFetching}
         dataSource={data}
         columns={columns}
         rowKey="id"

@@ -1,34 +1,51 @@
-import { Dropdown, MenuProps } from "antd"
-import { useState } from "react"
+import { Button } from "antd"
+import { ReactNode, memo, useState } from "react"
+import { useTranslation } from "react-i18next"
 
-import { DeleteTestPlan } from "../delete-test-plan/delete-test-plan"
+import { icons } from "shared/assets/inner-icons"
+
 import { ArchiveTestPlanModal } from "./archive-test-plan-modal"
 
+const { ArchiveIcon } = icons
+
 interface Props {
+  as?: ReactNode
   testPlan: TestPlan
+  onSubmit?: (plan: TestPlan) => void
 }
 
-export const ArchiveTestPlan = ({ testPlan }: Props) => {
+export const ArchiveTestPlan = memo(({ as, testPlan, onSubmit }: Props) => {
+  const { t } = useTranslation()
   const [isShow, setIsShow] = useState(false)
 
-  const items: MenuProps["items"] = [
-    {
-      key: "1",
-      label: <DeleteTestPlan testPlan={testPlan} />,
-    },
-  ]
+  const handleShow = () => {
+    setIsShow(true)
+  }
 
   return (
     <>
-      <Dropdown.Button
-        className="archive-test-plan"
-        menu={{ items }}
-        danger
-        onClick={() => setIsShow(true)}
-      >
-        Archive
-      </Dropdown.Button>
-      <ArchiveTestPlanModal isShow={isShow} setIsShow={setIsShow} testPlan={testPlan} />
+      {as ? (
+        <div id="archive-test-plan" onClick={handleShow}>
+          {as}
+        </div>
+      ) : (
+        <Button
+          id="archive-test-plan"
+          icon={<ArchiveIcon width={16} height={16} />}
+          onClick={handleShow}
+        >
+          {t("Archive")}
+        </Button>
+      )}
+
+      <ArchiveTestPlanModal
+        isShow={isShow}
+        setIsShow={setIsShow}
+        testPlan={testPlan}
+        onSubmit={onSubmit}
+      />
     </>
   )
-}
+})
+
+ArchiveTestPlan.displayName = "ArchiveTestPlan"

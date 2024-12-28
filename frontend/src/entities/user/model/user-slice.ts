@@ -5,7 +5,7 @@ import { RootState } from "app/store"
 import { userConfig as baseUserConfig } from "shared/config/base-user-config"
 
 const initialState: UserState = {
-  user: null,
+  userModal: null,
   userConfig: baseUserConfig,
   modal: {
     isShow: false,
@@ -20,8 +20,8 @@ export const userSlice = createSlice({
   name: "user",
   initialState,
   reducers: {
-    setUser: (state, action: PayloadAction<User | null>) => {
-      state.user = action.payload
+    setUserModal: (state, action: PayloadAction<User | null>) => {
+      state.userModal = action.payload
     },
     setUserConfig: (state, action: PayloadAction<UserConfig>) => {
       state.userConfig = action.payload
@@ -47,7 +47,7 @@ export const userSlice = createSlice({
 })
 
 export const {
-  setUser,
+  setUserModal,
   setUserConfig,
   showCreateUserModal,
   showEditUserModal,
@@ -58,7 +58,7 @@ export const {
 
 export const selectModalIsShow = (state: RootState) => state.user.modal.isShow
 export const selectModalIsEditMode = (state: RootState) => state.user.modal.isEditMode
-export const selectUser = (state: RootState) => state.user.user
+export const selectUserModal = (state: RootState) => state.user.userModal
 export const selectUserConfig = (state: RootState) => state.user.userConfig
 export const selectProfileModalIsShow = (state: RootState) => state.user.modalProfile.isShow
 

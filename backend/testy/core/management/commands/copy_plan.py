@@ -30,7 +30,6 @@
 # <http://www.gnu.org/licenses/>.
 
 import logging
-from typing import Dict, List, Union
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
@@ -39,6 +38,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework.serializers import ModelSerializer
 
 from testy.tests_description.models import TestCase, TestSuite
+from testy.tests_description.selectors.suites import TestSuiteSelector
 from testy.tests_representation.models import Parameter, Test, TestPlan
 from testy.tests_representation.selectors.tests import TestSelector
 
@@ -105,11 +105,12 @@ class Command(BaseCommand):
         src_plan_id,
         dst_plan_id,
         drop_results: bool,
-        included_statuses: List[Union[int, str]],
+        included_statuses: list[int | str],
     ) -> None:
         plan_to_copy = get_object_or_404(TestPlan, pk=src_plan_id)
 
         tests_to_copy = TestSelector().test_list_with_last_status()
+        tests_to_copy = TestSuiteSelector.annotate_suite_path(tests_to_copy, 'case__suite__path')
 
         plans_to_copy = plan_to_copy.get_descendants(
             include_self=True,
@@ -227,7 +228,7 @@ class Command(BaseCommand):
         same_project: bool,
         dst_project_id: int,
         cases_to_copy: QuerySet[TestCase],
-        suite_mappings: Dict[int, int],
+        suite_mappings: dict[int, int],
     ):
         if same_project:
             return dict(

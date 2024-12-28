@@ -6,11 +6,7 @@ import { useTestCaseFormLabels } from "entities/label/model"
 
 import { useTestCasesSearch } from "entities/test-case/model"
 
-import { useLazyGetTestPlansQuery } from "entities/test-plan/api"
-
 import { useDatepicker, useErrors } from "shared/hooks"
-
-import { useSearchField } from "widgets/search-field"
 
 interface Params {
   isShow: boolean
@@ -39,11 +35,6 @@ export const useTestPlanCommonModal = ({ isShow }: Params) => {
   const { projectId } = useParams<ParamProjectId & ParamTestPlanId>()
   const [errors, setErrors] = useState<ErrorData | null>(null)
 
-  const [getPlans] = useLazyGetTestPlansQuery()
-  const [isLastPage, setIsLastPage] = useState(false)
-  const [isLoadingTestPlans, setIsLoadingTestPlans] = useState(false)
-  const [dataTestPlans, setDataTestPlans] = useState<TestPlan[]>([])
-
   const {
     searchText,
     treeData,
@@ -58,18 +49,18 @@ export const useTestPlanCommonModal = ({ isShow }: Params) => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
   const setLables = (_: string, values: any, data: any) => {
     const v = values as { name: string; id?: number }[]
-    setSelectedLabels(v.map((i) => i.id).filter((i) => i !== undefined) as number[])
+    setSelectedLabels(v.map((i) => i.id).filter((i) => i !== undefined))
   }
 
   const labelProps = useTestCaseFormLabels({
     setValue: setLables,
     testCase: null,
-    isShow: true,
+    isShow,
     isEditMode: false,
     defaultLabels: selectedLables,
   })
 
-  const [lableCondition, setLableCondition] = useState<"and" | "or">("and")
+  const [lableCondition, setLableCondition] = useState<LabelCondition>("and")
   const [showArchived, setShowArchived] = useState(false)
 
   const handleToggleArchived = () => {
@@ -91,41 +82,6 @@ export const useTestPlanCommonModal = ({ isShow }: Params) => {
   )
   const { setDateFrom, setDateTo, disabledDateFrom, disabledDateTo } = useDatepicker()
 
-  const {
-    search,
-    paginationParams,
-    handleSearch: handleSearchField,
-    handleLoadNextPageData,
-  } = useSearchField()
-
-  const handleSearchTestPlan = (value?: string) => {
-    setDataTestPlans([])
-    setIsLastPage(false)
-    handleSearchField(value)
-  }
-
-  const fetchPlans = async () => {
-    setIsLoadingTestPlans(true)
-    const res = await getPlans({
-      search,
-      projectId,
-      page: paginationParams.page,
-      page_size: paginationParams.page_size,
-      is_flat: true,
-    }).unwrap()
-    setDataTestPlans((prevState) => [...prevState, ...res.results])
-    setIsLoadingTestPlans(false)
-
-    if (!res.pages.next) {
-      setIsLastPage(true)
-    }
-  }
-
-  useEffect(() => {
-    if (!projectId || search === undefined) return
-    fetchPlans()
-  }, [paginationParams, search, projectId])
-
   return {
     selectedLables,
     labelProps,
@@ -136,13 +92,6 @@ export const useTestPlanCommonModal = ({ isShow }: Params) => {
     projectId,
     errors,
     setErrors,
-    getPlans,
-    isLastPage,
-    isLoadingTestPlans,
-    dataTestPlans,
-    setDataTestPlans,
-    setIsLastPage,
-    setIsLoadingTestPlans,
     onHandleError,
     selectedParent,
     setSelectedParent,
@@ -150,10 +99,6 @@ export const useTestPlanCommonModal = ({ isShow }: Params) => {
     setDateTo,
     disabledDateFrom,
     disabledDateTo,
-    search,
-    paginationParams,
-    handleSearch: handleSearchField,
-    handleLoadNextPageData,
     searchText,
     treeData,
     expandedRowKeys,
@@ -161,6 +106,5 @@ export const useTestPlanCommonModal = ({ isShow }: Params) => {
     onSearch,
     onRowExpand,
     onClearSearch,
-    handleSearchTestPlan,
   }
 }

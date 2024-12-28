@@ -1,4 +1,5 @@
 import { notification } from "antd"
+import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 
 import {
@@ -7,7 +8,7 @@ import {
 } from "entities/test-plan/api"
 
 import { initInternalError } from "shared/libs"
-import { AlertSuccessChange } from "shared/ui/alert-success-change"
+import { AlertSuccessChange } from "shared/ui"
 
 import { ModalConfirmDeleteArchive } from "widgets/[ui]/modal-confirm-delete-archive"
 
@@ -15,9 +16,11 @@ interface Props {
   isShow: boolean
   setIsShow: (toggle: boolean) => void
   testPlan: TestPlan
+  onSubmit?: (plan: TestPlan) => void
 }
 
-export const ArchiveTestPlanModal = ({ isShow, setIsShow, testPlan }: Props) => {
+export const ArchiveTestPlanModal = ({ isShow, setIsShow, testPlan, onSubmit }: Props) => {
+  const { t } = useTranslation()
   const [archiveTestPlan, { isLoading: isLoadingDelete }] = useArchiveTestPlanMutation()
   const { data, isLoading, status } = useGetTestPlanArchivePreviewQuery(String(testPlan.id), {
     skip: !isShow,
@@ -34,11 +37,14 @@ export const ArchiveTestPlanModal = ({ isShow, setIsShow, testPlan }: Props) => 
       await archiveTestPlan(testPlan.id).unwrap()
       navigate(`/projects/${testPlan.project}/plans`)
       notification.success({
-        message: "Success",
+        message: t("Success"),
+        closable: true,
         description: (
-          <AlertSuccessChange id={String(testPlan.id)} action="archived" title="Test Plan" />
+          <AlertSuccessChange id={String(testPlan.id)} action="archived" title={t("Test Plan")} />
         ),
       })
+      onSubmit?.(testPlan)
+      handleClose()
     } catch (err: unknown) {
       initInternalError(err)
     }
@@ -51,7 +57,7 @@ export const ArchiveTestPlanModal = ({ isShow, setIsShow, testPlan }: Props) => 
       isLoading={isLoading}
       isLoadingButton={isLoadingDelete}
       name={testPlan.name}
-      typeTitle="Test Plan"
+      typeTitle={t("Test Plan")}
       type="test-plan"
       data={data ?? []}
       handleClose={handleClose}

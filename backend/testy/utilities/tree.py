@@ -28,9 +28,12 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from typing import Any, Callable
+from typing import Any, Callable, Iterable
 
-from django.db.models import Prefetch
+from django.db.models import Prefetch, QuerySet
+
+_ID = 'id'
+_PARENT = 'parent'
 
 
 def form_tree_prefetch_lookups(nested_prefetch_field: str, prefetch_field: str, tree_depth) -> list[str]:
@@ -118,7 +121,7 @@ def form_tree_prefetch_objects(  # noqa: WPS211
 def get_breadcrumbs_treeview(
     instances,
     depth: int,
-    title_method: Callable = None,
+    title_method: Callable,
 ) -> dict[str, str | None]:
     """
     Recursively get treeview dict of mptt tree model.
@@ -133,6 +136,35 @@ def get_breadcrumbs_treeview(
     """
     return {
         'id': instances[depth].id,
-        'title': title_method(instances[depth]) if title_method else instances[depth].name,
+        'title': title_method(instances[depth]),
         'parent': None if depth == 0 else get_breadcrumbs_treeview(instances, depth - 1, title_method),
     }
+
+
+def build_tree(  # noqa: WPS231
+    qs: QuerySet,
+    omitted_ids: Iterable[int] | None = None,
+    title_key: str = 'name',
+) -> list[dict[str, Any]]:
+    if omitted_ids is None:
+        omitted_ids = []
+    pk_to_suite = {}
+    resulting = []
+
+    for node in qs:
+        node['children'] = []
+        pk_to_suite[node[_ID]] = node
+
+    for node in pk_to_suite.values():
+        if node[_ID] in omitted_ids:
+            continue
+        parent_id = node.get(_PARENT)
+        if parent_id is None:
+            resulting.append(node)
+            continue
+        parent = pk_to_suite[parent_id]
+        node[_PARENT] = {_ID: parent[_ID], title_key: parent[title_key]}
+        parent['children'].append(node)
+        if parent_id in omitted_ids:
+            resulting.append(node)
+    return resulting

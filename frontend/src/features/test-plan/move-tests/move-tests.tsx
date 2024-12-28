@@ -1,20 +1,20 @@
 import { CopyOutlined } from "@ant-design/icons"
 import { Alert, Button, Form, Modal } from "antd"
-import { useParams } from "react-router-dom"
+import { useTranslation } from "react-i18next"
 
-import { useLazyGetTestPlansQuery } from "entities/test-plan/api"
+import { useLazyGetTestPlanAncestorsQuery, useLazyGetTestPlansQuery } from "entities/test-plan/api"
 
-import { SearchFormItem } from "shared/ui"
+import { LazyTreeSearchFormItem } from "shared/ui/form-items"
 
 import { MoveTestsProps, useMoveTestsModal } from "./use-move-tests"
 
 export const MoveTests = (props: MoveTestsProps) => {
-  const { projectId } = useParams<ParamProjectId>()
+  const { t } = useTranslation()
   const [getPlans] = useLazyGetTestPlansQuery()
+  const [getAncestors] = useLazyGetTestPlanAncestorsQuery()
 
   const {
     isShow,
-    handleClearSelected,
     handleCancel,
     handleShow,
     selectedPlan,
@@ -28,44 +28,45 @@ export const MoveTests = (props: MoveTestsProps) => {
   return (
     <>
       <Button id="move-tests" icon={<CopyOutlined />} onClick={handleShow}>
-        Move tests
+        {t("Move tests")}
       </Button>
       <Modal
         className="move-tests-modal"
-        title={`Move Test To Plan`}
+        title={t("Move test to plan")}
         open={isShow}
         onCancel={handleCancel}
         centered
         footer={[
           <Button id="cancel-btn" key="back" onClick={handleCancel}>
-            Cancel
+            {t("Cancel")}
           </Button>,
-          <Button id="save-btn" key="submit" type="primary" onClick={handleSubmitForm}>
-            Save
+          <Button
+            id="save-btn"
+            key="submit"
+            type="primary"
+            loading={props.isLoading}
+            onClick={handleSubmitForm}
+          >
+            {t("Save")}
           </Button>,
         ]}
       >
         <Form id="move-tests-form" layout="vertical" onFinish={handleSubmitForm}>
-          <SearchFormItem
+          <LazyTreeSearchFormItem
             id="move-tests-select"
             control={control}
             name="plan"
-            label="Parent plan"
+            label={t("Parent plan")}
+            placeholder={t("Search a test plan")}
             formErrors={formErrors}
             externalErrors={errors}
-            options={{
-              //@ts-ignore
-              getData: getPlans,
-              onSelect: handleSelectPlan,
-              onClear: handleClearSelected,
-              dataParams: {
-                project: projectId,
-                is_flat: true,
-              },
-              selected: selectedPlan,
-              placeholder: "Search a test plan",
-              searchKey: "search",
-            }}
+            // @ts-ignore
+            getData={getPlans}
+            // @ts-ignore
+            getAncestors={getAncestors}
+            skipInit={!isShow}
+            selected={selectedPlan}
+            onSelect={handleSelectPlan}
           />
         </Form>
         {!!errors.length && (

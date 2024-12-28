@@ -8,7 +8,7 @@ export const makeTestSuitesWithCasesForTreeView = (
     return {
       ...item,
       key: `TS${item.id}`,
-      title: item.title,
+      title: item.name,
       icon: <FolderOpenOutlined />,
       children: makeTestSuitesWithCasesForTreeView(item.children, item.test_cases),
     }
@@ -27,15 +27,6 @@ export const makeTestSuitesWithCasesForTreeView = (
   // @ts-expect-error
   return testSuitesTreeView.concat(testCasesTreeView)
 }
-
-export const makeTestSuitesForTreeView = (items: SuiteTree[]): DataWithKey<Suite>[] =>
-  items.map((item) => ({
-    ...item,
-    key: item.id,
-    title: item.title,
-    icon: <FolderOpenOutlined />,
-    children: makeTestSuitesForTreeView(item.children),
-  }))
 
 export const makeParametersForTreeView = (items: IParameter[]): IParameterTreeView[] => {
   const result: IParameterTreeView[] = []

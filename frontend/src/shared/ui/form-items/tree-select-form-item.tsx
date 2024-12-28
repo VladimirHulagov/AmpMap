@@ -1,5 +1,5 @@
 import { Form, TreeSelect } from "antd"
-import { BaseOptionType, DefaultOptionType } from "antd/lib/select"
+import { DataNode } from "antd/es/tree"
 import {
   Control,
   Controller,
@@ -8,6 +8,7 @@ import {
   Path,
   RegisterOptions,
 } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 
 import { capitalizeFirstLetter } from "shared/libs"
 
@@ -15,7 +16,7 @@ interface Props<T extends FieldValues> {
   id: string
   control: Control<T>
   name: Path<T>
-  treeData: (BaseOptionType | DefaultOptionType)[]
+  treeData: DataNode[]
   label?: string
   formErrors?: FieldErrors<T>
   externalErrors?: FieldValues | null
@@ -39,6 +40,7 @@ export const TreeSelectFormItem = <T extends FieldValues>({
   treeData,
   treeProps,
 }: Props<T>) => {
+  const { t } = useTranslation()
   const errors = (
     formErrors ? formErrors[name]?.message : externalErrors ? externalErrors[name] : undefined
   ) as string | undefined
@@ -54,7 +56,7 @@ export const TreeSelectFormItem = <T extends FieldValues>({
         name={name}
         control={control}
         rules={{
-          required: required ? { value: true, message: "Обязательное поле." } : undefined,
+          required: required ? { value: true, message: t("Required field") } : undefined,
           ...rules,
         }}
         render={({ field }) => (
@@ -67,7 +69,7 @@ export const TreeSelectFormItem = <T extends FieldValues>({
             style={{ width: "100%" }}
             dropdownStyle={{ maxHeight: 400, overflow: "auto" }}
             treeData={treeData}
-            placeholder="Please select"
+            placeholder={t("Please select")}
             allowClear
             showCheckedStrategy="SHOW_CHILD"
             {...treeProps}

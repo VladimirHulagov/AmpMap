@@ -8,9 +8,6 @@
   "semi": false,
   "singleQuote": false,
   "jsxSingleQuote": false,
-  "plugins": [
-    "@trivago/prettier-plugin-sort-imports"
-  ],
   "importOrder": [
     "^app/(.*)$",
     "^entities/attachment/(.*)$",
@@ -25,6 +22,7 @@
     "^entities/test-case/(.*)$",
     "^entities/test-plan/(.*)$",
     "^entities/user/(.*)$",
+    "^features/(.*)$",
     "^pages/(.*)$",
     "^shared/(.*)$",
     "^shared/ui/(.*)$",

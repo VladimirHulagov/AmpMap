@@ -1,6 +1,7 @@
 import { FetchBaseQueryError } from "@reduxjs/toolkit/dist/query"
 import { useState } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 import { useLocation, useNavigate } from "react-router-dom"
 
 import { persistor } from "app/store"
@@ -9,7 +10,7 @@ import { useLoginMutation } from "entities/auth/api"
 
 import { useLazyGetConfigQuery, useLazyGetMeQuery } from "entities/user/api"
 
-import { clearPrevPageUrl, getPrevPageUrl } from "shared/libs/local-storage"
+import { clearPrevPageUrl, getPrevPageUrl } from "shared/libs"
 
 export interface Inputs {
   username: string
@@ -25,6 +26,7 @@ interface LocationState {
 }
 
 export const useAuthLogic = () => {
+  const { t } = useTranslation()
   const [login] = useLoginMutation()
   const [getMe] = useLazyGetMeQuery()
   const [getUserConfig] = useLazyGetConfigQuery()
@@ -48,7 +50,7 @@ export const useAuthLogic = () => {
       await persistor.purge()
       await login(data).unwrap()
       await getMe().unwrap()
-      await getUserConfig().unwrap()
+      await getUserConfig({}).unwrap()
       reset()
 
       const prevPageUrl = getPrevPageUrl()
@@ -75,13 +77,13 @@ export const useAuthLogic = () => {
       const error = err as FetchBaseQueryError
 
       if (!error?.status) {
-        setErrMsg("No Server Response")
+        setErrMsg(t("No Server Response"))
       } else if (error.status === 400) {
-        setErrMsg("Missing Username or Password")
+        setErrMsg(t("Missing Username or Password"))
       } else if (error.status === 401) {
-        setErrMsg("Unauthorized")
+        setErrMsg(t("Unauthorized"))
       } else {
-        setErrMsg("Login Failed")
+        setErrMsg(t("Login Failed"))
       }
     }
     setIsLoading(false)

@@ -90,7 +90,7 @@ class TestPlanPermission(BaseProjectPermission):
         plan_ids = [plan.get('plan') for plan in request.data.get('plans', [])]
         if dst_plan_id := request.data.get('dst_plan'):
             plan_ids.append(dst_plan_id)
-        plans = TestPlanSelector.plan_list_by_ids(plan_ids)
+        plans = TestPlanSelector.plans_by_ids(plan_ids)
         return all(self.has_object_permission(request, view, plan) for plan in plans)
 
 

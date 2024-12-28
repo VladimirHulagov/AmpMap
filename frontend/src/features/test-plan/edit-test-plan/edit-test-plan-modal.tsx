@@ -1,7 +1,10 @@
-import { Button, Col, Form, Modal, Row, Tree, Typography } from "antd"
+import { Button, Col, Flex, Form, Modal, Row, Tree, Typography } from "antd"
 import { Controller } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 
-import { ErrorObj } from "shared/hooks/use-alert-error"
+import { useLazyGetTestPlanAncestorsQuery, useLazyGetTestPlansQuery } from "entities/test-plan/api"
+
+import { ErrorObj } from "shared/hooks"
 import { TreeUtils } from "shared/libs"
 import {
   AlertError,
@@ -9,22 +12,23 @@ import {
   ContainerLoader,
   DateFormItem,
   InputFormItem,
-  SearchFormItemOld,
-  TextAreaFormItem,
+  TextAreaWithAttach,
 } from "shared/ui"
+import { LazyTreeSearchFormItem } from "shared/ui/form-items"
 
 import { TestCaseLabels } from "../test-case-labels/test-case-labels"
 import { useTestCasesFilter } from "../test-cases-filter/use-test-cases-filter"
 import styles from "./styles.module.css"
-import { useTestPlanEditModal } from "./use-test-plan-edit-modal"
+import { UseTestPlanEditModalProps, useTestPlanEditModal } from "./use-test-plan-edit-modal"
 
-interface TestPlanEditModalProps {
-  isShow: boolean
-  setIsShow: (isShow: boolean) => void
-  testPlan: TestPlan
-}
-
-export const EditTestPlanModal = ({ isShow, setIsShow, testPlan }: TestPlanEditModalProps) => {
+// TODO looks like CreateTestPlanModal. Need refactoring
+export const EditTestPlanModal = ({
+  isShow,
+  setIsShow,
+  testPlan,
+  onSubmit,
+}: UseTestPlanEditModalProps) => {
+  const { t } = useTranslation()
   const {
     errors,
     formErrors,
@@ -36,9 +40,6 @@ export const EditTestPlanModal = ({ isShow, setIsShow, testPlan }: TestPlanEditM
     isDirty,
     isLoadingUpdate,
     isLoadingSearch,
-    isLoadingTestPlans,
-    isLastPage,
-    dataTestPlans,
     handleClose,
     handleRowExpand,
     handleSearch,
@@ -48,9 +49,6 @@ export const EditTestPlanModal = ({ isShow, setIsShow, testPlan }: TestPlanEditM
     disabledDateFrom,
     disabledDateTo,
     handleTestCaseChange,
-    handleClearTestPlan,
-    handleLoadNextPageData,
-    handleSearchTestPlan,
     handleSelectTestPlan,
     selectedLables,
     labelProps,
@@ -58,7 +56,13 @@ export const EditTestPlanModal = ({ isShow, setIsShow, testPlan }: TestPlanEditM
     handleConditionClick,
     showArchived,
     handleToggleArchived,
-  } = useTestPlanEditModal({ isShow, setIsShow, testPlan })
+    attachments,
+    onLoad,
+    setValue,
+    setAttachments,
+  } = useTestPlanEditModal({ isShow, setIsShow, testPlan, onSubmit })
+  const [getPlans] = useLazyGetTestPlansQuery()
+  const [getAncestors] = useLazyGetTestPlanAncestorsQuery()
 
   const { FilterButton, FilterForm } = useTestCasesFilter({
     labelProps,
@@ -75,13 +79,13 @@ export const EditTestPlanModal = ({ isShow, setIsShow, testPlan }: TestPlanEditM
     <Modal
       className="test-plan-edit-modal"
       open={isShow}
-      title={`Edit Test Plan '${testPlan.name}'`}
+      title={`${t("Edit")} ${t("Test Plan")} '${testPlan.name}'`}
       onCancel={handleClose}
       width="1100px"
       centered
       footer={[
         <Button id="close-test-plan-edit" key="back" onClick={handleClose}>
-          Close
+          {t("Close")}
         </Button>,
         <Button
           id="update-test-plan-edit"
@@ -91,7 +95,7 @@ export const EditTestPlanModal = ({ isShow, setIsShow, testPlan }: TestPlanEditM
           loading={isLoadingUpdate}
           disabled={!isDirty}
         >
-          Update
+          {t("Update")}
         </Button>,
       ]}
     >
@@ -108,6 +112,7 @@ export const EditTestPlanModal = ({ isShow, setIsShow, testPlan }: TestPlanEditM
               id="edit-test-plan-name"
               control={control}
               name="name"
+              label={t("Name")}
               maxLength={100}
               required
               formErrors={formErrors}
@@ -117,59 +122,75 @@ export const EditTestPlanModal = ({ isShow, setIsShow, testPlan }: TestPlanEditM
               <DateFormItem
                 id="edit-test-plan-start-date"
                 control={control}
-                label="Start date"
+                label={t("Start date")}
                 name="started_at"
                 setDate={setDateFrom}
                 disabledDate={disabledDateFrom}
                 formStyles={{ width: "100%" }}
                 formErrors={formErrors}
                 externalErrors={errors}
+                required
               />
               <span>-</span>
               <DateFormItem
                 id="edit-test-plan-start-date"
                 control={control}
-                label="Due date"
+                label={t("Due date")}
                 name="due_date"
                 setDate={setDateTo}
                 disabledDate={disabledDateTo}
                 formStyles={{ width: "100%" }}
                 formErrors={formErrors}
                 externalErrors={errors}
+                required
               />
             </div>
-            <SearchFormItemOld
+            <LazyTreeSearchFormItem
               id="edit-test-plan-parent"
+              control={control}
               name="parent"
-              placeholder="Search a test plan"
-              valueKey="title"
-              control={control}
+              label={t("Parent plan")}
+              placeholder={t("Search a test plan")}
               formErrors={formErrors}
               externalErrors={errors}
-              options={{
-                selectedParent,
-                isLastPage,
-                isLoading: isLoadingTestPlans,
-                data: dataTestPlans,
-                onClear: handleClearTestPlan,
-                onSearch: handleSearchTestPlan,
-                onChange: handleSelectTestPlan,
-                onLoadNextPageData: handleLoadNextPageData,
+              // @ts-ignore
+              getData={getPlans}
+              // @ts-ignore
+              getAncestors={getAncestors}
+              rules={{
+                validate: (value) =>
+                  value !== testPlan.id || t("Test Plan cannot be its own parent."),
               }}
+              skipInit={!isShow}
+              selected={selectedParent}
+              onSelect={handleSelectTestPlan}
             />
-            <TextAreaFormItem
-              id="edit-test-plan-desc"
-              control={control}
-              name="description"
-              formErrors={formErrors}
-              externalErrors={errors}
-            />
+            <Form.Item
+              label={t("Description")}
+              validateStatus={errors?.description ? "error" : ""}
+              help={errors?.description ? errors.description : ""}
+            >
+              <Controller
+                name="description"
+                control={control}
+                render={({ field }) => (
+                  <TextAreaWithAttach
+                    uploadId="edit-test-plan-desc"
+                    textAreaId="edit-test-plan-desc-textarea"
+                    fieldProps={field}
+                    stateAttachments={{ attachments, setAttachments }}
+                    customRequest={onLoad}
+                    setValue={setValue}
+                  />
+                )}
+              />
+            </Form.Item>
           </Col>
           <Col span={12}>
             <Form.Item
               label={
                 <div style={{ display: "flex" }}>
-                  <Typography.Paragraph>Test Cases</Typography.Paragraph>
+                  <Typography.Paragraph>{t("Test Cases")}</Typography.Paragraph>
                   {FilterButton}
                 </div>
               }
@@ -189,23 +210,23 @@ export const EditTestPlanModal = ({ isShow, setIsShow, testPlan }: TestPlanEditM
                         <>
                           <Tree
                             {...field}
-                            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                             // @ts-ignore
-                            titleRender={(node: TestPlanTreeView) => (
+                            titleRender={(node: TestPlan) => (
                               <>
-                                {node.is_archive && <ArchivedTag />}
-                                {node.title}
+                                <Flex gap={6} align="center">
+                                  {node.is_archive && <ArchivedTag size="sm" />}
+                                  {node.title}
+                                </Flex>
                                 {node?.labels ? <TestCaseLabels labels={node.labels} /> : null}
                               </>
                             )}
                             height={200}
                             virtual={false}
-                            showIcon={true}
-                            checkable={true}
+                            showIcon
+                            checkable
                             selectable={false}
-                            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                             // @ts-ignore
-                            treeData={TreeUtils.deleteChildren<TestPlanTreeView | Suite>(treeData)}
+                            treeData={TreeUtils.deleteChildren<TestPlan | Suite>(treeData)}
                             checkedKeys={field.value}
                             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
                             //@ts-ignore
@@ -214,9 +235,10 @@ export const EditTestPlanModal = ({ isShow, setIsShow, testPlan }: TestPlanEditM
                             onExpand={(_, record) => {
                               handleRowExpand(expandedRowKeys, String(record.node.key))
                             }}
+                            className={styles.treeBlock}
                           />
                           <span style={{ opacity: 0.7, marginTop: 4 }}>
-                            Selected: {onlyTestCases.length} test cases
+                            {t("Selected")}: {onlyTestCases.length} {t("Test Cases").toLowerCase()}
                           </span>
                         </>
                       )}

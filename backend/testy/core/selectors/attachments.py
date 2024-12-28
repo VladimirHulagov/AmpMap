@@ -28,40 +28,40 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from typing import List
+from typing import Iterable, List, TypeVar
 
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Model, QuerySet
 
 from testy.core.models import Attachment
 
+_MT = TypeVar('_MT', bound=Model)
+
 
 class AttachmentSelector:
-    def attachment_list(self) -> QuerySet[Attachment]:
+    @classmethod
+    def attachment_list(cls) -> QuerySet[Attachment]:
         return Attachment.objects.all()
 
     @classmethod
-    def attachment_list_by_parent_object(cls, parent_model, object_id) -> QuerySet[Attachment]:
+    def attachment_list_by_parent_object(cls, model: type[Model], object_id: int) -> QuerySet[Attachment]:
         return Attachment.objects.filter(
-            content_type=ContentType.objects.get_for_model(parent_model).id,
+            content_type=ContentType.objects.get_for_model(model).id,
             object_id=object_id,
         )
 
     @classmethod
-    def attachment_list_from_object_with_excluding(cls, parent_model, exclude_ids: list[int]):
-        return parent_model.attachments.exclude(pk__in=exclude_ids)
+    def attachment_list_from_object_with_excluding(
+        cls,
+        model: type[Model],
+        exclude_ids: list[int],
+    ) -> QuerySet[Attachment]:
+        return model.attachments.exclude(pk__in=exclude_ids)
 
     @classmethod
-    def attachment_by_ids_list(cls, ids: List[int], model: type[Model]) -> QuerySet[Attachment]:
+    def attachment_list_by_ids(cls, ids: Iterable[int], model: type[Model]) -> QuerySet[Attachment]:
         content_type = ContentType.objects.get_for_model(model)
         return Attachment.objects.filter(content_type=content_type, object_id__in=ids)
-
-    @classmethod
-    def attachments_get_deleted_objects(cls, parent_model: type[Model], object_id: int) -> QuerySet[Attachment]:
-        return Attachment.deleted_objects.filter(
-            content_type=ContentType.objects.get_for_model(parent_model).id,
-            object_id=object_id,
-        )
 
     @classmethod
     def attachment_list_by_parent_object_and_history_ids(  # noqa: WPS118

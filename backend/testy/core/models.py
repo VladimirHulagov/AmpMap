@@ -33,6 +33,7 @@ from functools import partial
 from pathlib import Path
 from typing import Any
 
+import pgtrigger
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -47,7 +48,8 @@ from simple_history.models import HistoricalRecords
 
 from testy.core.choices import AccessRequestStatus, ActionCode, CustomFieldType, LabelTypes, SystemMessageLevel
 from testy.core.constraints import unique_soft_delete_constraint
-from testy.root.models import BaseModel
+from testy.raw_sql import DELETE_LABELED_ITEM_TRIGGER, INSERT_LABELED_ITEM_TRIGGER
+from testy.root.models import BaseModel, DeletedManager, SoftDeleteManager, SoftDeleteMixin
 from testy.users.models import Membership, User
 from testy.utils import get_media_file_path
 from testy.validators import ExtensionValidator, ProjectValidator
@@ -56,6 +58,8 @@ UserModel = get_user_model()
 
 _NAME = 'name'
 _PROJECT = 'project'
+_CONTENT_TYPE = 'content_type'
+_OBJECT_ID = 'object_id'
 
 
 class Project(BaseModel):
@@ -80,12 +84,41 @@ class Project(BaseModel):
         ordering = (_NAME,)
         verbose_name = gettext_lazy(_PROJECT)
         verbose_name_plural = gettext_lazy('projects')
+        triggers = [
+            pgtrigger.Trigger(
+                name='insert_statistics_on_project_create',
+                operation=pgtrigger.Insert,
+                when=pgtrigger.Before,
+                func="""
+                INSERT INTO core_projectstatistics
+                (project_id, cases_count, suites_count, tests_count, plans_count, is_deleted)
+                VALUES (NEW.id, 0, 0, 0, 0, FALSE);
+                RETURN NEW;
+                """,
+            ),
+            pgtrigger.Trigger(
+                name='delete_statistics_on_project_delete',
+                operation=pgtrigger.Delete,
+                when=pgtrigger.Before,
+                func='DELETE FROM core_projectstatistics WHERE project_id = OLD.id; RETURN OLD;',
+            ),
+        ]
 
     class ModelHierarchyWeightMeta:  # noqa: WPS431
         weight = 10
 
     def __str__(self) -> str:
         return self.name
+
+
+class ProjectStatistics(SoftDeleteMixin):
+    cases_count = models.IntegerField(default=0)
+    suites_count = models.IntegerField(default=0)
+    tests_count = models.IntegerField(default=0)
+    plans_count = models.IntegerField(default=0)
+    project = models.OneToOneField(Project, on_delete=models.CASCADE)
+    objects = SoftDeleteManager()
+    deleted_objects = DeletedManager()
 
 
 class Attachment(BaseModel):
@@ -109,7 +142,7 @@ class Attachment(BaseModel):
     object_id = models.PositiveIntegerField(null=True, blank=True)
     comment = models.TextField(blank=True)
     # Instance of parent object
-    content_object = GenericForeignKey('content_type', 'object_id')
+    content_object = GenericForeignKey(_CONTENT_TYPE, _OBJECT_ID)
     user = models.ForeignKey(UserModel, null=True, on_delete=models.SET_NULL)
     file = models.FileField(
         max_length=settings.FILEPATH_MAX_LEN,
@@ -169,6 +202,23 @@ class Label(BaseModel):
             )
 
 
+class LabelIds(SoftDeleteMixin):
+    ids = ArrayField(models.BigIntegerField(), blank=True, default=list)
+    content_type = models.ForeignKey(
+        ContentType,
+        on_delete=models.CASCADE,
+    )
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey(_CONTENT_TYPE, _OBJECT_ID)
+    objects = SoftDeleteManager()
+    deleted_objects = DeletedManager()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=[_CONTENT_TYPE, _OBJECT_ID], name='label_ids_unique_constraint'),
+        ]
+
+
 class LabeledItem(BaseModel):
     label = models.ForeignKey(Label, on_delete=models.CASCADE)
     content_type = models.ForeignKey(
@@ -177,9 +227,26 @@ class LabeledItem(BaseModel):
         validators=[ProjectValidator()],
     )
     object_id = models.PositiveIntegerField()
-    content_object = GenericForeignKey('content_type', 'object_id')
+    content_object = GenericForeignKey(_CONTENT_TYPE, _OBJECT_ID)
     content_object_history_id = models.IntegerField(null=True, blank=True)
     history = HistoricalRecords()
+
+    class Meta:
+        triggers = [
+            pgtrigger.Trigger(
+                name='labeleditem_insert_trigger',
+                when=pgtrigger.Before,
+                operation=pgtrigger.Insert,
+                func=INSERT_LABELED_ITEM_TRIGGER,
+            ),
+            pgtrigger.Trigger(
+                name='labeleditem_soft_delete_trigger',
+                when=pgtrigger.After,
+                operation=pgtrigger.Update,
+                condition=pgtrigger.Q(old__is_deleted=False, new__is_deleted=True),
+                func=DELETE_LABELED_ITEM_TRIGGER,
+            ),
+        ]
 
 
 class SystemMessage(BaseModel):

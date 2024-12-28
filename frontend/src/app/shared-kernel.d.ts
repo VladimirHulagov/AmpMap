@@ -46,22 +46,32 @@ interface InfoNode {
 
 interface PaginationResponse<T> {
   count: number
-  links: {
-    next: null | number
-    previous: null | number
-  }
-  pages: {
-    current: number
-    total: number
-    next: null | number
-    previous: null | number
-  }
+  links: PaginationResponseLinks
+  pages: PaginationResponsePages
   results: T
+}
+
+interface PaginationResponseLinks {
+  next: null | number
+  previous: null | number
+}
+
+interface PaginationResponsePages {
+  current: number
+  total: number
+  next: null | number
+  previous: null | number
+}
+
+interface PaginationParams {
+  page: number
+  page_size: number
 }
 
 interface PaginationQuery {
   page_size?: number
   page?: number
+  _n?: string | number
 }
 
 type QueryWithPagination<T> = PaginationQuery & T
@@ -83,7 +93,7 @@ interface BaseData {
   children?: T[]
 }
 interface SelectData {
-  label: React.ReactNode
+  label: React.ReactNode | string
   value: number
 }
 // eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
@@ -115,4 +125,14 @@ interface AppState {
 interface ErrorState {
   code: number
   message: string
+}
+
+interface ColumnParam {
+  key: string
+  title: string
+}
+
+interface BaseEntity {
+  id: number
+  parent: Parent | null
 }

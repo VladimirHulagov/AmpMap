@@ -3,6 +3,7 @@ import { Button, Modal, Space, Table, TableProps, notification } from "antd"
 import { ColumnsType } from "antd/es/table"
 import type { FilterValue, TablePaginationConfig } from "antd/es/table/interface"
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 import { useDispatch } from "react-redux"
 import { useParams } from "react-router-dom"
 
@@ -13,9 +14,10 @@ import { useTableSearch } from "shared/hooks"
 import { initInternalError } from "shared/libs"
 
 export const ParametersTable = () => {
+  const { t } = useTranslation()
   const dispatch = useDispatch()
   const { projectId } = useParams<ParamProjectId>()
-  const { data: parameters, isLoading } = useGetParametersQuery(Number(projectId), {
+  const { data: parameters, isFetching } = useGetParametersQuery(Number(projectId), {
     skip: !projectId,
   })
   const [deleteParameter] = useDeleteParameterMutation()
@@ -42,7 +44,7 @@ export const ParametersTable = () => {
 
   const columns: ColumnsType<IParameter> = [
     {
-      title: "Name",
+      title: t("Name"),
       dataIndex: "data",
       key: "data",
       filteredValue: filteredInfo.data ?? null,
@@ -50,7 +52,7 @@ export const ParametersTable = () => {
       onFilter: (value, record) => record.data.toLowerCase().includes(String(value).toLowerCase()),
     },
     {
-      title: "Group",
+      title: t("Group"),
       dataIndex: "group_name",
       key: "group_name",
       filteredValue: filteredInfo.group_name ?? null,
@@ -59,7 +61,7 @@ export const ParametersTable = () => {
         record.group_name.toLowerCase().includes(String(value).toLowerCase()),
     },
     {
-      title: "Action",
+      title: t("Action"),
       key: "action",
       width: 100,
       render: (_, record) => (
@@ -77,15 +79,16 @@ export const ParametersTable = () => {
             danger
             onClick={() => {
               Modal.confirm({
-                title: "Do you want to delete these parameter?",
-                okText: "Delete",
-                cancelText: "Cancel",
+                title: t("Do you want to delete these parameter?"),
+                okText: t("Delete"),
+                cancelText: t("Cancel"),
                 onOk: async () => {
                   try {
                     await deleteParameter(record.id).unwrap()
                     notification.success({
-                      message: "Success",
-                      description: "Parameter deleted successfully",
+                      message: t("Success"),
+                      closable: true,
+                      description: t("Parameter deleted successfully"),
                     })
                   } catch (err: unknown) {
                     initInternalError(err)
@@ -103,11 +106,11 @@ export const ParametersTable = () => {
     <>
       <Space style={{ marginBottom: 16, display: "flex", justifyContent: "right" }}>
         <Button id="clear-filters-and-sorters" onClick={clearAll}>
-          Clear filters and sorters
+          {t("Clear filters and sorters")}
         </Button>
       </Space>
       <Table
-        loading={isLoading}
+        loading={isFetching}
         dataSource={parameters}
         columns={columns}
         rowKey="data"

@@ -33,12 +33,12 @@ from functools import partial
 from typing import Any
 
 import pytimeparse
-from core.selectors.custom_attribute import CustomAttributeSelector
-from core.validators import BaseCustomAttributeValuesValidator
 from django.core.exceptions import ValidationError
 from django.utils.deconstruct import deconstructible
 from rest_framework import serializers
 
+from testy.core.selectors.custom_attribute import CustomAttributeSelector
+from testy.core.validators import BaseCustomAttributeValuesValidator
 from testy.tests_description.models import TestCase
 
 

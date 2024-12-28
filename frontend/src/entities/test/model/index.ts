@@ -1,3 +1,3 @@
 export * from "./slice"
+export * from "./filter-slice"
 export * from "./use-test-detail"
-export * from "./use-tests-table-params"

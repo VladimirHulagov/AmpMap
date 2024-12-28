@@ -4,7 +4,7 @@ import { baseQueryWithLogout } from "app/apiSlice"
 
 import { providesList } from "shared/libs"
 
-const rootPath = "v1/notifications"
+const rootPath = "notifications"
 
 export const notificationApi = createApi({
   reducerPath: "notificationApi",

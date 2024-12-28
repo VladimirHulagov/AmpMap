@@ -1,62 +1,61 @@
 interface TestPlanState {
-  showArchivedTests: boolean
   showArchivedResults: boolean
   tests: Test[]
 }
 
-interface TestPlanQuery {
-  projectId: string | undefined
+interface TestPlansQuery {
+  project: number
   is_archive?: boolean
-  parent?: string
-  search?: string
+  plan?: number[]
+  suite?: number[]
+  treesearch?: string
   ordering?: string
-  is_flat?: boolean
+  assignee?: string[]
+  parent?: number | null
+  labels?: number[]
+  not_labels?: number[]
+  labels_condition?: string
+  last_status?: string[]
+  test_plan_started_after?: string
+  test_plan_started_before?: string
+  test_plan_created_after?: string
+  test_plan_created_before?: string
+  test_created_after?: string
+  test_created_before?: string
+}
+
+type TestPlansUnionQuery = Omit<TestPlansQuery, "treesearch"> & { search?: string }
+
+interface TestPlanQuery extends TestPlansQuery {
+  testPlanId: string
 }
 
 interface TestPlan {
   id: Id
   name: string
+  title: string
   description: string
+  project: number
   parent: Parent | null
   parameters: number[]
   started_at: string
   due_date: string
   finished_at: string | null
   is_archive: boolean
-  project: number
-  child_count: number
   url: string
-  title: string
-  description: string
-  breadcrumbs: Breadcrumbs
-}
-
-interface TestPlanTreeView {
-  id: Id
-  title: string
-  name: string
-  description: string
-  is_archive: boolean
-  level: number
-  children: TestPlanTreeView[]
-  parent: number | null
-  project: number
-  started_at: string
-  due_date: string
-  finished_at: string | null
-  test_cases?: TestPlanTestCase[]
+  is_leaf: boolean
+  has_children: boolean
   labels?: string[]
-}
-
-interface TestPlanQueryParams {
-  testPlanId: string
-  is_archive?: boolean
+  plan_path: string
+  started_at: string | null
+  created_at: string
 }
 
 interface TestPlanUpdate {
   name: string
   description: string
   parent: number | null
+  attachments: number[]
   test_cases: string[]
   started_at: string
   due_date: string
@@ -65,6 +64,7 @@ interface TestPlanUpdate {
 interface TestPlanCreate extends TestPlan {
   description: string
   test_cases: string[]
+  attachments: number[]
   parent: number | null
   started_at: Dayjs
   due_date: Dayjs
@@ -86,9 +86,10 @@ interface TestPlanParents {
 }
 
 interface TestPlanStatisticsParams {
-  testPlanId: string
-  labels?: string[]
-  not_labels?: string[]
+  parent: number | null
+  project: number
+  labels?: number[]
+  not_labels?: number[]
   labels_condition?: string
   estimate_period?: EstimatePeriod
   is_archive?: boolean
@@ -107,7 +108,7 @@ interface BreadCrumbsActivityResult {
 
 interface TestPlanActivityResult {
   id: number
-  action: "added" | "deleted" | "updated" | "unknown"
+  action: TestPlanActivityAction
   action_timestamp: string
   breadcrumbs: BreadCrumbsActivityResult
   status_text: string
@@ -119,6 +120,8 @@ interface TestPlanActivityResult {
   avatar_link: string | null
 }
 
+type TestPlanActivityAction = "added" | "deleted" | "updated" | "unknown"
+
 interface TestPlanActivityParams {
   testPlanId: string
   page_size?: number
@@ -128,9 +131,14 @@ interface TestPlanActivityParams {
 
 interface TestPlanSuite {
   id: Id
-  title: string
-  is_used: boolean
+  name: string
   children: TestPlanSuite[]
+}
+
+interface TestPlanDescendantsTree {
+  id: Id
+  title: string
+  children: TestPlanDescendantsTree[]
 }
 
 interface TestPlanCasesParams {
@@ -139,12 +147,13 @@ interface TestPlanCasesParams {
 }
 
 interface TestPlanHistogramParams {
-  testPlanId: string
+  project: number
+  parent: number | null
   start_date?: string
   end_date?: string
   attribute?: string
-  labels?: string[]
-  not_labels?: string[]
+  labels?: number[]
+  not_labels?: number[]
   labels_condition?: string
   is_archive?: boolean
 }
@@ -170,4 +179,15 @@ interface TestPlanCopyBody {
   plans: TestPlanCopyItem[]
   dst_plan?: number
   keep_assignee?: boolean
+}
+
+interface GetAncestors {
+  id: number
+  project: number
+  _n?: string | number
+}
+
+interface GetTestPlanLabelsParams {
+  project: number
+  parent: number | string | null
 }

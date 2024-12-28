@@ -1,21 +1,23 @@
 import { Modal, notification } from "antd"
-import { useEffect, useState } from "react"
+import { useContext, useEffect, useState } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 import { useNavigate, useParams, useSearchParams } from "react-router-dom"
-
-import { useAppDispatch, useAppSelector } from "app/hooks"
 
 import { useAttachments } from "entities/attachment/model"
 
 import { useTestCaseFormLabels } from "entities/label/model"
 
-import { useGetTestCaseByIdQuery, useUpdateTestCaseMutation } from "entities/test-case/api"
-import { selectEditingTestCase, setEditingTestCase, useAttributes } from "entities/test-case/model"
+import { useGetTestSuitesQuery } from "entities/suite/api"
 
-import { useConfirmBeforeRedirect, useErrors, useIsDirtyWithArrayField } from "shared/hooks"
-import { makeAttributesJson, showModalCloseConfirm } from "shared/libs"
-import { getPrevPageSearch } from "shared/libs/session-storage"
-import { AlertSuccessChange } from "shared/ui/alert-success-change"
+import { useGetTestCaseByIdQuery, useUpdateTestCaseMutation } from "entities/test-case/api"
+import { useAttributesTestCase } from "entities/test-case/model"
+
+import { ProjectContext } from "pages/project"
+
+import { useConfirmBeforeRedirect, useErrors, useShowModalCloseConfirm } from "shared/hooks"
+import { getPrevPageSearch, makeAttributesJson } from "shared/libs"
+import { AlertSuccessChange } from "shared/ui"
 
 interface SubmitData extends Omit<TestCaseFormData, "steps"> {
   steps?: StepAttachNumber[]
@@ -47,18 +49,32 @@ interface SortingStep {
 
 type TabType = "general" | "attachments"
 
+const sortingSteps = (steps: SortingStep[]) => {
+  const sortList = steps.sort((a: SortingStep, b: SortingStep) => a.sort_order - b.sort_order)
+
+  return sortList.map((step, index) => ({
+    ...step,
+    sort_order: index + 1,
+  }))
+}
+
 export const useTestCaseEditView = () => {
+  const { t } = useTranslation()
+  const { project } = useContext(ProjectContext)!
+  const { showModal } = useShowModalCloseConfirm()
   const navigate = useNavigate()
-  const dispatch = useAppDispatch()
-  const { projectId, testSuiteId } = useParams<ParamProjectId & ParamTestSuiteId>()
+  const { testSuiteId } = useParams<ParamTestSuiteId>()
   const [searchParams, setSearchParams] = useSearchParams()
   const testCaseId = searchParams.get("test_case")
 
-  const testCase = useAppSelector(selectEditingTestCase)
-
-  const [isSteps, setIsSteps] = useState(false)
-  const [steps, setSteps] = useState<Step[]>([])
   const [tab, setTab] = useState<TabType>("general")
+
+  const { data: testCase, isLoading: isLoadingTestCase } = useGetTestCaseByIdQuery(
+    { testCaseId: String(testCaseId) },
+    {
+      skip: !testCaseId,
+    }
+  )
 
   const [errors, setErrors] = useState<ErrorData | null>(null)
   const {
@@ -69,25 +85,30 @@ export const useTestCaseEditView = () => {
     register,
     setError: setFormError,
     clearErrors,
-    formState: { dirtyFields, errors: formErrors },
+    formState: { isDirty, errors: formErrors },
+    watch,
   } = useForm<TestCaseFormData>({
     defaultValues: {
-      name: testCase?.name ?? "",
+      name: "",
+      description: "",
       setup: "",
-      estimate: "",
       scenario: "",
       expected: "",
       teardown: "",
-      description: "",
-      steps: [],
+      estimate: null,
       is_steps: false,
       labels: [],
+      suite: undefined,
+      attributes: [],
       attachments: [],
-      suite: Number(testSuiteId),
+      steps: [],
     },
   })
 
-  const [selectedSuiteName, setSelectedSuiteName] = useState<string>("")
+  const isSteps = watch("is_steps")
+  const steps = watch("steps")
+
+  const [selectedSuite, setSelectedSuite] = useState<SelectData | null>(null)
   const [updateTestCase, { isLoading }] = useUpdateTestCaseMutation()
   const { onHandleError } = useErrors<ErrorData>(setErrors)
   const {
@@ -99,50 +120,38 @@ export const useTestCaseEditView = () => {
     onLoad,
     onChange,
     onReset,
-  } = useAttachments<TestCaseFormData>(control, projectId)
-
-  const isDirty = useIsDirtyWithArrayField<IAttachmentWithUid>(
-    Object.keys(dirtyFields),
-    "attachments",
-    attachments
-  )
+  } = useAttachments<TestCaseFormData>(control, project.id)
 
   const {
     attributes,
+    isLoading: isLoadingAttributesTestCase,
     setAttributes,
     addAttribute,
+    onAttributeChangeName,
     onAttributeChangeType,
     onAttributeChangeValue,
-    onAttributeChangeName,
     onAttributeRemove,
-    loadAttributeJson,
-    isLoading: isLoadingAttributesTestCase,
-  } = useAttributes({ mode: "edit", setValue })
+    getAttributeJson,
+  } = useAttributesTestCase({ mode: "edit", setValue })
 
   const labelProps = useTestCaseFormLabels({
     setValue,
-    testCase,
+    testCase: testCase ?? null,
     isShow: true,
     isEditMode: true,
     defaultLabels: testCase?.labels.map((l) => Number(l.id)) ?? [],
   })
 
-  const { data: dataTestCase, isLoading: isLoadingGetTestCase } = useGetTestCaseByIdQuery(
-    { testCaseId: String(testCaseId) },
-    {
-      skip: !testCaseId || !!testCase,
-    }
-  )
+  const { data: suites, isLoading: isLoadingSuites } = useGetTestSuitesQuery({
+    project: project.id,
+  })
 
   useEffect(() => {
-    if (dataTestCase?.suite_name) {
-      setSelectedSuiteName(dataTestCase.suite_name)
+    if (testCase?.suite) {
+      setSelectedSuite({ label: testCase.suite.name, value: testCase.suite.id })
       return
     }
-    if (testCase?.suite_name) {
-      setSelectedSuiteName(testCase.suite_name)
-    }
-  }, [dataTestCase, testCase])
+  }, [testCase])
 
   const { setIsRedirectByUser } = useConfirmBeforeRedirect({
     isDirty,
@@ -153,7 +162,6 @@ export const useTestCaseEditView = () => {
     setIsRedirectByUser()
     redirectToTestCase()
     setErrors(null)
-    setSteps([])
     setTab("general")
     reset()
     onReset()
@@ -185,22 +193,13 @@ export const useTestCaseEditView = () => {
     }),
   })
 
-  const sortingSteps = (steps: SortingStep[]) => {
-    const sortList = steps.sort((a: SortingStep, b: SortingStep) => a.sort_order - b.sort_order)
-
-    return sortList.map((step, index) => ({
-      ...step,
-      sort_order: index + 1,
-    }))
-  }
-
   const confirmSwitchSuite = () => {
     return new Promise((resolve) => {
       Modal.confirm({
-        title: "Do you want to change suite?",
-        content: "Please confirm to change suite.",
-        okText: "Ok",
-        cancelText: "Cancel",
+        title: t("Do you want to change suite?"),
+        content: t("Please confirm to change suite."),
+        okText: t("Ok"),
+        cancelText: t("Cancel"),
         onOk: () => resolve(true),
         onCancel: () => resolve(false),
       })
@@ -212,12 +211,12 @@ export const useTestCaseEditView = () => {
     const dataForm = data as SubmitData
 
     if (data.is_steps && !data.steps?.length) {
-      setFormError("steps", { type: "required", message: "Обязательное поле." })
+      setFormError("steps", { type: "required", message: t("Required field") })
       return
     }
 
     if (!data.is_steps && !data.scenario?.length) {
-      setFormError("scenario", { type: "required", message: "Обязательное поле." })
+      setFormError("scenario", { type: "required", message: t("Required field") })
       return
     }
 
@@ -258,18 +257,19 @@ export const useTestCaseEditView = () => {
       })
       handleCloseModal()
       notification.success({
-        message: "Success",
+        message: t("Success"),
+        closable: true,
         description: (
           <AlertSuccessChange
             id={String(newTestCase.id)}
             action="updated"
-            title="Test Case"
-            link={`/projects/${projectId}/suites/${testSuiteId}?test_case=${newTestCase.id}`}
+            title={t("Test Case")}
+            link={`/projects/${project.id}/suites/${testSuiteId}?test_case=${newTestCase.id}`}
           />
         ),
       })
       if (dataForm.suite !== Number(testSuiteId)) {
-        navigate(`/projects/${projectId}/suites/${dataForm.suite}`)
+        navigate(`/projects/${project.id}/suites/${dataForm.suite}?test_case=${newTestCase.id}`)
       }
     } catch (err: unknown) {
       onHandleError(err)
@@ -288,7 +288,7 @@ export const useTestCaseEditView = () => {
     if (isLoading) return
 
     if (isDirty) {
-      showModalCloseConfirm(handleCloseModal)
+      showModal(handleCloseModal)
       return
     }
 
@@ -297,34 +297,25 @@ export const useTestCaseEditView = () => {
 
   const redirectToTestCase = () => {
     const prevSearchKey = searchParams.get("prevSearch")
+    const url = `/projects/${project.id}/suites/${testSuiteId}?test_case=${testCase?.id ?? ""}`
+
     if (!prevSearchKey) {
-      navigate(`/projects/${projectId}/suites/${testSuiteId}?test_case=${testCase?.id ?? ""}`)
+      navigate(url)
       return
     }
 
     const prevSearchResult = getPrevPageSearch(prevSearchKey)
-    navigate(
-      `/projects/${projectId}/suites/${testSuiteId}?${
-        prevSearchResult ?? `test_case=${testCase?.id ?? ""}`
-      }`
-    )
+    navigate(`${url}&${prevSearchResult}`)
+  }
+
+  const handleSelectSuite = (selectedData: SelectData) => {
+    setValue("suite", selectedData.value, { shouldDirty: true })
+    setSelectedSuite(selectedData)
   }
 
   useEffect(() => {
-    if (!testCase && !dataTestCase && !isLoadingGetTestCase) {
-      redirectToTestCase()
-      return
-    }
+    if (!testCase || isLoadingAttributesTestCase) return
 
-    if (dataTestCase) {
-      dispatch(setEditingTestCase(dataTestCase))
-    }
-  }, [testCase, dataTestCase, isLoadingGetTestCase])
-
-  useEffect(() => {
-    if (!testCase || isLoadingAttributesTestCase || isLoadingGetTestCase) return
-
-    setValue("name", "")
     const testCaseAttachesWithUid = testCase.attachments.map((attach) => ({
       ...attach,
       uid: String(attach.id),
@@ -333,39 +324,55 @@ export const useTestCaseEditView = () => {
     if (testCaseAttachesWithUid.length) {
       setAttachments(testCaseAttachesWithUid)
     }
-    setSteps(stepsSorted)
-    setValue("name", testCase.name)
-    setValue("description", testCase.description)
-    setValue("setup", testCase.setup)
-    setValue("scenario", !testCase.steps.length ? testCase.scenario ?? "" : "")
-    setValue("expected", testCase.expected ?? "")
-    setValue("teardown", testCase.teardown)
-    setValue("estimate", testCase.estimate)
-    setValue("steps", stepsSorted)
-    setValue("is_steps", Boolean(testCase.steps.length))
-    setValue("labels", testCase.labels)
-    setValue("suite", Number(testCase.suite))
 
-    loadAttributeJson(testCase.attributes)
-  }, [testCase, isLoadingAttributesTestCase, isLoadingGetTestCase])
+    const attrs = getAttributeJson(testCase.attributes)
+    setAttributes(attrs)
 
-  const title = `Edit Test Case '${testCase?.name}'`
+    reset(
+      {
+        name: testCase.name,
+        description: testCase.description,
+        setup: testCase.setup,
+        scenario: testCase.scenario ?? "",
+        expected: testCase.expected ?? "",
+        teardown: testCase.teardown,
+        estimate: testCase.estimate,
+        steps: stepsSorted,
+        is_steps: testCase.is_steps,
+        labels: testCase.labels,
+        suite: Number(testCase.suite.id),
+        attributes: attrs,
+        attachments: testCaseAttachesWithUid.map((attach) => attach.id),
+      },
+      {
+        keepDirty: false,
+      }
+    )
+  }, [testCase, isLoadingAttributesTestCase])
+
+  const shouldShowSuiteSelect = !isLoadingSuites
+  const title = `${t("Edit Test Case")} '${testCase?.name}'`
 
   return {
     title,
     isLoading:
-      isLoading || isLoadingAttachments || isLoadingGetTestCase || isLoadingAttributesTestCase,
+      isLoading ||
+      isLoadingTestCase ||
+      isLoadingAttachments ||
+      isLoadingAttributesTestCase ||
+      isLoadingSuites,
     errors,
     formErrors,
     control,
     attachments,
     attachmentsIds,
-    steps,
     isSteps,
     isDirty,
     tab,
-    setIsSteps,
-    setSteps,
+    selectedSuite,
+    shouldShowSuiteSelect,
+    suites,
+    steps: steps ?? [],
     onLoad,
     onRemove,
     onChange,
@@ -385,7 +392,6 @@ export const useTestCaseEditView = () => {
     onAttributeChangeValue,
     onAttributeChangeName,
     onAttributeRemove,
-    selectedSuiteName,
-    setSelectedSuiteName,
+    handleSelectSuite,
   }
 }

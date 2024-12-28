@@ -6,26 +6,16 @@ import { setUser } from "entities/auth/model"
 
 import { invalidatesList } from "shared/libs"
 
-import { setUserConfig } from "../model"
-
-const rootPath = "v1/users"
+const rootPath = "users"
 
 export const usersApi = createApi({
   reducerPath: "usersApi",
   tagTypes: ["User", "Profile", "Config"],
   baseQuery: baseQueryWithLogout,
   endpoints: (builder) => ({
-    getConfig: builder.query<UserConfig, void>({
+    getConfig: builder.query<UserConfig, unknown>({
       query: () => `${rootPath}/me/config/`,
       providesTags: () => ["Config"],
-      async onQueryStarted(_, { dispatch, queryFulfilled }) {
-        try {
-          const { data } = await queryFulfilled
-          dispatch(setUserConfig(data))
-        } catch (error) {
-          console.error(error)
-        }
-      },
     }),
     updateConfig: builder.mutation<void, UserConfig>({
       query: (body) => ({
@@ -37,10 +27,16 @@ export const usersApi = createApi({
     }),
     getUsers: builder.query<PaginationResponse<User[]>, QueryWithPagination<GetUsersQuery>>({
       query: (params) => ({
-        url: "v1/users/",
+        url: `${rootPath}/`,
         params,
       }),
       providesTags: () => [{ type: "User", id: "LIST" }],
+    }),
+    getUserById: builder.query<User, number>({
+      query: (id) => ({
+        url: `${rootPath}/${id}/`,
+      }),
+      providesTags: (res, err, id) => [{ type: "User", id }],
     }),
     getMe: builder.query<User, void>({
       query: () => `${rootPath}/me/`,
@@ -113,12 +109,14 @@ export const usersApi = createApi({
 
 export const {
   useGetUsersQuery,
+  useLazyGetUserByIdQuery,
   useLazyGetUsersQuery,
   useCreateUserMutation,
   useUpdateUserMutation,
   useDeleteUserMutation,
   useGetMeQuery,
   useLazyGetMeQuery,
+  useGetConfigQuery,
   useLazyGetConfigQuery,
   useUpdateMeMutation,
   useUpdatePasswordMutation,

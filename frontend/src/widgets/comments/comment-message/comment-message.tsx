@@ -1,11 +1,11 @@
 import classNames from "classnames"
 import { CommentUserInfo } from "entities/comments/ui"
-import { DeleteComment, EditComment } from "features/comments"
 import { useEffect } from "react"
 import { useLocation } from "react-router-dom"
 
-import { Markdown } from "shared/ui"
-import { AttachmentField } from "shared/ui/attachment/field"
+import { DeleteComment, EditComment } from "features/comments"
+
+import { AttachmentField, Markdown } from "shared/ui"
 
 import styles from "./styles.module.css"
 

@@ -1,7 +1,9 @@
-import { Button, Col, Divider, Input, Radio, Row, Tooltip, Typography } from "antd"
+import { Button, Col, Divider, Flex, Input, Radio, Tooltip, Typography } from "antd"
 import cn from "classnames"
 import { ControllerRenderProps } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 
+import { colors } from "shared/config"
 import { FontsIcon, JsonIcon, ListIcon } from "shared/ui/icons"
 
 const { TextArea } = Input
@@ -29,44 +31,46 @@ export const AttributForm = ({
   handleAttributeChangeValue,
   handleAttributeChangeType,
 }: AttributFormProps) => {
+  const { t } = useTranslation()
+
   return (
     <>
       <div id={`attribute-block-${index}`}>
-        <Row style={{ paddingBottom: 8 }}>
+        <Flex wrap style={{ paddingBottom: 8, rowGap: 8, columnGap: 16 }}>
           <Col flex="auto">
             <Input
               id={`attribute-name-${index}`}
               value={attribut.name}
               onChange={(e) => handleAttributeChangeName(attribut.id, e.target.value)}
               onBlur={fieldProps.onBlur}
-              style={{ borderColor: errors?.name ? "#c44d56" : "" }}
+              style={{ borderColor: errors?.name ? colors.error : "" }}
             />
           </Col>
-          <Col flex="150px" style={{ textAlign: "right" }}>
+          <Col style={{ textAlign: "right" }}>
             <Radio.Group
               value={attribut.type}
               onChange={(e) =>
                 handleAttributeChangeType(attribut.id, e.target.value as AttributeType)
               }
             >
-              <Tooltip placement="topRight" title="Text value">
+              <Tooltip placement="topRight" title={t("Text value")}>
                 <Radio.Button id={`attribute-type-text-${index}`} value="Text">
                   <FontsIcon />
                 </Radio.Button>
               </Tooltip>
-              <Tooltip placement="topRight" title="List value">
+              <Tooltip placement="topRight" title={t("List value")}>
                 <Radio.Button id={`attribute-type-list-${index}`} value="List">
                   <ListIcon />
                 </Radio.Button>
               </Tooltip>
-              <Tooltip placement="topRight" title="JSON value">
+              <Tooltip placement="topRight" title={t("JSON value")}>
                 <Radio.Button id={`attribute-type-json-${index}`} value="JSON">
                   <JsonIcon />
                 </Radio.Button>
               </Tooltip>
             </Radio.Group>
           </Col>
-        </Row>
+        </Flex>
 
         <TextArea
           id={`attribute-value-${index}`}
@@ -75,7 +79,7 @@ export const AttributForm = ({
           value={String(attribut.value)}
           onChange={(e) => handleAttributeChangeValue(attribut.id, e.target.value)}
           onBlur={fieldProps.onBlur}
-          style={{ borderColor: errors?.value ? "#c44d56" : "" }}
+          style={{ borderColor: errors?.value ? colors.error : "" }}
         />
 
         <div style={{ textAlign: "right" }}>
@@ -89,7 +93,7 @@ export const AttributForm = ({
                 handleAttributeRemove(attribut.id)
               }}
             >
-              Delete attribute
+              {t("Delete attribute")}
             </Button>
           ) : (
             <Typography.Text type="secondary">*required</Typography.Text>

@@ -4,7 +4,8 @@ import { ColumnsType } from "antd/lib/table"
 import { FilterValue } from "antd/lib/table/interface"
 import dayjs from "dayjs"
 import { useStatuses } from "entities/status/model/use-statuses"
-import { useEffect, useState } from "react"
+import { useContext, useEffect, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Link, useParams } from "react-router-dom"
 
 import { useLazyGetTestPlanActivityQuery } from "entities/test-plan/api"
@@ -12,8 +13,10 @@ import { filterActionFormat } from "entities/test-plan/lib"
 
 import { UserAvatar } from "entities/user/ui"
 
+import { ProjectContext } from "pages/project"
+
 import { useTableSearch } from "shared/hooks"
-import { antdSorterToTestySort } from "shared/libs/antd-sorter-to-testy-sort"
+import { antdSorterToTestySort } from "shared/libs"
 import { HighLighterTesty, Status } from "shared/ui"
 import { UntestedStatus } from "shared/ui/status"
 
@@ -36,9 +39,11 @@ const initialTableParams: TableParams = {
 }
 
 export const useTestPlanActivity = () => {
-  const { testPlanId, projectId } = useParams<ParamTestPlanId & ParamProjectId>()
+  const { t } = useTranslation()
+  const { project } = useContext(ProjectContext)!
+  const { testPlanId } = useParams<ParamTestPlanId>()
   const { statusesFilters } = useStatuses({
-    project: projectId,
+    project: project.id,
     plan: testPlanId,
     isActivity: true,
   })
@@ -51,7 +56,7 @@ export const useTestPlanActivity = () => {
 
   const columns: ColumnsType<TestPlanActivityResult> = [
     {
-      title: "Time",
+      title: t("Time"),
       dataIndex: "action_timestamp",
       key: "action_timestamp",
       width: "100px",
@@ -59,17 +64,21 @@ export const useTestPlanActivity = () => {
       render: (value: string) => dayjs(value).format("HH:mm:ss"),
     },
     {
-      title: "Test",
+      title: t("Test"),
       dataIndex: "test_name",
       key: "test_name",
       ...getColumnSearch("test_name"),
       render: (text: string, record) =>
         searchedColumn.some((i) => i === "test_name") ? (
-          <Link to={`/projects/${projectId}/plans/${record.breadcrumbs.id}?test=${record.test_id}`}>
+          <Link
+            to={`/projects/${project.id}/plans/${record.breadcrumbs.id}?test=${record.test_id}`}
+          >
             <HighLighterTesty searchWords={searchText} textToHighlight={text} />
           </Link>
         ) : (
-          <Link to={`/projects/${projectId}/plans/${record.breadcrumbs.id}?test=${record.test_id}`}>
+          <Link
+            to={`/projects/${project.id}/plans/${record.breadcrumbs.id}?test=${record.test_id}`}
+          >
             {text}
           </Link>
         ),
@@ -77,35 +86,36 @@ export const useTestPlanActivity = () => {
         record.test_name.toLowerCase().includes(String(value).toLowerCase()),
     },
     {
-      title: "Test Plans",
+      title: t("Test Plans"),
       dataIndex: "breadcrumbs",
       key: "breadcrumbs",
       width: "500px",
       render: (value: BreadCrumbsActivityResult) => renderBreadCrumbs(value),
     },
     {
-      title: "Action",
+      title: t("Action"),
       dataIndex: "action",
       key: "action",
       width: "150px",
       filters: [
         {
           value: "added",
-          text: "added",
+          text: t("added"),
         },
         {
           value: "deleted",
-          text: "deleted",
+          text: t("deleted"),
         },
         {
           value: "updated",
-          text: "updated",
+          text: t("updated"),
         },
       ],
       onFilter: (value, record) => record.action.includes(String(value)),
+      render: (action: TestPlanActivityAction) => t(action),
     },
     {
-      title: "Status",
+      title: t("Status"),
       dataIndex: "status",
       key: "status",
       width: "150px",
@@ -119,7 +129,7 @@ export const useTestPlanActivity = () => {
       onFilter: (value, record) => record.status === value,
     },
     {
-      title: "User",
+      title: t("User"),
       dataIndex: "username",
       key: "username",
       width: "240px",

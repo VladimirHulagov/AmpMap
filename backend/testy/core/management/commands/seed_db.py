@@ -32,6 +32,7 @@
 import logging
 import os
 
+from allure_uploader_v2.models import ServiceType
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
@@ -44,7 +45,6 @@ from testy.core.choices import ActionCode
 from testy.core.models import NotificationSetting, Project
 from testy.users.choices import RoleTypes, UserAllowedPermissionCodenames
 from testy.users.models import Role
-from allure_uploader_v2.models import ServiceType
 
 logger = logging.getLogger(__name__)
 UserModel = get_user_model()

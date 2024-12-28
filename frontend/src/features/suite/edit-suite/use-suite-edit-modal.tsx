@@ -1,16 +1,13 @@
 import { notification } from "antd"
 import { useEffect, useState } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 import { useParams } from "react-router"
 
-import { useAppDispatch } from "app/hooks"
-
 import { useUpdateTestSuiteMutation } from "entities/suite/api"
-import { setTestSuite } from "entities/suite/model/slice"
 
-import { useErrors } from "shared/hooks"
-import { showModalCloseConfirm } from "shared/libs"
-import { AlertSuccessChange } from "shared/ui/alert-success-change"
+import { useErrors, useShowModalCloseConfirm } from "shared/hooks"
+import { AlertSuccessChange } from "shared/ui"
 
 interface ErrorData {
   name?: string
@@ -18,10 +15,15 @@ interface ErrorData {
   description?: string
 }
 
-export const useSuiteEditModal = (suite?: Suite) => {
-  const [isShow, setIsShow] = useState(false)
+interface Props {
+  suite?: Suite
+  onSubmit?: (suite: SuiteResponseUpdate, oldSuite: Suite) => void
+}
 
-  const dispatch = useAppDispatch()
+export const useSuiteEditModal = ({ suite, onSubmit: onSubmitCb }: Props) => {
+  const { t } = useTranslation()
+  const { showModal } = useShowModalCloseConfirm()
+  const [isShow, setIsShow] = useState(false)
   const { projectId, testSuiteId } = useParams<ParamProjectId & ParamTestSuiteId>()
   const [selectedParent, setSelectedParent] = useState<SelectData | null>(null)
   const [updateSuite, { isLoading: isLoadingUpdating, isSuccess: isSuccessUpdate }] =
@@ -46,12 +48,14 @@ export const useSuiteEditModal = (suite?: Suite) => {
   useEffect(() => {
     if (!isShow || !suite) return
 
-    setValue("name", suite.name)
-    setValue("description", suite.description)
+    reset({
+      name: suite.name,
+      description: suite.description,
+      parent: suite.parent ? suite.parent.id : null,
+    })
 
     if (suite.parent) {
       setSelectedParent({ value: suite.parent.id, label: suite.parent.name })
-      setValue("parent", String(suite.parent.id))
     }
   }, [isShow, suite])
 
@@ -68,7 +72,7 @@ export const useSuiteEditModal = (suite?: Suite) => {
     }
 
     if (isDirty) {
-      showModalCloseConfirm(onCloseModal)
+      showModal(onCloseModal)
       return
     }
 
@@ -81,32 +85,31 @@ export const useSuiteEditModal = (suite?: Suite) => {
 
   const onSubmit: SubmitHandler<SuiteUpdate> = async (data) => {
     setErrors(null)
-
     if (!suite) return
     if (Number(data.parent) === Number(suite.id)) {
-      setErrors({ parent: "Элемент не может быть потомком самому себе." })
+      setErrors({ parent: t("An element cannot be a child of itself.") })
       return
     }
 
     try {
       const newSuite = await updateSuite({
         id: suite.id,
-        body: { ...data, parent: data.parent ?? "" },
+        body: { ...data, parent: data.parent ? Number(data.parent) : null },
       }).unwrap()
 
       notification.success({
-        message: "Success",
+        message: t("Success"),
+        closable: true,
         description: (
           <AlertSuccessChange
             action="updated"
-            title="Test Suite"
+            title={t("Test Suite")}
             link={`/projects/${projectId}/suites/${newSuite.id}`}
             id={String(newSuite.id)}
           />
         ),
       })
-
-      dispatch(setTestSuite(newSuite))
+      onSubmitCb?.(newSuite, suite)
       onCloseModal()
     } catch (err) {
       onHandleError(err)
@@ -116,14 +119,12 @@ export const useSuiteEditModal = (suite?: Suite) => {
   const handleSelectParent = (value?: SelectData | null) => {
     setErrors({ parent: "" })
     if (Number(value?.value) === Number(testSuiteId)) {
-      setErrors({ parent: "Test Suite не может быть родителем для самого себя." })
+      setErrors({ parent: t("Test Suite cannot be its own parent.") })
       return
     }
 
-    if (value) {
-      setValue("parent", String(value.value), { shouldDirty: true })
-      setSelectedParent({ value: value.value, label: value.label })
-    }
+    setValue("parent", value ? Number(value.value) : null, { shouldDirty: true })
+    setSelectedParent(value ? { value: value.value, label: value.label } : null)
   }
 
   const handleClearParent = () => {

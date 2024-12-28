@@ -1,4 +1,4 @@
-import { Divider, Switch, Table } from "antd"
+import { Switch, Table } from "antd"
 import { ColumnsType } from "antd/es/table"
 import {
   useDisableNotificationMutation,
@@ -6,11 +6,13 @@ import {
   useGetNotificationSettingsQuery,
 } from "entities/notifications/api"
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 
 import { initInternalError } from "shared/libs"
 
 export const NotificationSettingsTable = () => {
-  const { data, isLoading } = useGetNotificationSettingsQuery()
+  const { t } = useTranslation()
+  const { data, isFetching } = useGetNotificationSettingsQuery()
   const [enableSetting] = useEnableNotificationMutation()
   const [disableSetting] = useDisableNotificationMutation()
   const [isEnableLoading, setIsEnableLoading] = useState(false)
@@ -36,13 +38,13 @@ export const NotificationSettingsTable = () => {
 
   const columns: ColumnsType<NotificationSetting> = [
     {
-      title: "Name",
+      title: t("Name"),
       dataIndex: "verbose_name",
       key: "name",
     },
     {
       width: 100,
-      title: "Enabled",
+      title: t("Enabled"),
       dataIndex: "enabled",
       key: "enabled",
       render: (enabled: boolean, record) => {
@@ -57,19 +59,15 @@ export const NotificationSettingsTable = () => {
   ]
 
   return (
-    <>
-      <p style={{ margin: 0, fontSize: 18 }}>Notification settings</p>
-      <Divider />
-      <Table
-        loading={isLoading || isEnableLoading}
-        dataSource={data}
-        columns={columns}
-        rowKey="action_code"
-        style={{ marginTop: 12 }}
-        id="administration-projects-labels"
-        rowClassName="administration-projects-labels-row"
-        pagination={false}
-      />
-    </>
+    <Table
+      loading={isFetching || isEnableLoading}
+      dataSource={data}
+      columns={columns}
+      rowKey="action_code"
+      style={{ marginTop: 12 }}
+      id="administration-projects-labels"
+      rowClassName="administration-projects-labels-row"
+      pagination={false}
+    />
   )
 }

@@ -1,9 +1,10 @@
 import { notification } from "antd"
+import { useTranslation } from "react-i18next"
 
 import { useArchiveProjectMutation, useGetProjectArchivePreviewQuery } from "entities/project/api"
 
 import { initInternalError } from "shared/libs"
-import { AlertSuccessChange } from "shared/ui/alert-success-change"
+import { AlertSuccessChange } from "shared/ui"
 
 import { ModalConfirmDeleteArchive } from "widgets/[ui]/modal-confirm-delete-archive"
 
@@ -14,6 +15,8 @@ interface Props {
 }
 
 export const ArchiveProjectModal = ({ isShow, setIsShow, project }: Props) => {
+  const { t } = useTranslation()
+
   const [archiveProject, { isLoading: isLoadingArchive }] = useArchiveProjectMutation()
   const { data, isLoading, status } = useGetProjectArchivePreviewQuery(String(project.id), {
     skip: !isShow,
@@ -27,7 +30,8 @@ export const ArchiveProjectModal = ({ isShow, setIsShow, project }: Props) => {
     try {
       await archiveProject(Number(project.id))
       notification.success({
-        message: "Success",
+        message: t("Success"),
+        closable: true,
         description: (
           <AlertSuccessChange id={String(project.id)} action="archived" title="Project" />
         ),
@@ -46,7 +50,7 @@ export const ArchiveProjectModal = ({ isShow, setIsShow, project }: Props) => {
       isLoading={isLoading}
       isLoadingButton={isLoadingArchive}
       name={project.name}
-      typeTitle="Project"
+      typeTitle={t("Project")}
       type="project"
       data={data ?? []}
       handleClose={handleClose}

@@ -3,7 +3,7 @@ import { Button } from "antd"
 import { useAdministrationStatusModal } from "entities/status/model"
 import { useEffect } from "react"
 
-import { StatusCreateEditModal } from "../status-create-edit-modal"
+import { StatusCreateEditModal } from "../status-create-edit-modal/status-create-edit-modal"
 
 interface Props {
   record: Status

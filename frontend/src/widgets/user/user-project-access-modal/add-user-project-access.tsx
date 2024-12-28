@@ -1,10 +1,12 @@
 import { PlusOutlined } from "@ant-design/icons"
 import { Button } from "antd"
 import { openRoleModal } from "entities/roles/model"
+import { useTranslation } from "react-i18next"
 
 import { useAppDispatch } from "app/hooks"
 
 export const AddUserProjectAccess = () => {
+  const { t } = useTranslation()
   const dispatch = useAppDispatch()
   const handleClick = () => {
     dispatch(openRoleModal({ mode: "create" }))
@@ -18,7 +20,7 @@ export const AddUserProjectAccess = () => {
       onClick={handleClick}
       style={{ marginBottom: 16, float: "right" }}
     >
-      Add user to project
+      {t("Add user to project")}
     </Button>
   )
 }

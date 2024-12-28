@@ -313,25 +313,26 @@ class TestResultStatusEndpoints:
                                                                             f'actual: "{ResultStatus.objects.count()}"'
         assert response.json()['id'] == result_status.pk
 
-    @pytest.mark.parametrize('color, expected_status', [
-        ('#000000', HTTPStatus.OK),
-        ('#000', HTTPStatus.OK),
-        ('#0000', HTTPStatus.BAD_REQUEST),
-        ('#00', HTTPStatus.BAD_REQUEST),
-        ('rgb(0, 0, 0)', HTTPStatus.OK),
-        ('(255, 255, 255)', HTTPStatus.OK),
-        ('rgb(-1, 0, 0)', HTTPStatus.BAD_REQUEST),
-        ('(256, 255, 255)', HTTPStatus.BAD_REQUEST),
-        ('rgba(0, 0, 0, 0)', HTTPStatus.OK),
-        ('(255, 255, 255, 0.8)', HTTPStatus.OK),
-        ('rgba(0, 0, 0, 2)', HTTPStatus.BAD_REQUEST),
-        ('(255, 255, 255, 1.5)', HTTPStatus.BAD_REQUEST),
-        ('255, 255, 255)', HTTPStatus.BAD_REQUEST),
-    ],
+    @pytest.mark.parametrize(
+        'color, expected_status', [
+            ('#000000', HTTPStatus.OK),
+            ('#000', HTTPStatus.OK),
+            ('#0000', HTTPStatus.BAD_REQUEST),
+            ('#00', HTTPStatus.BAD_REQUEST),
+            ('rgb(0, 0, 0)', HTTPStatus.OK),
+            ('(255, 255, 255)', HTTPStatus.OK),
+            ('rgb(-1, 0, 0)', HTTPStatus.BAD_REQUEST),
+            ('(256, 255, 255)', HTTPStatus.BAD_REQUEST),
+            ('rgba(0, 0, 0, 0)', HTTPStatus.OK),
+            ('(255, 255, 255, 0.8)', HTTPStatus.OK),
+            ('rgba(0, 0, 0, 2)', HTTPStatus.BAD_REQUEST),
+            ('(255, 255, 255, 1.5)', HTTPStatus.BAD_REQUEST),
+            ('255, 255, 255)', HTTPStatus.BAD_REQUEST),
+        ],
     )
     @pytest.mark.parametrize('request_type', [RequestType.PUT, RequestType.PATCH, RequestType.POST])
     def test_create_or_update_color_validation(
-            self, color, expected_status, project, api_client, authorized_superuser, request_type, result_status,
+        self, color, expected_status, project, api_client, authorized_superuser, request_type, result_status,
     ):
         if request_type == RequestType.POST and expected_status == HTTPStatus.OK:
             expected_status = HTTPStatus.CREATED
@@ -359,7 +360,7 @@ class TestResultStatusEndpoints:
 
     @pytest.mark.parametrize('view_name', ('api:v1:testplan-activity-statuses', 'api:v1:testplan-statuses'))
     def test_get_statuses_from_testplan_and_testplan_activity(
-            self, api_client, authorized_superuser, generate_historical_objects, view_name,
+        self, api_client, authorized_superuser, generate_historical_objects, view_name,
     ):
         parent_plan, _, _, status_list = generate_historical_objects
         expected_instances = model_to_dict_via_serializer(status_list, ResultStatusSerializer, many=True)
@@ -367,8 +368,8 @@ class TestResultStatusEndpoints:
         assert response_body == expected_instances
 
     def test_get_last_statuses_from_testplan(
-            self, api_client, authorized_superuser, generate_historical_objects,
-            result_status_factory, test_result_factory,
+        self, api_client, authorized_superuser, generate_historical_objects,
+        result_status_factory, test_result_factory,
     ):
         parent_plan, _, test_list, _ = generate_historical_objects
         result_status = result_status_factory(project=parent_plan.project)

@@ -29,8 +29,6 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 
-from typing import Iterable
-
 from django.db.models import QuerySet
 
 from testy.tests_representation.models import Parameter
@@ -42,15 +40,5 @@ class ParameterSelector:
     def parameter_list(self) -> QuerySet[Parameter]:
         return Parameter.objects.all()
 
-    def parameters_by_project_id(self, project_id: int) -> QuerySet[Parameter]:
-        return Parameter.objects.filter(project=project_id).order_by('group_name')
-
     def parameter_project_list(self, project_id: int) -> QuerySet[Parameter]:
         return Parameter.objects.filter(project=project_id).order_by(_DATA)
-
-    @classmethod
-    def parameters_by_ids(cls, ids: Iterable[int]) -> QuerySet[Parameter]:
-        return Parameter.objects.filter(id__in=ids).order_by(_DATA)
-
-    def parameter_name_list_by_ids(self, ids: Iterable[int]) -> QuerySet[list[str]]:
-        return Parameter.objects.filter(id__in=ids).values_list(_DATA, flat=True).order_by(_DATA)

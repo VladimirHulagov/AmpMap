@@ -8,6 +8,7 @@ interface FormPlan {
 }
 
 export interface MoveTestsProps {
+  isLoading?: boolean
   onSubmit: (plan: number) => Promise<void>
 }
 
@@ -62,11 +63,6 @@ export const useMoveTestsModal = ({ onSubmit }: MoveTestsProps) => {
     }
   }
 
-  const handleClearSelected = () => {
-    setValue("plan", null, { shouldDirty: true })
-    setSelectedPlan(null)
-  }
-
   useEffect(() => {
     reset({
       plan: null,
@@ -77,7 +73,6 @@ export const useMoveTestsModal = ({ onSubmit }: MoveTestsProps) => {
   return {
     isShow,
     selectedPlan,
-    handleClearSelected,
     handleSelectPlan,
     handleSave,
     handleShow,

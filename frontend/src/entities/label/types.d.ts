@@ -1,12 +1,3 @@
-interface LabelState {
-  modal: {
-    isShow: boolean
-    mode: ModalMode
-    label?: Label
-  }
-  selectedLabels: { labels: string[]; not_labels: string[] }
-}
-
 interface Label {
   id?: string | number
   name: string
@@ -32,3 +23,4 @@ interface LabelUpdate {
 }
 
 type LabelTypes = "System" | "Custom"
+type LabelCondition = "and" | "or"

@@ -33,6 +33,7 @@ import pytest
 from django.db import IntegrityError
 
 from tests.error_messages import INT_VALUE_ERR_MSG, MODEL_VALUE_ERR_MSG, NOT_NULL_ERR_MSG
+from testy.tests_representation.choices import ResultStatusType
 from testy.tests_representation.models import ResultStatus
 
 
@@ -64,6 +65,7 @@ class TestResultStatusModelModel:
             result_status_factory(**{parameter_name: incorrect_value})
         assert err_msg in str(err.value)
 
-    def test_valid_model_creation(self, result_status, system_statuses_dict):
-        assert ResultStatus.objects.count() == len(system_statuses_dict) + 1
+    def test_valid_model_creation(self, result_status):
+        systems_count = ResultStatus.objects.filter(type=ResultStatusType.SYSTEM).count()
+        assert ResultStatus.objects.count() == systems_count + 1
         assert ResultStatus.objects.get(id=result_status.id) == result_status

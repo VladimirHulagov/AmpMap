@@ -1,8 +1,8 @@
 import { Space, Tag, Typography } from "antd"
 import classNames from "classnames"
 import dayjs from "dayjs"
-import { EditCloneResult } from "features/test-result"
-import { useEffect } from "react"
+import { useContext, useEffect } from "react"
+import { useTranslation } from "react-i18next"
 import { Link, useLocation, useParams } from "react-router-dom"
 import { HashLink } from "react-router-hash-link"
 
@@ -10,13 +10,18 @@ import { useAppSelector } from "app/hooks"
 
 import { useLazyGetResultsQuery } from "entities/result/api"
 
+import { selectDrawerTest } from "entities/test/model"
+
 import { selectArchivedResultsIsShow } from "entities/test-plan/model"
 
 import { UserAvatar } from "entities/user/ui/user-avatar/user-avatar"
 
+import { EditCloneResult } from "features/test-result"
+
 import { colors } from "shared/config"
-import { Attachment, ContainerLoader, Status } from "shared/ui"
-import { AttributesObjectView } from "shared/ui/attributes"
+import { Attachment, AttributesObjectView, ContainerLoader, Status } from "shared/ui"
+
+import { TestsTreeContext } from "widgets/tests"
 
 import { TestResultComment } from "../comment"
 import { TestResultSteps } from "../steps"
@@ -29,11 +34,15 @@ interface ResultListProps {
 }
 
 const NoResults = () => {
+  const { t } = useTranslation()
+
   return (
     <div style={{ padding: 8 }} id="test-result">
       <Typography>
         <Typography.Paragraph>
-          <Typography.Text style={{ whiteSpace: "pre-wrap" }}>No test results</Typography.Text>
+          <Typography.Text style={{ whiteSpace: "pre-wrap" }}>
+            {t("No test results")}
+          </Typography.Text>
         </Typography.Paragraph>
       </Typography>
     </div>
@@ -41,10 +50,23 @@ const NoResults = () => {
 }
 
 export const ResultList = ({ testId, testCase, isProjectArchive }: ResultListProps) => {
+  const { t } = useTranslation()
+  const { testsTree } = useContext(TestsTreeContext)!
   const location = useLocation()
-  const [getResults, { data: results, isLoading, isSuccess }] = useLazyGetResultsQuery()
-  const showArchive = useAppSelector(selectArchivedResultsIsShow)
   const { projectId, testPlanId } = useParams<ParamProjectId & ParamTestPlanId>()
+  const showArchive = useAppSelector(selectArchivedResultsIsShow)
+  const drawerTest = useAppSelector(selectDrawerTest)
+
+  const [getResults, { data: results, isFetching, isSuccess }] = useLazyGetResultsQuery()
+
+  const handleRefetch = async () => {
+    if (String(drawerTest?.plan) === String(testPlanId)) {
+      await testsTree.current?.initRoot({ initParent: testPlanId })
+      return
+    }
+
+    await testsTree.current?.refetchNodeBy((node) => node.id === drawerTest?.plan)
+  }
 
   useEffect(() => {
     getResults({ testId: String(testId), showArchive, project: projectId ?? "" })
@@ -57,7 +79,7 @@ export const ResultList = ({ testId, testCase, isProjectArchive }: ResultListPro
     }
   }, [location, isSuccess])
 
-  if (isLoading || !results) return <ContainerLoader />
+  if (isFetching || !results) return <ContainerLoader />
   if (results.length === 0) return <NoResults />
 
   return (
@@ -83,7 +105,7 @@ export const ResultList = ({ testId, testCase, isProjectArchive }: ResultListPro
               <Space>
                 {result.is_archive ? (
                   <div>
-                    <Tag color={colors.error}>Archived</Tag>
+                    <Tag color={colors.error}>{t("Archived")}</Tag>
                   </div>
                 ) : null}
                 <div className={styles.resultListHeaderStatus}>
@@ -117,9 +139,9 @@ export const ResultList = ({ testId, testCase, isProjectArchive }: ResultListPro
                 {result.test_case_version && (
                   <Link
                     className={styles.link}
-                    to={`/projects/${result.project}/suites/${testCase.suite}/?test_case=${testCase.id}&version=${result.test_case_version}`}
+                    to={`/projects/${result.project}/suites/${testCase.suite.id}/?test_case=${testCase.id}&version=${result.test_case_version}`}
                   >
-                    ver. {result.test_case_version}
+                    {t("ver.")} {result.test_case_version}
                   </Link>
                 )}
               </span>
@@ -128,7 +150,8 @@ export const ResultList = ({ testId, testCase, isProjectArchive }: ResultListPro
                   isDisabled={isProjectArchive}
                   testCase={testCase}
                   testResult={result}
-                  isClone={true}
+                  isClone
+                  onSubmit={handleRefetch}
                 />
                 <span className={styles.divider}>|</span>
                 <EditCloneResult
@@ -136,6 +159,7 @@ export const ResultList = ({ testId, testCase, isProjectArchive }: ResultListPro
                   testCase={testCase}
                   testResult={result}
                   isClone={false}
+                  onSubmit={handleRefetch}
                 />
               </span>
             </div>

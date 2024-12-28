@@ -30,7 +30,6 @@
 # <http://www.gnu.org/licenses/>.
 
 from django.contrib import admin
-from mptt.admin import MPTTModelAdmin
 from simple_history.admin import SimpleHistoryAdmin
 
 from testy.root.admin import BaseAdmin
@@ -38,7 +37,7 @@ from testy.tests_description.models import TestCase, TestSuite
 
 
 @admin.register(TestSuite)
-class TestSuiteAdmin(BaseAdmin, MPTTModelAdmin):
+class TestSuiteAdmin(BaseAdmin):
     list_display = ('name', 'project', 'parent')
     search_fields = ('name',)
 

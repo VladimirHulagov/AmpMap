@@ -30,14 +30,12 @@
 # <http://www.gnu.org/licenses/>.
 from itertools import product
 from typing import Any, Iterable
-from uuid import uuid4
 
 from django.db import transaction
 
 from testy.tests_description.selectors.cases import TestCaseSelector
 from testy.tests_representation.models import Parameter, TestPlan
 from testy.tests_representation.services.tests import TestService
-from testy.utilities.sql import rebuild_mptt
 
 _TEST_CASES = 'test_cases'
 _PARENT = 'parent'
@@ -51,10 +49,8 @@ class TestPlanService:
     @transaction.atomic
     def testplan_create(self, data: dict[str, Any]) -> list[TestPlan]:
         test_plan = TestPlan.model_create(fields=self.non_side_effect_fields, data=data)
-        parent = data.get(_PARENT) if data.get(_PARENT) else test_plan
-        TestPlan.objects.partial_rebuild(parent.tree_id)
         if test_cases_ids := data.get(_TEST_CASES, []):
-            test_cases = TestCaseSelector.cases_by_ids_list(test_cases_ids, 'pk')
+            test_cases = TestCaseSelector.cases_by_ids(test_cases_ids, 'pk')
             TestService().bulk_test_create([test_plan], test_cases)
         return test_plan
 
@@ -63,11 +59,6 @@ class TestPlanService:
         parameters = data.get('parameters')
         parameter_combinations = self._parameter_combinations(parameters)
         created_plans = []
-
-        parent_tree_id = None
-        if parent := data.get(_PARENT):
-            parent_tree_id = parent.tree_id
-
         num_of_combinations = len(parameter_combinations)
         for _ in range(num_of_combinations):
             test_plan_object: TestPlan = TestPlan.model_create(
@@ -75,25 +66,12 @@ class TestPlanService:
                 data=data,
                 commit=False,
             )
-            test_plan_object.lft = 0
-            test_plan_object.rght = 0
-            test_plan_object.tree_id = parent_tree_id or uuid4()
-            test_plan_object.level = 0
             created_plans.append(test_plan_object)
-
         created_plans = TestPlan.objects.bulk_create(created_plans)
-
         for plan, combined_parameters in zip(created_plans, parameter_combinations):
             plan.parameters.set(combined_parameters)
-
-        if parent_tree_id:
-            rebuild_mptt(TestPlan, parent.tree_id)
-        else:
-            for test_plan in created_plans:
-                rebuild_mptt(TestPlan, test_plan.tree_id)
-
         if test_cases_ids := data.get('test_cases', []):
-            test_cases = TestCaseSelector.cases_by_ids_list(test_cases_ids, 'pk')
+            test_cases = TestCaseSelector.cases_by_ids(test_cases_ids, 'pk')
             TestService().bulk_test_create(created_plans, test_cases)
         return created_plans
 
@@ -103,7 +81,6 @@ class TestPlanService:
             fields=self.non_side_effect_fields,
             data=data,
         )
-        TestPlan.objects.partial_rebuild(test_plan.tree_id)
 
         if (test_cases := data.get(_TEST_CASES)) is not None:  # test_cases may be empty list
             old_test_case_ids = set(TestService().get_testcase_ids_by_testplan(test_plan))
@@ -115,12 +92,9 @@ class TestPlanService:
 
             # creating tests
             if create_test_case_ids := new_test_case_ids - old_test_case_ids:
-                cases = TestCaseSelector.cases_by_ids_list(create_test_case_ids, 'pk')
+                cases = TestCaseSelector.cases_by_ids(create_test_case_ids, 'pk')
                 TestService().bulk_test_create([test_plan], cases)
         return test_plan
-
-    def testplan_delete(self, *, test_plan) -> None:
-        test_plan.delete()
 
     @classmethod
     def _parameter_combinations(cls, parameters: Iterable[Parameter]) -> list[tuple[Parameter, ...]]:

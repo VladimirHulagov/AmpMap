@@ -4,6 +4,7 @@ import { ColumnsType, TablePaginationConfig } from "antd/lib/table"
 import { FilterValue } from "antd/lib/table/interface"
 import { useStatuses } from "entities/status/model/use-statuses"
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Link, useParams } from "react-router-dom"
 
 import { useGetTestCaseTestsListQuery } from "entities/test-case/api"
@@ -12,8 +13,8 @@ import { useTestPlanActivityBreadcrumbs } from "entities/test-plan/model"
 
 import { UserAvatar, UserUsername } from "entities/user/ui"
 
-import { antdSorterToTestySort } from "shared/libs/antd-sorter-to-testy-sort"
-import { ContainerLoader, Status } from "shared/ui"
+import { antdSorterToTestySort } from "shared/libs"
+import { Status } from "shared/ui"
 import { UntestedStatus } from "shared/ui/status"
 
 interface TableParams {
@@ -21,7 +22,13 @@ interface TableParams {
   filters: Record<string, FilterValue | null>
 }
 
-export const TestCaseTestsList = ({ testCase }: { testCase: TestCase }) => {
+interface Props {
+  testCase: TestCase
+  isShowArchive: boolean
+}
+
+export const TestCaseTestsList = ({ testCase, isShowArchive }: Props) => {
+  const { t } = useTranslation()
   const { projectId } = useParams<ParamProjectId>()
   const { renderBreadCrumbs } = useTestPlanActivityBreadcrumbs()
   const [tableParams, setTableParams] = useState<TableParams>({ sorter: "", filters: {} })
@@ -32,13 +39,14 @@ export const TestCaseTestsList = ({ testCase }: { testCase: TestCase }) => {
 
   const { statusesFiltersWithUntested } = useStatuses({ project: projectId })
 
-  const { data, isLoading } = useGetTestCaseTestsListQuery(
+  const { data, isFetching } = useGetTestCaseTestsListQuery(
     {
       testCaseId: testCase.id,
       page: pagination.page,
       page_size: pagination.page_size,
       ordering: tableParams.sorter ? tableParams.sorter : "",
       last_status: tableParams.filters?.last_status?.join(",") ?? undefined,
+      is_archive: isShowArchive,
     },
     {
       refetchOnMountOrArgChange: true,
@@ -51,28 +59,25 @@ export const TestCaseTestsList = ({ testCase }: { testCase: TestCase }) => {
 
   const columns: ColumnsType<TestsWithPlanBreadcrumbs> = [
     {
-      title: "Id",
+      title: t("ID"),
       dataIndex: "id",
       key: "id",
       width: "70px",
       sorter: true,
-      render: (value, record) => (
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      render: (_, record) => (
         <Link to={`/projects/${record.project}/plans/${record.plan}?test=${record.id}`}>
-          {/* eslint-disable-next-line @typescript-eslint/no-unsafe-member-access*/}
           {record.id}
         </Link>
       ),
     },
     {
-      title: "Test Plan",
+      title: t("Test Plan"),
       dataIndex: "breadcrumbs",
       key: "breadcrumbs",
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-      render: (value) => renderBreadCrumbs(value),
+      render: (value: BreadCrumbsActivityResult) => renderBreadCrumbs(value),
     },
     {
-      title: "Last status",
+      title: t("Last status"),
       dataIndex: "last_status",
       key: "last_status",
       width: "150px",
@@ -91,21 +96,18 @@ export const TestCaseTestsList = ({ testCase }: { testCase: TestCase }) => {
       },
     },
     {
-      title: "Assignee",
+      title: t("Assignee"),
       dataIndex: "assignee_username",
       key: "assignee_username",
       sorter: true,
       render: (_, record) => {
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         if (!record.assignee_username) {
-          return <span style={{ opacity: 0.7 }}>Nobody</span>
+          return <span style={{ opacity: 0.7 }}>{t("Nobody")}</span>
         }
 
         return (
           <div style={{ display: "flex", alignItems: "center", flexDirection: "row", gap: 8 }}>
-            {/* eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access*/}
             <UserAvatar size={32} avatar_link={record.avatar_link} />
-            {/* eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access*/}
             <UserUsername username={record.assignee_username} />
           </div>
         )
@@ -122,23 +124,22 @@ export const TestCaseTestsList = ({ testCase }: { testCase: TestCase }) => {
     setTableParams({ sorter: testySorting, filters })
   }
 
-  if (isLoading || !data) return <ContainerLoader />
-
   return (
     <>
       <Table
-        dataSource={data.results}
+        dataSource={data?.results ?? []}
         style={{ cursor: "pointer" }}
         columns={columns}
         pagination={{
           onChange: handlePaginationChange,
           pageSize: pagination.page_size,
           current: pagination.page,
-          total: data.count,
+          total: data?.count ?? 0,
         }}
         size="small"
         onChange={handleChange}
         rowKey="id"
+        loading={isFetching}
       />
     </>
   )

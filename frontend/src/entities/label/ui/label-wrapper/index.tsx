@@ -1,6 +1,7 @@
 import { DownOutlined } from "@ant-design/icons"
 import { Input } from "antd"
 import { useMemo, useRef } from "react"
+import { useTranslation } from "react-i18next"
 
 import { UseFormLabelsProps } from "entities/label/model"
 
@@ -32,6 +33,7 @@ export const LabelWrapper = ({
   },
   noAdding,
 }: LabelWrapperProps) => {
+  const { t } = useTranslation()
   const popupRef = useRef(null)
   useOnClickOutside(popupRef, () => setIsShowPopup(false))
 
@@ -65,7 +67,7 @@ export const LabelWrapper = ({
       <div className={styles.form}>
         <Input
           id="label-input"
-          placeholder="New label"
+          placeholder={t("New label")}
           suffix={
             <DownOutlined
               id="label-input-arrow"
@@ -90,8 +92,8 @@ export const LabelWrapper = ({
                 <>
                   <div className={styles.line} />
                   <span className={styles.newLabel} onClick={() => handleAddLabel(searchValue)}>
-                    <HighLighterTesty searchWords={searchValue} textToHighlight={searchValue} />
-                    (Already Added)
+                    <HighLighterTesty searchWords={searchValue} textToHighlight={searchValue} />(
+                    {t("Already added")})
                   </span>
                 </>
               )}
@@ -99,8 +101,8 @@ export const LabelWrapper = ({
                 <>
                   <div className={styles.line} />
                   <span className={styles.newLabel} onClick={() => handleAddLabel(searchValue)}>
-                    <HighLighterTesty searchWords={searchValue} textToHighlight={searchValue} />
-                    (New Label)
+                    <HighLighterTesty searchWords={searchValue} textToHighlight={searchValue} />(
+                    {t("New label")})
                   </span>
                 </>
               )}

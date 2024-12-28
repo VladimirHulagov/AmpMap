@@ -1,6 +1,7 @@
 import { notification } from "antd"
 import { useEffect, useState } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 
 import { useAppDispatch, useAppSelector } from "app/hooks"
 
@@ -9,11 +10,10 @@ import {
   hideModal,
   selectModalIsEditMode,
   selectModalIsShow,
-  selectUser as selectUserModal,
+  selectUserModal,
 } from "entities/user/model"
 
-import { useErrors } from "shared/hooks"
-import { showModalCloseConfirm } from "shared/libs"
+import { useErrors, useShowModalCloseConfirm } from "shared/hooks"
 
 interface Inputs {
   username: string
@@ -38,6 +38,8 @@ interface ErrorData {
 }
 
 export const useUserModal = () => {
+  const { t } = useTranslation()
+  const { showModal } = useShowModalCloseConfirm()
   const dispatch = useAppDispatch()
   const isShow = useAppSelector(selectModalIsShow)
   const isEditMode = useAppSelector(selectModalIsEditMode)
@@ -75,7 +77,7 @@ export const useUserModal = () => {
   useEffect(() => {
     const [password, passwordConfirm] = getValues(["password", "confirm"])
     if (password !== passwordConfirm && password && passwordConfirm) {
-      setErrors({ confirm: "The passwords that you entered do not match!" })
+      setErrors({ confirm: t("The passwords that you entered do not match!") })
     } else {
       setErrors(null)
     }
@@ -110,12 +112,12 @@ export const useUserModal = () => {
     Object.keys(fields).forEach((key) => {
       const fieldName = key as keyof typeof fields
       if (!fields[fieldName]) {
-        errors[fieldName] = "This field can not be empty!"
+        errors[fieldName] = t("This field can not be empty!")
       }
     })
 
     if (password !== confirm && password && confirm) {
-      errors.confirm = "The passwords that you entered do not match!"
+      errors.confirm = t("The passwords that you entered do not match!")
     }
 
     if (Object.keys(errors).length) {
@@ -139,8 +141,9 @@ export const useUserModal = () => {
           }).unwrap()
       onCloseModal()
       notification.success({
-        message: "Success",
-        description: `User ${isEditMode ? "updated" : "created"} successfully`,
+        message: t("Success"),
+        closable: true,
+        description: isEditMode ? t("User updated successfully") : t("User created successfully"),
       })
     } catch (err) {
       onHandleError(err)
@@ -157,14 +160,14 @@ export const useUserModal = () => {
     if (isLoading) return
 
     if (isDirty) {
-      showModalCloseConfirm(onCloseModal)
+      showModal(onCloseModal)
       return
     }
 
     onCloseModal()
   }
 
-  const title = isEditMode ? `Edit User '${modalUser?.username}'` : "Create User"
+  const title = isEditMode ? `${t("Edit User")} '${modalUser?.username}'` : t("Create User")
 
   return {
     title,

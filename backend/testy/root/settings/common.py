@@ -41,7 +41,6 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.2/ref/settings/
 """
 import json
-import logging
 import os
 from datetime import timedelta
 from pathlib import Path
@@ -59,7 +58,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
-VERSION = '1.3.4'
+VERSION = '2.0.4'
 
 loaded_hosts = os.environ.get('ALLOWED_HOSTS', [])
 csrf_origins = os.environ.get('CSRF_TRUSTED_ORIGINS', [])
@@ -94,6 +93,7 @@ INSTALLED_APPS = [
     'celery_progress',
     'notifications',
     'channels',
+    'pgtrigger',
     # TestY apps
     'core',
     'comments',
@@ -204,7 +204,7 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
     {
-        'NAME': 'testy.users.api.v1.validators.TestyPasswordValidator',
+        'NAME': 'testy.users.validators.TestyPasswordValidator',
     },
 ]
 
@@ -263,8 +263,11 @@ REST_FRAMEWORK = {
         'django_filters.rest_framework.DjangoFilterBackend',
     ],
     'NON_FIELD_ERRORS_KEY': 'errors',
+    'DEFAULT_VERSIONING_CLASS': 'rest_framework.versioning.URLPathVersioning',
+    # 'ALLOWED_VERSIONS': ['v1', 'v2']
 }
-
+# NamespaceVersioning
+# URLPathVersioning
 ACCESS_TOKEN_LIFETIME: timedelta(minutes=60)
 
 # Django CORS headers

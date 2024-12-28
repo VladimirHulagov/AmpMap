@@ -29,10 +29,10 @@ export const useTestCasesSearch = ({ isShow }: { isShow: boolean }) => {
   const onSearch = async (
     value: string,
     labels: number[],
-    labels_condition: "and" | "or",
+    labels_condition: LabelCondition,
     showArchived = false
   ) => {
-    if (!projectId) return
+    if (!projectId || !isShow) return
     if (value !== searchText) {
       setSearchText(value)
     }

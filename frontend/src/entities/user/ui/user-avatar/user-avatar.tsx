@@ -11,7 +11,7 @@ interface UserAvatarProps {
 
 export const UserAvatar = ({ avatar_link, nonce = 1, size = 32 }: UserAvatarProps) => {
   return (
-    <div className={styles.image}>
+    <div className={styles.image} style={{ minWidth: size, minHeight: size }}>
       {!avatar_link ? (
         <Avatar icon={<UserOutlined id="username-icon" />} size={size} />
       ) : (
@@ -19,7 +19,7 @@ export const UserAvatar = ({ avatar_link, nonce = 1, size = 32 }: UserAvatarProp
           id="username-photo"
           src={`${avatar_link}?nonce=${nonce}`}
           alt="avatar"
-          style={{ width: size, height: size }}
+          style={{ minWidth: size, width: size, height: size }}
           loading="lazy"
         />
       )}

@@ -37,8 +37,13 @@ from testy.tests_representation.services.tests import TestService
 
 
 @shared_task()
-def notify_bulk_assign(test_ids: list[int], assignee_id: int, user_id: int):
-    tests = TestSelector.test_list_by_ids(test_ids).prefetch_related('project', 'plan', 'case', 'assignee')
+def notify_bulk_assign(tests_mapping: dict[str, int], assignee_id: int, user_id: int):
+    tests = TestSelector.test_list_by_ids(tests_mapping.keys()).prefetch_related(
+        'project',
+        'plan',
+        'case',
+        'assignee',
+    )
     ct_id = ContentType.objects.get_for_model(Test).pk
     for test in tests:
-        TestService.notify_assignee(test, test.assignee_id, assignee_id, user_id, ct_id)
+        TestService.notify_assignee(test, tests_mapping.get(str(test.pk)), assignee_id, user_id, ct_id)

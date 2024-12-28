@@ -36,7 +36,7 @@ import pytest
 
 from tests import constants
 from tests.commons import model_to_dict_via_serializer
-from tests.mock_serializers import TestCaseMockSerializer, TestMockSerializer
+from tests.mock_serializers.v1 import TestCaseMockSerializer, TestMockSerializer
 from testy.tests_description.api.v1.serializers import TestSuiteSerializer
 from testy.tests_representation.api.v1.serializers import (
     ParameterSerializer,

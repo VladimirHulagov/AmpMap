@@ -29,16 +29,9 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 
-from django.db.models import Max, QuerySet
+from django.db.models import QuerySet
 
 from testy.root.auth.models import TTLToken
-
-
-class MPTTSelector:
-    @classmethod
-    def model_max_level(cls, model_class) -> int:
-        max_level = model_class.objects.all().aggregate(Max('level')).get('level__max')
-        return max_level if max_level else 0
 
 
 class TTLTokenSelector:

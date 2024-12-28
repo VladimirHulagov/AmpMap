@@ -1,11 +1,19 @@
 import { Tag } from "antd"
 
-type StatusProps = Pick<Status, "id" | "color" | "name">
+type StatusProps = Pick<Status, "id" | "color" | "name"> & {
+  extraId?: string
+  style?: React.CSSProperties
+}
 
-export const Status = ({ id, name, color }: StatusProps) => {
+export const Status = ({ id, name, color, style, extraId }: StatusProps) => {
   return (
-    <Tag className="status" color={color} id={`status-${name}-${id}`}>
-      {name.toUpperCase()}
+    <Tag
+      className="status"
+      color={color}
+      id={`${extraId ? extraId + "-" : ""}status-${name}-${id}`}
+      style={style}
+    >
+      {name?.toUpperCase()}
     </Tag>
   )
 }

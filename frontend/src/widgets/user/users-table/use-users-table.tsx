@@ -1,8 +1,8 @@
 import { Space, TablePaginationConfig } from "antd"
 import { ColumnsType, TableProps } from "antd/es/table"
 import { FilterValue } from "antd/lib/table/interface"
-import { DeleteUser, EditUser } from "features/user"
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 
 import { useAppSelector } from "app/hooks"
 
@@ -11,11 +11,14 @@ import { selectUser } from "entities/auth/model"
 import { useGetUsersQuery } from "entities/user/api"
 import { UserAvatar } from "entities/user/ui/user-avatar/user-avatar"
 
+import { DeleteUser, EditUser } from "features/user"
+
 import { config } from "shared/config"
 import { useTableSearch } from "shared/hooks"
 import { CheckedIcon } from "shared/ui/icons"
 
 export const useUsersTable = () => {
+  const { t } = useTranslation()
   const [paginationParams, setPaginationParams] = useState({
     page: 1,
     page_size: 10,
@@ -61,7 +64,7 @@ export const useUsersTable = () => {
       render: (_, record) => <UserAvatar avatar_link={record.avatar_link} size={32} />,
     },
     {
-      title: "Username",
+      title: t("Username"),
       dataIndex: "username",
       key: "username",
       filteredValue: filteredInfo.username ?? null,
@@ -70,7 +73,7 @@ export const useUsersTable = () => {
         record.username.toLowerCase().includes(String(value).toLowerCase()),
     },
     {
-      title: "Email",
+      title: t("Email"),
       dataIndex: "email",
       key: "email",
       filteredValue: filteredInfo.email ?? null,
@@ -78,7 +81,7 @@ export const useUsersTable = () => {
       onFilter: (value, record) => record.email.toLowerCase().includes(String(value).toLowerCase()),
     },
     {
-      title: "First name",
+      title: t("First Name"),
       dataIndex: "first_name",
       key: "first_name",
       filteredValue: filteredInfo.first_name ?? null,
@@ -87,7 +90,7 @@ export const useUsersTable = () => {
         record.first_name.toLowerCase().includes(String(value).toLowerCase()),
     },
     {
-      title: "Last name",
+      title: t("Last Name"),
       dataIndex: "last_name",
       key: "last_name",
       filteredValue: filteredInfo.last_name ?? null,
@@ -96,7 +99,7 @@ export const useUsersTable = () => {
         record.last_name.toLowerCase().includes(String(value).toLowerCase()),
     },
     {
-      title: "Active",
+      title: t("Active"),
       dataIndex: "is_active",
       key: "is_active",
       width: 100,
@@ -111,7 +114,7 @@ export const useUsersTable = () => {
       render: (is_active: boolean) => <CheckedIcon value={is_active} />,
     },
     {
-      title: "Admin",
+      title: t("Admin"),
       dataIndex: "is_superuser",
       key: "is_superuser",
       width: 100,
@@ -126,7 +129,6 @@ export const useUsersTable = () => {
       render: (is_superuser: boolean) => <CheckedIcon value={is_superuser} />,
     },
     {
-      title: "Action",
       key: "action",
       width: 110,
       render: (_, record) => {

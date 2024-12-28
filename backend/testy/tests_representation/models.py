@@ -28,23 +28,27 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from typing import Any
+from typing import Any, Iterable
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.fields import GenericRelation
+from django.contrib.postgres.indexes import BTreeIndex
 from django.core.validators import MinValueValidator
-from django.db import models
-from mptt.models import TreeForeignKey
+from django.db import models, transaction
 from simple_history.models import HistoricalRecords
 
 from testy.comments.models import Comment
 from testy.core.constraints import unique_soft_delete_constraint
 from testy.core.models import Attachment, Project
+from testy.root.ltree.indexes import get_indexes
+from testy.root.ltree.managers import LtreeManager
+from testy.root.ltree.triggers import get_triggers
 from testy.root.mixins import TestyArchiveMixin
-from testy.root.models import BaseModel, MPTTBaseModel
+from testy.root.models import BaseModel, LtreeBaseModel
 from testy.tests_description.models import TestCase, TestCaseStep
 from testy.tests_representation.choices import ResultStatusType
+from testy.triggers import get_statistic_triggers
 from testy.users.models import User
 
 UserModel = get_user_model()
@@ -63,10 +67,16 @@ class Parameter(BaseModel):
         return f'{self.group_name}: {self.data}'
 
 
-class TestPlan(MPTTBaseModel, TestyArchiveMixin):
+class TestPlan(LtreeBaseModel, TestyArchiveMixin):
     name = models.CharField(max_length=settings.CHAR_FIELD_MAX_LEN)
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
-    parent = TreeForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='child_test_plans')
+    parent = models.ForeignKey(
+        'self',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='child_test_plans',
+    )
     parameters = models.ManyToManyField(Parameter, blank=True, related_name='test_plans')
     started_at = models.DateTimeField()
     due_date = models.DateTimeField()
@@ -75,22 +85,12 @@ class TestPlan(MPTTBaseModel, TestyArchiveMixin):
     description = models.TextField('description', default='', blank=True)
     comments = GenericRelation(Comment)
     attributes = models.JSONField(default=dict, blank=True)
+    objects: LtreeManager
 
     class Meta:
         default_related_name = 'test_plans'
-
-
-class Test(BaseModel):
-    project = models.ForeignKey(Project, on_delete=models.CASCADE)
-    case = models.ForeignKey(TestCase, on_delete=models.CASCADE)
-    plan = models.ForeignKey(TestPlan, on_delete=models.CASCADE)
-    assignee = models.ForeignKey(UserModel, on_delete=models.SET_NULL, null=True, blank=True)
-    is_archive = models.BooleanField(default=False)
-    history = HistoricalRecords()
-    comments = GenericRelation(Comment)
-
-    class Meta:
-        default_related_name = 'tests'
+        triggers = get_triggers('plan') + get_statistic_triggers('plans_count')
+        indexes = get_indexes('plan')
 
 
 class ResultStatus(BaseModel):
@@ -102,6 +102,22 @@ class ResultStatus(BaseModel):
     class Meta:
         verbose_name = 'Result status'
         verbose_name_plural = 'Result statuses'
+
+
+class Test(BaseModel):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE)
+    case = models.ForeignKey(TestCase, on_delete=models.CASCADE)
+    plan = models.ForeignKey(TestPlan, on_delete=models.CASCADE)
+    assignee = models.ForeignKey(UserModel, on_delete=models.SET_NULL, null=True, blank=True)
+    is_archive = models.BooleanField(default=False)
+    history = HistoricalRecords()
+    comments = GenericRelation(Comment)
+
+    last_status = models.ForeignKey(ResultStatus, on_delete=models.SET_NULL, null=True, blank=True)
+
+    class Meta:
+        default_related_name = 'tests'
+        triggers = get_statistic_triggers('tests_count')
 
 
 class TestResult(BaseModel):
@@ -128,6 +144,15 @@ class TestResult(BaseModel):
 
     class Meta:
         default_related_name = 'test_results'
+        indexes = [
+            BTreeIndex(
+                'project_id',
+                'is_deleted',
+                'is_archive',
+                'created_at',
+                name='results_histogram_idx',
+            ),
+        ]
 
     def model_clone(
         self,
@@ -146,6 +171,24 @@ class TestResult(BaseModel):
             attachment_references_fields,
             common_attrs_to_change,
         )
+
+    @transaction.atomic
+    def save(
+        self,
+        force_insert: bool = False,
+        force_update: bool = False,
+        using: str | None = None,
+        update_fields: Iterable[str] | None = None,
+    ) -> None:
+        is_inserted = self.pk is None
+        super().save(force_insert, force_update, using, update_fields)
+        latest_result_pk = None
+        if latest_result := self.test.results.order_by('-created_at').first():
+            latest_result_pk = latest_result.pk
+        last_result_updated = update_fields and 'status' in update_fields and self.pk == latest_result_pk
+        if is_inserted or last_result_updated:
+            self.test.last_status = self.status
+            self.test.save()
 
 
 class TestStepResult(BaseModel):

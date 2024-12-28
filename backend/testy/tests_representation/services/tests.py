@@ -40,6 +40,7 @@ from simple_history.utils import bulk_update_with_history
 
 from testy.root.celery import app
 from testy.tests_description.models import TestCase
+from testy.tests_description.selectors.suites import TestSuiteSelector
 from testy.tests_representation.models import Test, TestPlan
 from testy.tests_representation.selectors.tests import TestSelector
 from testy.users.models import User
@@ -102,14 +103,19 @@ class TestService:
             excluded_tests=payload.pop('excluded_tests', None),
         )
         updated_tests = []
+
+        test_to_old_assignee = {}
         for test in tests:
+            test_to_old_assignee[test.pk] = test.assignee_id
             updated_tests.append(self.test_update(test, payload, commit=False, user=user, notify_user=False))
+
         if assignee := payload.get('assignee'):
             assignee = assignee.pk
+
         app.send_task(
             'testy.tests_representation.tasks.notify_bulk_assign',
             args=[
-                list(tests.values_list('id', flat=True)),
+                test_to_old_assignee,
                 assignee,
                 user.pk,
             ],
@@ -121,7 +127,8 @@ class TestService:
             default_user=user,
             default_change_reason='Bulk update tests',
         )
-        return TestSelector().test_list_with_last_status({'pk__in': tests})
+        qs = TestSelector().test_list_with_last_status(filter_condition={'pk__in': tests})
+        return TestSuiteSelector.annotate_suite_path(qs, 'case__suite__path')
 
     def get_testcase_ids_by_testplan(self, test_plan: TestPlan) -> QuerySet[int]:
         return test_plan.tests.values_list('case', flat=True)

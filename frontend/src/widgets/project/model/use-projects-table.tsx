@@ -1,8 +1,9 @@
-import { Tooltip, Typography } from "antd"
+import { Flex, Tooltip, Typography } from "antd"
 import { TableProps } from "antd/es/table"
 import { ColumnsType, TablePaginationConfig } from "antd/lib/table"
 import { FilterValue } from "antd/lib/table/interface"
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 
 import { useGetProjectsQuery } from "entities/project/api"
@@ -10,22 +11,23 @@ import { ProjectIcon } from "entities/project/ui"
 
 import { config } from "shared/config"
 import { useTableSearch } from "shared/hooks"
-import { HighLighterTesty } from "shared/ui"
-import { CheckedIcon } from "shared/ui/icons"
+import { ArchivedTag, HighLighterTesty } from "shared/ui"
 
 const { Link } = Typography
 
 export const useProjectsTable = () => {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { setSearchText, getColumnSearch, searchText } = useTableSearch()
   const [filteredInfo, setFilteredInfo] = useState<Record<string, FilterValue | null>>({})
+  const [isShowArchive, setIsShowArchive] = useState(false)
   const [paginationParams, setPaginationParams] = useState({
     page: 1,
     pageSize: 10,
   })
 
-  const { data: projects, isLoading } = useGetProjectsQuery({
-    is_archive: filteredInfo?.is_archive ? (filteredInfo?.is_archive[0] as boolean) : undefined,
+  const { data: projects, isFetching } = useGetProjectsQuery({
+    is_archive: isShowArchive,
     page: paginationParams.page,
     page_size: paginationParams.pageSize,
     name: searchText || undefined,
@@ -34,6 +36,7 @@ export const useProjectsTable = () => {
   const handleClearAll = () => {
     setFilteredInfo({})
     setSearchText("")
+    setIsShowArchive(false)
   }
 
   const handleShowProjectDetail = (projectId: Id) => {
@@ -56,20 +59,20 @@ export const useProjectsTable = () => {
 
   const columns: ColumnsType<Project> = [
     {
-      title: "Icon",
+      title: t("Icon"),
       dataIndex: "icon",
       key: "icon",
       width: 50,
       render: (text, record) => <ProjectIcon icon={record.icon} name={record.name} />,
     },
     {
-      title: "Name",
+      title: t("Name"),
       dataIndex: "name",
       key: "name",
       filteredValue: filteredInfo.name ?? null,
       ...getColumnSearch("name"),
       onFilter: (value, record) => record.name.toLowerCase().includes(String(value).toLowerCase()),
-      render: (text, record) => {
+      render: (text: string, record) => {
         const handleLinkClick = () => {
           if (!record.is_private || record.is_manageable) {
             handleShowProjectDetail(record.id)
@@ -77,15 +80,17 @@ export const useProjectsTable = () => {
         }
 
         const linkEl = (
-          <Link onClick={handleLinkClick}>
-            {/* eslint-disable-next-line @typescript-eslint/no-unsafe-assignment*/}
-            <HighLighterTesty searchWords={searchText} textToHighlight={text} />
-          </Link>
+          <Flex gap={8} align="center">
+            {record.is_archive && <ArchivedTag />}
+            <Link onClick={handleLinkClick}>
+              <HighLighterTesty searchWords={searchText} textToHighlight={text} />
+            </Link>
+          </Flex>
         )
 
         if (record.is_private && !record.is_manageable) {
           return (
-            <Tooltip placement="topLeft" title="You are not able to manage this project" arrow>
+            <Tooltip placement="topLeft" title={t("You are not able to manage this project")} arrow>
               {linkEl}
             </Tooltip>
           )
@@ -93,20 +98,6 @@ export const useProjectsTable = () => {
 
         return linkEl
       },
-    },
-    {
-      title: "Archived",
-      dataIndex: "is_archive",
-      key: "is_archive",
-      width: 150,
-      filters: [
-        {
-          text: "Archived",
-          value: true,
-        },
-      ],
-      filteredValue: filteredInfo.is_archive ?? null,
-      render: (is_archive: boolean) => <CheckedIcon value={is_archive} />,
     },
   ]
 
@@ -128,10 +119,12 @@ export const useProjectsTable = () => {
   return {
     columns,
     projects,
-    isLoading,
+    isLoading: isFetching,
     paginationTable,
+    isShowArchive,
     handleRowClick,
     handleChange,
     handleClearAll,
+    handleShowArchive: setIsShowArchive,
   }
 }

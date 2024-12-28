@@ -1,7 +1,7 @@
 .mdViewer {
   z-index: 999;
   position: relative;
-  font-size: 13px;
+  font-size: 14px;
   max-width: 100%;
   height: auto;
   min-height: 32px;
@@ -16,7 +16,7 @@
   color: rgba(44, 44, 44, 0.85);
   background-color: #fff;
   background-image: none;
-  border: 1px solid #cbd0e2;
+  border: 1px solid var(--y-sky-30);
   border-radius: 4px;
   border-bottom-left-radius: 0;
   user-select: none;
@@ -40,8 +40,8 @@
 }
 
 .markdown {
+  font-size: 14px;
   padding: 8px;
-  overflow: auto;
 }
 
 .markdown table,
@@ -70,7 +70,7 @@
 
 .markdown table tr:nth-child(2n),
 .mdViewer table tr:nth-child(2n) {
-  background: #f6f6f6;
+  background: var(--y-grey-10);
 }
 
 .markdown blockquote,
@@ -78,7 +78,7 @@
   color: #666;
   margin: 0;
   padding-left: 14px;
-  border-left: 0.5em #eee solid;
+  border-left: 0.5em var(--y-grey-20) solid;
   background-color: rgba(240, 240, 240, 0.4);
   padding-top: 14px;
   padding-bottom: 14px;

@@ -31,11 +31,12 @@
 from typing import Any, Iterable, Protocol
 
 from django.contrib.contenttypes.models import ContentType
+from django.db import models
 from django.utils.deconstruct import deconstructible
 from rest_framework import serializers
 
 from testy.core.models import CustomAttribute, Project
-from testy.tests_description.models import TestSuite
+from testy.tests_description.models import TestCase, TestSuite
 from testy.tests_representation.selectors.status import ResultStatusSelector
 
 
@@ -131,3 +132,39 @@ class DefaultStatusValidator:
         project_id = view.kwargs.get('pk')
         if not ResultStatusSelector.status_by_project_exists(default_status, project_id):
             raise serializers.ValidationError('Status not available for project')
+
+
+class RecursionValidator:
+    requires_context = True
+
+    def __init__(self, model: type[models.Model]):
+        self.model = model
+
+    def __call__(self, attrs, serializer):
+        instance = serializer.instance
+        parent = attrs.get('parent', None)
+        if not parent or not serializer.instance:
+            return
+        old_parent = getattr(serializer.instance, 'parent', None)
+        old_parent_pk = None
+        if old_parent:
+            old_parent_pk = old_parent.pk
+        if parent.pk == old_parent_pk:
+            return
+        new_path = f'{parent.path}.{instance.id}'
+        if new_path.startswith(instance.path):
+            raise serializers.ValidationError('Updating this node causes a recursion')
+        if self.model.objects.filter(path__startswith=new_path).exists():
+            raise serializers.ValidationError('This path already exists, potential recursion detected')
+
+
+class CasesCopyProjectValidator:
+    def __call__(self, attrs: dict[str, Any]):
+        dst_suite = attrs.get('dst_suite_id')
+        if not dst_suite:
+            return
+        cases_ids = [case['id'] for case in attrs.get('cases')]
+        cases = TestCase.objects.filter(pk__in=cases_ids)
+        cases_projects = cases.values_list('project_id', flat=True).distinct('project_id')
+        if cases_projects.count() != 1 or cases_projects[0] != dst_suite.project_id:
+            raise serializers.ValidationError('Cannot copy case to another project.')

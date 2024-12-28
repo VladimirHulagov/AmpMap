@@ -28,22 +28,6 @@ export const initInternalError = (err: unknown) => {
 
 export const capitalizeFirstLetter = (str: string) => str.charAt(0).toUpperCase() + str.slice(1)
 
-export const sortEstimate = (a?: string, b?: string) => {
-  if (!a || !b) return 0
-
-  const aNumber = Number(a?.slice(0, -1))
-  const bNumber = Number(b?.slice(0, -1))
-  const aLetter = a?.slice(-1)
-  const bLetter = b?.slice(-1)
-
-  if (aLetter === bLetter) {
-    return aNumber - bNumber
-  }
-
-  const order = ["m", "h", "d"]
-  return order.indexOf(aLetter) - order.indexOf(bLetter)
-}
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function providesList<R extends Record<string, any>[], T extends string>(
   results: R | undefined,
@@ -78,3 +62,85 @@ export function invalidatesList<R extends Record<string, any>, T extends string>
       ]
     : [{ type: tagType, id: "LIST" }]
 }
+
+export const exists2dArray = <T>(arr: T[][], search: T) => {
+  return arr.some((row) => row.includes(search))
+}
+
+export const find2dItemByCoords = <T>(arr: T[][], coords: [number, number]) => {
+  const [x, y] = coords
+  return arr[y]?.[x]
+}
+
+export const remove2dItemByCoords = <T>(arr: T[][], coords: [number, number]) => {
+  const [x, y] = coords
+  arr[y]?.splice(x, 1)
+  return arr
+}
+
+export const add2dItemByCoords = <T>(arr: T[][], coords: [number, number], item: T): T[][] => {
+  const [x, y] = coords
+  arr[y]?.splice(x, 0, item)
+  return arr
+}
+
+export const objectToJSON = (target: object) => {
+  let cache: unknown[] | null = []
+  const str = JSON.stringify(target, function (_, value) {
+    if (typeof value === "object" && value !== null) {
+      if (cache?.indexOf(value) !== -1) {
+        return
+      }
+      cache.push(value)
+    }
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    return value
+  })
+  cache = null
+  return str
+}
+
+export const toBool = (value: string) => (value === "true" ? true : false)
+
+export const clearObjectByKeys = (target: Record<string, unknown>, cachedKeys: string[]) => {
+  const t = { ...target }
+  Object.keys(t).forEach((key) => {
+    if (!cachedKeys.includes(key)) {
+      // @ts-ignore
+      delete t[key]
+    }
+  })
+  return t
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const deepEqualObjects = (obj1: any, obj2: any): boolean => {
+  if (Array.isArray(obj1) && Array.isArray(obj2)) {
+    return obj1.length === obj2.length && obj1.every((item) => obj2.includes(item))
+  } else if (typeof obj1 === "object" && typeof obj2 === "object") {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    const keys1 = Object.keys(obj1)
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    const keys2 = Object.keys(obj2)
+    return (
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      keys1.length === keys2.length && keys1.every((key) => deepEqualObjects(obj1[key], obj2[key]))
+    )
+  }
+  return obj1 === obj2
+}
+
+export const clearObject = (obj: Record<string, unknown>) => {
+  const copyObj = { ...obj }
+  for (const key in copyObj) {
+    if (copyObj[key] === undefined || copyObj[key] === null || copyObj[key] === "") {
+      delete copyObj[key]
+    }
+  }
+  return copyObj
+}
+
+export const formatStringToStringArray = (value: string) =>
+  value.split(",").filter((item) => item.length)
+export const formatStringToNumberArray = (value: string) =>
+  formatStringToStringArray(value).map(Number)

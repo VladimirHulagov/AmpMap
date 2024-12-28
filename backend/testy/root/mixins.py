@@ -39,7 +39,6 @@ from django.core.cache import cache
 from django.core.exceptions import FieldDoesNotExist
 from django.db.models import CASCADE, ManyToManyRel, ManyToOneRel, Model
 from django.db.models.sql import Query
-from mptt.models import MPTTModel
 from rest_framework import mixins, status
 from rest_framework.decorators import action
 from rest_framework.generics import QuerySet
@@ -48,9 +47,12 @@ from rest_framework.viewsets import GenericViewSet
 
 from testy.core.services.recovery import RecoveryService
 from testy.paginations import StandardSetPagination
-from testy.root.api.v1.serializers import RecoveryInputSerializer
+from testy.root.api.v2.serializers import RecoveryInputSerializer
+from testy.root.ltree.models import LtreeModel
 from testy.root.models import DeletedQuerySet, SoftDeleteQuerySet
 from testy.swagger.core import preview_schema
+from testy.tests_description.models import TestSuite
+from testy.tests_description.services.suites import TestSuiteService
 
 UniqueRelationSet = set[ManyToOneRel | GenericRelation | ManyToManyRel]
 _TARGET_OBJECT = 'target_object'
@@ -159,7 +161,7 @@ class RelationTreeMixin:
             else:
                 filter_option = {f'{single_object.field.attname}__in': [instance.id for instance in qs]}  # noqa: WPS237
 
-            if isinstance(single_object.related_model, MPTTModel):
+            if isinstance(single_object.related_model, LtreeModel):
                 new_qs = getattr(single_object.related_model, manager).filter(**filter_option).get_descendants(
                     include_self=True,
                 )
@@ -244,8 +246,6 @@ class TestyDestroyModelMixin(RelationTreeMixin):
         """
         querysets_to_delete: list[QuerySet] = []
         target_object = self.get_object()
-        tree_id = target_object.tree_id if isinstance(target_object, MPTTModel) else None
-        model_class = type(target_object)
         cache_key = request.COOKIES.get('delete_cache')
         if cache_key and cache.get(cache_key):
             meta_to_delete: MetaForCaching = cache.get(cache_key)
@@ -260,9 +260,9 @@ class TestyDestroyModelMixin(RelationTreeMixin):
             for meta_data in meta_querysets:
                 querysets_to_delete.append(self._get_qs_from_meta_data(meta_data, SoftDeleteQuerySet))
         for related_qs in querysets_to_delete:
+            if related_qs.model == TestSuite:
+                TestSuiteService.unlink_custom_attributes(related_qs)
             related_qs.delete()
-        if tree_id:
-            model_class.objects.partial_rebuild(tree_id)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @preview_schema
@@ -479,12 +479,6 @@ class TestyRestoreModelMixin(RelationTreeMixin):
         related_querysets.append(qs)
         for related_qs in related_querysets:
             related_qs.restore()
-            if not issubclass(related_qs.model, MPTTModel) or not related_qs:
-                continue
-            tree_ids_to_rebuild = [elem.tree_id for elem in related_qs]
-            tree_ids_to_rebuild = set(tree_ids_to_rebuild)
-            for tree_id in tree_ids_to_rebuild:
-                related_qs.model.objects.partial_rebuild(tree_id)
         return Response(status=status.HTTP_200_OK)
 
     @action(

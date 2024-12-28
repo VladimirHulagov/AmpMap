@@ -32,18 +32,18 @@
 import logging
 import re
 from copy import deepcopy
-from typing import Any
+from typing import Any, TypeVar
 
 from django.db import models, transaction
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
-from mptt.managers import TreeManager
-from mptt.models import MPTTModel
-from mptt.querysets import TreeQuerySet
 
-from testy.root.types import DjangoModelType
+from testy.root.ltree.managers import LtreeManager
+from testy.root.ltree.models import LtreeModel
+from testy.root.querysets import DeletedQuerySet, DeletedTreeQuerySet, SoftDeleteQuerySet, SoftDeleteTreeQuerySet
 
 logger = logging.getLogger(__name__)
+_MT = TypeVar('_MT', bound=models.Model)
 
 
 class ServiceModelMixin(models.Model):
@@ -52,11 +52,11 @@ class ServiceModelMixin(models.Model):
 
     @classmethod
     def model_create(
-        cls,
+        cls: type[_MT],
         fields: list[str],
         data: dict[str, Any],
         commit: bool = True,
-    ) -> DjangoModelType:
+    ) -> _MT:
         actually_fields = {key: data[key] for key in fields if key in data}
         instance = cls(**actually_fields)
 
@@ -67,13 +67,13 @@ class ServiceModelMixin(models.Model):
         return instance
 
     def model_update(  # noqa: WPS231
-        self,
+        self: _MT,
         fields: list[str],
         data: dict[str, Any],
         commit: bool = True,
         force: bool = False,
         skip_history: bool = False,
-    ) -> tuple[DjangoModelType, bool]:
+    ) -> tuple[_MT, list[str]]:
         has_updated = False
         update_fields = []
 
@@ -91,14 +91,12 @@ class ServiceModelMixin(models.Model):
 
         if (has_updated and commit) or force:
             # needed when there were changes in generic models, for example, attachment of a test case was removed
-            update_fields = update_fields or None
             self.full_clean()
             if skip_history:
-                self.save_without_history(data, update_fields)
+                self.save_without_history(data, update_fields if update_fields else None)
             else:
-                self.save(update_fields=update_fields)
-
-        return self, has_updated
+                self.save(update_fields=update_fields if update_fields else None)
+        return self, update_fields
 
     def save_without_history(self, data, update_fields):
         if not hasattr(self, 'save_without_historical_record'):
@@ -114,17 +112,13 @@ class ServiceModelMixin(models.Model):
 
     @transaction.atomic
     def model_clone(  # noqa: WPS231
-        self,
-        related_managers: list[str] = None,
-        attrs_to_change: dict[str, Any] = None,
-        attachment_references_fields: list[str] = None,
-        common_attrs_to_change: dict[str, Any] = None,
-    ) -> DjangoModelType:
+        self: _MT,
+        related_managers: list[str] | None = None,
+        attrs_to_change: dict[str, Any] | None = None,
+        attachment_references_fields: list[str] | None = None,
+        common_attrs_to_change: dict[str, Any] | None = None,
+    ) -> _MT:
         self_copy = deepcopy(self)
-        mptt_fields = ['lft', 'rght', 'tree_id']
-        if isinstance(self, MPTTModel):
-            for field in mptt_fields:
-                setattr(self_copy, field, 0)
         attrs = {'pk': None, 'id': None}
         cloned_related_objects = {}
         attachments_mapping = {}
@@ -188,56 +182,19 @@ class ServiceModelMixin(models.Model):
         return mapping
 
 
-class SoftDeleteQuerySet(models.query.QuerySet):
-    def delete(self, cascade=None):
-        return self.update(is_deleted=True, deleted_at=timezone.now())
-
-    def hard_delete(self):
-        return super().delete()
-
-
 class SoftDeleteManager(models.Manager):
     def get_queryset(self):
         return SoftDeleteQuerySet(self.model, using=self._db).filter(is_deleted=False)
 
 
-class SoftDeleteTreeQuerySet(TreeQuerySet):
-    def delete(self, cascade=None):
-        return self.update(is_deleted=True, deleted_at=timezone.now())
-
-    def hard_delete(self):
-        return super().delete()
-
-
-class SoftDeleteTreeManager(TreeManager):
+class SoftDeleteTreeManager(LtreeManager):
     def get_queryset(self):
         return SoftDeleteTreeQuerySet(self.model, using=self._db).filter(is_deleted=False)
 
 
-class DeletedTreeQuerySet(TreeQuerySet):
-    def restore(self, *args, **kwargs):
-        qs = self.filter(*args, **kwargs)
-        qs.update(is_deleted=False, deleted_at=None)
-
-    def get_descendants(self, *args, **kwargs):
-        return self.model.deleted_objects.get_queryset_descendants(self, *args, **kwargs)
-
-    def hard_delete(self):
-        return super().delete()
-
-
-class DeletedTreeManager(TreeManager):
+class DeletedTreeManager(LtreeManager):
     def get_queryset(self):
         return DeletedTreeQuerySet(self.model, using=self._db).filter(is_deleted=True)
-
-
-class DeletedQuerySet(models.query.QuerySet):
-    def restore(self, *args, **kwargs):
-        qs = self.filter(*args, **kwargs)
-        qs.update(is_deleted=False, deleted_at=None)
-
-    def hard_delete(self):
-        return super().delete()
 
 
 class DeletedManager(models.Manager):
@@ -268,7 +225,7 @@ class SoftDeleteMixin(models.Model):
         super().delete(*args, **kwargs)
 
 
-class BaseModel(ServiceModelMixin, SoftDeleteMixin, models.Model):
+class BaseModel(ServiceModelMixin, SoftDeleteMixin):
     created_at = models.DateTimeField(_('created at'), auto_now_add=True)
     updated_at = models.DateTimeField(_('updated at'), auto_now=True)
     objects = SoftDeleteManager()
@@ -281,7 +238,7 @@ class BaseModel(ServiceModelMixin, SoftDeleteMixin, models.Model):
         weight = 0
 
 
-class MPTTBaseModel(MPTTModel, BaseModel):
+class LtreeBaseModel(LtreeModel, BaseModel):
     objects = SoftDeleteTreeManager()
     deleted_objects = DeletedTreeManager()
 

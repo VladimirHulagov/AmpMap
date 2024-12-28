@@ -1,39 +1,26 @@
-import { PlusOutlined } from "@ant-design/icons"
-import { Button, Space } from "antd"
+import { Space } from "antd"
 import { useContext, useEffect } from "react"
-import { useDispatch } from "react-redux"
+import { LayoutView } from "widgets"
 
-import { showLabelModal } from "entities/label/model"
-import { LabelsTable } from "entities/label/ui"
+import { CreateLabelButton } from "features/label"
 
 import { ProjectDetailsActiveTabContext } from "pages/administration/projects/project-details/project-details-main"
 
+import { LabelsTable } from "widgets/label"
+
 export const ProjectDetailsLabelsPage = () => {
-  const dispatch = useDispatch()
   const { setProjectDetailsActiveTab } = useContext(ProjectDetailsActiveTabContext)!
 
   useEffect(() => {
     setProjectDetailsActiveTab("labels")
   }, [])
 
-  const handleCreateClick = () => {
-    dispatch(showLabelModal({ mode: "create" }))
-  }
-
   return (
-    <div className="site-layout-background" style={{ padding: 24, minHeight: 360 }}>
+    <LayoutView style={{ padding: 24, minHeight: 360 }}>
       <Space style={{ display: "flex", justifyContent: "right" }}>
-        <Button
-          id="create-label"
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={handleCreateClick}
-          style={{ marginBottom: 16, float: "right" }}
-        >
-          Create Label
-        </Button>
+        <CreateLabelButton />
       </Space>
       <LabelsTable />
-    </div>
+    </LayoutView>
   )
 }

@@ -45,6 +45,7 @@ class CommentSerializer(ModelSerializer):
     class Meta:
         model = Comment
         fields = ('id', 'content', 'user', 'created_at', 'updated_at', 'attachments', 'deleted_at')
+        ref_name = 'CommentSerializerV1'
 
     def get_content(self, instance):
         if instance.is_deleted:
@@ -65,6 +66,7 @@ class InputCommentSerializer(ModelSerializer):
     class Meta:
         model = Comment
         fields = ('content', 'attachments')
+        ref_name = 'InputCommentSerializerV1'
 
     def validate(self, attrs):
         if not attrs.get('content') and not attrs.get('attachments'):

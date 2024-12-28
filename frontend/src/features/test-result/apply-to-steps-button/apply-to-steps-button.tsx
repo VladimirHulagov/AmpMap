@@ -1,4 +1,5 @@
 import { Button } from "antd"
+import { useTranslation } from "react-i18next"
 
 interface Props {
   steps: (Step | StepResult)[]
@@ -7,6 +8,8 @@ interface Props {
 }
 
 export const ApplyToStepsButton = ({ steps, status, onApply }: Props) => {
+  const { t } = useTranslation()
+
   const handleApply = () => {
     if (status) {
       const updatedSteps: Record<string, number> = {}
@@ -25,7 +28,7 @@ export const ApplyToStepsButton = ({ steps, status, onApply }: Props) => {
 
   return (
     <Button disabled={!status} onClick={handleApply}>
-      Apply to steps
+      {t("Apply to steps")}
     </Button>
   )
 }

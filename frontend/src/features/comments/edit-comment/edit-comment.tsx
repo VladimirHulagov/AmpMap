@@ -1,5 +1,6 @@
 import { UploadOutlined } from "@ant-design/icons"
 import { Button, Modal, Upload } from "antd"
+import { useTranslation } from "react-i18next"
 
 import { Attachment, TextArea } from "shared/ui"
 
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export const EditComment = ({ comment }: Props) => {
+  const { t } = useTranslation()
   const {
     isShow,
     isLoading,
@@ -37,16 +39,16 @@ export const EditComment = ({ comment }: Props) => {
           lineHeight: 1,
         }}
       >
-        <span style={{ textDecoration: "underline" }}>Edit</span>
+        <span style={{ textDecoration: "underline" }}>{t("Edit")}</span>
       </Button>
       <Modal
         className="edit-comment-modal"
-        title="Edit comment"
+        title={t("Edit comment")}
         open={isShow}
         onCancel={handleClose}
         footer={[
           <Button key="back" onClick={handleClose} type="text">
-            Cancel
+            {t("Cancel")}
           </Button>,
           <Button
             key="submit"
@@ -55,7 +57,7 @@ export const EditComment = ({ comment }: Props) => {
             loading={isLoading}
             disabled={!commentValue.length}
           >
-            Save
+            {t("Save")}
           </Button>,
         ]}
       >
@@ -73,7 +75,7 @@ export const EditComment = ({ comment }: Props) => {
               onChange={handleLoadAttachmentChange}
               customRequest={handleAttachmentLoad}
             >
-              <Button icon={<UploadOutlined />}>Upload file</Button>
+              <Button icon={<UploadOutlined />}>{t("Upload file")}</Button>
             </Upload>
           </div>
           <Attachment.List

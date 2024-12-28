@@ -1,8 +1,9 @@
 import { PlusOutlined } from "@ant-design/icons"
 import { PageHeader } from "@ant-design/pro-layout"
 import { Breadcrumb, Button, Layout, Space } from "antd"
-import { useContext, useEffect } from "react"
+import { useTranslation } from "react-i18next"
 import { useDispatch } from "react-redux"
+import { LayoutView } from "widgets"
 
 import { useAppSelector } from "app/hooks"
 
@@ -10,23 +11,18 @@ import { selectUser } from "entities/auth/model"
 
 import { showCreateUserModal } from "entities/user/model"
 
-import { MenuContext } from "widgets/[ui]/main"
 import { CreateEditUserModal, UsersTable } from "widgets/user"
 
 const { Content } = Layout
 
 export const UsersPage = () => {
-  const { setActiveMenu, setOpenSubMenu } = useContext(MenuContext)!
+  const { t } = useTranslation()
   const dispatch = useDispatch()
-  useEffect(() => {
-    setOpenSubMenu(["administration"])
-    setActiveMenu(["administration.users"])
-  }, [])
   const user = useAppSelector(selectUser)
 
   const breadcrumbItems = [
-    <Breadcrumb.Item key="administration">Administration</Breadcrumb.Item>,
-    <Breadcrumb.Item key="users">Users</Breadcrumb.Item>,
+    <Breadcrumb.Item key="administration">{t("Administration")}</Breadcrumb.Item>,
+    <Breadcrumb.Item key="users">{t("Users")}</Breadcrumb.Item>,
   ]
 
   const handleClick = () => {
@@ -37,14 +33,15 @@ export const UsersPage = () => {
     <>
       <PageHeader
         breadcrumbRender={() => <Breadcrumb>{breadcrumbItems}</Breadcrumb>}
-        title="Users"
+        title={t("Users")}
+        ghost={false}
         style={{ paddingBottom: 0 }}
       ></PageHeader>
 
       <Content style={{ margin: "24px" }}>
         <CreateEditUserModal />
 
-        <div className="site-layout-background" style={{ padding: 24, minHeight: 360 }}>
+        <LayoutView style={{ padding: 24, minHeight: 360 }}>
           <Space style={{ display: "flex", justifyContent: "right" }}>
             {user?.is_superuser && (
               <Button
@@ -54,12 +51,12 @@ export const UsersPage = () => {
                 icon={<PlusOutlined />}
                 style={{ marginBottom: 16, float: "right" }}
               >
-                Create user
+                {t("Create User")}
               </Button>
             )}
           </Space>
           <UsersTable />
-        </div>
+        </LayoutView>
       </Content>
     </>
   )

@@ -1,10 +1,12 @@
 import { EyeInvisibleOutlined, EyeOutlined } from "@ant-design/icons"
-import { Button, Divider, Table } from "antd"
+import { Button, Table } from "antd"
+import { useTranslation } from "react-i18next"
 
 import styles from "./notifications-table.module.css"
 import { useNotificationsTable } from "./use-noitifications-table"
 
 export const NotificationsTable = () => {
+  const { t } = useTranslation()
   const {
     isLoading,
     data,
@@ -19,8 +21,6 @@ export const NotificationsTable = () => {
 
   return (
     <>
-      <p style={{ margin: 0, fontSize: 18 }}>Messages</p>
-      <Divider />
       {!!selectedRowKeys.length && (
         <div>
           <Button
@@ -29,7 +29,7 @@ export const NotificationsTable = () => {
             icon={<EyeOutlined />}
             disabled={!selectedRowKeys.length}
           >
-            Mark as read
+            {t("Mark as read")}
           </Button>
           <Button
             key="mark-as-unread"
@@ -38,7 +38,7 @@ export const NotificationsTable = () => {
             disabled={!selectedRowKeys.length}
             style={{ marginLeft: 8 }}
           >
-            Mark as unread
+            {t("Mark as unread")}
           </Button>
         </div>
       )}

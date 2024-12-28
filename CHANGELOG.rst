@@ -1,3 +1,164 @@
+Version 2.0.4
+--------------
+*Status: General availability*
+
+
+Release Overview:
+Versions 2.0, 2.0.1, 2.0.2 and 2.0.3 are internal releases which we used to stabilize TestY after the major change
+we made (for both front and backend sides), 2.0.4 incorporates the whole set of features from previous 2.x releases with
+various bug fixes and this is the most stable production version we have.
+The key difference between the 2.x and 1.3.x versions is a redesign of Test Plans & Results and Test Suites & Cases tabs.
+For now, there are two ways of how plans/tests and suites/cases can be represented (tree and flat views) and the end user can choose the way he/she likes.
+
+Taking into account this change we eliminated the need of the Child Plans/Suites panes, because for now child items are visually incorporated to the parent one.
+We also reworked navigation within the application, so now the user can simply go to any place in the structure of Plans/Suites using sidebar.
+Another major change we made is the redesign of filters. The filter is now available on the both Test Plans & Results and Test Suites & Cases tabs.
+The filter works in both views (table and tree), it incorporates search bar and allows user to filter the data on a combination of various independent conditions (meaning the filter is not hierarchical).
+Also, it is possible to save/edit/remove filters or share filtered representation to the coworker with just copying URL.
+
+Sorting functionality available within a separate menu right next to the filter button.
+In addition to the above within this release significant work has been done to preserve the application's state for users and address performance issues.
+
+Also, we’ve added localization and users now have a fully Russian-translated interface.
+For backward compatibility we preserved API v1, so if you used it for scripting you can still use it, but all new functions would be available in API v2.
+
+Additional details for Filters
+==============================
+
+Test Plans & Results
+
+- **Search bar** by **Name** and **ID**: If the filter is opened without transitioning to a specific plan, it will search tests across all plans.
+- **Test Plan**: Plan selector useful for searching by child plans or all plans, when the filter is opened without transitioning to a specific plan.
+- **Test Suites**: Suite selector returning the previous behavior; selecting a parent suite will select all its children.
+- **Status**: Multi-select **OR** filter, works similarly to filtering in statistics.
+- **Assignee**: Multi-select filter.
+- **Label**: Filtering by labels, functionality preserved from the previous implementation.
+- **Test Plan Start At**: Date range filter, allows selection of specific plans by their start date.
+- **Test Plan Created At**: Date range filter, by the actual creation date of the plan.
+- **Test Created At**: Date range filter, by the date the test was added to the plan.
+- **Show Archived**: Shows archived tests. This will be removed after the rework of archiving.
+
+Test Suites & Cases
+
+- **Search bar** by **Name** and **ID**: If the filter is opened without transitioning to a specific suite, the search will cover the entire project.
+- **Test Suites**: Suite selector, similar to the Test Plans filter.
+- **Label**: Filtering test cases by labels, works the same way as it did for plans.
+- **Test Suite Created At**: Date range filter, by the creation date of the suite.
+- **Test Case Created At**: Date range filter, by the creation date of the case.
+- **Show Archived**: Shows archived test cases and suites. This will be removed after the rework of archiving.
+
+Important notes
+
+- **Show full tree** toggle: When selecting a plan or suite selector, this toggle displays all suites/plans, regardless of where the filter is opened (e.g., if the filter is opened within a specific suite/plan, the selector will show all suites/plans of the project).
+- Filters can be saved, edited, and deleted. You can create an unlimited number of filters.
+- Saved filters are available within the project.
+- On the **Test Plans** tab, all filter segments except for the label filter **do not affect statistics** in the current implementation
+
+*Released: 28-12-2024*
+
+- Implement visual separation between Test Case and results (TMS-190)
+- Move child plans under the parent plan (TMS-215)
+- Add grouping of tests by suites on the Test Plan page (TMS-297)
+- Display tests in the parent Test Plan (TMS-449)
+- Manage the test list in a Test Plan with nested Test Plans (TMS-513)
+- Merge child suites and tests in the parent suite (Test Suites & Cases view) (TMS-590)
+- Remove excessive empty space around "Test Cases" (TMS-594)
+- Add date/time and pre-filled attributes to test results (TMS-679)
+- Add a "Back" button to allow navigation to the higher level (TMS-704)
+- Implement a table view for the dashboard in addition to the current one (TMS-805)
+- Redesign statistics (TMS-819)
+- Slow request on api/v1/projects/ (TMS-1049)
+- Missing archive icon for tests in "Activity" (TMS-1177)
+- Add "archived/non-archived" status to activity (TMS-1182)
+- Add label-based filtering during Test Plan creation (TMS-1129)
+- Add "Start date" and "Created At" columns to the Tests table (TMS-1130)
+- Pagination does not persist between pages (TMS-1148)
+- Enable filtering by Test Suites in the Test Cases table (TMS-1195)
+- Add tooltips to buttons (TMS-1185)
+- Search does not work on the Test Suites & Cases tab (TMS-119)
+- Search by Test ID does not work (TMS-243)
+- Enable label-based filtering at any level (TMS-435)
+- Please improve label management (TMS-506)
+- Add label search functionality in Test Suites & Cases (TMS-730)
+- Search for test cases on the Test Suites & Cases page (TMS-1089)
+- Filter test cases by labels (TMS-1232)
+- Improved database performance for histogram endpoint (TMS-1382)
+- Locked test plan custom attributes (TMS-1377)
+
+
+
+**Bug fixes**:
+
+- URL conditions reset when opening a test from Test Plans (TMS-1083)
+- Attribute deletion is not blocked (TMS-1115)
+- Multiple attributes per test result (TMS-1117)
+- Number of comments on test results is always 0 (TMS-1119)
+- Sorting by suite/assignee in the test list is very slow (TMS-1120)
+- Incorrect case count when creating Test Plan with label filtering (TMS-1121)
+- Archived test cases not marked in the list (TMS-1122)
+- Lost Russian translation in "Copy Test Plan" (TMS-1123)
+- Trim text in labels (TMS-1124)
+- Deleting a test case leads to a 404 error (TMS-1125)
+- "Load more" button does not disappear after clicking in the test list (TMS-1127)
+- Rename "Parameters" to "Parent plan" in Edit Test Plan (TMS-1128)
+- Error opening test case (TMS-1131)
+- Unable to edit a result with a deleted status (TMS-1132)
+- Unable to update test case (TMS-1133)
+- No translations for the "Action" column in the Activity page (TMS-1137)
+- Label block disappears (TMS-1138)
+- Non-project user can be assigned to a test (TMS-1139)
+- Test Plan attribute is missing during creation/editing (TMS-1140)
+- Dollar sign appears on a button (TMS-1141)
+- Test cases with steps are missing in the Test Plan list (TMS-1142)
+- Deleting a custom status removes test results (TMS-1143)
+- Editing an archived Test Plan causes a 403 error (TMS-1144)
+- "Archive" button is available for archived Test Plans (TMS-1145)
+- Infinite spinner when filtering cases by any label (TMS-1146)
+- Align archive icon for cases in Test Plan creation window (TMS-1147)
+- Copying an archived test case (TMS-1149)
+- Copying an archived plan into a regular plan (TMS-1150)
+- Tests fail during migration (TMS-1152)
+- [Dashboard][Table view] Private projects show "Request Access" icon instead of navigation (TMS-1155)
+- Unable to update custom attributes in project settings (TMS-1156)
+- Restoring archived project causes a 403 error (TMS-1158)
+- Project settings issue (TMS-1159)
+- Test result status not updated (TMS-1160)
+- Copying parameterized Test Plans results in parameter loss (TMS-1165)
+- Moving tests returns a 500 error (TMS-1167)
+- Editing archived results: statuses fail to load (TMS-1176)
+- Date Picker: missing Russian translation (TMS-1178)
+- Test Plan: tree sorting is case-sensitive (TMS-1179)
+- Test Plan section cannot be expanded after being collapsed (TMS-1180)
+- Browser resizing overlaps charts (TMS-1181)
+- Deleting a test case causes a 404 error (TMS-1184)
+- Missing notification button near profile in the header (TMS-1187)
+- Archived projects are not marked (TMS-1188)
+- Archiving a project still allows Test Plan archiving (TMS-1192)
+- Missing parent check when copying Test Plans (TMS-1197)
+- Results remain visible on UI after copying Test Plans (TMS-1198)
+- Breadcrumbs missing while navigating Test Plan tree (TMS-1199)
+- Sidebar tree does not expand automatically (TMS-1201)
+- Notifications incorrectly state that a suite is copied instead of a Test Plan (TMS-1202)
+- Search does not work on the Test Suites & Cases tab (TMS-119)
+- Search by Test ID does not work (TMS-243)
+- Enable label-based filtering at any level (TMS-435)
+- Please improve label management (TMS-506)
+- Add label search functionality in Test Suites & Cases (TMS-730)
+- Search for test cases on the Test Suites & Cases page (TMS-1089)
+- Filter test cases by labels (TMS-1232)
+- Fixed NaN in navigation for test plan from root (TMS-1367)
+- Undefined appears in url when navigating to test suites from root (TMS-1366)
+- URL parameters are being reset when page is up (TMS-1364)
+- Deprecated parent test suite in modal window after navigating tree (TMS-1360)
+- Deprecated parent test plan in modal window after navigating tree (TMS-1361)
+- Error when creating nested suite in modal window of creation (TMS-1356)
+- Duplicated assignee filter (TMS-1370)
+- Submit dialog appears if data was not changed in edit (TMS-1116)
+- Show archived filter being reset (TMS-1276)
+- Archive button is available for archived test case in version display (TMS-1154)
+- Show archived checkbox missing in tests table (TMS-1285)
+
+
 Version 1.3.4
 --------------
 *Status: General availability*

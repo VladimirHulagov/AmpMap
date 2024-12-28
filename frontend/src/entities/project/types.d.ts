@@ -60,4 +60,11 @@ interface GetProjectsQuery {
   favorites?: boolean
   is_archive?: boolean
   name?: string
+  ordering?: string
+}
+
+interface EntityBreadcrumbs {
+  id: number
+  parent: EntityBreadcrumbs | null
+  title: string
 }

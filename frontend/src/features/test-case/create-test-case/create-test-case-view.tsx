@@ -1,20 +1,26 @@
-import { InfoCircleOutlined, PlusOutlined } from "@ant-design/icons"
-import { Button, Col, Form, Input, Row, Space, Tabs, Tooltip, Typography, Upload } from "antd"
+import { PlusOutlined } from "@ant-design/icons"
+import { Button, Col, Form, Input, Row, Space, Tabs, Typography, Upload } from "antd"
 import { Controller } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 
 import { LabelWrapper } from "entities/label/ui"
 
-import { TestCaseStepsWrapper } from "entities/test-case/ui/steps/wrapper"
+import { TestCaseStepsBlock } from "entities/test-case/ui/steps/block"
 
 import { config } from "shared/config"
-import { ErrorObj } from "shared/hooks/use-alert-error"
-import { AlertError, Attachment, Attribute, TextAreaWithAttach } from "shared/ui"
+import { ErrorObj } from "shared/hooks"
+import { AlertError, Attachment, Attribute, InfoTooltipBtn, TextAreaWithAttach } from "shared/ui"
 
+import { LayoutView } from "widgets/[ui]"
+
+import { ScenarioLabelFormTestCase } from "./scenario-label-form-test-case"
+import styles from "./styles.module.css"
 import { useTestCaseCreateView } from "./use-test-case-create-view"
 
 const { Dragger } = Upload
 
 export const CreateTestCaseView = () => {
+  const { t } = useTranslation()
   const {
     isLoading,
     errors,
@@ -27,18 +33,15 @@ export const CreateTestCaseView = () => {
     isDirty,
     tab,
     attributes,
-    setIsSteps,
-    setSteps,
+    labelProps,
     onLoad,
     onRemove,
     onChange,
     setValue,
-    clearErrors,
     setAttachments,
     handleCancel,
     handleSubmitForm,
     register,
-    labelProps,
     handleTabChange,
     addAttribute,
     onAttributeChangeName,
@@ -48,18 +51,15 @@ export const CreateTestCaseView = () => {
   } = useTestCaseCreateView()
 
   const scenarioFormErrors = !isSteps
-    ? formErrors.scenario?.message ?? errors?.scenario ?? ""
+    ? (formErrors.scenario?.message ?? errors?.scenario ?? "")
     : !steps.length
-      ? "Обязательное поле."
+      ? t("Required field")
       : ""
 
   return (
-    <div
-      className="create-test-case-modal site-layout-background"
-      style={{ padding: 24, minHeight: 360 }}
-    >
-      <Typography.Title level={5} style={{ marginTop: 0 }}>
-        Create Test Case
+    <LayoutView className="create-test-case-modal" style={{ minHeight: 360 }}>
+      <Typography.Title level={2} style={{ marginTop: 0 }}>
+        {t("Create")} {t("Test")} {t("Case")}
       </Typography.Title>
       {errors ? (
         <AlertError
@@ -70,24 +70,24 @@ export const CreateTestCaseView = () => {
 
       <Form id="create-test-case-form" layout="vertical" onFinish={handleSubmitForm}>
         <Tabs defaultActiveKey="general" onChange={handleTabChange} activeKey={tab}>
-          <Tabs.TabPane tab="General" key="general">
+          <Tabs.TabPane tab={t("General")} key="general">
             <Row gutter={[32, 32]} style={{ marginTop: 14 }}>
               <Col span={12}>
                 <Form.Item
-                  label="Name"
-                  validateStatus={formErrors.name?.message ?? errors?.name ? "error" : ""}
+                  label={t("Name")}
+                  validateStatus={(formErrors.name?.message ?? errors?.name) ? "error" : ""}
                   help={formErrors.name?.message ?? errors?.name ?? ""}
                   required
                 >
                   <Controller
                     name="name"
                     control={control}
-                    rules={{ required: "Обязательное поле." }}
+                    rules={{ required: t("Required field") }}
                     render={({ field }) => <Input {...field} id="create-name-input" />}
                   />
                 </Form.Item>
                 <Form.Item
-                  label="Description"
+                  label={t("Description")}
                   validateStatus={errors?.description ? "error" : ""}
                   help={errors?.description ? errors.description : ""}
                 >
@@ -107,7 +107,7 @@ export const CreateTestCaseView = () => {
                   />
                 </Form.Item>
                 <Form.Item
-                  label="Setup"
+                  label={t("Setup")}
                   validateStatus={errors?.setup ? "error" : ""}
                   help={errors?.setup ? errors.setup : ""}
                 >
@@ -126,36 +126,50 @@ export const CreateTestCaseView = () => {
                     )}
                   />
                 </Form.Item>
-                {/* // TODO Нужно разделить эту часть на два отдельных контроллера
-              // чтобы контролировать ошибки по полю scenario и steps отдельно */}
-                <Form.Item
-                  label="Scenario"
-                  validateStatus={scenarioFormErrors ? "error" : ""}
-                  help={scenarioFormErrors}
-                  required
-                >
-                  <Controller
-                    name="scenario"
-                    control={control}
-                    render={({ field }) => (
-                      <TestCaseStepsWrapper
-                        fieldProps={field}
-                        stateAttachments={{ attachments, setAttachments }}
-                        stateSteps={{ steps, setSteps }}
-                        customRequest={onLoad}
-                        setValue={setValue}
-                        clearErrors={clearErrors}
-                        control={control}
-                        isSteps={isSteps}
-                        setIsSteps={setIsSteps}
-                        isEditMode={false}
-                      />
-                    )}
-                  />
-                </Form.Item>
                 {!isSteps && (
                   <Form.Item
-                    label="Expected"
+                    label={<ScenarioLabelFormTestCase control={control} />}
+                    validateStatus={scenarioFormErrors ? "error" : ""}
+                    help={scenarioFormErrors}
+                    required
+                    className={styles.formItem}
+                  >
+                    <Controller
+                      name="scenario"
+                      control={control}
+                      render={({ field }) => (
+                        <TextAreaWithAttach
+                          uploadId="create-scenario"
+                          textAreaId="create-scenario-textarea"
+                          customRequest={onLoad}
+                          fieldProps={field}
+                          stateAttachments={{ attachments, setAttachments }}
+                          setValue={setValue}
+                        />
+                      )}
+                    />
+                  </Form.Item>
+                )}
+                {isSteps && (
+                  <Form.Item
+                    label={<ScenarioLabelFormTestCase control={control} />}
+                    validateStatus={scenarioFormErrors ? "error" : ""}
+                    help={scenarioFormErrors}
+                    required
+                    className={styles.formItem}
+                  >
+                    <Controller
+                      name="steps"
+                      control={control}
+                      render={({ field }) => (
+                        <TestCaseStepsBlock steps={field.value ?? []} setSteps={field.onChange} />
+                      )}
+                    />
+                  </Form.Item>
+                )}
+                {!isSteps && (
+                  <Form.Item
+                    label={t("Expected")}
                     validateStatus={errors?.expected ? "error" : ""}
                     help={errors?.expected ? errors.expected : ""}
                   >
@@ -176,7 +190,7 @@ export const CreateTestCaseView = () => {
                   </Form.Item>
                 )}
                 <Form.Item
-                  label="Teardown"
+                  label={t("Teardown")}
                   validateStatus={errors?.teardown ? "error" : ""}
                   help={errors?.teardown ? errors.teardown : ""}
                 >
@@ -198,7 +212,7 @@ export const CreateTestCaseView = () => {
               </Col>
               <Col span={12}>
                 <Form.Item
-                  label="Estimate"
+                  label={t("Estimate")}
                   validateStatus={errors?.estimate ? "error" : ""}
                   help={errors?.estimate ? errors.estimate : ""}
                 >
@@ -210,17 +224,13 @@ export const CreateTestCaseView = () => {
                         {...field}
                         id="create-estimate-input"
                         value={field.value ?? ""}
-                        suffix={
-                          <Tooltip overlayStyle={{ minWidth: 460 }} title={config.estimateTooltip}>
-                            <InfoCircleOutlined style={{ color: "rgba(0,0,0,.45)" }} />
-                          </Tooltip>
-                        }
+                        suffix={<InfoTooltipBtn title={config.estimateTooltip} />}
                       />
                     )}
                   />
                 </Form.Item>
                 <Form.Item
-                  label="Labels"
+                  label={t("Labels")}
                   validateStatus={errors?.labels ? "error" : ""}
                   help={errors?.labels ? errors.labels : ""}
                 >
@@ -238,7 +248,7 @@ export const CreateTestCaseView = () => {
                   render={({ field }) => (
                     <Row style={{ flexDirection: "column", marginTop: steps.length ? 24 : 0 }}>
                       <div className="ant-col ant-form-item-label">
-                        <label title="Attributes">Attributes</label>
+                        <label title="Attributes">{t("Attributes")}</label>
                       </div>
                       <Attribute.List
                         fieldProps={field}
@@ -252,7 +262,7 @@ export const CreateTestCaseView = () => {
                       />
                       <div style={{ marginTop: 8 }}>
                         <Button id="add-attribute-btn" type="dashed" block onClick={addAttribute}>
-                          <PlusOutlined /> Add attribute
+                          <PlusOutlined /> {t("Add attribute")}
                         </Button>
                       </div>
                     </Row>
@@ -261,7 +271,7 @@ export const CreateTestCaseView = () => {
               </Col>
             </Row>
           </Tabs.TabPane>
-          <Tabs.TabPane tab="Attachments" key="attachments">
+          <Tabs.TabPane tab={t("Attachments")} key="attachments">
             <Attachment.List handleAttachmentRemove={onRemove} attachments={attachments} />
             {attachmentsIds.map((field, index) => (
               <input type="hidden" key={field.id} {...register(`attachments.${index}`)} />
@@ -275,14 +285,16 @@ export const CreateTestCaseView = () => {
               fileList={attachments}
               height={80}
             >
-              <p className="ant-upload-text">Drop files here to attach, or click to browse.</p>
+              <p className="ant-upload-text">
+                {t("Drop files here to attach, or click to browse")}
+              </p>
             </Dragger>
           </Tabs.TabPane>
         </Tabs>
         <Row style={{ justifyContent: "right", marginTop: "16px" }}>
           <Space>
             <Button id="modal-create-close-btn" key="back" onClick={handleCancel}>
-              Close
+              {t("Close")}
             </Button>
             <Button
               id="modal-create-test-case-btn"
@@ -293,11 +305,11 @@ export const CreateTestCaseView = () => {
               htmlType="submit"
               disabled={!isDirty}
             >
-              Create
+              {t("Create")}
             </Button>
           </Space>
         </Row>
       </Form>
-    </div>
+    </LayoutView>
   )
 }

@@ -114,7 +114,7 @@ export const TextAreaWithAttach = ({
           showUploadList={false}
         >
           <Button
-            id="upload-attachment"
+            id={`${uploadId}-upload-attachment-button`}
             icon={<PictureOutlined />}
             size={"small"}
             type="link"

@@ -1,14 +1,16 @@
 import { Space, Tag } from "antd"
-import { ArchiveProject, DeleteProject, EditProject } from "features/project"
+import { MeContext } from "processes"
 import { useContext, useEffect } from "react"
-import { useParams } from "react-router-dom"
+import { LayoutView } from "widgets"
 
-import { useGetProjectQuery } from "entities/project/api"
 import { ProjectIcon } from "entities/project/ui"
 
-import { ProjectDetailsActiveTabContext } from "pages/administration/projects/project-details/project-details-main"
+import { ArchiveProject, DeleteProject, EditProject } from "features/project"
 
-import { ContainerLoader, Field, TagBoolean } from "shared/ui"
+import { ProjectDetailsActiveTabContext } from "pages/administration/projects/project-details/project-details-main"
+import { ProjectContext } from "pages/project"
+
+import { Field, TagBoolean } from "shared/ui"
 
 export const ProjectFields = ({ project }: { project: Project }) => {
   return (
@@ -32,28 +34,27 @@ export const ProjectFields = ({ project }: { project: Project }) => {
 
 export const ProjectDetailsOverviewPage = () => {
   const { setProjectDetailsActiveTab } = useContext(ProjectDetailsActiveTabContext)!
-  const { projectId } = useParams<ParamProjectId>()
-  const { data, isLoading } = useGetProjectQuery(Number(projectId), { skip: !projectId })
+  const { project } = useContext(ProjectContext)!
+  const { me } = useContext(MeContext)!
+  const editable = !project.is_archive || me.is_superuser
 
   useEffect(() => {
     setProjectDetailsActiveTab("overview")
   })
 
-  if (isLoading || !data) {
-    return <ContainerLoader />
-  }
-
   return (
-    <>
-      <div className="site-layout-background" style={{ padding: 24, minHeight: 360 }}>
-        {data.is_manageable && (
-          <Space style={{ marginBottom: "16px", float: "right" }}>
-            <EditProject project={data} />
-            {data.is_archive ? <DeleteProject project={data} /> : <ArchiveProject project={data} />}
-          </Space>
-        )}
-        <ProjectFields project={data} />
-      </div>
-    </>
+    <LayoutView style={{ padding: 24, minHeight: 360 }}>
+      {project.is_manageable && (
+        <Space style={{ marginBottom: "16px", float: "right" }}>
+          {editable && <EditProject project={project} />}
+          {project.is_archive ? (
+            <DeleteProject project={project} />
+          ) : (
+            <ArchiveProject project={project} />
+          )}
+        </Space>
+      )}
+      <ProjectFields project={project} />
+    </LayoutView>
   )
 }

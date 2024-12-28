@@ -2,20 +2,19 @@ import { FilterFilled, FilterOutlined } from "@ant-design/icons"
 import { Switch, Typography } from "antd"
 import Search from "antd/lib/input/Search"
 import cn from "classnames"
-import { useEffect, useState } from "react"
+import { useState } from "react"
+import { useTranslation } from "react-i18next"
 
 import { UseFormLabelsProps } from "entities/label/model"
 import { LabelWrapper } from "entities/label/ui"
-
-import { useUserConfig } from "entities/user/model"
 
 import styles from "./styles.module.css"
 
 interface TestCasesFilterProps {
   searchText: string
-  handleSearch: (value: string, labels: number[], labels_condition: "and" | "or") => Promise<void>
+  handleSearch: (value: string, labels: number[], labels_condition: LabelCondition) => Promise<void>
   selectedLables: number[]
-  lableCondition: "and" | "or"
+  lableCondition: LabelCondition
   handleConditionClick: () => void
   labelProps: UseFormLabelsProps
   showArchived: boolean
@@ -32,16 +31,12 @@ export const useTestCasesFilter = ({
   showArchived,
   handleToggleArchived,
 }: TestCasesFilterProps) => {
-  const { userConfig, updateConfig } = useUserConfig()
-  const [isShow, setIsShow] = useState(userConfig?.test_plans.is_cases_filter_open ?? false)
+  const { t } = useTranslation()
+  const [isShow, setIsShow] = useState(false)
 
   const handleClick = () => {
     setIsShow(!isShow)
   }
-
-  useEffect(() => {
-    updateConfig({ test_plans: { ...userConfig.test_plans, is_cases_filter_open: isShow } })
-  }, [isShow])
 
   const FilterBtn = (
     <div id="test-cases-filter-btn" onClick={handleClick} className={styles.filterBtn}>
@@ -52,20 +47,20 @@ export const useTestCasesFilter = ({
   const Form = isShow && (
     <div className={styles.form}>
       <div className={styles.row}>
-        <Typography.Text>Name</Typography.Text>
+        <Typography.Text>{t("Name")}</Typography.Text>
         <Search
-          placeholder="Search"
+          placeholder={t("Search")}
           onChange={(e) => handleSearch(e.target.value, selectedLables, lableCondition)}
           value={searchText}
           className={styles.search}
         />
       </div>
       <div className={cn(styles.row, styles.rowWithThree)}>
-        <Typography.Text>Labels</Typography.Text>
+        <Typography.Text>{t("Labels")}</Typography.Text>
         <LabelWrapper labelProps={labelProps} noAdding />
         <Switch
-          checkedChildren="or"
-          unCheckedChildren="and"
+          checkedChildren={t("or")}
+          unCheckedChildren={t("and")}
           defaultChecked
           className={styles.switcher}
           checked={lableCondition === "or"}
@@ -74,10 +69,10 @@ export const useTestCasesFilter = ({
         />
       </div>
       <div className={styles.archivedRow}>
-        <Typography.Text>Show archived</Typography.Text>
+        <Typography.Text>{t("Show Archived")}</Typography.Text>
         <Switch
-          checkedChildren="yes"
-          unCheckedChildren="no"
+          checkedChildren={t("yes")}
+          unCheckedChildren={t("no")}
           defaultChecked
           className={styles.switcher}
           checked={showArchived}

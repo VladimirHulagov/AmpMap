@@ -147,7 +147,7 @@ class TestUserEndpoints:
             },
             expected_status=HTTPStatus.BAD_REQUEST,
         ).json()
-        assert resp['errors'][0] == err_msg
+        assert resp['password'][0] == err_msg
 
     def test_me(self, api_client, authorized_superuser):
         expected_dict = model_to_dict_via_serializer(authorized_superuser, UserSerializer)

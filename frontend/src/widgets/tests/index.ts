@@ -1,2 +1,5 @@
-export * from "./test-detail"
-export * from "./tests-table/tests-table"
+export { TestDetail } from "./test-detail/test-detail"
+export { TestsTable } from "./tests-table/tests-table"
+export * from "./tests-tree"
+export * from "./tests-filter"
+export * from "./tests-sorter/tests-sorter"

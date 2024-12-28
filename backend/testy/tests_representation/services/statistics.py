@@ -34,20 +34,18 @@ from functools import reduce
 from itertools import groupby
 from typing import Any
 
-from django.contrib.postgres.aggregates import ArrayAgg
 from django.db.models import Case, Count, DateTimeField, F, FloatField, Q, QuerySet, Sum, Value, When
 from django.db.models.functions import Cast, Coalesce
 from django.utils import timezone
-from tests_representation.choices import UNTESTED_STATUS
-from tests_representation.selectors.results import TestResultSelector
-from utilities.time import Period
 
 from testy.core.models import Project
 from testy.tests_description.models import TestCase
+from testy.tests_representation.choices import UNTESTED_STATUS
 from testy.tests_representation.exceptions import DateRangeIsAbsent
-from testy.tests_representation.models import Test, TestResult
+from testy.tests_representation.models import Test, TestPlan, TestResult
 from testy.tests_representation.selectors.status import ResultStatusSelector
 from testy.utilities.sql import DateTrunc
+from testy.utilities.time import Period
 
 _POINT = 'point'
 _COUNT = 'count'
@@ -80,7 +78,7 @@ class LabelProcessor:
             setattr(self, key, labels)
 
         self.operation = operator.and_ if parameters.get('labels_condition') == 'and' else operator.or_
-        self.outer_ref_prefix = f'{outer_ref_prefix}__labeled_items' if outer_ref_prefix else 'labeled_items'
+        self.outer_ref_prefix = f'{outer_ref_prefix}__label__ids' if outer_ref_prefix else 'label__ids'
 
     def process_labels(
         self,
@@ -90,17 +88,15 @@ class LabelProcessor:
         negative_condition = self._make_condition(self.not_labels, is_negative=True)
 
         final_condition = self.operation(positive_condition, negative_condition)
-        return instances.alias(
-            label_ids=ArrayAgg(f'{self.outer_ref_prefix}__label__pk', distinct=True),
-        ).filter(final_condition)
+        return instances.filter(final_condition)
 
     def _make_condition(self, labels: list[int], is_negative: bool = False) -> Q:
         if not labels:
             return Q()
-        lookups = [Q(label_ids__contains=[label_id]) for label_id in labels]
+        lookup_key = f'{self.outer_ref_prefix}__contains'
+        lookups = [Q(**{lookup_key: [label_id]}) for label_id in labels]
         if is_negative:
             lookups = list(map(operator.inv, lookups))
-
         return reduce(self.operation, lookups)
 
 
@@ -115,26 +111,40 @@ class PieChartProcessor:
             seconds = estimate_period.in_seconds(in_workday=True)
         self.seconds = seconds
 
-    def process_statistic(self, tests: QuerySet[Test], project: Project):
+    def process_statistic(
+        self,
+        parent_test_plans: QuerySet[TestPlan],
+        label_processor: LabelProcessor,
+        is_archive_condition: Q,
+        project_id: int,
+        is_whole_project: bool,
+        root_only: bool = False,
+    ):
         results = []
         total_estimate = Sum(
             Cast(F('case__estimate'), FloatField()) / self.seconds,
             output_field=FloatField(),
         )
-        rows = (
+        project = Project.objects.filter(id=project_id).first()
+        general_filters = Q(project=project)
+        if not is_whole_project:
+            parent_test_plan = parent_test_plans.first()
+            custom_filter = Q(plan=parent_test_plan)
+            if not root_only:
+                custom_filter |= Q(plan__path__descendant=parent_test_plan.path)
+            general_filters &= custom_filter
+        tests = (
             Test
             .objects
-            .filter(pk__in=tests)
+            .filter(
+                general_filters,
+                is_archive_condition,
+                Q(plan__is_deleted=False),
+            )
             .annotate(
-                status=TestResultSelector.get_last_status_subquery(status_field=_ID),
-                status_name=Coalesce(
-                    TestResultSelector.get_last_status_subquery(status_field=_NAME),
-                    Value(UNTESTED_STATUS.name),
-                ),
-                status_color=Coalesce(
-                    TestResultSelector.get_last_status_subquery(status_field=_COLOR),
-                    Value(UNTESTED_STATUS.color),
-                ),
+                status=Coalesce(F('last_status_id'), Value(UNTESTED_STATUS.id)),
+                status_name=Coalesce(F('last_status__name'), Value(UNTESTED_STATUS.name.upper())),
+                status_color=Coalesce(F('last_status__color'), Value(UNTESTED_STATUS.color)),
                 estimates=Coalesce(total_estimate, 0, output_field=FloatField()),
                 is_empty_estimate=Case(
                     When(Q(case__estimate__isnull=True), then=1),
@@ -148,20 +158,23 @@ class PieChartProcessor:
             .annotate(count=Count(_ID, distinct=True))
             .order_by('-count')
         )
+        if label_processor.labels or label_processor.not_labels:
+            tests = label_processor.process_labels(tests)
         presented_statuses = set()
-        for row in rows:
+        for test in tests:
             results.append(
                 {
-                    _ID: row[_STATUS],
-                    _LABEL: row['status_name'].upper(),
-                    _COLOR: row['status_color'],
-                    _VALUE: row['count'],
-                    'estimates': round(row[_ESTIMATES], 2),
-                    'empty_estimates': row[_EMPTY_ESTIMATES],
+                    _ID: test[_STATUS],
+                    _LABEL: test['status_name'].upper(),
+                    _COLOR: test['status_color'],
+                    _VALUE: test['count'],
+                    'estimates': round(test[_ESTIMATES], 2),
+                    'empty_estimates': test[_EMPTY_ESTIMATES],
                 },
             )
-            presented_statuses.add(row[_STATUS])
-        for status in ResultStatusSelector.status_list(project=project).exclude(pk__in=presented_statuses):
+            presented_statuses.add(test[_STATUS])
+        statuses = ResultStatusSelector.status_list(project=project).exclude(pk__in=presented_statuses)
+        for status in statuses:
             results.append(
                 {
                     _ID: status.pk,
@@ -230,24 +243,44 @@ class HistogramProcessor:
         key_name = f'attributes__{self.attribute}'
         return instance.get(key_name, None)
 
-    def process_statistic(
+    def process_statistic(  # noqa: WPS231
         self,
-        test_results: QuerySet[TestResult],
-        project: Project,
+        parent_test_plans: QuerySet[TestPlan],
+        label_processor: LabelProcessor,
+        is_archive_condition: Q,
+        project_id: int,
+        is_whole_project: bool,
+        root_only: bool = False,
     ) -> list[dict[str, Any]]:
         query_kwargs = self._get_query_kwargs()
+        project = Project.objects.filter(id=project_id).first()
+        general_filters = Q(project=project)
+        if not is_whole_project:
+            parent_test_plan = parent_test_plans.first()
+            custom_filter = Q(test__plan=parent_test_plan)
+            if not root_only:
+                custom_filter |= Q(test__plan__path__descendant=parent_test_plan.path)
+            general_filters &= custom_filter
+
         test_results_formatted = (
-            TestResultSelector
-            .result_list_by_ids(test_results)
+            TestResult
+            .objects
             .filter(
-                created_at__range=self.period,
-                **query_kwargs.get('filter_condition', {}),
+                general_filters,
+                is_archive_condition,
+                Q(test__plan__is_deleted=False),
+                Q(created_at__range=self.period),
+                *query_kwargs.get('filter_condition', []),
             )
             .annotate(**query_kwargs.get('annotate_condition', {}))
-            .values(*query_kwargs.get('values_list', [])).distinct()
+            .values(*query_kwargs.get('values_list', []))
             .annotate(status_count=Count(_ID))
             .order_by(query_kwargs.get('order_condition', _ID))
+            .distinct()
         )
+        if label_processor.labels or label_processor.not_labels:
+            test_results_formatted = label_processor.process_labels(test_results_formatted)
+
         group_func = self.group_by_attribute if self.attribute else self.group_by_date
         grouped_data = groupby(test_results_formatted, group_func)
         result = []
@@ -300,7 +333,7 @@ class HistogramProcessor:
                 _RESULT_STATUS_NAME,
                 _RESULT_STATUS_COLOR,
             )
-            query_kwargs['filter_condition'] = {'attributes__has_key': self.attribute}
+            query_kwargs['filter_condition'] = [Q(attributes__has_key=self.attribute)]
 
         else:
             query_kwargs['order_condition'] = _PERIOD_DAY

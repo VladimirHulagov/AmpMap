@@ -1,16 +1,13 @@
 import { notification } from "antd"
 import { useEffect, useState } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 import { useParams } from "react-router"
 
-import { useAppDispatch } from "app/hooks"
+import { useCreateSuiteMutation, useGetSuiteQuery } from "entities/suite/api"
 
-import { useCreateSuiteMutation } from "entities/suite/api"
-import { setTestSuite } from "entities/suite/model/slice"
-
-import { useErrors } from "shared/hooks"
-import { showModalCloseConfirm } from "shared/libs"
-import { AlertSuccessChange } from "shared/ui/alert-success-change"
+import { useErrors, useShowModalCloseConfirm } from "shared/hooks"
+import { AlertSuccessChange } from "shared/ui"
 
 interface ErrorData {
   name?: string
@@ -18,14 +15,18 @@ interface ErrorData {
   description?: string
 }
 
-export const useSuiteCreateModal = (onSubmitCb: () => void, suite?: Suite) => {
+export const useSuiteCreateModal = (onSubmitCb?: (suite: Suite) => void, initSuite?: Suite) => {
+  const { t } = useTranslation()
+  const { showModal } = useShowModalCloseConfirm()
   const [isShow, setIsShow] = useState(false)
 
-  const dispatch = useAppDispatch()
-  const { projectId } = useParams<ParamProjectId>()
+  const { projectId, testSuiteId } = useParams<ParamProjectId & ParamTestSuiteId>()
   const [selectedParent, setSelectedParent] = useState<SelectData | null>(null)
   const [createSuite, { isLoading: isLoadingCreating, isSuccess: isSuccessCreate }] =
     useCreateSuiteMutation()
+
+  const { data: suiteFromParams } = useGetSuiteQuery(Number(testSuiteId), { skip: !testSuiteId })
+  const suite = testSuiteId ? (initSuite ?? suiteFromParams) : initSuite
 
   const [errors, setErrors] = useState<ErrorData | null>(null)
   const { onHandleError } = useErrors<ErrorData>(setErrors)
@@ -46,7 +47,7 @@ export const useSuiteCreateModal = (onSubmitCb: () => void, suite?: Suite) => {
   useEffect(() => {
     if (!isShow || !suite) return
     setSelectedParent({ value: Number(suite.id), label: suite.name })
-    setValue("parent", String(suite.id))
+    setValue("parent", suite.id)
   }, [isShow, suite])
 
   const onCloseModal = () => {
@@ -62,7 +63,7 @@ export const useSuiteCreateModal = (onSubmitCb: () => void, suite?: Suite) => {
     }
 
     if (isDirty) {
-      showModalCloseConfirm(onCloseModal)
+      showModal(onCloseModal)
       return
     }
 
@@ -80,20 +81,19 @@ export const useSuiteCreateModal = (onSubmitCb: () => void, suite?: Suite) => {
       const newSuite = await createSuite({ ...data, project: Number(projectId) }).unwrap()
 
       notification.success({
-        message: "Success",
+        message: t("Success"),
+        closable: true,
         description: (
           <AlertSuccessChange
             action="created"
-            title="Test Suite"
+            title={t("Test Suite")}
             link={`/projects/${projectId}/suites/${newSuite.id}`}
             id={String(newSuite.id)}
           />
         ),
       })
-
-      dispatch(setTestSuite(newSuite))
       onCloseModal()
-      onSubmitCb()
+      onSubmitCb?.(newSuite)
     } catch (err) {
       onHandleError(err)
     }
@@ -101,15 +101,9 @@ export const useSuiteCreateModal = (onSubmitCb: () => void, suite?: Suite) => {
 
   const handleSelectParent = (value?: SelectData | null) => {
     setErrors({ parent: "" })
-    if (Number(value?.value) === Number(suite?.id)) {
-      setErrors({ parent: "Test Suite не может быть родителем для самого себя." })
-      return
-    }
 
-    if (value) {
-      setValue("parent", String(value.value), { shouldDirty: true })
-      setSelectedParent({ value: value.value, label: value.label })
-    }
+    setValue("parent", value ? value.value : null, { shouldDirty: true })
+    setSelectedParent(value ? { value: value.value, label: value.label } : null)
   }
 
   const handleClearParent = () => {

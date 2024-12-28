@@ -44,8 +44,7 @@ from django.utils import timezone
 from tests import constants
 from tests.commons import RequestType, model_to_dict_via_serializer
 from tests.error_messages import PERMISSION_ERR_MSG
-from tests.mock_serializers import ProjectRetrieveMockSerializer, ProjectStatisticsMockSerializer
-from tests.test_api.v1.test_role_endpoints import TestRoleEndpoints
+from tests.mock_serializers.v1 import ProjectRetrieveMockSerializer, ProjectStatisticsMockSerializer
 from testy.core.choices import AccessRequestStatus
 from testy.core.models import AccessRequest, Project
 from testy.core.selectors.project_settings import ProjectSettings
@@ -67,6 +66,7 @@ class TestProjectEndpoints:
     view_name_statistics = 'api:v1:project-statistics'
     view_name_access = 'api:v1:project-access'
     view_name_icon = 'api:v1:project-icon'
+    view_name_assign = 'api:v2:role-assign'
 
     @pytest.mark.django_db(reset_sequences=True)
     @allure.title('Test list display')
@@ -543,7 +543,7 @@ class TestProjectEndpoints:
             superuser_client.force_login(admin_user)
         with allure.step('Resolve access request'):
             superuser_client.send_request(
-                TestRoleEndpoints.view_name_assign,
+                self.view_name_assign,
                 data={'project': project.pk, 'roles': [member.pk], 'user': user_to_request_access.pk},
                 request_type=RequestType.POST,
             )

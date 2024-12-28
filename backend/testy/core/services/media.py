@@ -28,6 +28,7 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
+import logging
 from pathlib import Path
 
 from django.conf import settings
@@ -37,6 +38,10 @@ from PIL import Image, ImageFile
 from testy.utilities.string import strip_suffixes
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
+
+logger = logging.getLogger(__name__)
+
+err_msg = 'Could not open image for populating thumbnails for file: {filepath}, source error: {err}'
 
 
 class MediaService:
@@ -54,7 +59,11 @@ class MediaService:
             self.remove_media(src_path)
         if not file or not Path(file.path).exists():
             return
-        full_image = Image.open(file.path)
+        try:
+            full_image = Image.open(file.path)
+        except Exception as err:
+            logger.warning(err_msg.format(filepath=file.path, err=err))
+            return
         path, suffixes = strip_suffixes(file.path)
         for resolution in settings.TESTY_THUMBNAIL_RESOLUTIONS:
             width, height = resolution

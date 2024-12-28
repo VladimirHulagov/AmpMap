@@ -1,6 +1,8 @@
 import { Select } from "antd"
 import { useStatuses } from "entities/status/model/use-statuses"
+import { useTranslation } from "react-i18next"
 
+import { Status } from "../status"
 import styles from "./styles.module.css"
 
 interface StepResultProps {
@@ -10,6 +12,7 @@ interface StepResultProps {
 }
 
 export const StepResultInCreateModal = ({ testCase, steps, setSteps }: StepResultProps) => {
+  const { t } = useTranslation()
   const { statusesOptions, getStatusById } = useStatuses({ project: testCase.project })
 
   if (!testCase.steps) return <></>
@@ -36,11 +39,22 @@ export const StepResultInCreateModal = ({ testCase, steps, setSteps }: StepResul
             <div className={styles.resultSelect}>
               <Select
                 value={steps[item.id]}
-                placeholder="Please select"
+                placeholder={t("Please select")}
                 style={{ width: "100%" }}
-                options={statusesOptions}
                 onSelect={(statusIdStr) => handleChange(item.id, statusIdStr.toString())}
-              />
+                id={`create-result-step-${item.name}`}
+              >
+                {statusesOptions.map((status) => (
+                  <Select.Option key={status.id} value={status.id}>
+                    <Status
+                      id={status.id}
+                      name={status.label}
+                      color={status.color}
+                      extraId={`create-result-step-${item.name}`}
+                    />
+                  </Select.Option>
+                ))}
+              </Select>
             </div>
           </li>
         )

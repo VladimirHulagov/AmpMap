@@ -2,6 +2,7 @@ import { DeleteOutlined } from "@ant-design/icons"
 import { Button, Modal, notification } from "antd"
 import { useUnassignRoleMutation } from "entities/roles/api"
 import { selectRoleOnSuccess } from "entities/roles/model"
+import { useTranslation } from "react-i18next"
 import { useParams } from "react-router-dom"
 
 import { useAppSelector } from "app/hooks"
@@ -13,6 +14,7 @@ interface Props {
 }
 
 export const DeleteUsetProjectAccess = ({ user }: Props) => {
+  const { t } = useTranslation()
   const [unassignUser] = useUnassignRoleMutation()
   const onSuccess = useAppSelector(selectRoleOnSuccess)
   const { projectId } = useParams<ParamProjectId>()
@@ -24,8 +26,9 @@ export const DeleteUsetProjectAccess = ({ user }: Props) => {
       }).unwrap()
 
       notification.success({
-        message: "Success",
-        description: "User deleted successfully",
+        message: t("Success"),
+        closable: true,
+        description: t("User access deleted successfully"),
       })
 
       onSuccess?.()
@@ -42,9 +45,9 @@ export const DeleteUsetProjectAccess = ({ user }: Props) => {
       danger
       onClick={() => {
         Modal.confirm({
-          title: "Do you want to delete user from project?",
-          okText: "Delete",
-          cancelText: "Cancel",
+          title: t("Do you want to delete user from project?"),
+          okText: t("Delete"),
+          cancelText: t("Cancel"),
           onOk: handleModalConfirm,
         })
       }}

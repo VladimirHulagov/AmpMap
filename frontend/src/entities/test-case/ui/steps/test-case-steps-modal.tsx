@@ -1,5 +1,6 @@
 import { Button, Form, Input, Modal, Upload } from "antd"
 import { Controller } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 
 import {
   TestCaseStepsModalProps,
@@ -14,6 +15,7 @@ export const TestCaseStepsModal = ({
   onSubmit,
   onCloseModal,
 }: TestCaseStepsModalProps) => {
+  const { t } = useTranslation()
   const {
     isLoading,
     isDirty,
@@ -35,13 +37,13 @@ export const TestCaseStepsModal = ({
   return (
     <Modal
       className="test-case-steps-modal"
-      title={`${isEdit ? "Edit" : "Create"} step`}
+      title={`${isEdit ? t("Edit") : t("Create")} ${t("step")}`}
       open={!!step}
       onCancel={handleClose}
       centered
       footer={[
         <Button id="modal-steps-cancel-btn" key="back" onClick={handleClose}>
-          Cancel
+          {t("Cancel")}
         </Button>,
         <Button
           id={isEdit ? "modal-steps-edit-btn" : "modal-steps-create-btn"}
@@ -51,13 +53,13 @@ export const TestCaseStepsModal = ({
           loading={isLoading}
           disabled={!isDirty}
         >
-          {isEdit ? "Update" : "Create"}
+          {isEdit ? t("Update") : t("Create")}
         </Button>,
       ]}
     >
       <Form id="test-case-steps-form" layout="vertical" onFinish={handleSubmit(onSubmitForm)}>
         <Form.Item
-          label="Name"
+          label={t("Name")}
           validateStatus={errors?.name ? "error" : ""}
           help={errors?.name?.message ?? ""}
           required
@@ -66,14 +68,14 @@ export const TestCaseStepsModal = ({
             name="name"
             control={control}
             rules={{
-              maxLength: { value: 255, message: "Максимальная длина 255." },
-              required: { value: true, message: "Обязательное поле." },
+              maxLength: { value: 255, message: t("Maximum length 255") },
+              required: { value: true, message: t("Required field") },
             }}
             render={({ field }) => <Input {...field} />}
           />
         </Form.Item>
         <Form.Item
-          label="Scenario"
+          label={t("Scenario")}
           validateStatus={errors?.scenario ? "error" : ""}
           help={errors.scenario?.message ?? ""}
           required
@@ -86,7 +88,7 @@ export const TestCaseStepsModal = ({
                 name="scenario"
                 control={control}
                 rules={{
-                  required: { value: true, message: "Обязательное поле." },
+                  required: { value: true, message: t("Required field") },
                 }}
                 render={({ field }) => (
                   <TextAreaWithAttach
@@ -102,7 +104,7 @@ export const TestCaseStepsModal = ({
           />
         </Form.Item>
         <Form.Item
-          label="Expected"
+          label={t("Expected")}
           validateStatus={errors?.expected ? "error" : ""}
           help={errors?.expected?.message ?? ""}
         >
@@ -133,7 +135,7 @@ export const TestCaseStepsModal = ({
           fileList={attachments}
           height={80}
         >
-          <p className="ant-upload-text">Drop files here to attach, or click to browse.</p>
+          <p className="ant-upload-text">{t("Drop files here to attach, or click to browse")}</p>
         </Upload.Dragger>
       </Form>
     </Modal>

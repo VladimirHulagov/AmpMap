@@ -1,5 +1,5 @@
 interface UserState {
-  user: User | null
+  userModal: User | null
   userConfig: UserConfig
   modal: {
     isShow: boolean
@@ -51,26 +51,33 @@ interface UserConfig {
     test_plan: Record<string, { start_date: string; end_date: string }>
     test_plan_estimate_everywhere_period: EstimatePeriod
   }
-  projects: {
+  projects?: {
     is_only_favorite: boolean
     is_show_archived: boolean
     favorite: number[]
   }
-  test_plans: {
+  test_plans?: {
     is_show_archived: boolean
     shown_columns?: string[]
     is_cases_filter_open: boolean
+    filters: Record<string, Record<string, string>>
   }
-  test_cases: {
+  test_suites: {
+    filters: Record<string, Record<string, string>>
+  }
+  test_cases?: {
     is_show_archived: boolean
   }
   crop?: string
 }
 
 interface GetUsersQuery {
+  id?: number
   username?: string
   email?: string
   first_name?: string
   last_name?: string
   is_active?: boolean
+  project?: number
+  exclude_external?: number
 }

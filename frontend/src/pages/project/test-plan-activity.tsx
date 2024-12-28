@@ -1,13 +1,14 @@
 import { Content } from "antd/lib/layout/layout"
+import { LayoutView } from "widgets"
 
 import { TestPlanActivityWrapper } from "entities/test-plan/ui"
 
 export const TestPlanActivityPage = () => {
   return (
     <Content>
-      <div className="site-layout-background" style={{ padding: 24, minHeight: 360 }}>
+      <LayoutView style={{ minHeight: 360 }}>
         <TestPlanActivityWrapper />
-      </div>
+      </LayoutView>
     </Content>
   )
 }

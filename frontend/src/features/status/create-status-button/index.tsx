@@ -1,10 +1,12 @@
 import { PlusOutlined } from "@ant-design/icons"
 import { Button } from "antd"
 import { useAdministrationStatusModal } from "entities/status/model"
+import { useTranslation } from "react-i18next"
 
-import { StatusCreateEditModal } from "../status-create-edit-modal"
+import { StatusCreateEditModal } from "../status-create-edit-modal/status-create-edit-modal"
 
 export const CreateStatusButton = () => {
+  const { t } = useTranslation()
   const statusModal = useAdministrationStatusModal()
   const handleCreateClick = () => {
     statusModal.handleModalOpen({ mode: "create" })
@@ -19,7 +21,7 @@ export const CreateStatusButton = () => {
         onClick={handleCreateClick}
         style={{ marginBottom: 16, float: "right" }}
       >
-        Create status
+        {t("Create status")}
       </Button>
       {statusModal.isShow && <StatusCreateEditModal data={statusModal} />}
     </>

@@ -30,7 +30,6 @@
 # <http://www.gnu.org/licenses/>.
 
 from django.contrib import admin
-from mptt.admin import MPTTModelAdmin
 from simple_history.admin import SimpleHistoryAdmin
 
 from testy.root.admin import BaseAdmin
@@ -38,7 +37,7 @@ from testy.tests_representation.models import ResultStatus, Test, TestPlan, Test
 
 
 @admin.register(TestPlan)
-class TestPlanAdmin(BaseAdmin, MPTTModelAdmin):
+class TestPlanAdmin(BaseAdmin):
     list_display = ('parent', 'started_at', 'due_date', 'finished_at', 'is_archive')
     search_fields = ('id',)
 

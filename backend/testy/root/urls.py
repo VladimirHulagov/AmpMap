@@ -29,7 +29,6 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 
-
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
@@ -43,17 +42,19 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from testy.core.views import AttachmentView
 from testy.plugins.url import plugin_urls
 from testy.root.auth.views import LoginView, LogoutView, TTLTokenViewSet
-from testy.root.views import sql_log_query, trigger_error
+from testy.root.views import sql_log_query
+from testy.swagger.custom_schema_generation import SchemaGenerator
 from testy.users.views import AvatarView
 
 schema_view = get_schema_view(
     openapi.Info(
         title='testy API',
-        default_version='v1',
-        description='testy API v1',
+        default_version='v2',
+        description='testy API',
     ),
     public=True,
     permission_classes=[permissions.AllowAny],
+    generator_class=SchemaGenerator,
 )
 
 ttl_token_list_view = TTLTokenViewSet.as_view({'get': 'list', 'post': 'create'})
@@ -77,7 +78,11 @@ urlpatterns = [
 
     # Swagger
     re_path(r'^swagger(?P<format>\.json|\.yaml)$', schema_view.without_ui(cache_timeout=0), name='schema-json'),
-    re_path(r'^swagger/$', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+    re_path(
+        r'^api/(?P<version>v1|v2)/swagger/$',
+        schema_view.with_ui('swagger', cache_timeout=0),
+        name='swagger-ui',
+    ),
     re_path(r'^redoc/$', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
 
     # Plugins
@@ -92,7 +97,6 @@ urlpatterns = [
     re_path('^celery-progress/', include('celery_progress.urls')),
 
     # Sentry Debug
-    path('debug/sentry/', trigger_error),
     # SQL Debug
     path('debug/sql-long-query/', sql_log_query),
 ]

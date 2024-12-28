@@ -79,9 +79,7 @@ class AttachmentService(MediaService):
         return attachment
 
     def attachments_update_content_object(self, attachments, content_object):
-        old_attachments = AttachmentSelector().attachment_list_by_parent_object(
-            content_object, content_object.id,
-        )
+        old_attachments = AttachmentSelector.attachment_list_by_parent_object(content_object, content_object.id)
 
         for attachment in attachments:
             if attachment not in old_attachments:

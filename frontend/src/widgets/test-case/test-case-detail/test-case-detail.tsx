@@ -1,54 +1,59 @@
-import { Alert, Select, Space } from "antd"
-import { CopyTestCase, DeleteTestCase, EditTestCase } from "features/test-case"
-import { ArchiveTestCase } from "features/test-case/archive-test-case/archive-test-case"
+import { Alert, Flex, Select, Typography } from "antd"
 import { Controller } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 
 import { TestCaseFields } from "entities/test-case/ui/test-case-fields"
 
-import { ResizableDrawer } from "shared/ui/resizable-drawer/resizable-drawer"
+import { CopyTestCase, DeleteTestCase, EditTestCase } from "features/test-case"
+import { ArchiveTestCase } from "features/test-case/archive-test-case/archive-test-case"
 
-import "./styles.css"
+import { ArchivedTag, Drawer } from "shared/ui"
+
+import styles from "./styles.module.css"
 import { TestCaseDetailTabs } from "./test-case-detail-tabs"
 import { useTestCaseDetail } from "./use-test-case-detail"
 
-interface TestCaseDetailProps {
-  testCase: TestCase | null
-  onClose: () => void
-}
+export const TestCaseDetail = () => {
+  const { t } = useTranslation()
+  const {
+    testCase,
+    showVersion,
+    versionData,
+    control,
+    isFetching,
+    handleClose,
+    handleChangeVersion,
+    handleRestoreVersion,
+    handleRefetch,
+  } = useTestCaseDetail()
 
-export const TestCaseDetail = ({ testCase, onClose }: TestCaseDetailProps) => {
-  const { showVersion, versionData, control, handleClose, handleChange, handleRestoreVersion } =
-    useTestCaseDetail({
-      testCase,
-      onClose,
-    })
-
-  const isLastVersion = Number(testCase?.versions[0]) === Number(showVersion)
+  const isLastVersion = testCase?.versions[0] === showVersion
 
   return (
-    <ResizableDrawer
-      drawerKey="test_case_details"
-      className="testCaseDetailDrawer"
+    <Drawer
+      id="drawer-test-case-details"
       title={
-        <p
-          style={{
-            margin: 0,
-            height: "100%",
-            minHeight: 32,
-            display: "flex",
-            alignItems: "center",
-            minWidth: "60px",
-          }}
-        >
-          {testCase?.name}
-        </p>
+        testCase && (
+          <Flex align="flex-start" style={{ width: "fit-content", marginRight: "auto" }}>
+            <Flex gap={8}>
+              {testCase.source_archived && (
+                <Flex justify="center" align="center" style={{ height: 32 }}>
+                  <ArchivedTag />
+                </Flex>
+              )}
+              <Typography.Title level={3} className={styles.title}>
+                {testCase.name}
+              </Typography.Title>
+            </Flex>
+          </Flex>
+        )
       }
-      placement="right"
       onClose={handleClose}
-      open={!!testCase}
+      isOpen={!!testCase}
+      isLoading={isFetching}
       extra={
         testCase && (
-          <Space size="middle" style={{ width: "100%", display: "flex", alignItems: "flex-end" }}>
+          <Flex wrap gap={8} justify="flex-end">
             {!!testCase.versions && testCase.versions.length > 1 && (
               <Controller
                 name="select"
@@ -57,37 +62,37 @@ export const TestCaseDetail = ({ testCase, onClose }: TestCaseDetailProps) => {
                 render={({ field }) => (
                   <Select
                     {...field}
-                    placeholder="Version"
+                    placeholder={t("Version")}
                     style={{ minWidth: "100px" }}
                     options={versionData}
-                    defaultValue={testCase.current_version}
-                    onChange={(value) => handleChange(value)}
+                    defaultValue={Number(testCase.current_version)}
+                    onChange={handleChangeVersion}
                     value={showVersion}
                   />
                 )}
               />
             )}
-            <CopyTestCase testCase={testCase} />
+            <CopyTestCase testCase={testCase} onSubmit={handleRefetch} />
             <EditTestCase testCase={testCase} />
-            {!testCase.is_archive ? (
-              <ArchiveTestCase testCase={testCase} />
+            {!testCase.source_archived ? (
+              <ArchiveTestCase testCase={testCase} onSubmit={handleRefetch} />
             ) : (
-              <DeleteTestCase testCase={testCase} />
+              <DeleteTestCase testCase={testCase} onSubmit={handleRefetch} />
             )}
-          </Space>
+          </Flex>
         )
       }
     >
       <>
         {testCase && !isLastVersion && (
           <Alert
-            showIcon={true}
+            showIcon
             closable
             type="warning"
             description={
               <span>
-                Attention! This isn&apos;t the latest version.{" "}
-                <a onClick={handleRestoreVersion}>Restore</a>
+                {t("Attention! This isn't the latest version.")}{" "}
+                <a onClick={handleRestoreVersion}>{t("Restore")}</a>
               </span>
             }
             style={{ marginBottom: 20 }}
@@ -100,6 +105,6 @@ export const TestCaseDetail = ({ testCase, onClose }: TestCaseDetailProps) => {
           </>
         )}
       </>
-    </ResizableDrawer>
+    </Drawer>
   )
 }

@@ -53,12 +53,6 @@ class TestResultSelector:
             latest_result_id=self.get_latest_result_by_test_subquery(),
         )
 
-    def result_list_by_test_id(self, test_id) -> QuerySet[TestResult]:
-        return TestResult.objects.select_related(_TEST).filter(test_id=test_id).order_by(_CREATED_AT_DESC)
-
-    def last_result_by_test_id(self, test_id) -> TestResult:
-        return TestResult.objects.select_related(_TEST).filter(test_id=test_id).order_by(_CREATED_AT_DESC).first()
-
     def result_by_test_plan_ids(self, test_plan_ids, filters=None):
         if not filters:
             filters = {}
@@ -105,7 +99,8 @@ class TestResultSelector:
             filters = []
         return Subquery(
             TestResult.objects.filter(
-                *filters, test_id=OuterRef(outer_ref_key),
+                *filters,
+                test_id=OuterRef(outer_ref_key),
             ).prefetch_related(_RESULT_STATUS).order_by(_CREATED_AT_DESC).values(f'status__{status_field}')[:1],
         )
 

@@ -28,15 +28,15 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from typing import Any, Iterable
+from typing import TYPE_CHECKING, Any, Iterable
 
-from django.conf import settings
-from django.contrib.postgres.aggregates import StringAgg
-from django.db.models import CharField, F, OuterRef, Q, QuerySet, Subquery
+from django.db.models import F, Q, QuerySet
 
-from testy.tests_description.models import TestSuite
-from testy.tests_representation.models import Test
-from testy.tests_representation.selectors.results import TestResultSelector
+from testy.root.ltree.querysets import LtreeQuerySet
+from testy.tests_representation.models import Test, TestPlan
+
+if TYPE_CHECKING:
+    from testy.tests_description.selectors.suites import TestSuiteSelector
 
 
 class TestSelector:
@@ -44,41 +44,48 @@ class TestSelector:
     def test_list(cls) -> QuerySet[Test]:
         return Test.objects.select_related('case').prefetch_related('results').annotate(
             test_suite_description=F('case__suite__description'),
-        ).all()
+        ).all().order_by('case__name')
 
     @classmethod
-    def test_list_by_testplan_ids(cls, plan_ids: list[int]) -> QuerySet[Test]:
+    def test_list_raw(cls) -> QuerySet[Test]:
+        return Test.objects.all()
+
+    @classmethod
+    def test_list_by_testplan_ids(cls, plan_ids: Iterable[int]) -> QuerySet[Test]:
         return Test.objects.filter(plan__in=plan_ids)
 
-    def test_list_with_last_status(self, filter_condition: dict[str, Any] | None = None) -> QuerySet[Test]:
+    @classmethod
+    def test_list_union(
+        cls,
+        plans: LtreeQuerySet[TestPlan],
+        parent_id: int | None,
+        suite_selector: 'type[TestSuiteSelector]',
+        has_common_filters: bool,
+    ) -> QuerySet[Test]:
+        tests = Test.objects.all()
+        lookup = Q(plan__in=plans.get_descendants(include_self=True))
+        if parent_id is not None:
+            lookup |= Q(plan=parent_id)
+        if not has_common_filters:
+            tests = tests.filter(lookup)
+        tests = suite_selector.annotate_suite_path(tests, 'case__suite__path')
+        return tests.annotate(assignee_username=F('assignee__username'))
+
+    def test_list_with_last_status(
+        self,
+        qs: QuerySet[Test] | None = None,
+        filter_condition: dict[str, Any] | None = None,
+    ) -> QuerySet[Test]:
+        if qs is None:
+            qs = self.test_list_raw()
         if not filter_condition:
             filter_condition = {}
-        subquery = (
-            TestSuite.objects
-            .filter(
-                Q(
-                    lft__lte=OuterRef('case__suite__lft'),
-                    rght__gte=OuterRef('case__suite__rght'),
-                    tree_id=OuterRef('case__suite__tree_id'),
-                ),
-            )
-            .values('tree_id')
-            .annotate(concatenated_name=StringAgg('name', delimiter='/', ordering='id'))
-            .values('concatenated_name')
-        )
         return (
-            Test.objects
-            .select_related('case')
+            qs
+            .select_related('case', 'last_status')
             .prefetch_related('case__suite', 'case__labeled_items', 'case__labeled_items__label', 'assignee')
             .filter(**filter_condition)
             .annotate(
-                last_status=TestResultSelector.get_last_status_subquery(),
-                last_status_name=TestResultSelector.get_last_status_subquery(status_field='name'),
-                last_status_color=TestResultSelector.get_last_status_subquery(status_field='color'),
-                suite_path=Subquery(
-                    subquery,
-                    output_field=CharField(max_length=settings.CHAR_FIELD_MAX_LEN),
-                ),
                 test_suite_description=F('case__suite__description'),
                 estimate=F('case__estimate'),
             )

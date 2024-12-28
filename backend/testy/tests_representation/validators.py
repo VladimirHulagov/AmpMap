@@ -34,17 +34,19 @@ from functools import partial
 from itertools import chain
 from typing import Any, Callable, Iterable
 
-from core.selectors.custom_attribute import CustomAttributeSelector
-from core.validators import BaseCustomAttributeValuesValidator
 from django.core.exceptions import ValidationError
 from django.utils.deconstruct import deconstructible
 from django.utils.timezone import now
 from rest_framework import serializers
-from tests_description.selectors.cases import TestCaseSelector
 
+from testy.core.models import Project
+from testy.core.selectors.custom_attribute import CustomAttributeSelector
 from testy.core.selectors.project_settings import ProjectSettings
+from testy.core.validators import BaseCustomAttributeValuesValidator
+from testy.tests_description.selectors.cases import TestCaseSelector
 from testy.tests_representation.choices import ResultStatusType, TestStatuses
 from testy.tests_representation.selectors.status import ResultStatusSelector
+from testy.users.selectors.roles import RoleSelector
 from testy.utilities.time import WorkTimeProcessor
 from testy.validators import FieldsToComparator
 
@@ -52,6 +54,7 @@ _ID = 'id'
 _TYPE = 'type'
 _PROJECT = 'project'
 _NAME = 'name'
+_STATUS = 'status'
 
 
 @deconstructible
@@ -63,7 +66,7 @@ class ResultStatusValidator:
         instance = serializer.instance
         type_value = self._check_type(data, instance)
         self._check_color(data, (self._check_hex_color, self._check_rgb_color, self._check_rgba_color))
-        project = data.get('project', getattr(instance, _PROJECT, None))
+        project = data.get(_PROJECT, getattr(instance, _PROJECT, None))
 
         if type_value == ResultStatusType.SYSTEM and project:
             raise ValidationError('System status cannot have project')
@@ -199,7 +202,7 @@ class TestPlanCasesValidator:
 
     def __call__(self, attrs):
         cases_ids = attrs.get('test_cases')
-        cases = TestCaseSelector.cases_by_ids_list(cases_ids, 'pk')
+        cases = TestCaseSelector.cases_by_ids(cases_ids, 'pk')
         if archived_cases := [case.pk for case in cases if case.is_archive]:
             raise ValidationError(self.err_msg.format(archived_cases))
 
@@ -208,7 +211,6 @@ class BulkUpdateExcludeIncludeValidator:
     err_msg = 'Included_tests and excluded_tests should not be provided.'
 
     def __call__(self, attrs):
-
         if all([attrs.get('included_tests'), attrs.get('excluded_tests')]):
             raise ValidationError(self.err_msg)
 
@@ -221,6 +223,21 @@ class MoveTestsSameProjectValidator:
         current_plan = attrs.get('current_plan')
         if current_plan.project.pk != dst_plan.project.pk:
             raise ValidationError(self.err_msg.format(dst_plan.project.name))
+
+
+@deconstructible
+class TestPlanCustomAttributeValuesValidator(BaseCustomAttributeValuesValidator):
+    app_name = 'tests_representation'
+    model_name = 'testplan'
+    requires_context = True
+
+    def __call__(self, attrs: dict[str, Any], serializer):
+        attributes = attrs.get('attributes', {})
+        project = attrs.get(_PROJECT)
+        if project is None and (instance := serializer.instance):
+            project = instance.project
+        attr_getter = partial(CustomAttributeSelector.required_attribute_names_by_project, project=project)
+        self._validate(attributes, attr_getter)
 
 
 @deconstructible
@@ -239,28 +256,13 @@ class TestResultCustomAttributeValuesValidator(BaseCustomAttributeValuesValidato
             suite = instance.test.case.suite
         else:
             return
-        status = attrs.get('status', getattr(serializer.instance, 'status', None))
+        status = attrs.get(_STATUS, getattr(serializer.instance, _STATUS, None))
         attr_getter = partial(
             CustomAttributeSelector.required_attributes_by_status,
             project=project,
             suite=suite,
             status=status,
         )
-        self._validate(attributes, attr_getter)
-
-
-@deconstructible
-class TestPlanCustomAttributeValuesValidator(BaseCustomAttributeValuesValidator):
-    app_name = 'tests_representation'
-    model_name = 'testplan'
-    requires_context = True
-
-    def __call__(self, attrs: dict[str, Any], serializer):
-        attributes = attrs.get('attributes', {})
-        project = attrs.get('project')
-        if project is None and (instance := serializer.instance):
-            project = instance.project
-        attr_getter = partial(CustomAttributeSelector.required_attribute_names_by_project, project=project)
         self._validate(attributes, attr_getter)
 
 
@@ -272,3 +274,25 @@ class DateRangeValidator:
 
         if started_at >= due_date:
             raise ValidationError('End date must be greater than start date.')
+
+
+class AssigneeValidator:
+    requires_context = True
+
+    def __call__(self, data, serializer):
+        assignee = data.get('assignee')
+        if not assignee:
+            return
+        view_action = serializer.context['view'].action
+        project = self._get_project(data, serializer, view_action)
+        is_restricted = RoleSelector.restricted_project_access(assignee)
+        if not project.is_private and not is_restricted:
+            return
+        if not RoleSelector.project_view_allowed(assignee, project):
+            raise ValidationError('User is not a member of a project.')
+
+    @classmethod
+    def _get_project(cls, data, serializer, action: str) -> Project:
+        if action == 'bulk_update_tests':
+            return data.get('current_plan').project
+        return data.get(_PROJECT) or serializer.instance.project

@@ -360,8 +360,15 @@ def test_change_result_status_to_fk(migrator):
 
 @pytest.mark.parametrize('status_type', (ResultStatusType.SYSTEM, ResultStatusType.CUSTOM))
 def test_rollback_change_result_status_to_fk(migrator, status_type):
+    """
+    Testing rollback migrations 0026_historicaltestresult_status_temp_and_more...
+
+    0029_rename_status_temp_historicaltestresult_status_and_more
+    """
     old_state = migrator.apply_initial_migration(
-        ('tests_representation', '0028_rename_status_temp_historicaltestresult_status_and_more'),
+        [
+            ('tests_representation', '0028_rename_status_temp_historicaltestresult_status_and_more'),
+        ],
     )
 
     project_model = old_state.apps.get_model('core', 'Project')
@@ -376,14 +383,14 @@ def test_rollback_change_result_status_to_fk(migrator, status_type):
     test_step_result_model = old_state.apps.get_model('tests_representation', 'TestStepResult')
     status_model = old_state.apps.get_model('tests_representation', 'ResultStatus')
 
-    register(test_suite_model)
-    register(test_plan_model)
-
     project = project_model.objects.create(name='ProjectTest')
-    suite = test_suite_model.objects.create(name='SuiteTest', project=project, lft=0, rght=0, tree_id=uuid4())
+    suite = test_suite_model.objects.create(name='SuiteTest', project=project)
     test_case = test_case_model.objects.create(project=project, suite_id=suite.id, scenario='TestScenario')
     test_case_with_steps = test_case_with_steps.objects.create(project=project, scenario='TestScenario')
     test_plan = test_plan_model.objects.create(
+        lft=0,
+        rght=0,
+        level=0,
         name='TestPlanTest',
         project=project,
         started_at=timezone.now(),

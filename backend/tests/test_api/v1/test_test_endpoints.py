@@ -28,7 +28,6 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-
 from http import HTTPStatus
 from operator import itemgetter
 from unittest import mock
@@ -39,7 +38,7 @@ import pytest
 from tests import constants
 from tests.commons import RequestType, model_to_dict_via_serializer
 from tests.error_messages import PERMISSION_ERR_MSG, REQUIRED_FIELD_MSG
-from tests.mock_serializers import TestMockSerializer
+from tests.mock_serializers.v1 import TestMockSerializer
 from testy.tests_representation.models import Test
 from testy.tests_representation.validators import BulkUpdateExcludeIncludeValidator, MoveTestsSameProjectValidator
 
@@ -56,13 +55,13 @@ class TestTestEndpoints:
             [test_factory(project=project) for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE)],
             TestMockSerializer,
             many=True,
+            refresh_instances=True,
         )
         response = api_client.send_request(self.view_name_list, query_params={'project': project.id})
-        for instance_dict in response.json()['results']:
-            assert instance_dict in expected_instances, f'{instance_dict} was not found in expected instances.'
+        assert response.json_strip() == expected_instances
 
     def test_retrieve(self, api_client, authorized_superuser, test):
-        expected_dict = model_to_dict_via_serializer(test, TestMockSerializer)
+        expected_dict = model_to_dict_via_serializer(test, TestMockSerializer, refresh_instances=True)
         response = api_client.send_request(self.view_name_detail, reverse_kwargs={'pk': test.pk})
         actual_dict = response.json()
         assert actual_dict == expected_dict, 'Actual model dict is different from expected'
@@ -146,16 +145,18 @@ class TestTestEndpoints:
         ]
         for idx, expected_instance in enumerate(tests):
             status = status_list[idx % 3]
-            expected_instance.last_status = status.pk
-            expected_instance.last_status_name = status.name
-            expected_instance.last_status_color = status.color
+            expected_instance.last_status = status
             expected_instance.name = expected_instance.case.name
             test_result_factory(test=expected_instance, status=status)
-
+        if field_name == 'last_status':
+            field = 'last_status_id'
+        else:
+            field = field_name
         expected_instances = model_to_dict_via_serializer(
-            sorted(tests, key=lambda instance: getattr(instance, field_name), reverse=descending),
+            sorted(tests, key=lambda instance: getattr(instance, field), reverse=descending),
             TestMockSerializer,
             many=True,
+            refresh_instances=True,
         )
 
         for page_number in range(1, number_of_pages + 1):
@@ -189,7 +190,9 @@ class TestTestEndpoints:
                 tests[1].append(test_factory(case=test_cases[1], project=project))
 
         for idx in range(number_of_cases):
-            expected_instances.append(model_to_dict_via_serializer(tests[idx], TestMockSerializer, many=True))
+            expected_instances.append(
+                model_to_dict_via_serializer(tests[idx], TestMockSerializer, many=True, refresh_instances=True),
+            )
 
         for idx in range(number_of_cases):
             response = api_client.send_request(
@@ -215,11 +218,11 @@ class TestTestEndpoints:
         result_statuses = [result_status_factory(project=project) for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE)]
         for status in result_statuses:
             test = test_factory(project=project)
-            test.last_status = status.pk
-            test.last_status_name = status.name
-            test.last_status_color = status.color
+            test.last_status = status
             test_result_factory(test=test, status=status)
-            expected_instances.append(model_to_dict_via_serializer(test, TestMockSerializer, many=False))
+            expected_instances.append(
+                model_to_dict_via_serializer(test, TestMockSerializer, many=False, refresh_instances=True),
+            )
 
         for expected_instance, status in zip(expected_instances, result_statuses):
             response = api_client.send_request(
@@ -241,28 +244,6 @@ class TestTestEndpoints:
             query_params={'page_size': page_size, 'project': project.id},
         )
         assert expected_number_of_pages == response.json()['pages']['total']
-
-    def test_suite_path(
-        self,
-        api_client,
-        authorized_superuser,
-        test_factory,
-        test_suite_factory,
-        project,
-        test_case_factory,
-    ):
-        parent = None
-        expected_suites = []
-        for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
-            parent = test_suite_factory(parent=parent, project=project)
-            expected_suites.append(parent)
-        test_case = test_case_factory(suite=expected_suites[-1])
-        test = test_factory(case=test_case)
-        expected_dict = model_to_dict_via_serializer(test, TestMockSerializer)
-        response = api_client.send_request(self.view_name_detail, reverse_kwargs={'pk': test.pk})
-        actual_dict = response.json()
-        assert '/'.join(suite.name for suite in expected_suites) == actual_dict['suite_path'], 'Wrong suite path'
-        assert actual_dict == expected_dict, 'Actual model dict is different from expected'
 
     @pytest.mark.parametrize(
         'label_indexes, not_labels_indexes, labels_condition, number_of_items',
@@ -432,7 +413,7 @@ class TestTestEndpoints:
             labels_for_search.append(str(labeled_item.label.id))
         filter_parameters = {
             'unassigned': True,
-            'assignee': new_assignee_id,
+            'assignee': str(new_assignee_id),
             'search': case_name_for_search,
             'labels': labels_for_search,
             'not_labels': labels_for_search,

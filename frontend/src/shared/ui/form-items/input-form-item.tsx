@@ -7,6 +7,7 @@ import {
   Path,
   RegisterOptions,
 } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 
 import { capitalizeFirstLetter } from "shared/libs"
 
@@ -36,6 +37,7 @@ export const InputFormItem = <T extends FieldValues>({
   label = capitalizeFirstLetter(name),
   required = false,
 }: Props<T>) => {
+  const { t } = useTranslation()
   const errors = (
     formErrors ? formErrors[name]?.message : externalErrors ? externalErrors[name] : undefined
   ) as string | undefined
@@ -51,9 +53,9 @@ export const InputFormItem = <T extends FieldValues>({
         name={name}
         control={control}
         rules={{
-          required: required ? { value: true, message: "Обязательное поле." } : undefined,
+          required: required ? { value: true, message: t("Required field") } : undefined,
           maxLength: maxLength
-            ? { value: maxLength, message: "Максимальная длина " + maxLength }
+            ? { value: maxLength, message: `${t("Maximum length")} ` + maxLength }
             : undefined,
           ...rules,
         }}

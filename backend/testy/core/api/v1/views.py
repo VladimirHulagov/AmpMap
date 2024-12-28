@@ -88,18 +88,18 @@ from testy.core.services.notifications import NotificationService
 from testy.core.services.projects import ProjectService
 from testy.paginations import StandardSetPagination
 from testy.root.mixins import TestyArchiveMixin, TestyDestroyModelMixin, TestyModelViewSet, TestyRestoreModelMixin
-from testy.swagger.custom_attributes import (
+from testy.swagger.v1.custom_attributes import (
     custom_attributes_allowed_content_types,
     custom_attributes_create_schema,
     custom_attributes_update_schema,
 )
-from testy.swagger.notifications import (
+from testy.swagger.v1.notifications import (
     disable_notifications_schema,
     enable_notifications_schema,
     notification_list_schema,
     notification_mark_as_schema,
 )
-from testy.swagger.projects import (
+from testy.swagger.v1.projects import (
     project_access_schema,
     project_create_schema,
     project_list_schema,
@@ -135,6 +135,7 @@ class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin, MediaViewMixin):
     permission_classes = [permissions.IsAdminOrForbidArchiveUpdate, ProjectPermission, ProjectIsPrivatePermission]
     ordering_fields = ['name', 'is_archive']
     pagination_class = StandardSetPagination
+    lookup_value_regex = r'\d+'
     schema_tags = ['Projects']
 
     @property
@@ -320,7 +321,7 @@ class SystemMessagesViewSet(mixins.ListModelMixin, GenericViewSet):
 class SystemStatisticViewSet(mixins.ListModelMixin, GenericViewSet):
     queryset = Project.objects.none()
     serializer_class = AllProjectsStatisticSerializer
-    schema_tags = ['statistics']
+    schema_tags = ['Statistics']
 
     def list(self, request, *args, **kwargs):
         statistic = ProjectSelector(request.user).all_projects_statistic()

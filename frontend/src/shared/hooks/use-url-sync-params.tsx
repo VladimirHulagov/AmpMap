@@ -1,60 +1,60 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-import decodeUriComponent from "decode-uri-component"
-import queryString from "query-string"
 import { useEffect, useState } from "react"
-import { useNavigate, useSearchParams } from "react-router-dom"
+import { useSearchParams } from "react-router-dom"
 
-import { config } from "shared/config"
+import { deepEqualObjects } from "shared/libs"
+import { QuryParamsSchema, queryParamsBySchema } from "shared/libs/query-params"
 
-interface Props<T> {
+interface Props<T extends Record<string, unknown>> {
   params: T
-  setTableParams?: React.Dispatch<React.SetStateAction<T>>
-  isEnable?: boolean
-  reset?: () => void
+  queryParamsSchema: QuryParamsSchema
+  updateParams?: (params: Partial<T>) => void
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const useUrlSyncParams = <T extends Record<string, any>>({
+export const useUrlSyncParams = <T extends Record<string, unknown>>({
   params,
-  isEnable = true,
-  setTableParams,
-  reset,
+  queryParamsSchema,
+  updateParams,
 }: Props<T>) => {
-  const [searchParams] = useSearchParams(params)
-  const navigate = useNavigate()
-  const [isInit, setIsInit] = useState(false)
-  const searchParamsStringify = queryString.stringify(Object.fromEntries([...searchParams]))
+  const [skipInit, setSkipInit] = useState(true)
+  const [searchParams, setSearchParams] = useSearchParams()
 
   useEffect(() => {
-    if (isInit || !isEnable) return
-    const formatSearchParams = queryString.parse(
-      decodeUriComponent(searchParams.toString()),
-      config.queryFormatOptions
-    )
-    const formatParams = queryString.stringify(params, config.queryFormatOptions)
+    if (!skipInit) {
+      const urlParseBySchema = queryParamsBySchema(queryParamsSchema)
+      const isEqualObject = deepEqualObjects(urlParseBySchema, params)
+      if (isEqualObject) {
+        return
+      }
 
-    if (searchParamsStringify !== formatParams) {
-      // @ts-ignore
-      setTableParams?.(formatSearchParams)
+      for (const [key, value] of Object.entries(params)) {
+        if (
+          value === undefined ||
+          (Array.isArray(value) && !value.length) ||
+          (typeof value === "string" && !value.length)
+        ) {
+          searchParams.delete(key)
+          continue
+        }
+
+        searchParams.set(key, String(value))
+      }
+      setSearchParams(searchParams)
+    } else {
+      setSkipInit(false)
     }
-    setIsInit(true)
-  }, [isEnable, isInit, searchParams, params])
+  }, [params])
 
   useEffect(() => {
-    if (!isInit || !isEnable) return
-
-    if (queryString.stringify(params) !== searchParamsStringify) {
-      const format = queryString.stringify(params, config.queryFormatOptions)
-      navigate({ search: `?${format}` }, { replace: true })
+    if (!updateParams || skipInit) {
+      return
     }
-  }, [isEnable, isInit, params])
 
-  useEffect(() => {
-    if (!isEnable) return
-    return () => {
-      reset?.()
+    const urlParseBySchema = queryParamsBySchema(queryParamsSchema)
+    const isEqualObject = deepEqualObjects(urlParseBySchema, params)
+    if (isEqualObject) {
+      return
     }
-  }, [isEnable])
+
+    updateParams(params as Partial<T>)
+  }, [skipInit, params, searchParams.toString()])
 }

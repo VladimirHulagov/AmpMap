@@ -1,17 +1,21 @@
 import { EditOutlined } from "@ant-design/icons"
 import { Button } from "antd"
-import QS from "query-string"
+import { useTranslation } from "react-i18next"
 import { useLocation, useNavigate, useParams } from "react-router-dom"
 import { v4 as uuidv4 } from "uuid"
 
 import { useAppDispatch } from "app/hooks"
 
-import { clearDrawerTestCase, setEditingTestCase } from "entities/test-case/model"
+import { clearDrawerTestCase } from "entities/test-case/model"
 
-import { config } from "shared/config"
-import { savePrevPageSearch } from "shared/libs/session-storage"
+import { savePrevPageSearch } from "shared/libs"
 
-export const EditTestCase = ({ testCase }: { testCase: TestCase }) => {
+interface Props {
+  testCase: TestCase
+}
+
+export const EditTestCase = ({ testCase }: Props) => {
+  const { t } = useTranslation()
   const { projectId, testSuiteId } = useParams<ParamProjectId | ParamTestSuiteId>()
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
@@ -19,15 +23,12 @@ export const EditTestCase = ({ testCase }: { testCase: TestCase }) => {
 
   const handleEdit = () => {
     dispatch(clearDrawerTestCase())
-    dispatch(setEditingTestCase(testCase))
     const searchParams = new URLSearchParams(location.search)
     searchParams.delete("test_case")
-    const format = QS.parse(location.search, config.queryFormatOptions)
-    const formatString = QS.stringify(format, config.queryFormatOptions)
 
     const uniqId = uuidv4()
     if (searchParams.size) {
-      savePrevPageSearch(uniqId, formatString)
+      savePrevPageSearch(uniqId, searchParams.toString())
     }
 
     navigate(
@@ -39,7 +40,7 @@ export const EditTestCase = ({ testCase }: { testCase: TestCase }) => {
 
   return (
     <Button id="edit-test-case-detail" icon={<EditOutlined />} onClick={handleEdit}>
-      Edit
+      {t("Edit")}
     </Button>
   )
 }

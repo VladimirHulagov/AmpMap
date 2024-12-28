@@ -71,10 +71,6 @@ class ResultStatusSelector:
         return ResultStatusSelector.status_list(project=project).filter(name__iexact=name)
 
     @classmethod
-    def extended_get_status_by_id(cls, status_id):
-        return QuerySet(ResultStatus).filter(pk=status_id).first()
-
-    @classmethod
     def status_deleted_list(cls) -> QuerySet[ResultStatus]:
         return ResultStatus.deleted_objects.all()
 

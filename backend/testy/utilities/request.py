@@ -28,19 +28,24 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-
+from collections import OrderedDict
 from dataclasses import dataclass
 from typing import Any
 
 from django.conf import settings
+from django.forms import Form
 from django.http import HttpRequest
 from django.utils import timezone
+from django_filters import Filter
+from django_filters.constants import EMPTY_VALUES
 from rest_framework.exceptions import ValidationError
 
 from testy.utilities.string import parse_bool_from_str, parse_int
 
+_GET = 'GET'
 
-def get_boolean(request, key, method='GET', *, default=False) -> bool:
+
+def get_boolean(request, key, method=_GET, *, default=False) -> bool:
     """
     Get the value from request and returns it's boolean state.
 
@@ -57,7 +62,34 @@ def get_boolean(request, key, method='GET', *, default=False) -> bool:
     return parse_bool_from_str(value)
 
 
-def get_integer(request, key, method='GET', *, default=None) -> int | None:
+def get_list(request, key, method=_GET, *, default='') -> list[str]:
+    value = getattr(request, method).get(key, default)
+    if value in {'null', ''}:
+        return []
+    return [elem for elem in value.split(',') if elem.strip() != '']
+
+
+def validate_query_params_data(
+    query_params: dict[str, Any],
+    omit_empty: bool = False,
+    **fields: Filter,
+) -> dict[str, Any]:
+    declared_fields = OrderedDict([(name, filter_.field) for name, filter_ in fields.items()])
+    form_class = type('QueryParamValidator', (Form,), declared_fields)
+    form = form_class(query_params)
+    form.is_valid()
+    if form.errors:
+        raise ValidationError(form.errors)
+    raw_parameters = dict(query_params.items())
+    for name, value in form.cleaned_data.items():
+        if omit_empty and value in EMPTY_VALUES:
+            raw_parameters.pop(name, None)
+            continue
+        raw_parameters[name] = value
+    return raw_parameters
+
+
+def get_integer(request, key, method=_GET, *, default=None) -> int | None:
     value = getattr(request, method).get(key, default)
     if value == 'null' or value is None:
         return None
@@ -67,7 +99,7 @@ def get_integer(request, key, method='GET', *, default=None) -> int | None:
     return int_value
 
 
-def get_datetime(request, key, method='GET', required=False) -> timezone.datetime | None:
+def get_datetime(request, key, method=_GET, required=False) -> timezone.datetime | None:
     """
     Get the value from request and returns it's as datetime object.
 

@@ -1,4 +1,5 @@
 import dayjs from "dayjs"
+import { useTranslation } from "react-i18next"
 import { HashLink } from "react-router-hash-link"
 
 import { UserAvatar } from "entities/user/ui"
@@ -20,16 +21,20 @@ export const CommentUserInfo = ({
   createdAt,
   updatedAt,
 }: Props) => {
+  const { t } = useTranslation()
   const path = window.location.pathname + window.location.search
+
   return (
     <div className={styles.userInfo}>
       <UserAvatar size={32} avatar_link={avatarLink} />
       <span>{username}</span>
-      <span>added a comment</span>
+      <span>{t("added a comment")}</span>
       <HashLink to={path + `#comment-${commentId}`} className={styles.link}>
         {dayjs(createdAt).format("DD MMM YYYY HH:mm")}
       </HashLink>
-      {!dayjs(updatedAt).isSame(createdAt) && <span className={styles.edited}> - edited</span>}
+      {!dayjs(updatedAt).isSame(createdAt) && (
+        <span className={styles.edited}> - {t("edited")}</span>
+      )}
     </div>
   )
 }

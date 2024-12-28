@@ -1,5 +1,6 @@
 import { UploadOutlined } from "@ant-design/icons"
 import { Alert, Button, Upload } from "antd"
+import { useTranslation } from "react-i18next"
 
 import { Attachment, TextArea } from "shared/ui"
 
@@ -24,6 +25,7 @@ export const AddComment = ({ model, object_id, setIsShowAdd }: Props) => {
     handleLoadAttachmentChange,
     handleAttachmentLoad,
   } = useAddComment({ setIsShowAdd, model, object_id })
+  const { t } = useTranslation()
   return (
     <div style={{ marginTop: 12, gap: 12, display: "flex", flexDirection: "column" }}>
       <TextArea
@@ -32,7 +34,7 @@ export const AddComment = ({ model, object_id, setIsShowAdd }: Props) => {
         rows={4}
         value={comment}
         onChange={(e) => setComment(e.target.value)}
-        placeholder="Type a comment"
+        placeholder={t("Type a comment")}
         autoFocus
       />
       {!!errors?.errors?.length && <Alert description={errors.errors} type="error" />}
@@ -47,7 +49,7 @@ export const AddComment = ({ model, object_id, setIsShowAdd }: Props) => {
           onChange={handleLoadAttachmentChange}
           customRequest={handleAttachmentLoad}
         >
-          <Button icon={<UploadOutlined />}>Upload file</Button>
+          <Button icon={<UploadOutlined />}>{t("Upload file")}</Button>
         </Upload>
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginLeft: "auto" }}>
           <Button
@@ -57,10 +59,10 @@ export const AddComment = ({ model, object_id, setIsShowAdd }: Props) => {
             loading={isLoadingAddComment || isLoadingCreateAttachment}
             disabled={!comment.length && !attachments.length}
           >
-            Add
+            {t("Add")}
           </Button>
           <Button id="cancel-comment-btn" onClick={() => setIsShowAdd(false)} type="text">
-            Cancel
+            {t("Cancel")}
           </Button>
         </div>
       </div>

@@ -50,7 +50,7 @@ from tests.error_messages import (
     TOO_BIG_ESTIMATE_ERR_MSG,
     WEEK_ESTIMATE_ERR_MSG,
 )
-from tests.mock_serializers import TestCaseMockSerializer, TestMockSerializer
+from tests.mock_serializers.v1 import TestCaseMockSerializer, TestMockSerializer
 from testy.core.models import Attachment, Label, LabeledItem
 from testy.tests_description.api.v1.serializers import TestCaseHistorySerializer
 from testy.tests_description.models import TestCase, TestCaseStep
@@ -1043,7 +1043,7 @@ class TestCaseWithStepsEndpoints:
 
         response = superuser_client.send_request(self.view_name_list, query_params={'project': project.id})
         with allure.step('Validate response body'):
-            assert response.json()['results'] == expected_instances
+            assert response.json()['results'] == sorted(expected_instances, key=lambda instance: instance['name'])
 
     @pytest.mark.parametrize('steps_number', [0, 1, 2, 10], ids=['No steps', '1 step', '2 steps', '10 steps'])
     def test_create(self, superuser_client, test, steps_number):

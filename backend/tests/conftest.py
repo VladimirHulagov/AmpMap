@@ -36,14 +36,18 @@ from unittest import mock
 
 import allure
 import pytest
+import pytest_asyncio
+from channels.db import database_sync_to_async
 from channels.layers import get_channel_layer
+from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils import timezone
 from pytest_factoryboy import register
 
 from tests import constants
-from tests.commons import CustomAPIClient, RequestType, model_to_dict_via_serializer
+from tests.commons import CustomAPIClient, RequestType
 from tests.factories import (
     AttachmentFactory,
     AttachmentTestCaseFactory,
@@ -77,10 +81,9 @@ from tests.factories import (
     UserFactory,
 )
 from testy.core.choices import ActionCode
+from testy.core.models import NotificationSetting, Project
 from testy.core.selectors.custom_attribute import CustomAttributeSelector
-from testy.tests_representation.api.v1.serializers import ResultStatusSerializer
-from testy.tests_representation.choices import ResultStatusType
-from testy.tests_representation.models import ResultStatus, TestResult
+from testy.tests_representation.models import TestResult
 from testy.users.choices import UserAllowedPermissionCodenames
 
 register(ParameterFactory)
@@ -113,6 +116,8 @@ register(TestResultWithStepsFactory)
 register(ResultStatusFactory)
 register(NotificationSettingFactory)
 register(NotificationFactory)
+
+UserModel = get_user_model()
 
 
 @pytest.fixture
@@ -150,12 +155,6 @@ def authorized_superuser_client(api_client, superuser):
 
 
 @pytest.fixture
-def test_plan_from_api(api_client, authorized_superuser, test_plan):
-    response = api_client.send_request('api:v1:testplan-detail', reverse_kwargs={'pk': test_plan.id})
-    return response.json()
-
-
-@pytest.fixture
 def combined_parameters(number_of_param_groups, number_of_entities_in_group, parameter_factory):
     parameters = []
     for _ in range(number_of_param_groups):
@@ -186,7 +185,7 @@ def several_test_plans_from_api(api_client, authorized_superuser, parameter_fact
                 'project': project.id,
             }
             response = api_client.send_request(
-                'api:v1:testplan-list',
+                'api:v2:testplan-list',
                 testplan_dict,
                 HTTPStatus.CREATED,
                 RequestType.POST,
@@ -337,8 +336,8 @@ def generate_historical_objects(
 def multiple_plans_data_project_statistics(project, test_plan_factory, test_result_factory, test_factory):
     root_plans = []
     with mock.patch(
-            'django.utils.timezone.now',
-            return_value=timezone.make_aware(timezone.datetime(2000, 1, 2), timezone.utc),
+        'django.utils.timezone.now',
+        return_value=timezone.make_aware(timezone.datetime(2000, 1, 2), timezone.utc),
     ):
         for _ in range(5):
             plan = test_plan_factory(project=project)
@@ -346,8 +345,8 @@ def multiple_plans_data_project_statistics(project, test_plan_factory, test_resu
             root_plans.append(plan)
     plans_depth_1 = []
     with mock.patch(
-            'django.utils.timezone.now',
-            return_value=timezone.make_aware(timezone.datetime(2000, 1, 4), timezone.utc),
+        'django.utils.timezone.now',
+        return_value=timezone.make_aware(timezone.datetime(2000, 1, 4), timezone.utc),
     ):
         for parent_plan in root_plans:
             plan = test_plan_factory(project=project, parent=parent_plan)
@@ -355,8 +354,8 @@ def multiple_plans_data_project_statistics(project, test_plan_factory, test_resu
             plans_depth_1.append(plan)
     plans_depth_2 = []
     with mock.patch(
-            'django.utils.timezone.now',
-            return_value=timezone.make_aware(timezone.datetime(2000, 1, 4), timezone.utc),
+        'django.utils.timezone.now',
+        return_value=timezone.make_aware(timezone.datetime(2000, 1, 4), timezone.utc),
     ):
         for parent_plan in plans_depth_1:
             plan = test_plan_factory(project=project, parent=parent_plan)
@@ -380,14 +379,14 @@ def result_filter_data_project_statistics(project, test_plan_factory, test_resul
     root_plan = test_plan_factory(project=project)
     child_plan = test_plan_factory(project=project, parent=root_plan)
     with mock.patch(
-            'django.utils.timezone.now',
-            return_value=timezone.make_aware(timezone.datetime(2000, 1, 2), timezone.utc),
+        'django.utils.timezone.now',
+        return_value=timezone.make_aware(timezone.datetime(2000, 1, 2), timezone.utc),
     ):
         for _ in range(3):
             test_result_factory(test=test_factory(plan=child_plan), project=project)
     with mock.patch(
-            'django.utils.timezone.now',
-            return_value=timezone.make_aware(timezone.datetime(2000, 1, 4), timezone.utc),
+        'django.utils.timezone.now',
+        return_value=timezone.make_aware(timezone.datetime(2000, 1, 4), timezone.utc),
     ):
         test_result_factory(test=test_factory(plan=child_plan), project=project)
 
@@ -417,8 +416,8 @@ def data_different_statuses_project_statistics(
     result_statuses = [result_status_factory(project=project) for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE)]
     for day, status in zip(range(2, 12, 2), result_statuses):
         with mock.patch(
-                'django.utils.timezone.now',
-                return_value=timezone.make_aware(timezone.datetime(2000, 1, day), timezone.utc),
+            'django.utils.timezone.now',
+            return_value=timezone.make_aware(timezone.datetime(2000, 1, day), timezone.utc),
         ):
             test_result_factory(test=test_factory(plan=child_plan), project=project, status=status)
 
@@ -446,8 +445,8 @@ def empty_plan_data_project_statistics(
     root_plan = test_plan_factory(project=project)
     root_plan_2 = test_plan_factory(project=project, parent=root_plan)
     with mock.patch(
-            'django.utils.timezone.now',
-            return_value=timezone.make_aware(timezone.datetime(2000, 1, 2), timezone.utc),
+        'django.utils.timezone.now',
+        return_value=timezone.make_aware(timezone.datetime(2000, 1, 2), timezone.utc),
     ):
         test_result_factory(
             test=test_factory(plan=root_plan_2),
@@ -492,14 +491,15 @@ def cases_with_labels(
     test_factory,
     project,
     result_status_factory,
+    test_suite,
 ):
     test_plan = test_plan_factory(project=project)
     label_blue_bank = label_factory(name='blue_bank')
     label_green_bank = label_factory(name='green_bank')
     label_red_bank = label_factory(name='red_bank')
-    test_cases = [test_case_factory(project=project) for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE)]
+    test_cases = [test_case_factory(project=project, suite=test_suite) for _ in range(10)]
     status = result_status_factory(project=project)
-    for idx in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
+    for idx in range(10):
         if not idx % 2:
             labeled_item_factory(label=label_blue_bank, content_object=test_cases[idx])
         if not idx % 3:
@@ -532,6 +532,19 @@ def member(role_factory):
                 UserAllowedPermissionCodenames.CHANGE_RESULT,
             ],
         ),
+    )
+
+
+@pytest.fixture
+def external(role_factory, permission_factory):
+    yield role_factory(
+        name='External',
+        permissions=[
+            permission_factory(
+                codename=UserAllowedPermissionCodenames.VIEW_PROJECT_RESTRICTION,
+                content_type=ContentType.objects.get_for_model(Project),
+            ),
+        ],
     )
 
 
@@ -569,16 +582,8 @@ def generate_projects_and_suites(project_factory, test_suite_factory):
 
 
 @pytest.fixture
-def system_statuses_dict():
-    return model_to_dict_via_serializer(
-        ResultStatus.objects.filter(type=ResultStatusType.SYSTEM),
-        ResultStatusSerializer,
-        many=True,
-    )
-
-
-@pytest.fixture
 def default_notify_settings(notification_setting_factory):
+    NotificationSetting.deleted_objects.all().delete()
     action_code = 'action_code'
     settings_data = [
         {
@@ -625,3 +630,34 @@ def mock_tests_channel_layer(settings):
     }
     with mock.patch('testy.tests_representation.services.tests.channel_layer', get_channel_layer()):
         yield
+
+
+@pytest.fixture
+def notification_tests_teardown():
+    yield
+    UserModel.objects.all().delete()
+    NotificationSetting.deleted_objects.all().delete()
+
+
+@pytest_asyncio.fixture
+async def subscribed_user(notification_setting_factory, user_factory):
+    def wrapper():
+        NotificationSetting.deleted_objects.all().delete()
+        user = user_factory()
+        setting = notification_setting_factory(
+            action_code=ActionCode.TEST_ASSIGNED,
+            message='{{{{placeholder}}}} was assigned to you by {actor}',
+            verbose_name='Test assigned',
+            placeholder_link='/projects/{project_id}/plans/{plan_id}?test={test_id}',
+            placeholder_text='Test {name}',
+        )
+        setting.subscribers.add(user)
+        return user
+
+    yield await database_sync_to_async(wrapper)()
+
+    def teardown_wrapper():
+        NotificationSetting.objects.all().delete()
+        UserModel.objects.all().delete()
+
+    await database_sync_to_async(teardown_wrapper)()

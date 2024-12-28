@@ -1,14 +1,17 @@
 import { UserAddOutlined } from "@ant-design/icons"
 import { Button } from "antd"
+import { useTranslation } from "react-i18next"
 
 import { AssingToModal } from "./assign-to-modal"
 import { useAssignToCommon } from "./use-assign-to-common"
 
 interface Props {
+  isLoading?: boolean
   onSubmit: (id: string) => Promise<void>
 }
 
-export const AssignTestsBulk = ({ onSubmit }: Props) => {
+export const AssignTestsBulk = ({ isLoading, onSubmit }: Props) => {
+  const { t } = useTranslation()
   const {
     isOpenModal,
     errors,
@@ -30,13 +33,13 @@ export const AssignTestsBulk = ({ onSubmit }: Props) => {
         key="submit"
         onClick={handleOpenAssignModal}
       >
-        Assign To
+        {t("Assign To")}
       </Button>
       <AssingToModal
         isOpenModal={isOpenModal}
         errors={errors}
         isDirty={isDirty}
-        isLoadingUpdateTest={false}
+        isLoadingUpdateTest={isLoading ?? false}
         selectedUser={selectedUser}
         handleClose={handleClose}
         handleOpenAssignModal={handleOpenAssignModal}

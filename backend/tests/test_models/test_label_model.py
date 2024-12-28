@@ -30,10 +30,11 @@
 # <http://www.gnu.org/licenses/>.
 
 import pytest
+from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError
 
 from tests.error_messages import NOT_NULL_ERR_MSG
-from testy.core.models import Label
+from testy.core.models import Label, LabeledItem
 
 
 @pytest.mark.django_db
@@ -62,3 +63,23 @@ class TestLabelModel:
         label_factory(name=label.name, project=project)
         assert Label.objects.count() == 1
         assert Label.deleted_objects.count() == 1
+
+    def test_labeleditem_creation_deletion_triggers(self, labeled_item_factory, label_factory, test_case):
+        item = labeled_item_factory(content_object=test_case)
+        label_id = item.label.pk
+        assert label_id in item.content_object.label.first().ids
+        item.delete()
+        assert label_id not in item.content_object.label.first().ids
+        items_for_creation = [
+            LabeledItem(
+                label=label_factory(),
+                content_type=ContentType.objects.get_for_model(test_case),
+                object_id=test_case.pk,
+                content_object_history_id=test_case.history.last().history_id,
+            ),
+        ]
+        LabeledItem.objects.bulk_create(items_for_creation)
+        ids = list(LabeledItem.objects.all().values_list('label_id', flat=True))
+        assert test_case.label.first().ids == ids
+        LabeledItem.objects.all().delete()
+        assert not test_case.label.first().ids

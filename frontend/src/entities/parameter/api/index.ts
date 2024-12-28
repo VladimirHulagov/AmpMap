@@ -4,6 +4,8 @@ import { baseQueryWithLogout } from "app/apiSlice"
 
 import { invalidatesList, providesList } from "shared/libs"
 
+const rootPath = "parameters"
+
 export const parameterApi = createApi({
   reducerPath: "parameterApi",
   baseQuery: baseQueryWithLogout,
@@ -11,14 +13,14 @@ export const parameterApi = createApi({
   endpoints: (builder) => ({
     getParameters: builder.query<IParameter[], Id>({
       query: (projectId) => ({
-        url: "v1/parameters/",
+        url: `${rootPath}/`,
         params: { project: projectId, treeview: true },
       }),
       providesTags: (result) => providesList(result, "Parameter"),
     }),
     createParameter: builder.mutation<IParameter, IParameterUpdate>({
       query: (body) => ({
-        url: "v1/parameters/",
+        url: `${rootPath}/`,
         method: "POST",
         body,
       }),
@@ -26,7 +28,7 @@ export const parameterApi = createApi({
     }),
     updateParameter: builder.mutation<IParameter, { id: Id; body: IParameterUpdate }>({
       query: ({ id, body }) => ({
-        url: `v1/parameters/${id}/`,
+        url: `${rootPath}/${id}/`,
         method: "PATCH",
         body,
       }),
@@ -34,7 +36,7 @@ export const parameterApi = createApi({
     }),
     deleteParameter: builder.mutation<void, Id>({
       query: (id) => ({
-        url: `v1/parameters/${id}/`,
+        url: `${rootPath}/${id}/`,
         method: "DELETE",
       }),
       invalidatesTags: [{ type: "Parameter", id: "LIST" }],

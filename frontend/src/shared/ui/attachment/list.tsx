@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next"
+
 import { AttachmentItem } from "./item"
 
 interface AttachmentListProps {
@@ -11,7 +13,8 @@ export const AttachmentList = ({
   isShowNoAttachment = true,
   handleAttachmentRemove,
 }: AttachmentListProps) => {
-  if (attachments.length === 0 && isShowNoAttachment) return <p>No attachments.</p>
+  const { t } = useTranslation()
+  if (attachments.length === 0 && isShowNoAttachment) return <p>{t("No attachments")}</p>
 
   return (
     <>
