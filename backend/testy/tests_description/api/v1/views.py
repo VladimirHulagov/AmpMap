@@ -237,32 +237,32 @@ class TestCaseViewSet(TestyModelViewSet, TestyArchiveMixin):
         updated_test_case = TestCaseService.restore_version(serializer.validated_data.get('version'), pk)
         return Response(TestCaseRetrieveSerializer(updated_test_case, context=self.get_serializer_context()).data)
 
-    @cases_search_schema
     @action(methods=[_GET], url_path='search', url_name='search', detail=False)
     def cases_search(self, request):
         cases = self.get_queryset()
         cases = self.filter_queryset(cases)
-        suites = list(
-            TestSuite.objects.filter(
-                id__in=cases.values_list('suite_id', flat=True),
-            ).get_ancestors(
-                include_self=True,
-            ).annotate(
-                title=F(_NAME),
-            ).values(_ID, _NAME, 'title', 'parent_id').order_by('name'),
-        )
-        data = rusty.serialize_tree(
-            rusty.DataSetObject('parent_id', _ID, instances=suites),
-            prefetch_objects=[
-                rusty.Prefetch(
-                    'test_cases',
-                    'suite_id',
-                    instances=list(cases.values(_ID, _NAME, 'suite_id', 'labels', 'is_archive').order_by('name')),
-                ),
-            ],
-            is_tree=True,
-        )
-        data = orjson.dumps(data)
+        suites = TestSuite.objects.filter(
+            id__in=cases.values_list('suite_id', flat=True),
+        ).get_ancestors(
+            include_self=True,
+        ).annotate(
+            title=F(_NAME),
+        ).values(_ID, _NAME, 'title', 'parent_id').order_by('name')
+        suite_map = {}
+        tree = {}
+        for suite in suites:
+            suite['children'] = []
+            suite['test_cases'] = []
+            suite_map[suite['id']] = suite
+            if suite['parent_id'] is None:
+                tree[suite['id']] = suite
+        for suite in suites:
+            if parent_id := suite['parent_id']:
+                parent = suite_map.get(parent_id)
+                parent['children'].append(suite)
+        for case in cases.values(_ID, _NAME, 'suite_id', 'labels', 'is_archive').order_by('name'):
+            suite_map[case['suite_id']]['test_cases'].append(case)
+        data = orjson.dumps(list(tree.values()))
         return HttpResponse(content=data, content_type='application/json')
 
 

@@ -21,8 +21,7 @@ pytimeparse==1.1.8
 git+https://gitlab-pub.yadro.com/testy/allure-uploader-v2.git@release/2.0.9
 git+https://gitlab-pub.yadro.com/testy/plugin-example.git@release/0.2.0
 git+https://gitlab-pub.yadro.com/testy/testrail_migrator.git@release/0.3.0
-git+https://github.com/KabaevRoman/django-mptt.git
-testy-rust==0.1.7
+git+https://gitlab-pub.yadro.com/testy/django-mptt.git
 orjson==3.10.1
 Pillow==9.5.0
 pluggy==1.0.0
