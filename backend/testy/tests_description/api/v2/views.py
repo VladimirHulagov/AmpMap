@@ -31,7 +31,6 @@
 from functools import partial
 
 import orjson
-import rusty
 from django.db.models import F
 from django.http import HttpResponse
 from django_filters import CharFilter
