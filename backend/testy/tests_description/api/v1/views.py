@@ -30,7 +30,6 @@
 # <http://www.gnu.org/licenses/>.
 
 import orjson
-import rusty
 from django.db.models import F
 from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
