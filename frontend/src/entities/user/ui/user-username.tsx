@@ -6,7 +6,7 @@ export const UserUsername = ({ username }: { username: string }) => {
   if (isClear) return <span style={{ userSelect: "none" }}>{username}</span>
 
   return (
-    <a href="" target="_blank" rel="noreferrer">
+    <a href="#" rel="noreferrer">
       {username}
     </a>
   )

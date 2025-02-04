@@ -13,7 +13,7 @@ import { Pie } from "shared/ui"
 import styles from "./styles.module.css"
 
 interface Props {
-  testPlanId?: string
+  testPlanId?: number
   height: number
   onHeightChange: (height: number) => void
 }

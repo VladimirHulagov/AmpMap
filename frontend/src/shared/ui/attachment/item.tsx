@@ -3,7 +3,7 @@ import { Col, Row, Space, message } from "antd"
 
 interface AttachmentItemProps {
   attachment: IAttachment
-  handleAttachmentRemove: (fileId: number) => void
+  handleAttachmentRemove?: (fileId: number) => void
 }
 
 export const AttachmentItem = ({ attachment, handleAttachmentRemove }: AttachmentItemProps) => {
@@ -20,6 +20,7 @@ export const AttachmentItem = ({ attachment, handleAttachmentRemove }: Attachmen
           overflow: "hidden",
           whiteSpace: "nowrap",
         }}
+        data-testid={`attachment-name-${attachment.name}`}
       >
         {attachment.name}
       </Col>
@@ -32,11 +33,15 @@ export const AttachmentItem = ({ attachment, handleAttachmentRemove }: Attachmen
               message.info("Attachment url copied to clipboard")
             }}
             style={{ fontSize: 16, cursor: "pointer", color: "#ааа" }}
+            data-testid={`attachment-copy-btn-${attachment.name}`}
           />
-          <CloseOutlined
-            onClick={() => handleAttachmentRemove(attachment.id)}
-            style={{ fontSize: 16, cursor: "pointer", color: "#eb2f96" }}
-          />
+          {handleAttachmentRemove && (
+            <CloseOutlined
+              data-testid={`attachment-remove-btn-${attachment.name}`}
+              onClick={() => handleAttachmentRemove(attachment.id)}
+              style={{ fontSize: 16, cursor: "pointer", color: "#eb2f96" }}
+            />
+          )}
         </Space>
       </Col>
     </Row>

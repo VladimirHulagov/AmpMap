@@ -60,20 +60,22 @@ export const TreeSelectFormItem = <T extends FieldValues>({
           ...rules,
         }}
         render={({ field }) => (
-          <TreeSelect
-            id={id}
-            {...field}
-            showSearch
-            treeCheckable
-            treeNodeFilterProp="title"
-            style={{ width: "100%" }}
-            dropdownStyle={{ maxHeight: 400, overflow: "auto" }}
-            treeData={treeData}
-            placeholder={t("Please select")}
-            allowClear
-            showCheckedStrategy="SHOW_CHILD"
-            {...treeProps}
-          />
+          <div data-testid={`${id}-select`}>
+            <TreeSelect
+              id={id}
+              {...field}
+              showSearch
+              treeCheckable
+              treeNodeFilterProp="title"
+              style={{ width: "100%" }}
+              dropdownStyle={{ maxHeight: 400, overflow: "auto" }}
+              treeData={treeData}
+              placeholder={t("Please select")}
+              allowClear
+              showCheckedStrategy="SHOW_CHILD"
+              {...treeProps}
+            />
+          </div>
         )}
       />
     </Form.Item>

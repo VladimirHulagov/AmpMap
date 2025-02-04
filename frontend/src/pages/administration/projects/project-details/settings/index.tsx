@@ -19,8 +19,8 @@ export const ProjectDetailsSettingsPage = () => {
     setProjectDetailsActiveTab("settings")
   })
   const { project } = useContext(ProjectContext)!
-  const { me } = useContext(MeContext)!
-  const editable = !project.is_archive || me.is_superuser
+  const { me } = useContext(MeContext)
+  const editable = !project.is_archive || me?.is_superuser
 
   const editTime = project.settings.result_edit_limit
     ? `${project.settings.result_edit_limit}`

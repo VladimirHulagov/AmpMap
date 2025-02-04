@@ -28,23 +28,35 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
+import operator
+from functools import reduce
+from typing import Any, Callable
 
 import humanize
 import timeago
+from core.constants import CUSTOM_ATTRIBUTES_ALLOWED_APPS, CUSTOM_ATTRIBUTES_ALLOWED_MODELS
 from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from django.utils import timezone
 from notifications.models import Notification
 from rest_framework.exceptions import ValidationError
-from rest_framework.fields import BooleanField, CharField, DateTimeField, IntegerField, JSONField, SerializerMethodField
+from rest_framework.fields import (
+    BooleanField,
+    CharField,
+    DateTimeField,
+    IntegerField,
+    JSONField,
+    ListField,
+    SerializerMethodField,
+)
 from rest_framework.relations import PrimaryKeyRelatedField
 from rest_framework.serializers import HyperlinkedIdentityField, ModelSerializer, Serializer
 
-from testy.core.constants import CUSTOM_ATTRIBUTES_ALLOWED_APPS, CUSTOM_ATTRIBUTES_ALLOWED_MODELS
 from testy.core.models import Attachment, CustomAttribute, Label, NotificationSetting, Project, SystemMessage
+from testy.core.selectors.custom_attribute import CustomAttributeSelector
 from testy.core.selectors.notifications import NotificationSelector
 from testy.core.selectors.project_settings import ProjectSettings
-from testy.core.validators import CustomAttributeCreateValidator, DefaultStatusValidator, ProjectStatusOrderValidator
+from testy.core.validators import CustomAttributeV1CreateValidator, DefaultStatusValidator, ProjectStatusOrderValidator
 from testy.serializer_fields import EstimateField
 
 
@@ -73,38 +85,99 @@ class CustomAttributeBaseSerializer(ModelSerializer):
             'url',
             'project',
             'name',
-            'is_required',
-            'is_suite_specific',
             'type',
             'is_deleted',
-            'suite_ids',
-            'status_specific',
         )
         ref_name = 'CustomAttributeBaseV1'
 
 
 class CustomAttributeInputSerializer(CustomAttributeBaseSerializer):
     content_types = PrimaryKeyRelatedField(
-        queryset=ContentType.objects.filter(
-            app_label__in=CUSTOM_ATTRIBUTES_ALLOWED_APPS,
-            model__in=CUSTOM_ATTRIBUTES_ALLOWED_MODELS,
-        ),
-        many=True, allow_empty=False,
+        queryset=CustomAttributeSelector.get_allowed_content_types(),
+        many=True,
+        allow_empty=False,
+        allow_null=False,
+    )
+    is_required = BooleanField(required=False, allow_null=False, default=False, initial=False)
+    suite_ids = ListField(
+        child=IntegerField(),
+        allow_null=False,
+        allow_empty=True,
+        required=False,
+        default=list,
+        initial=list,
+    )
+    status_specific = ListField(
+        child=IntegerField(),
+        allow_null=True,
+        allow_empty=True,
+        required=False,
+        default=list,
+        initial=list,
     )
 
     class Meta:
         model = CustomAttribute
-        fields = CustomAttributeBaseSerializer.Meta.fields + ('content_types',)
+        fields = CustomAttributeBaseSerializer.Meta.fields + (
+            'content_types', 'is_required', 'suite_ids', 'status_specific',
+        )
 
-        validators = [CustomAttributeCreateValidator()]
+        validators = [CustomAttributeV1CreateValidator()]
         ref_name = 'CustomAttributeInputV1'
 
 
 class CustomAttributeOutputSerializer(CustomAttributeBaseSerializer):
+    is_required = SerializerMethodField()
+    suite_ids = SerializerMethodField()
+    status_specific = SerializerMethodField()
+    content_types = SerializerMethodField()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.allowed_content_types = ContentType.objects.filter(
+            app_label__in=CUSTOM_ATTRIBUTES_ALLOWED_APPS,
+            model__in=CUSTOM_ATTRIBUTES_ALLOWED_MODELS,
+        ).values('id', 'model')
+
     class Meta:
         model = CustomAttribute
-        fields = CustomAttributeBaseSerializer.Meta.fields + ('content_types',)
+        fields = CustomAttributeInputSerializer.Meta.fields
         ref_name = 'CustomAttributeOutputSerializerV1'
+
+    def get_is_required(self, instance):
+        is_required = self._get_field_by_name(instance.applied_to, 'is_required', operator.or_)
+        return bool(is_required)
+
+    def get_status_specific(self, instance):
+        status_specific = self._get_field_by_name(instance.applied_to, 'status_specific', operator.add)
+        if not status_specific:
+            return []
+        return list(set(status_specific))
+
+    def get_suite_ids(self, instance):
+        suite_ids = self._get_field_by_name(instance.applied_to, 'suite_ids', operator.add)
+        if not suite_ids:
+            return []
+        return list(set(suite_ids))
+
+    def get_content_types(self, instance):
+        content_types = []
+        for content_type in self.allowed_content_types:
+            if content_type['model'] in instance.applied_to.keys():
+                content_types.append(content_type['id'])
+        return content_types
+
+    @classmethod
+    def _get_field_by_name(
+        cls,
+        applied_to: dict[str, Any],
+        field_name: str,
+        reduce_func: Callable,
+    ) -> Any:
+        fields_value = [field.get(field_name) for field in applied_to.values() if field.get(field_name)]
+        if not fields_value:
+            return None
+        return reduce(reduce_func, fields_value)
 
 
 class ContentTypeSerializer(ModelSerializer):

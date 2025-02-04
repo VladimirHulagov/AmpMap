@@ -5,33 +5,33 @@ import remarkGfm from "remark-gfm"
 
 import "./styles.css"
 
-interface MarkdownProps {
+interface MarkdownProps extends HTMLDataAttribute {
   content: string
 }
 
-export const Markdown = ({ content }: MarkdownProps) => {
+export const Markdown = ({ content, ...props }: MarkdownProps) => {
   return (
     <ReactMarkdown
       children={content}
       linkTarget="_blank"
       components={{
-        img: ({ ...props }) => (
-          <a href={props.src} target="blank">
-            <img {...props} />
+        img: ({ ...propsImg }) => (
+          <a href={propsImg.src} target="blank">
+            <img {...propsImg} />
           </a>
         ),
-        code({ inline, className = "", children, ...props }) {
+        code({ inline, className = "", children, ...propsCode }) {
           const match = /language-(\w+)/.exec(className)
           return !inline && match ? (
             <SyntaxHighlighter
-              {...props}
+              {...propsCode}
               children={String(children).replace(/\n$/, "")}
               style={oneLight}
               language={match[1]}
               PreTag="div"
             />
           ) : (
-            <code {...props} className={className}>
+            <code {...propsCode} className={className}>
               {children}
             </code>
           )
@@ -41,6 +41,7 @@ export const Markdown = ({ content }: MarkdownProps) => {
         },
       }}
       remarkPlugins={[remarkGfm]}
+      {...props}
     />
   )
 }

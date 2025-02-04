@@ -169,7 +169,11 @@ export const CreateProjectModal = ({ isShow, setIsShow }: Props) => {
                   <div
                     style={{ display: "flex", alignItems: "center", flexDirection: "row", gap: 14 }}
                   >
-                    <ProjectIcon name={nameWatch || "T"} icon={localIcon} />
+                    <ProjectIcon
+                      name={nameWatch || "T"}
+                      icon={localIcon}
+                      dataTestId="create-project-icon"
+                    />
                     <Upload
                       name="avatar"
                       showUploadList={false}
@@ -177,11 +181,19 @@ export const CreateProjectModal = ({ isShow, setIsShow }: Props) => {
                       style={{ width: 180 }}
                       customRequest={() => {}}
                       beforeUpload={beforeUpload}
+                      data-testid="create-project-upload-icon-input"
                     >
-                      <Button size="middle">{t("Upload icon")}</Button>
+                      <Button size="middle" data-testid="create-project-upload-icon-button">
+                        {t("Upload icon")}
+                      </Button>
                     </Upload>
                     {localIcon && (
-                      <Button size="middle" danger onClick={handleDeleteIconClick}>
+                      <Button
+                        size="middle"
+                        danger
+                        onClick={handleDeleteIconClick}
+                        data-testid="create-project-delete-icon-button"
+                      >
                         {t("Delete icon")}
                       </Button>
                     )}
@@ -198,7 +210,7 @@ export const CreateProjectModal = ({ isShow, setIsShow }: Props) => {
             <Controller
               name="name"
               control={control}
-              render={({ field }) => <Input {...field} />}
+              render={({ field }) => <Input {...field} data-testid="create-project-name" />}
             />
           </Form.Item>
           <Form.Item
@@ -209,7 +221,9 @@ export const CreateProjectModal = ({ isShow, setIsShow }: Props) => {
             <Controller
               name="description"
               control={control}
-              render={({ field }) => <TextArea rows={4} {...field} />}
+              render={({ field }) => (
+                <TextArea rows={4} {...field} data-testid="create-project-description" />
+              )}
             />
           </Form.Item>
           <Form.Item
@@ -220,7 +234,9 @@ export const CreateProjectModal = ({ isShow, setIsShow }: Props) => {
             <Controller
               name="is_private"
               control={control}
-              render={({ field }) => <Switch checked={isPrivate} {...field} />}
+              render={({ field }) => (
+                <Switch checked={isPrivate} {...field} data-testid="create-project-is-private" />
+              )}
             />
           </Form.Item>
         </Form>

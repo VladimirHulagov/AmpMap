@@ -57,7 +57,7 @@ export const TestsButtonFilterDrawer = () => {
   const { t } = useTranslation()
 
   const { project } = useContext(ProjectContext)!
-  const { me } = useContext(MeContext)!
+  const { me } = useContext(MeContext)
   const { testPlanId } = useParams<ParamTestPlanId & ParamTestSuiteId>()
 
   const dispatch = useAppDispatch()
@@ -72,9 +72,11 @@ export const TestsButtonFilterDrawer = () => {
   //Value for check projectId with previous
   const [projectId, setProjectId] = useState(project.id)
 
-  const { control, handleSubmit, setValue, reset, getValues } = useForm<TestDataFilters>({
+  const { control, handleSubmit, setValue, reset, getValues, watch } = useForm<TestDataFilters>({
     defaultValues: testsFilter,
   })
+
+  const isArchive = watch("is_archive")
 
   useEffect(() => {
     reset(testsFilter)
@@ -129,6 +131,7 @@ export const TestsButtonFilterDrawer = () => {
   }
 
   const handleAssigneeToMe = () => {
+    if (!me) return
     const stateAssignee = getValues("assignee").filter((i) => i !== String(me.id))
     setValue("assignee", [String(me.id), ...stateAssignee])
     triggerSubmit()
@@ -154,6 +157,11 @@ export const TestsButtonFilterDrawer = () => {
       setValue(key, value ? value.format("YYYY-MM-DD") : undefined, { shouldDirty: true })
     }
 
+    triggerSubmit()
+  }
+
+  const handleShowArchiveChange = (toggle: boolean) => {
+    setValue("is_archive", toggle ? toggle : undefined)
     triggerSubmit()
   }
 
@@ -201,7 +209,11 @@ export const TestsButtonFilterDrawer = () => {
       >
         {t("Filter")}{" "}
         {!!testsFilterCount && (
-          <Badge color="var(--y-interactive-default)" count={testsFilterCount} />
+          <Badge
+            color="var(--y-interactive-default)"
+            count={testsFilterCount}
+            data-testid="tests-button-filter-drawer-badge"
+          />
         )}
       </Button>
       <Drawer
@@ -224,7 +236,10 @@ export const TestsButtonFilterDrawer = () => {
       >
         {isOpenFilter && (
           <Form onFinish={handleSubmit(onSubmit)} layout="vertical">
-            <Form.Item label={t("Name or ID")}>
+            <Form.Item
+              label={t("Name or ID")}
+              data-testid="tests-button-filter-drawer-name-or-id-label"
+            >
               <Controller
                 name="name_or_id"
                 control={control}
@@ -241,11 +256,15 @@ export const TestsButtonFilterDrawer = () => {
                     onChange={(e) => field.onChange(e.target.value)}
                     suffix={<SearchOutlined style={{ color: "rgba(0,0,0,.45)" }} />}
                     allowClear
+                    data-testid="tests-button-filter-drawer-name-or-id-input"
                   />
                 )}
               />
             </Form.Item>
-            <Form.Item label={t("Test Plan")}>
+            <Form.Item
+              label={t("Test Plan")}
+              data-testid="tests-button-filter-drawer-test-plan-container"
+            >
               <Controller
                 name="plans"
                 control={control}
@@ -267,7 +286,10 @@ export const TestsButtonFilterDrawer = () => {
                 )}
               />
             </Form.Item>
-            <Form.Item label={t("Test Suite")}>
+            <Form.Item
+              label={t("Test Suite")}
+              data-testid="tests-button-filter-drawer-test-suite-container"
+            >
               <Controller
                 name="suites"
                 control={control}
@@ -289,7 +311,10 @@ export const TestsButtonFilterDrawer = () => {
                 )}
               />
             </Form.Item>
-            <Form.Item label={t("Status")}>
+            <Form.Item
+              label={t("Status")}
+              data-testid="tests-button-filter-drawer-status-container"
+            >
               <Controller
                 name="statuses"
                 control={control}
@@ -304,6 +329,7 @@ export const TestsButtonFilterDrawer = () => {
                       field.onChange([])
                       triggerSubmit()
                     }}
+                    data-testid="tests-button-filter-drawer-status-filter-select"
                   />
                 )}
               />
@@ -317,11 +343,13 @@ export const TestsButtonFilterDrawer = () => {
                     type="button"
                     className={styles.assigneeToMe}
                     onClick={handleAssigneeToMe}
+                    data-testid="tests-button-filter-drawer-assignee-to-me"
                   >
                     {t("Assigned to me")}
                   </button>
                 </div>
               }
+              data-testid="tests-button-filter-drawer-assignee-container"
             >
               <Controller
                 name="assignee"
@@ -346,7 +374,10 @@ export const TestsButtonFilterDrawer = () => {
             <Form.Item
               className={styles.formBetween}
               label={
-                <div className={styles.formLabel}>
+                <div
+                  className={styles.formLabel}
+                  data-testid="tests-button-filter-drawer-labels-label"
+                >
                   <span>{t("Label")}</span>
                   <LabelFilterCondition
                     value={getValues("labels_condition") ?? "and"}
@@ -386,6 +417,7 @@ export const TestsButtonFilterDrawer = () => {
                   needConfirm={false}
                   maxDate={getDateValue("test_plan_started_before")}
                   allowClear
+                  data-testid="tests-button-filter-drawer-test-plan-start-date-after"
                 />
                 <DatePicker
                   onChange={(value) => handleUpdateDate(value, "test_plan_started_before")}
@@ -400,6 +432,7 @@ export const TestsButtonFilterDrawer = () => {
                   disabled={!getValues("test_plan_started_after")}
                   minDate={getDateValue("test_plan_started_after")}
                   allowClear
+                  data-testid="tests-button-filter-drawer-test-plan-start-date-before"
                 />
               </Flex>
             </Form.Item>
@@ -418,6 +451,7 @@ export const TestsButtonFilterDrawer = () => {
                   needConfirm={false}
                   maxDate={getDateValue("test_plan_created_before")}
                   allowClear
+                  data-testid="tests-button-filter-drawer-test-plan-created-at-after"
                 />
                 <DatePicker
                   onChange={(value) => handleUpdateDate(value, "test_plan_created_before")}
@@ -432,6 +466,7 @@ export const TestsButtonFilterDrawer = () => {
                   disabled={!getValues("test_plan_created_after")}
                   minDate={getDateValue("test_plan_created_after")}
                   allowClear
+                  data-testid="tests-button-filter-drawer-test-plan-created-at-before"
                 />
               </Flex>
             </Form.Item>
@@ -450,6 +485,7 @@ export const TestsButtonFilterDrawer = () => {
                   needConfirm={false}
                   maxDate={getDateValue("test_created_before")}
                   allowClear
+                  data-testid="tests-button-filter-drawer-test-created-at-after"
                 />
                 <DatePicker
                   onChange={(value) => handleUpdateDate(value, "test_created_before")}
@@ -464,6 +500,7 @@ export const TestsButtonFilterDrawer = () => {
                   disabled={!getValues("test_created_after")}
                   minDate={getDateValue("test_created_after")}
                   allowClear
+                  data-testid="tests-button-filter-drawer-test-created-at-before"
                 />
               </Flex>
             </Form.Item>
@@ -471,16 +508,13 @@ export const TestsButtonFilterDrawer = () => {
               <Controller
                 name="is_archive"
                 control={control}
-                render={({ field }) => (
+                render={() => (
                   <Toggle
                     id="archive-toggle"
                     label={t("Show Archived")}
                     labelFontSize={14}
-                    checked={!!field.value}
-                    onChange={(toggle) => {
-                      field.onChange(toggle ? toggle : undefined)
-                      triggerSubmit()
-                    }}
+                    checked={isArchive}
+                    onChange={handleShowArchiveChange}
                     size="lg"
                   />
                 )}

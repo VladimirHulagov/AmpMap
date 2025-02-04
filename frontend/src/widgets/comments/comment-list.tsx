@@ -12,7 +12,7 @@ export const CommentList = ({ comments }: Props) => {
   const user = useAppSelector(selectUser)
 
   return (
-    <ul style={{ paddingLeft: 8 }}>
+    <ul style={{ paddingLeft: 8 }} data-testid="comment-list">
       {comments.map((comment) => {
         const isVisibleActions =
           Number(comment.user.id) === Number(user?.id) && comment.deleted_at === null

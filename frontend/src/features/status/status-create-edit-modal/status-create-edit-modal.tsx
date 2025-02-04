@@ -6,8 +6,6 @@ import { useTranslation } from "react-i18next"
 import { ErrorObj } from "shared/hooks/use-alert-error"
 import { AlertError } from "shared/ui"
 
-import styles from "./styles.module.css"
-
 interface Props {
   data: ReturnType<typeof useAdministrationStatusModal>
 }
@@ -52,7 +50,7 @@ export const StatusCreateEditModal = ({ data }: Props) => {
       <>
         {errors ? <AlertError error={errors as ErrorObj} skipFields={["name"]} /> : null}
 
-        <Form id="create-edit-status-form" layout="vertical" onFinish={handleSubmitForm}>
+        <Form layout="vertical" onFinish={handleSubmitForm} data-testid={`${mode}-status-form`}>
           <Form.Item
             label={t("Name")}
             validateStatus={errors?.name ? "error" : ""}
@@ -61,7 +59,7 @@ export const StatusCreateEditModal = ({ data }: Props) => {
             <Controller
               name="name"
               control={control}
-              render={({ field }) => <Input {...field} />}
+              render={({ field }) => <Input {...field} data-testid={`${mode}-status-name`} />}
             />
           </Form.Item>
           <Form.Item
@@ -77,10 +75,10 @@ export const StatusCreateEditModal = ({ data }: Props) => {
                   value={field.value}
                   showText
                   format="rgb"
-                  className={styles.colorPicker}
                   onChangeComplete={(color) => {
                     field.onChange(color.toRgbString())
                   }}
+                  data-testid={`${mode}-status-color-picker-button`}
                 />
               )}
             />

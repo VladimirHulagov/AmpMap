@@ -47,8 +47,7 @@ from testy.core.api.v2.serializers import (
     AllProjectsStatisticSerializer,
     AttachmentSerializer,
     ContentTypeSerializer,
-    CustomAttributeInputSerializer,
-    CustomAttributeOutputSerializer,
+    CustomAttributeBaseSerializer,
     LabelSerializer,
     MarkNotificationSerializer,
     ModifyNotificationsSettingsSerializer,
@@ -320,7 +319,7 @@ class SystemStatisticViewSet(mixins.ListModelMixin, GenericViewSet):
 
 class CustomAttributeViewSet(TestyModelViewSet):
     queryset = CustomAttributeSelector.custom_attribute_list()
-    serializer_class = CustomAttributeInputSerializer
+    serializer_class = CustomAttributeBaseSerializer
     filter_backends = [TestyFilterBackend]
     schema_tags = ['Custom attributes']
 
@@ -331,35 +330,33 @@ class CustomAttributeViewSet(TestyModelViewSet):
 
     def get_serializer_class(self):
         match self.action:
-            case 'list' | 'retrieve':
-                return CustomAttributeOutputSerializer
             case 'get_allowed_content_types':
                 return ContentTypeSerializer
-        return CustomAttributeInputSerializer
+        return CustomAttributeBaseSerializer
 
     @action(methods=[_GET], url_path='content-types', url_name='content-types', detail=False)
     def get_allowed_content_types(self, request):
         allowed_content_types = CustomAttributeSelector.get_allowed_content_types()
         return Response(self.get_serializer(allowed_content_types, many=True).data, status=status.HTTP_200_OK)
 
-    @swagger_auto_schema(responses={status.HTTP_201_CREATED: CustomAttributeOutputSerializer()})
+    @swagger_auto_schema(responses={status.HTTP_201_CREATED: CustomAttributeBaseSerializer()})
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         custom_attribute = CustomAttributeService().custom_attribute_create(serializer.validated_data)
         return Response(
-            CustomAttributeOutputSerializer(custom_attribute, context=self.get_serializer_context()).data,
+            CustomAttributeBaseSerializer(custom_attribute, context=self.get_serializer_context()).data,
             status=status.HTTP_201_CREATED,
         )
 
-    @swagger_auto_schema(responses={status.HTTP_200_OK: CustomAttributeOutputSerializer()})
+    @swagger_auto_schema(responses={status.HTTP_200_OK: CustomAttributeBaseSerializer()})
     def update(self, request, *args, **kwargs):
         partial = kwargs.get('partial', False)
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         new_instance = CustomAttributeService().custom_attribute_update(instance, serializer.validated_data)
-        return Response(CustomAttributeOutputSerializer(new_instance, context=self.get_serializer_context()).data)
+        return Response(CustomAttributeBaseSerializer(new_instance, context=self.get_serializer_context()).data)
 
 
 class NotificationViewSet(

@@ -1352,7 +1352,15 @@ class TestPlanEndpoints:
         custom_attribute_name = 'awesome_attribute'
         custom_attribute_value = 'some_value'
         with allure.step('Create custom attribute'):
-            custom_attribute_factory(project=project, name=custom_attribute_name, is_required=True)
+            custom_attribute_factory(
+                project=project,
+                name=custom_attribute_name,
+                applied_to={
+                    'testplan': {
+                        'is_required': True,
+                    },
+                },
+            )
         attributes = {custom_attribute_name: custom_attribute_value}
         payload = {
             'name': constants.TEST_PLAN_NAME,
@@ -1381,7 +1389,15 @@ class TestPlanEndpoints:
         parameters_count = 3
         custom_attribute_name = 'awesome_attribute'
         with allure.step('Create custom attribute'):
-            custom_attribute_factory(project=project, name=custom_attribute_name, is_required=True)
+            custom_attribute_factory(
+                project=project,
+                name=custom_attribute_name,
+                applied_to={
+                    'testplan': {
+                        'is_required': True,
+                    },
+                },
+            )
         payload = {
             'name': constants.TEST_PLAN_NAME,
             'project': project.id,
@@ -1414,7 +1430,14 @@ class TestPlanEndpoints:
         allure.dynamic.title(f'Test {request.node.callspec.id} plan cannot be created without required attributes')
         parameters_count = 3
         with allure.step('Generate custom attribute'):
-            custom_attribute = custom_attribute_factory(project=project, is_required=True)
+            custom_attribute = custom_attribute_factory(
+                project=project,
+                applied_to={
+                    'testplan': {
+                        'is_required': True,
+                    },
+                },
+            )
         payload = {
             'name': constants.TEST_PLAN_NAME,
             'project': project.id,

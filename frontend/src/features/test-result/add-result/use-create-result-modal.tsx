@@ -120,10 +120,10 @@ export const useCreateResultModal = ({
     if (!drawerTest) return
     setErrors(null)
 
-    const { isSuccess, attributesJson, errors } = makeAttributesJson(attributes)
+    const { isSuccess, attributesJson, errors: attributesErrors } = makeAttributesJson(attributes)
 
     if (!isSuccess) {
-      setErrors({ attributes: JSON.stringify(errors) })
+      setErrors({ attributes: JSON.stringify(attributesErrors) })
       return
     }
 

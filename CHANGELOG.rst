@@ -1,3 +1,32 @@
+Version 2.0.5
+--------------
+*Status: General availability*
+
+Release Overview:
+
+The use of attributes.
+
+Now, attributes can be created not only for test cases and test results but also for test suites and test plans.
+Create/Edit pages for Test Plans and Suites reflect the changes above.
+
+*Released: 30-01-2025*
+
+- Added custom attributes for Test Plans and Test Suites (TMS-1022)
+
+
+**Bug fixes**:
+
+- Fixed a bug where changing Test Result is not available from root (TMS-1353)
+- Drawer is pined by default (TMS-1390)
+- Fixed a destructuring of MeContext (TMS-1396)
+- "Clone" button is inactive when copying Test Result (TMS-1398)
+- Custom Attributes is missing when copying Test Result (TMS-1399)
+- Fixed incorrect sorting of Custom Attributes (TMS-1403)
+- Project cards are duplicated when switching the archive filter (TMS-1410)
+- "Show Archived" checkbox in the filter cannot be unchecked (TMS-1423)
+- "Unassigned" filter does not work (TMS-1425)
+- Fixed bug when editing a Test Result, an optional Custom Attribute becomes required (TMS-1439)
+
 Version 2.0.4
 --------------
 *Status: General availability*

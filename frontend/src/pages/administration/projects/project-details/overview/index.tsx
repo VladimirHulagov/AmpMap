@@ -15,18 +15,27 @@ import { Field, TagBoolean } from "shared/ui"
 export const ProjectFields = ({ project }: { project: Project }) => {
   return (
     <>
-      <ProjectIcon icon={project.icon} name={project.name} />
-      <Field title="Name" value={project?.name} />
-      <Field title="Description" value={project?.description} />
+      <ProjectIcon icon={project.icon} name={project.name} dataTestId="project-icon" />
+      <Field title="Name" value={project?.name} dataTestId="project-name" />
+      <Field title="Description" value={project?.description} dataTestId="project-description" />
       <Field
         title="Status"
-        value={<TagBoolean value={!project?.is_archive} trueText="ACTIVE" falseText="ARCHIVED" />}
-        id="project-status"
+        value={
+          <TagBoolean
+            value={!project?.is_archive}
+            trueText="ACTIVE"
+            falseText="ARCHIVED"
+            dataTestid="project-status"
+          />
+        }
       />
       <Field
         title="Private"
-        value={<Tag color="default">{project.is_private ? "Yes" : "No"}</Tag>}
-        id="project-private"
+        value={
+          <Tag color="default" data-testid="project-private">
+            {project.is_private ? "Yes" : "No"}
+          </Tag>
+        }
       />
     </>
   )
@@ -35,8 +44,8 @@ export const ProjectFields = ({ project }: { project: Project }) => {
 export const ProjectDetailsOverviewPage = () => {
   const { setProjectDetailsActiveTab } = useContext(ProjectDetailsActiveTabContext)!
   const { project } = useContext(ProjectContext)!
-  const { me } = useContext(MeContext)!
-  const editable = !project.is_archive || me.is_superuser
+  const { me } = useContext(MeContext)
+  const editable = !project.is_archive || me?.is_superuser
 
   useEffect(() => {
     setProjectDetailsActiveTab("overview")

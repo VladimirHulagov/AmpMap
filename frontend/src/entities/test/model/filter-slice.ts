@@ -136,7 +136,7 @@ export const { clearFilter, updateFilterSettings, updateOrdering, resetFilterSet
 
 export const selectFilter = (state: RootState) => state.testsFilter.filter
 export const selectFilterCount = (state: RootState) => {
-  const count = Object.entries(state.testsFilter.filter).reduce((count, [key, value]) => {
+  return Object.entries(state.testsFilter.filter).reduce((count, [key, value]) => {
     const defaultValue = testEmptyFilter[key as keyof TestDataFilters]
 
     if (Array.isArray(value)) {
@@ -149,7 +149,6 @@ export const selectFilterCount = (state: RootState) => {
 
     return count
   }, 0)
-  return count
 }
 export const selectFilterSettings = (state: RootState) => state.testsFilter.settings
 export const selectOrdering = (state: RootState) => state.testsFilter.ordering

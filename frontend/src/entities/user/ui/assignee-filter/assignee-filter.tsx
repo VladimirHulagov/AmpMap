@@ -6,6 +6,8 @@ import { useInView } from "react-intersection-observer"
 
 import { useLazyGetUserByIdQuery, useLazyGetUsersQuery } from "entities/user/api"
 
+import { NOT_ASSIGNED_FILTER_VALUE } from "shared/constants"
+
 import { UserSearchOption } from "../user-search-option"
 
 interface Props {
@@ -26,7 +28,7 @@ export const AssigneeFilter = ({
   onClose,
 }: Props) => {
   const { t } = useTranslation()
-  const { me } = useContext(MeContext)!
+  const { me } = useContext(MeContext)
 
   const [search, setSearch] = useState<string>("")
   const [searchUsers, setSearchUsers] = useState<User[]>([])
@@ -45,7 +47,7 @@ export const AssigneeFilter = ({
 
   const filterUsersSearch = (result: User[]) => {
     const selectedIds = new Set(selectedUsers.map((user) => user.id))
-    return result.filter((user) => !selectedIds.has(user.id) && user.id !== me.id)
+    return result.filter((user) => !selectedIds.has(user.id) && user.id !== me?.id)
   }
 
   const handleSearch = async (newValue: string) => {
@@ -125,7 +127,7 @@ export const AssigneeFilter = ({
     }
 
     const assignedUserIdsFromFilter = value.filter(
-      (i) => i !== String(me.id) && i !== "null" && i.length
+      (i) => i !== String(me?.id) && i !== "null" && i.length
     )
 
     const fetchUsers = async () => {
@@ -140,7 +142,7 @@ export const AssigneeFilter = ({
       setIsLoadingInitUsers(false)
     }
     fetchUsers()
-  }, [value, isLoadingInitUsers])
+  }, [value, isLoadingInitUsers, me])
 
   useEffect(() => {
     const valueIdsSet = new Set(selectedUsers.map((user) => user.id))
@@ -168,19 +170,31 @@ export const AssigneeFilter = ({
       allowClear
       style={{ width: "100%" }}
     >
-      <Select.Option value="null">Not Assigned</Select.Option>
-      <Select.Option value={String(me.id)}>
-        <UserSearchOption user={me} />
+      <Select.Option value={NOT_ASSIGNED_FILTER_VALUE} data-testid="assignee-filter-not-assigned">
+        {t("Not Assigned")}
       </Select.Option>
+      {me && (
+        <Select.Option value={String(me.id)} data-testid="assignee-filter-me">
+          <UserSearchOption user={me} />
+        </Select.Option>
+      )}
       {!isLoadingInitUsers &&
         selectedUsers.map((user) => (
-          <Select.Option key={user.id} value={String(user.id)}>
+          <Select.Option
+            key={user.id}
+            value={String(user.id)}
+            data-testid={`assignee-filter-user-${user.username}`}
+          >
             <UserSearchOption user={user} />
           </Select.Option>
         ))}
       {!isLoading &&
         searchUsers.map((user) => (
-          <Select.Option key={user.id} value={String(user.id)}>
+          <Select.Option
+            key={user.id}
+            value={String(user.id)}
+            data-testid={`assignee-filter-user-${user.username}`}
+          >
             <UserSearchOption user={user} />
           </Select.Option>
         ))}

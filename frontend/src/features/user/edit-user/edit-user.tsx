@@ -15,7 +15,8 @@ export const EditUser = ({ user }: { user: User }) => {
 
   return (
     <Button
-      id="show-user-details"
+      id={`show-user-details-${user.username}`}
+      data-testid={`show-user-details-${user.username}`}
       icon={<EditOutlined />}
       shape="circle"
       onClick={showUserDetails}

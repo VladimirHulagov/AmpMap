@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useContext } from "react"
 import { Outlet, useParams } from "react-router-dom"
 
 import { useGetProjectQuery } from "entities/project/api"
@@ -22,4 +22,9 @@ export const ProjectLayout = () => {
       <Outlet context={projectId} />
     </ProjectContext.Provider>
   )
+}
+
+export const useProjectContext = () => {
+  const { project } = useContext(ProjectContext)!
+  return project
 }

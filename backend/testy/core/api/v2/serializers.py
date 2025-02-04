@@ -36,11 +36,18 @@ from django.urls import reverse
 from django.utils import timezone
 from notifications.models import Notification
 from rest_framework.exceptions import ValidationError
-from rest_framework.fields import BooleanField, CharField, DateTimeField, IntegerField, JSONField, SerializerMethodField
+from rest_framework.fields import (
+    BooleanField,
+    CharField,
+    DateTimeField,
+    IntegerField,
+    JSONField,
+    ListField,
+    SerializerMethodField,
+)
 from rest_framework.relations import PrimaryKeyRelatedField
 from rest_framework.serializers import HyperlinkedIdentityField, ModelSerializer, Serializer
 
-from testy.core.constants import CUSTOM_ATTRIBUTES_ALLOWED_APPS, CUSTOM_ATTRIBUTES_ALLOWED_MODELS
 from testy.core.models import Attachment, CustomAttribute, Label, NotificationSetting, Project, SystemMessage
 from testy.core.selectors.notifications import NotificationSelector
 from testy.core.selectors.project_settings import ProjectSettings
@@ -64,8 +71,43 @@ class LabelSerializer(ModelSerializer):
         return None
 
 
+class AppliedToIsRequired(Serializer):
+    is_required = BooleanField(required=True, allow_null=False)
+    is_active = BooleanField(allow_null=False, default=False, initial=False)
+
+
+class AppliedToIsRequiredSuitesSerializer(AppliedToIsRequired):
+    suite_ids = ListField(
+        child=IntegerField(),
+        required=False,
+        allow_null=False,
+        allow_empty=True,
+        default=list,
+        initial=list,
+    )
+
+
+class AppliedToIsRequiredSuitesStatusesSerializer(AppliedToIsRequiredSuitesSerializer):
+    status_specific = ListField(
+        child=IntegerField(),
+        required=False,
+        allow_null=True,
+        allow_empty=True,
+        default=list,
+        initial=list,
+    )
+
+
+class CustomAttributeAppliedToSerializer(Serializer):
+    testplan = AppliedToIsRequired(required=False)
+    testcase = AppliedToIsRequiredSuitesSerializer(required=False)
+    testresult = AppliedToIsRequiredSuitesStatusesSerializer(required=False)
+    testsuite = AppliedToIsRequired(required=False)
+
+
 class CustomAttributeBaseSerializer(ModelSerializer):
     url = HyperlinkedIdentityField(view_name='api:v2:customattribute-detail')
+    applied_to = CustomAttributeAppliedToSerializer(required=True)
 
     class Meta:
         model = CustomAttribute
@@ -74,35 +116,11 @@ class CustomAttributeBaseSerializer(ModelSerializer):
             'url',
             'project',
             'name',
-            'is_required',
-            'is_suite_specific',
             'type',
             'is_deleted',
-            'suite_ids',
-            'status_specific',
+            'applied_to',
         )
-
-
-class CustomAttributeInputSerializer(CustomAttributeBaseSerializer):
-    content_types = PrimaryKeyRelatedField(
-        queryset=ContentType.objects.filter(
-            app_label__in=CUSTOM_ATTRIBUTES_ALLOWED_APPS,
-            model__in=CUSTOM_ATTRIBUTES_ALLOWED_MODELS,
-        ),
-        many=True, allow_empty=False,
-    )
-
-    class Meta:
-        model = CustomAttribute
-        fields = CustomAttributeBaseSerializer.Meta.fields + ('content_types',)
-
         validators = [CustomAttributeCreateValidator()]
-
-
-class CustomAttributeOutputSerializer(CustomAttributeBaseSerializer):
-    class Meta:
-        model = CustomAttribute
-        fields = CustomAttributeBaseSerializer.Meta.fields + ('content_types',)
 
 
 class ContentTypeSerializer(ModelSerializer):

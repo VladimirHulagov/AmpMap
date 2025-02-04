@@ -1,5 +1,5 @@
-import { PlusOutlined } from "@ant-design/icons"
-import { Button, Col, Form, Input, Row, Space, Tabs, Typography, Upload } from "antd"
+import { Col, Form, Input, Row, Tabs } from "antd"
+import { CustomAttributeAdd, CustomAttributeForm } from "entities/custom-attribute/ui"
 import { Controller } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 
@@ -9,15 +9,17 @@ import { TestCaseStepsBlock } from "entities/test-case/ui/steps/block"
 
 import { config } from "shared/config"
 import { ErrorObj } from "shared/hooks"
-import { AlertError, Attachment, Attribute, InfoTooltipBtn, TextAreaWithAttach } from "shared/ui"
-
-import { LayoutView } from "widgets/[ui]"
+import {
+  AlertError,
+  Attachment,
+  FormViewHeader,
+  InfoTooltipBtn,
+  TextAreaWithAttach,
+} from "shared/ui"
 
 import { ScenarioLabelFormTestCase } from "./scenario-label-form-test-case"
 import styles from "./styles.module.css"
 import { useTestCaseCreateView } from "./use-test-case-create-view"
-
-const { Dragger } = Upload
 
 export const CreateTestCaseView = () => {
   const { t } = useTranslation()
@@ -57,10 +59,21 @@ export const CreateTestCaseView = () => {
       : ""
 
   return (
-    <LayoutView className="create-test-case-modal" style={{ minHeight: 360 }}>
-      <Typography.Title level={2} style={{ marginTop: 0 }}>
-        {t("Create")} {t("Test")} {t("Case")}
-      </Typography.Title>
+    <>
+      <FormViewHeader
+        model="test-case"
+        type="create"
+        isDisabledSubmit={!isDirty}
+        isLoadingSubmit={isLoading}
+        onSubmit={handleSubmitForm}
+        onClose={handleCancel}
+        title={
+          <>
+            {t("Create")} {t("Test")} {t("Case")}
+          </>
+        }
+      />
+
       {errors ? (
         <AlertError
           error={errors as ErrorObj}
@@ -223,6 +236,7 @@ export const CreateTestCaseView = () => {
                       <Input
                         {...field}
                         id="create-estimate-input"
+                        data-testid="create-estimate-input"
                         value={field.value ?? ""}
                         suffix={<InfoTooltipBtn title={config.estimateTooltip} />}
                       />
@@ -247,24 +261,17 @@ export const CreateTestCaseView = () => {
                   control={control}
                   render={({ field }) => (
                     <Row style={{ flexDirection: "column", marginTop: steps.length ? 24 : 0 }}>
-                      <div className="ant-col ant-form-item-label">
-                        <label title="Attributes">{t("Attributes")}</label>
-                      </div>
-                      <Attribute.List
-                        fieldProps={field}
+                      <CustomAttributeForm
                         attributes={attributes}
-                        handleAttributeRemove={onAttributeRemove}
-                        handleAttributeChangeName={onAttributeChangeName}
-                        handleAttributeChangeValue={onAttributeChangeValue}
-                        handleAttributeChangeType={onAttributeChangeType}
+                        onChangeName={onAttributeChangeName}
+                        onChangeType={onAttributeChangeType}
+                        onChangeValue={onAttributeChangeValue}
+                        onRemove={onAttributeRemove}
+                        onBlur={field.onBlur}
                         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                         errors={errors?.attributes ? JSON.parse(errors?.attributes) : undefined}
                       />
-                      <div style={{ marginTop: 8 }}>
-                        <Button id="add-attribute-btn" type="dashed" block onClick={addAttribute}>
-                          <PlusOutlined /> {t("Add attribute")}
-                        </Button>
-                      </div>
+                      <CustomAttributeAdd onClick={addAttribute} />
                     </Row>
                   )}
                 />
@@ -272,44 +279,18 @@ export const CreateTestCaseView = () => {
             </Row>
           </Tabs.TabPane>
           <Tabs.TabPane tab={t("Attachments")} key="attachments">
-            <Attachment.List handleAttachmentRemove={onRemove} attachments={attachments} />
-            {attachmentsIds.map((field, index) => (
-              <input type="hidden" key={field.id} {...register(`attachments.${index}`)} />
-            ))}
-            <Dragger
-              name="file"
-              multiple
-              showUploadList={false}
-              customRequest={onLoad}
+            <Attachment.DropFiles
+              attachments={attachments}
+              attachmentsIds={attachmentsIds}
               onChange={onChange}
-              fileList={attachments}
-              height={80}
-            >
-              <p className="ant-upload-text">
-                {t("Drop files here to attach, or click to browse")}
-              </p>
-            </Dragger>
+              onLoad={onLoad}
+              onRemove={onRemove}
+              register={register}
+              idInput="create-test-case-attachments-input"
+            />
           </Tabs.TabPane>
         </Tabs>
-        <Row style={{ justifyContent: "right", marginTop: "16px" }}>
-          <Space>
-            <Button id="modal-create-close-btn" key="back" onClick={handleCancel}>
-              {t("Close")}
-            </Button>
-            <Button
-              id="modal-create-test-case-btn"
-              key="submit"
-              loading={isLoading}
-              onClick={handleSubmitForm}
-              type="primary"
-              htmlType="submit"
-              disabled={!isDirty}
-            >
-              {t("Create")}
-            </Button>
-          </Space>
-        </Row>
       </Form>
-    </LayoutView>
+    </>
   )
 }

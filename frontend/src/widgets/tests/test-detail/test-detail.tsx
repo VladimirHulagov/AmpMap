@@ -128,17 +128,27 @@ export const TestDetail = () => {
             <Flex vertical>
               <Flex gap={8}>
                 {drawerTest.is_archive && (
-                  <Flex justify="center" align="center" style={{ height: 32 }}>
+                  <Flex
+                    justify="center"
+                    align="center"
+                    style={{ height: 32 }}
+                    data-testid="test-detail-archive-tag"
+                  >
                     <ArchivedTag />
                   </Flex>
                 )}
-                <Typography.Title level={3} className={styles.title}>
+                <Typography.Title
+                  level={3}
+                  className={styles.title}
+                  data-testid="test-detail-title"
+                >
                   {drawerTest.name}
                 </Typography.Title>
               </Flex>
               <Link
                 style={{ color: "var(--y-grey-30)", fontSize: 14, textDecoration: "underline" }}
                 to={`/projects/${drawerTest.project}/suites/${testCase.suite.id}/?test_case=${testCase.id}&version=${testCase.current_version}`}
+                data-testid="test-detail-version"
               >
                 {t("Actual ver.")} {testCase.current_version}
               </Link>

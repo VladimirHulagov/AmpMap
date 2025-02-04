@@ -19,10 +19,10 @@ import { queryParamsBySchema } from "shared/libs/query-params"
 
 export const TestCasesSavedFilters = () => {
   const { project } = useContext(ProjectContext)!
-  const { userConfig } = useContext(MeContext)!
+  const { userConfig } = useContext(MeContext)
   const dispatch = useAppDispatch()
   const testCasesSelectedFilter = useAppSelector(selectFilterSettings)
-  const configFilters = userConfig.test_suites?.filters?.[project.id]
+  const configFilters = userConfig?.test_suites?.filters?.[project.id]
 
   const handleChange = (value: string) => {
     const valueFilter = configFilters?.[value]

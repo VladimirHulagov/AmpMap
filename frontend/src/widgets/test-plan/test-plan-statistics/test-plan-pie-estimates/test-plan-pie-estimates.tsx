@@ -18,7 +18,7 @@ import styles from "../styles.module.css"
 import { TestPlanPieEstimatesFilters } from "./test-plan-pie-estimates-filters"
 
 interface Props {
-  testPlanId?: string
+  testPlanId?: number
   height: number
   onHeightChange: (height: number) => void
 }
@@ -31,9 +31,9 @@ export const TestPlanPieEstimates = ({ testPlanId, height, onHeightChange }: Pro
   const testsFilter = useAppSelector(selectFilter)
   const dispatch = useAppDispatch()
 
-  const { userConfig, updateConfig } = useContext(MeContext)!
+  const { userConfig, updateConfig } = useContext(MeContext)
   const [period, setPeriod] = useState<EstimatePeriod>(
-    userConfig.ui?.test_plan_estimate_everywhere_period || DEFAULT_ESTIMATE
+    userConfig?.ui?.test_plan_estimate_everywhere_period ?? DEFAULT_ESTIMATE
   )
 
   const { data: pieData, isFetching } = useGetTestPlanStatisticsQuery(
@@ -75,26 +75,26 @@ export const TestPlanPieEstimates = ({ testPlanId, height, onHeightChange }: Pro
       (acc, item) => (item.label === "UNTESTED" ? acc : acc + item.empty_estimates),
       0
     ) // left number
-    const total = (pieData ?? []).reduce((acc, item) => acc + item.empty_estimates, 0) // right number
+    const newTotal = (pieData ?? []).reduce((acc, item) => acc + item.empty_estimates, 0) // right number
     return {
       empty,
-      total,
+      total: newTotal,
     }
   }, [formatData])
 
-  const handlePeriodChange = async (period: EstimatePeriod) => {
-    setPeriod(period)
+  const handlePeriodChange = async (newPeriod: EstimatePeriod) => {
+    setPeriod(newPeriod)
     await updateConfig({
       ...userConfig,
       ui: {
-        ...userConfig.ui,
-        test_plan_estimate_everywhere_period: period,
+        ...userConfig?.ui,
+        test_plan_estimate_everywhere_period: newPeriod,
       },
     })
   }
 
   useEffect(() => {
-    setPeriod(userConfig.ui?.test_plan_estimate_everywhere_period ?? DEFAULT_ESTIMATE)
+    setPeriod(userConfig?.ui?.test_plan_estimate_everywhere_period ?? DEFAULT_ESTIMATE)
   }, [testPlanId])
 
   return (
@@ -150,7 +150,10 @@ export const TestPlanPieEstimates = ({ testPlanId, height, onHeightChange }: Pro
               <Tooltip formatter={tooltipFormatter} />
             </PieChart>
           </ResponsiveContainer>
-          <div className={styles.notEstimatedBlock}>
+          <div
+            className={styles.notEstimatedBlock}
+            data-testid="test-plan-pie-estimates-not-estimated-block"
+          >
             <span>
               {t("Not estimated tests statistics")}:{" "}
               {`${estimatesStats.empty}/${estimatesStats.total}`}

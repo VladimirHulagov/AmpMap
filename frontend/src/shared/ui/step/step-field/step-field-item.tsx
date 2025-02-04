@@ -52,7 +52,7 @@ export const StepFieldItem = ({ step }: StepFieldItemProps) => {
             )}
 
             {!!step.attachments.length && (
-              <div style={{ marginTop: 14 }}>
+              <div style={{ marginTop: 14 }} data-testid={`${step.name}-step-attachments-list`}>
                 <Attachment.Field attachments={step.attachments} />
               </div>
             )}

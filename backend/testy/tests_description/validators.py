@@ -88,3 +88,18 @@ class EstimateValidator:
             datetime.timedelta(seconds=secs)
         except OverflowError:
             raise ValidationError('Estimate value is too big.')
+
+
+@deconstructible
+class TestSuiteCustomAttributeValuesValidator(BaseCustomAttributeValuesValidator):
+    app_name = 'tests_description'
+    model_name = 'testsuite'
+    requires_context = True
+
+    def __call__(self, attrs: dict[str, Any], serializer):
+        attributes = attrs.get('attributes', {}) or {}
+        project = attrs.get('project')
+        if project is None and (instance := serializer.instance):
+            project = instance.project
+        attr_getter = partial(CustomAttributeSelector.required_attribute_names_by_project, project=project)
+        self._validate(attributes, attr_getter)

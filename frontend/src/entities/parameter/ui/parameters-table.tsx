@@ -50,6 +50,7 @@ export const ParametersTable = () => {
       filteredValue: filteredInfo.data ?? null,
       ...getColumnSearch("data"),
       onFilter: (value, record) => record.data.toLowerCase().includes(String(value).toLowerCase()),
+      render: (value, record) => <span data-testid={`${record.data}-name`}>{value}</span>,
     },
     {
       title: t("Group"),
@@ -59,6 +60,7 @@ export const ParametersTable = () => {
       ...getColumnSearch("group_name"),
       onFilter: (value, record) =>
         record.group_name.toLowerCase().includes(String(value).toLowerCase()),
+      render: (value, record) => <span data-testid={`${record.data}-group-name`}>{value}</span>,
     },
     {
       title: t("Action"),
@@ -94,6 +96,8 @@ export const ParametersTable = () => {
                     initInternalError(err)
                   }
                 },
+                okButtonProps: { "data-testid": "delete-parameter-button-confirm" },
+                cancelButtonProps: { "data-testid": "delete-parameter-button-cancel" },
               })
             }}
           />

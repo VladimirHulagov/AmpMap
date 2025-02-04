@@ -118,6 +118,8 @@ factory-boy==3.2.1
     # via testrail-migrator
 faker==30.8.2
     # via factory-boy
+filelock==3.16.1
+    # via -r prod.in
 flake8==7.1.1
     # via flake8-copyright-validator
 flake8-copyright-validator==0.0.1

@@ -91,6 +91,14 @@ class CopyService:
             mapped_fields['last_status'][test.pk] = None
 
         cls._copy_objects(tests_to_copy, Test, mapped_fields)
+        cls._copy_attachments(
+            TestPlan,
+            list(plans_mapping.keys()),
+            plans_mapping,
+            None,
+            ['description'],
+            TestPlanSelector.plans_by_ids,
+        )
         return TestPlanSelector.plans_by_ids(plans_mapping.values())
 
     @classmethod

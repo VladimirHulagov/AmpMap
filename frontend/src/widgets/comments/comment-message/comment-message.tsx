@@ -39,9 +39,13 @@ export const CommentMessage = ({ comment, isVisibleActions }: Props) => {
         updatedAt={comment.updated_at}
       />
       {comment.deleted_at === null ? (
-        <Markdown content={comment.content} />
+        <div data-testid={`comment-${comment.id}-content`}>
+          <Markdown content={comment.content} />
+        </div>
       ) : (
-        <span style={{ fontStyle: "italic" }}>{comment.content}</span>
+        <span style={{ fontStyle: "italic" }} data-testid={`comment-${comment.id}-content-deleted`}>
+          {comment.content}
+        </span>
       )}
       <AttachmentField attachments={comment.attachments} isDivider={false} />
       {isVisibleActions && (

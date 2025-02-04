@@ -1,5 +1,5 @@
-import { PlusOutlined } from "@ant-design/icons"
-import { Button, Col, Dropdown, Form, Input, MenuProps, Row, Tabs, Typography, Upload } from "antd"
+import { Button, Col, Dropdown, Form, Input, MenuProps, Row, Tabs } from "antd"
+import { CustomAttributeAdd, CustomAttributeForm } from "entities/custom-attribute/ui"
 import { Controller } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 
@@ -12,20 +12,16 @@ import { ErrorObj } from "shared/hooks"
 import {
   AlertError,
   Attachment,
-  Attribute,
   ContainerLoader,
+  FormViewHeader,
   InfoTooltipBtn,
   TextAreaWithAttach,
 } from "shared/ui"
-
-import { LayoutView } from "widgets/[ui]"
 
 import { ScenarioLabelFormTestCase } from "../create-test-case/scenario-label-form-test-case"
 import { SelectSuiteTestCase } from "../select-suite-test-case/select-suite-test-case"
 import styles from "./styles.module.css"
 import { useTestCaseEditView } from "./use-test-case-edit-view"
-
-const { Dragger } = Upload
 
 export const EditTestCaseView = () => {
   const { t } = useTranslation()
@@ -92,10 +88,30 @@ export const EditTestCaseView = () => {
   }
 
   return (
-    <LayoutView className="edit-test-case-modal" style={{ minHeight: 360 }}>
-      <Typography.Title level={2} style={{ marginTop: 0 }}>
-        {title}
-      </Typography.Title>
+    <>
+      <FormViewHeader
+        model="test-case"
+        type="edit"
+        title={title}
+        onClose={handleCancel}
+        submitNode={
+          <Dropdown.Button
+            key="update"
+            className="edit-test-case"
+            menu={{ items }}
+            type={isDirty ? "primary" : undefined}
+            loading={isLoading}
+            disabled={!isDirty}
+            style={{ width: "fit-content", display: "inline-flex" }}
+            onClick={handleSubmitFormAsNew}
+            size="large"
+            data-testid="dropdown-update-button"
+          >
+            {t("Update")}
+          </Dropdown.Button>
+        }
+      />
+
       {errors ? (
         <AlertError
           error={errors as ErrorObj}
@@ -297,25 +313,17 @@ export const EditTestCaseView = () => {
                   control={control}
                   render={({ field }) => (
                     <Row style={{ flexDirection: "column", marginTop: 0 }}>
-                      <div className="ant-col ant-form-item-label">
-                        <label title="Attributes">{t("Attributes")}</label>
-                      </div>
-                      <Attribute.List
-                        fieldProps={field}
+                      <CustomAttributeForm
                         attributes={attributes}
-                        handleAttributeRemove={onAttributeRemove}
-                        handleAttributeChangeName={onAttributeChangeName}
-                        handleAttributeChangeValue={onAttributeChangeValue}
-                        handleAttributeChangeType={onAttributeChangeType}
+                        onChangeName={onAttributeChangeName}
+                        onChangeType={onAttributeChangeType}
+                        onChangeValue={onAttributeChangeValue}
+                        onRemove={onAttributeRemove}
+                        onBlur={field.onBlur}
                         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                         errors={errors?.attributes ? JSON.parse(errors?.attributes) : undefined}
                       />
-
-                      <div style={{ marginTop: 8 }}>
-                        <Button type="dashed" block onClick={addAttribute}>
-                          <PlusOutlined /> {t("Add attribute")}
-                        </Button>
-                      </div>
+                      <CustomAttributeAdd onClick={addAttribute} />
                     </Row>
                   )}
                 />
@@ -323,43 +331,18 @@ export const EditTestCaseView = () => {
             </Row>
           </Tabs.TabPane>
           <Tabs.TabPane tab={t("Attachments")} key="attachments">
-            <Attachment.List handleAttachmentRemove={onRemove} attachments={attachments} />
-            {attachmentsIds.map((field, index) => (
-              <input type="hidden" key={field.id} {...register(`attachments.${index}`)} />
-            ))}
-            <Dragger
-              name="file"
-              multiple
-              showUploadList={false}
-              customRequest={onLoad}
+            <Attachment.DropFiles
+              attachments={attachments}
+              attachmentsIds={attachmentsIds}
               onChange={onChange}
-              fileList={attachments}
-              height={80}
-            >
-              <p className="ant-upload-text">
-                {t("Drop files here to attach, or click to browse")}
-              </p>
-            </Dragger>
+              onLoad={onLoad}
+              onRemove={onRemove}
+              register={register}
+              idInput="edit-test-case-attachments-input"
+            />
           </Tabs.TabPane>
         </Tabs>
-        <Row style={{ justifyContent: "right", marginTop: "16px" }}>
-          <Button id="modal-edit-close-btn" key="back" onClick={handleCancel}>
-            {t("Close")}
-          </Button>
-          <Dropdown.Button
-            key="update"
-            className="edit-test-case"
-            menu={{ items }}
-            type={isDirty ? "primary" : undefined}
-            loading={isLoading}
-            disabled={!isDirty}
-            style={{ width: "fit-content", display: "inline-flex", marginLeft: 8 }}
-            onClick={handleSubmitFormAsNew}
-          >
-            {t("Update")}
-          </Dropdown.Button>
-        </Row>
       </Form>
-    </LayoutView>
+    </>
   )
 }

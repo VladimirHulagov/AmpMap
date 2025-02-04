@@ -158,14 +158,14 @@ export const useTestCaseCreateView = () => {
     scenario,
     expected,
     sort_order,
-    attachments,
+    attachments: attachmentsArgs,
   }: StepAttachNumber) => ({
     id: typeof id === "string" ? undefined : id,
     name,
     scenario,
     expected,
     sort_order,
-    attachments: attachments.map((x: number | IAttachment) => {
+    attachments: attachmentsArgs.map((x: number | IAttachment) => {
       if (typeof x === "object") return x.id
       return x
     }),
@@ -174,7 +174,11 @@ export const useTestCaseCreateView = () => {
   const onSubmit: SubmitHandler<TestCaseFormData> = async (data) => {
     const dataForm = data as SubmitData
 
-    const { isSuccess, attributesJson, errors } = makeAttributesJson(attributes)
+    const { isSuccess, attributesJson, errors: attributesErrors } = makeAttributesJson(attributes)
+    if (!isSuccess) {
+      setErrors({ attributes: JSON.stringify(attributesErrors) })
+      return
+    }
 
     if (data.is_steps && !data.steps?.length) {
       setFormError("steps", { type: "required", message: t("Required field") })
@@ -187,11 +191,6 @@ export const useTestCaseCreateView = () => {
     }
 
     setErrors(null)
-
-    if (!isSuccess) {
-      setErrors({ attributes: JSON.stringify(errors) })
-      return
-    }
 
     try {
       const stepsFormat = dataForm.steps

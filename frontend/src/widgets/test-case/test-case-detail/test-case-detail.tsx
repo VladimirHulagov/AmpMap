@@ -68,6 +68,7 @@ export const TestCaseDetail = () => {
                     defaultValue={Number(testCase.current_version)}
                     onChange={handleChangeVersion}
                     value={showVersion}
+                    data-testid="test-case-detail-version-select"
                   />
                 )}
               />
@@ -95,6 +96,7 @@ export const TestCaseDetail = () => {
                 <a onClick={handleRestoreVersion}>{t("Restore")}</a>
               </span>
             }
+            data-testid="test-case-detail-version-warning"
             style={{ marginBottom: 20 }}
           />
         )}

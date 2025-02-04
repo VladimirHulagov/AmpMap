@@ -6,9 +6,10 @@ interface Props {
   name: string
   icon?: string | null
   size?: number
+  dataTestId?: string
 }
 
-export const ProjectIcon = ({ icon, name, size = 40 }: Props) => {
+export const ProjectIcon = ({ icon, name, size = 40, dataTestId = "project-icon" }: Props) => {
   return (
     <Avatar
       style={{
@@ -22,6 +23,7 @@ export const ProjectIcon = ({ icon, name, size = 40 }: Props) => {
       }}
       size="large"
       src={icon?.length ? icon : undefined}
+      data-testid={dataTestId}
     >
       {!icon && generateProjectIconTitle(name)}
     </Avatar>

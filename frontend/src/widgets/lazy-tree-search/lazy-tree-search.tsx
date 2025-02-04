@@ -1,4 +1,5 @@
 import Search from "antd/es/input/Search"
+import { makeNode } from "processes/treebar-provider/utils"
 import { ChangeEvent, useContext, useEffect, useRef, useState } from "react"
 
 import { LazyGetTriggerType } from "app/export-types"
@@ -82,35 +83,16 @@ export const LazyTreeSearch = <T extends BaseSearchEntity>({
       true
     ).unwrap()
 
-    const data = res.results.map((item) => {
-      return {
-        id: item.id,
-        data: item,
-        // @ts-ignore
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-        title: item[valueKey],
-        children: [],
-        parent: params.parent ? params.parent : null,
-        props: {
-          canOpen: item.has_children,
-          isLeaf: !!item.has_children,
-          isLoading: false,
-          isMoreLoading: false,
-          isOpen: false,
-          hasMore: false,
-          page: params.page,
-          level: params.level,
-        },
-      }
-    })
-
+    // @ts-ignore
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const data = makeNode(res.results, (item) => ({ ...params, title: item[valueKey] }))
     return { data, nextInfo: res.pages, _n: params._n }
   }
 
-  const fetcherAncestors = async (id: NodeId): Promise<number[]> => {
+  const fetcherAncestors = async (newId: NodeId): Promise<number[]> => {
     return (await getAncestors({
       project: project.id,
-      id: Number(id),
+      id: Number(newId),
     }).unwrap()) as unknown as Promise<number[]>
   }
 
@@ -154,7 +136,7 @@ export const LazyTreeSearch = <T extends BaseSearchEntity>({
         disabled={disabled}
       />
       {isShowDropdown && !disabled && (
-        <div className={styles.searchDropdown} ref={popupRef}>
+        <div className={styles.searchDropdown} ref={popupRef} data-testid={`${id}-search-dropdown`}>
           <LazyTreeView
             fetcher={fetcher}
             fetcherAncestors={fetcherAncestors}

@@ -29,7 +29,7 @@ interface Props {
 
 export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
   const { t } = useTranslation()
-  const { me } = useContext(MeContext)!
+  const { me } = useContext(MeContext)
   const { showModal } = useShowModalCloseConfirm()
   const [errors, setErrors] = useState<ErrorData | null>(null)
   const {
@@ -53,10 +53,10 @@ export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
     setLocalIcon(project.icon ?? null)
     setValue("is_private", project.is_private ?? false)
 
-    if (me.is_superuser) {
+    if (me?.is_superuser) {
       setValue("is_archive", project.is_archive)
     }
-  }, [isShow, project])
+  }, [isShow, project, me])
 
   const onSubmit: SubmitHandler<Project> = async (data) => {
     setErrors(null)
@@ -66,7 +66,7 @@ export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
 
       fmData.append("name", data.name)
       fmData.append("description", data.description)
-      if (me.is_superuser) {
+      if (me?.is_superuser) {
         fmData.append("is_archive", String(data.is_archive))
       }
 
@@ -183,7 +183,7 @@ export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
                   <div
                     style={{ display: "flex", alignItems: "center", flexDirection: "row", gap: 14 }}
                   >
-                    <ProjectIcon name={nameWatch} icon={localIcon} />
+                    <ProjectIcon name={nameWatch} icon={localIcon} dataTestId="edit-project-icon" />
                     <Upload
                       name="avatar"
                       showUploadList={false}
@@ -191,11 +191,19 @@ export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
                       style={{ width: 180 }}
                       customRequest={() => {}}
                       beforeUpload={beforeUpload}
+                      data-testid="edit-project-upload-icon-input"
                     >
-                      <Button size="middle">{t("Upload icon")}</Button>
+                      <Button size="middle" data-testid="edit-project-upload-icon-button">
+                        {t("Upload icon")}
+                      </Button>
                     </Upload>
                     {localIcon && (
-                      <Button size="middle" danger onClick={handleDeleteIconClick}>
+                      <Button
+                        size="middle"
+                        danger
+                        onClick={handleDeleteIconClick}
+                        data-testid="edit-project-delete-icon-button"
+                      >
                         {t("Delete icon")}
                       </Button>
                     )}
@@ -212,7 +220,7 @@ export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
             <Controller
               name="name"
               control={control}
-              render={({ field }) => <Input {...field} />}
+              render={({ field }) => <Input {...field} data-testid="edit-project-name" />}
             />
           </Form.Item>
           <Form.Item
@@ -223,10 +231,12 @@ export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
             <Controller
               name="description"
               control={control}
-              render={({ field }) => <TextArea rows={4} {...field} />}
+              render={({ field }) => (
+                <TextArea rows={4} {...field} data-testid="edit-project-description" />
+              )}
             />
           </Form.Item>
-          {me.is_superuser && (
+          {me?.is_superuser && (
             <Form.Item
               label={t("Archive")}
               validateStatus={errors?.is_archive ? "error" : ""}
@@ -235,7 +245,9 @@ export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
               <Controller
                 name="is_archive"
                 control={control}
-                render={({ field }) => <Switch checked={is_archive} {...field} />}
+                render={({ field }) => (
+                  <Switch checked={is_archive} {...field} data-testid="edit-project-is-archive" />
+                )}
               />
             </Form.Item>
           )}
@@ -248,7 +260,9 @@ export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
               <Controller
                 name="is_private"
                 control={control}
-                render={({ field }) => <Switch checked={isPrivate} {...field} />}
+                render={({ field }) => (
+                  <Switch checked={isPrivate} {...field} data-testid="edit-project-is-private" />
+                )}
               />
             </Form.Item>
           )}

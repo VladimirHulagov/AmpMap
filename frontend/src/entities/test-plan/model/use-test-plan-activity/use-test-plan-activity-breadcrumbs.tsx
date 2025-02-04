@@ -15,7 +15,10 @@ export const useTestPlanActivityBreadcrumbs = () => {
       const newArray = [initArray[0], null, initArray[initArray.length - 1]]
 
       return (
-        <div style={{ display: "flex", flexDirection: "row", alignItems: "center" }}>
+        <div
+          style={{ display: "flex", flexDirection: "row", alignItems: "center" }}
+          data-testid="test-plan-activity-breadcrumbs-container"
+        >
           {newArray.map((nItem) => {
             if (!nItem) {
               return (
@@ -38,7 +41,7 @@ export const useTestPlanActivityBreadcrumbs = () => {
             }
 
             return (
-              <div key={nItem.id}>
+              <div key={nItem.id} data-testid={`test-plan-activity-breadcrumb-${nItem.title}`}>
                 <Link to={`/projects/${projectId}/plans/${nItem.id}`}>{nItem.title}</Link>
               </div>
             )
@@ -48,7 +51,10 @@ export const useTestPlanActivityBreadcrumbs = () => {
     }
 
     return (
-      <div style={{ display: "flex", flexDirection: "row" }}>
+      <div
+        style={{ display: "flex", flexDirection: "row" }}
+        data-testid="test-plan-activity-breadcrumbs"
+      >
         {initArray.map((item, index, array) => (
           <TestPlanActivityLink
             key={item.id}

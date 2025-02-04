@@ -4,12 +4,13 @@ import { Markdown } from "shared/ui"
 
 interface IFieldProps {
   id?: string
+  dataTestId?: string
   title: string
   value: string | number | JSX.Element
   markdown?: boolean
 }
 
-export const Field = ({ id, title, value, markdown = false }: IFieldProps) => {
+export const Field = ({ id, dataTestId, title, value, markdown = false }: IFieldProps) => {
   if (value) {
     return (
       <>
@@ -17,14 +18,16 @@ export const Field = ({ id, title, value, markdown = false }: IFieldProps) => {
           {title}
         </Divider>
         {markdown ? (
-          <div className="content markdown" id={id}>
+          <div className="content markdown" id={id} data-testid={dataTestId}>
             <Markdown content={value as string} />
           </div>
         ) : (
           <div style={{ padding: 8 }}>
             <Typography>
               <Typography.Paragraph id={id}>
-                <Typography.Text style={{ whiteSpace: "pre-wrap" }}>{value}</Typography.Text>
+                <Typography.Text style={{ whiteSpace: "pre-wrap" }} data-testid={dataTestId}>
+                  {value}
+                </Typography.Text>
               </Typography.Paragraph>
             </Typography>
           </div>

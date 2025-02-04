@@ -13,7 +13,7 @@ interface RequestParams {
 }
 
 export const useProjectsDashboardCards = ({ searchName }: { searchName: string }) => {
-  const { userConfig } = useContext(MeContext)!
+  const { userConfig } = useContext(MeContext)
   const [paginationParams, setPagingationParams] = useState({ page: 1, page_size: 10 })
   const [projects, setProjects] = useState<Project[]>([])
   const [isLastPage, setIsLastPage] = useState(false)
@@ -59,8 +59,8 @@ export const useProjectsDashboardCards = ({ searchName }: { searchName: string }
       fetchData({
         page: prevState.page + 1,
         page_size: prevState.page_size,
-        is_archive: userConfig.projects?.is_show_archived,
-        favorites: userConfig.projects?.is_only_favorite ?? false,
+        is_archive: userConfig?.projects?.is_show_archived,
+        favorites: userConfig?.projects?.is_only_favorite ?? false,
         name: searchName,
       })
 
@@ -77,8 +77,8 @@ export const useProjectsDashboardCards = ({ searchName }: { searchName: string }
       fetchData({
         page: 1,
         page_size: prevState.page_size,
-        is_archive: userConfig.projects?.is_show_archived,
-        favorites: userConfig.projects?.is_only_favorite ?? false,
+        is_archive: userConfig?.projects?.is_show_archived,
+        favorites: userConfig?.projects?.is_only_favorite ?? false,
         name: searchName,
       })
 
@@ -87,7 +87,7 @@ export const useProjectsDashboardCards = ({ searchName }: { searchName: string }
         page_size: prevState.page_size,
       }
     })
-  }, [userConfig.projects?.is_only_favorite, userConfig.projects?.is_show_archived])
+  }, [userConfig?.projects?.is_only_favorite, userConfig?.projects?.is_show_archived])
 
   useEffect(() => {
     handleClear()
@@ -95,8 +95,8 @@ export const useProjectsDashboardCards = ({ searchName }: { searchName: string }
       {
         page: 1,
         page_size: paginationParams.page_size,
-        is_archive: userConfig.projects?.is_show_archived,
-        favorites: userConfig.projects?.is_only_favorite ?? false,
+        is_archive: userConfig?.projects?.is_show_archived,
+        favorites: userConfig?.projects?.is_only_favorite ?? false,
         name: searchName,
       },
       true

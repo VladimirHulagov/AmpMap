@@ -428,7 +428,15 @@ class TestResultEndpoints:
         custom_attribute_value = 'some_value'
         expected_number_of_results = 1
         status = result_status_factory(project=project)
-        custom_attribute_factory(name=custom_attribute_name, project=project, is_required=True)
+        custom_attribute_factory(
+            name=custom_attribute_name,
+            project=project,
+            applied_to={
+                'testresult': {
+                    'is_required': True,
+                },
+            },
+        )
         test = test_factory(project=project)
         result_dict = {
             'status': status.pk,
@@ -462,6 +470,7 @@ class TestResultEndpoints:
                 'type': CustomFieldType.TXT,
                 'content_types': allowed_content_types,
                 'is_required': True,
+                'status_specific': None,
             },
         )
         test = test_factory(project=project)
@@ -482,7 +491,15 @@ class TestResultEndpoints:
         result_status_factory,
     ):
         status = result_status_factory(project=project)
-        custom_attribute = custom_attribute_factory(project=project, is_required=True, status_specific=[status.pk])
+        custom_attribute = custom_attribute_factory(
+            project=project,
+            applied_to={
+                'testresult': {
+                    'is_required': True,
+                    'status_specific': [status.pk],
+                },
+            },
+        )
         test = test_factory(project=project)
         result_dict = {
             'status': status.pk,
@@ -507,8 +524,12 @@ class TestResultEndpoints:
         status = result_status_factory(project=project)
         custom_attribute = custom_attribute_factory(
             project=project,
-            is_required=True,
-            status_specific=[status.pk],
+            applied_to={
+                'testresult': {
+                    'is_required': True,
+                    'status_specific': [status.pk],
+                },
+            },
         )
         test = test_factory(project=project)
         result_dict = {
@@ -531,9 +552,15 @@ class TestResultEndpoints:
         test_result_content_type_id = ContentType.objects.get_for_model(TestResult).id
         allowed_content_types.remove(test_result_content_type_id)
         status = result_status_factory(project=project)
-        custom_attribute_factory(project=project, is_required=True, content_types=allowed_content_types,
-                                 status_specific=[status.pk],
-                                 )
+        custom_attribute_factory(
+            project=project,
+            applied_to={
+                'testcase': {
+                    'is_required': True,
+                    'status_specific': [status.pk],
+                },
+            },
+        )
         test = test_factory(project=project)
         result_dict = {
             'status': status.pk,

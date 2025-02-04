@@ -41,7 +41,7 @@ hookspec = HookspecMarker('testy')
 hookimpl = HookimplMarker('testy')
 
 URLS_SENTINEL = object()
-VERSION = '2.0.4'
+VERSION = '2.0.5'
 
 
 class TestyPluginConfig(AppConfig):

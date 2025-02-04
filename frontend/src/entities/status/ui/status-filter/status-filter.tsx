@@ -10,14 +10,14 @@ import { UntestedStatus } from "shared/ui/status"
 
 import styles from "./styles.module.css"
 
-interface Props {
+interface Props extends HTMLDataAttribute {
   value: string[]
   onChange: (value: string[]) => void
   onClose?: () => void
   onClear?: () => void
 }
 
-export const StatusFilter = ({ value, onChange, onClose, onClear }: Props) => {
+export const StatusFilter = ({ value, onChange, onClose, onClear, ...props }: Props) => {
   const { t } = useTranslation()
 
   const { project } = useContext(ProjectContext)!
@@ -54,12 +54,17 @@ export const StatusFilter = ({ value, onChange, onClose, onClear }: Props) => {
       onClear={onClear}
       open={isOpen}
       onDropdownVisibleChange={handleDropdownVisibleChange}
+      {...props}
     >
-      <Select.Option key="untested" value="null">
+      <Select.Option key="untested" value="null" data-testid="status-filter-untested">
         <UntestedStatus />
       </Select.Option>
       {statuses.map((status) => (
-        <Select.Option key={status.id} value={String(status.id)}>
+        <Select.Option
+          key={status.id}
+          value={String(status.id)}
+          data-testid={`status-filter-status-${status.name}`}
+        >
           <Status id={status.id} name={status.name} color={status.color} />
         </Select.Option>
       ))}

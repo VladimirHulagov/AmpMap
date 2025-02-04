@@ -28,10 +28,10 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
+import logging
 from functools import partial
 
 import orjson
-import rusty
 from django.db.models import F
 from django.http import HttpResponse
 from django_filters import CharFilter
@@ -108,6 +108,8 @@ _LIST = 'list'
 _IS_ARCHIVE = 'is_archive'
 _NAME = 'name'
 _ID = 'id'
+
+logger = logging.getLogger(__name__)
 
 
 class TestCaseViewSet(TestyModelViewSet, TestyArchiveMixin):
@@ -277,10 +279,13 @@ class TestCaseViewSet(TestyModelViewSet, TestyArchiveMixin):
                 parent = suite_map.get(parent_id)
                 parent['children'].append(suite)
         for case in cases.values(_ID, _NAME, 'suite_id', 'labels', 'is_archive').order_by('name'):
-            suite_map[case['suite_id']]['test_cases'].append(case)
+            suite_id = case['suite_id']
+            if suite_id not in suite_map:
+                logger.error(f'Suite {suite_id} from case {case[_ID]} was not found, probably suite was deleted')
+                continue
+            suite_map[suite_id]['test_cases'].append(case)
         data = orjson.dumps(list(tree.values()))
         return HttpResponse(content=data, content_type='application/json')
-
 
 
 @suite_list_schema

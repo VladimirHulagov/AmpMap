@@ -302,11 +302,11 @@ export class LazyTreeApi<TData, TProps extends LazyNodeProps = LazyNodeProps> ex
       })
 
       node.updateChildren(() =>
-        data.map((node) => ({
-          ...node,
+        data.map((childNode) => ({
+          ...childNode,
           props: {
-            ...node.props,
-            isOpen: this.openedIds.has(node.id) || node.props.isOpen,
+            ...childNode.props,
+            isOpen: this.openedIds.has(childNode.id) || childNode.props.isOpen,
           },
         }))
       )

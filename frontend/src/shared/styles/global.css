@@ -35,6 +35,7 @@
   --y-interactive-hover: #4e6bf3;
   --y-color-text-primary: #404040;
   --y-color-text-primary-hover: #555555;
+  --y-color-control-border: var(--y-sky-30);
 }
 
 @font-face {
@@ -273,4 +274,23 @@ h6 {
   margin-left: auto;
   cursor: pointer;
   color: var(--y-interactive-default);
+}
+
+.ant-color-picker-format-select {
+  display: none !important;
+}
+
+.checkbox-md .ant-checkbox {
+  width: 24px;
+  height: 24px;
+}
+
+.checkbox-md input[type="checkbox"] {
+  transform: scale(1.6);
+  transform-origin: top left;
+}
+
+.checkbox-md .ant-checkbox-inner {
+  transform: scale(1.6);
+  transform-origin: top left;
 }

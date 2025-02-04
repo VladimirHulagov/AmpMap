@@ -1,3 +1,4 @@
+import { makeNode } from "processes/treebar-provider/utils"
 import {
   PropsWithChildren,
   RefObject,
@@ -24,7 +25,6 @@ import {
   NodeId,
   TreeBaseFetcherParams,
   TreeFetcherAncestors,
-  TreeNodeData,
   TreeNodeFetcher,
 } from "shared/libs/tree"
 
@@ -80,31 +80,10 @@ export const TestCasesTreeProvider = ({ children }: PropsWithChildren) => {
         },
         false
       ).unwrap()
-      const data: TreeNodeData<Suite | TestCase, LazyNodeProps>[] = res.results.map((item) => {
-        const isOpen = checkIsOpen(item, drawerTestCase)
-
-        return {
-          id: item.id,
-          data: item,
-          title: item.name,
-          children: [],
-          parent: params.parent ? params.parent : null,
-          props: {
-            canOpen: item.has_children,
-            isLeaf: item.is_leaf,
-            isLoading: false,
-            isMoreLoading: false,
-            isChecked: false,
-            isHalfChecked: false,
-            isSelected: false,
-            isOpen,
-            hasMore: false,
-            page: params.page,
-            level: params.level,
-          },
-        }
-      })
-
+      const data = makeNode<Suite | TestCase>(res.results, params, (item) => ({
+        isOpen: checkIsOpen(item, drawerTestCase),
+        isLeaf: item.is_leaf,
+      }))
       return { data, nextInfo: res.pages, _n: params._n }
     },
     [testCasesTreeFilter, testCasesTreeOrdering, drawerTestCase]

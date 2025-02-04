@@ -29,7 +29,11 @@ export const CommentUserInfo = ({
       <UserAvatar size={32} avatar_link={avatarLink} />
       <span>{username}</span>
       <span>{t("added a comment")}</span>
-      <HashLink to={path + `#comment-${commentId}`} className={styles.link}>
+      <HashLink
+        to={path + `#comment-${commentId}`}
+        className={styles.link}
+        data-testid="comment-user-info-created-at"
+      >
         {dayjs(createdAt).format("DD MMM YYYY HH:mm")}
       </HashLink>
       {!dayjs(updatedAt).isSame(createdAt) && (

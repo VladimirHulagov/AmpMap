@@ -355,7 +355,7 @@ class CustomAttributeViewSet(TestyModelViewSet):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        custom_attribute = CustomAttributeService().custom_attribute_create(serializer.validated_data)
+        custom_attribute = CustomAttributeService().custom_attribute_create_v1(serializer.validated_data)
         return Response(
             CustomAttributeOutputSerializer(custom_attribute, context=self.get_serializer_context()).data,
             status=status.HTTP_201_CREATED,
@@ -367,7 +367,7 @@ class CustomAttributeViewSet(TestyModelViewSet):
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
-        new_instance = CustomAttributeService().custom_attribute_update(instance, serializer.validated_data)
+        new_instance = CustomAttributeService().custom_attribute_update_v1(instance, serializer.validated_data)
         return Response(CustomAttributeOutputSerializer(new_instance, context=self.get_serializer_context()).data)
 
 

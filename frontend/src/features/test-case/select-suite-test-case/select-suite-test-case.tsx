@@ -1,5 +1,6 @@
 import { Button, Input, Modal } from "antd"
 import Search from "antd/lib/input/Search"
+import { makeNode } from "processes/treebar-provider/utils"
 import { ChangeEvent, useContext, useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 
@@ -49,26 +50,8 @@ export const SelectSuiteTestCase = ({ suite, onChange }: Props) => {
       },
       true
     ).unwrap()
-    const data = res.results.map((item) => {
-      return {
-        id: item.id,
-        data: item,
-        title: item.name,
-        children: [],
-        parent: params.parent ? params.parent : null,
-        props: {
-          canOpen: item.has_children,
-          isLeaf: !!item.has_children,
-          isLoading: false,
-          isMoreLoading: false,
-          isOpen: false,
-          hasMore: false,
-          page: params.page,
-          level: params.level,
-        },
-      }
-    })
 
+    const data = makeNode(res.results, params)
     return { data, nextInfo: res.pages, _n: params._n }
   }
 

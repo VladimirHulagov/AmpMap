@@ -9,7 +9,7 @@ import styles from "./styles.module.css"
 
 const { ArrowIcon } = icons
 
-interface Props {
+interface Props extends HTMLDataAttribute {
   children: React.ReactNode
   cacheKey: string
   collapse?: boolean
@@ -27,15 +27,15 @@ export const Collapse = ({
   title,
   isLoading = false,
   onOpenChange,
+  ...props
 }: Props) => {
-  const [value, update] = useCacheState(`collapse-${cacheKey}`, defaultCollapse)
-  const boolValue = toBool(String(value))
+  const [value, update] = useCacheState(`collapse-${cacheKey}`, Boolean(defaultCollapse), toBool)
 
   const handleOpen = () => {
     if (onOpenChange) {
-      onOpenChange(!boolValue)
+      onOpenChange(!value)
     }
-    update(!boolValue)
+    update(!value)
   }
 
   useEffect(() => {
@@ -44,17 +44,17 @@ export const Collapse = ({
   }, [collapse])
 
   return (
-    <div className={styles.collapseBlock}>
+    <div className={styles.collapseBlock} {...props}>
       <div className={styles.collapseBlockTitle} onClick={handleOpen}>
         <ArrowIcon
           width={24}
           height={24}
-          style={{ transform: `rotate(${boolValue ? 270 : 360}deg)` }}
+          style={{ transform: `rotate(${value ? 270 : 360}deg)` }}
         />
         {title}
       </div>
-      {!boolValue && !isLoading && children}
-      {isLoading && !boolValue && <ContainerLoader />}
+      {!value && !isLoading && children}
+      {isLoading && !value && <ContainerLoader />}
     </div>
   )
 }

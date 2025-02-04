@@ -82,8 +82,8 @@ export const useSuiteCopyModal = (
     setIsShow(toggle)
   }
 
-  const handleSave = async ({ new_name, project, suite }: FormSuiteCopy) => {
-    if (!project) {
+  const handleSave = async ({ new_name, project: projectData, suite }: FormSuiteCopy) => {
+    if (!projectData) {
       setErrors([t("Project is required")])
       return
     }
@@ -96,7 +96,7 @@ export const useSuiteCopyModal = (
     try {
       const newSuite = await copySuite({
         suites: [{ id: mainSuite.id.toString(), new_name }],
-        dst_project_id: project.value.toString(),
+        dst_project_id: projectData.value.toString(),
         dst_suite_id: suite ? suite.value.toString() : undefined,
       }).unwrap()
       notification.success({

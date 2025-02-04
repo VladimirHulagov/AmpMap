@@ -63,7 +63,11 @@ export const TestCaseDetailTabs = ({ testCase }: { testCase: TestCase }) => {
     switch (activeTab) {
       case "comments":
         return (
-          <Button type="text" onClick={handleCommentOrderingClick}>
+          <Button
+            type="text"
+            onClick={handleCommentOrderingClick}
+            data-testid="test-case-detail-comments-order-btn"
+          >
             <ArrowDownOutlined style={{ rotate: commentOrdering === "asc" ? "180deg" : "0deg" }} />
           </Button>
         )
@@ -87,6 +91,7 @@ export const TestCaseDetailTabs = ({ testCase }: { testCase: TestCase }) => {
       items={tabItems}
       onChange={handleTabChange}
       tabBarExtraContent={tabBarExtraContent}
+      data-testid="test-case-detail-tabs"
     />
   )
 }

@@ -61,7 +61,11 @@ export const useTestPlanActivity = () => {
       key: "action_timestamp",
       width: "100px",
       sorter: (a, b) => dayjs(a.action_timestamp).diff(b.action_timestamp),
-      render: (value: string) => dayjs(value).format("HH:mm:ss"),
+      render: (value: string, record) => (
+        <div data-testid={`test-plan-activity-time-${record.test_name}`}>
+          {dayjs(value).format("HH:mm:ss")}
+        </div>
+      ),
     },
     {
       title: t("Test"),
@@ -72,12 +76,14 @@ export const useTestPlanActivity = () => {
         searchedColumn.some((i) => i === "test_name") ? (
           <Link
             to={`/projects/${project.id}/plans/${record.breadcrumbs.id}?test=${record.test_id}`}
+            data-testid={`test-plan-activity-test-link-${record.test_name}`}
           >
             <HighLighterTesty searchWords={searchText} textToHighlight={text} />
           </Link>
         ) : (
           <Link
             to={`/projects/${project.id}/plans/${record.breadcrumbs.id}?test=${record.test_id}`}
+            data-testid={`test-plan-activity-test-link-${record.test_name}`}
           >
             {text}
           </Link>
@@ -112,7 +118,9 @@ export const useTestPlanActivity = () => {
         },
       ],
       onFilter: (value, record) => record.action.includes(String(value)),
-      render: (action: TestPlanActivityAction) => t(action),
+      render: (action: TestPlanActivityAction, record) => (
+        <div data-testid={`test-plan-activity-action-${record.test_name}`}>{t(action)}</div>
+      ),
     },
     {
       title: t("Status"),
@@ -138,7 +146,10 @@ export const useTestPlanActivity = () => {
         record.username.toLowerCase().includes(String(value).toLowerCase()),
       render: (_, record) => {
         return (
-          <div style={{ display: "flex", alignItems: "center", flexDirection: "row", gap: 8 }}>
+          <div
+            style={{ display: "flex", alignItems: "center", flexDirection: "row", gap: 8 }}
+            data-testid={`test-plan-activity-user-${record.test_name}`}
+          >
             <UserAvatar size={32} avatar_link={record.avatar_link} />
             {record.username}
           </div>

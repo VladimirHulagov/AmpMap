@@ -232,7 +232,7 @@ class TestPlanCustomAttributeValuesValidator(BaseCustomAttributeValuesValidator)
     requires_context = True
 
     def __call__(self, attrs: dict[str, Any], serializer):
-        attributes = attrs.get('attributes', {})
+        attributes = attrs.get('attributes', {}) or {}
         project = attrs.get(_PROJECT)
         if project is None and (instance := serializer.instance):
             project = instance.project

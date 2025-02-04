@@ -127,11 +127,12 @@ export const ResultList = ({ testId, testCase, isProjectArchive }: ResultListPro
               <AttributesObjectView attributes={result.attributes} />
               {!!result.attachments.length && <Attachment.Field attachments={result.attachments} />}
             </div>
-            <div className={styles.resultListFooter}>
+            <div className={styles.resultListFooter} data-testid="test-result-footer">
               <span>
                 <HashLink
                   className={styles.link}
                   to={`/projects/${result.project}/plans/${testPlanId}/?test=${testId}#result-${result.id}`}
+                  data-testid="test-result-footer-created-at"
                 >
                   {dayjs(result.created_at).format("YYYY-MM-DD HH:mm")}
                 </HashLink>
@@ -140,6 +141,7 @@ export const ResultList = ({ testId, testCase, isProjectArchive }: ResultListPro
                   <Link
                     className={styles.link}
                     to={`/projects/${result.project}/suites/${testCase.suite.id}/?test_case=${testCase.id}&version=${result.test_case_version}`}
+                    data-testid="test-result-footer-version"
                   >
                     {t("ver.")} {result.test_case_version}
                   </Link>

@@ -36,8 +36,6 @@ from tests import constants
 from tests.commons import RequestType, model_to_dict_via_serializer
 from tests.error_messages import (
     DUPLICATE_CUSTOM_ATTRIBUTE_ERR_MSG,
-    EMPTY_SUITES_WHILE_SUITE_SPECIFIC_ERR_MSG,
-    FILLED_SUITES_WHILE_NOT_SUITE_SPECIFIC_ERR_MSG,
     REQUIRED_FIELD_MSG,
     SUITE_IDS_CONTAINS_NOT_RELATED_ITEMS,
 )
@@ -209,28 +207,6 @@ class TestCustomAttributeEndpoints:
             request_type=request_type,
         )
 
-    @pytest.mark.parametrize('is_suite_specific, suite_ids', [(False, [1, 2, 3]), (True, [])])
-    def test_suite_ids_if_is_suite_specific_provided(
-        self, api_client, authorized_superuser, project, is_suite_specific, suite_ids, allowed_content_types,
-    ):
-        custom_attribute_fields = {
-            'name': constants.CUSTOM_ATTRIBUTE_NAME,
-            'project': project.pk,
-            'type': CustomFieldType.TXT,
-            'content_types': allowed_content_types,
-            'is_suite_specific': is_suite_specific,
-            'suite_ids': suite_ids,
-        }
-
-        response = api_client.send_request(
-            self.view_name_list, custom_attribute_fields, HTTPStatus.BAD_REQUEST, RequestType.POST,
-        )
-
-        if is_suite_specific:
-            assert response.json()[_ERRORS][0] == EMPTY_SUITES_WHILE_SUITE_SPECIFIC_ERR_MSG
-        else:
-            assert response.json()[_ERRORS][0] == FILLED_SUITES_WHILE_NOT_SUITE_SPECIFIC_ERR_MSG
-
     @pytest.mark.parametrize('expected_status', [HTTPStatus.CREATED, HTTPStatus.BAD_REQUEST])
     def test_suite_is_a_part_of_project(
         self, api_client, authorized_superuser, project, test_suite, expected_status, allowed_content_types,
@@ -273,7 +249,14 @@ class TestCustomAttributeEndpoints:
         suite_for_update = test_suite_factory(project=project)
 
         custom_attribute = custom_attribute_factory(
-            name=constants.CUSTOM_ATTRIBUTE_NAME, project=project, suite_ids=[initial_suite.id],
+            name=constants.CUSTOM_ATTRIBUTE_NAME,
+            project=project,
+            applied_to={
+                'testcase': {
+                    'is_required': False,
+                    'suite_ids': [initial_suite.id],
+                },
+            },
         )
 
         assert CustomAttribute.objects.count() == expected_custom_attributes_count, (
@@ -282,7 +265,6 @@ class TestCustomAttributeEndpoints:
         )
 
         custom_attribute_fields_updated = {
-            'is_suite_specific': True,
             'suite_ids': broken_suite_id if expected_status == HTTPStatus.BAD_REQUEST else [suite_for_update.id],
         }
 

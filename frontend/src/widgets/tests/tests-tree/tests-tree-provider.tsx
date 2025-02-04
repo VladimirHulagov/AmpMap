@@ -1,3 +1,4 @@
+import { makeNode } from "processes/treebar-provider/utils"
 import {
   PropsWithChildren,
   RefObject,
@@ -25,7 +26,6 @@ import {
   LazyTreeApi,
   NodeId,
   TreeFetcherAncestors,
-  TreeNodeData,
   TreeNodeFetcher,
 } from "shared/libs/tree"
 
@@ -85,31 +85,11 @@ export const TestsTreeProvider = ({ children }: PropsWithChildren) => {
         },
         false
       ).unwrap()
-      const data: TreeNodeData<Test | TestPlan, LazyNodeProps>[] = res.results.map((item) => {
-        const isOpen = checkIsOpen(item, drawerTest)
 
-        return {
-          id: item.id,
-          data: item,
-          title: item.name,
-          children: [],
-          parent: params.parent ? params.parent : null,
-          props: {
-            canOpen: item.has_children,
-            isLeaf: item.is_leaf,
-            isLoading: false,
-            isMoreLoading: false,
-            isChecked: false,
-            isHalfChecked: false,
-            isSelected: false,
-            isOpen,
-            hasMore: false,
-            page: params.page,
-            level: params.level,
-          },
-        }
-      })
-
+      const data = makeNode<Test | TestPlan>(res.results, params, (item) => ({
+        isOpen: checkIsOpen(item, drawerTest),
+        isLeaf: item.is_leaf,
+      }))
       return { data, nextInfo: res.pages, _n: params._n }
     },
     [testsFilter, testsOrdering, drawerTest]

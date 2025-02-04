@@ -9,4 +9,5 @@ export const config = {
   pageSizeOptions: ["10", "20", "50", "100"],
   defaultTreePageSize: 99,
   defaultLang: "en",
+  debugCss: false,
 }

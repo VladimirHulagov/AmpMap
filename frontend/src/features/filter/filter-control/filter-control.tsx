@@ -34,13 +34,13 @@ export const FilterControl = ({
 }: Props) => {
   const { t } = useTranslation()
 
-  const { userConfig, updateConfig } = useContext(MeContext)!
+  const { userConfig, updateConfig } = useContext(MeContext)
   const { project } = useContext(ProjectContext)!
 
   const configFilters =
     type === "plans"
-      ? userConfig.test_plans?.filters?.[project.id]
-      : userConfig.test_suites?.filters?.[project.id]
+      ? userConfig?.test_plans?.filters?.[project.id]
+      : userConfig?.test_suites?.filters?.[project.id]
 
   const handleDelete = (name: string) => {
     Modal.confirm({
@@ -75,6 +75,8 @@ export const FilterControl = ({
           description: t("Filter deleted successfully"),
         })
       },
+      okButtonProps: { "data-testid": "delete-filter-button-confirm" },
+      cancelButtonProps: { "data-testid": "delete-filter-button-cancel" },
     })
   }
 

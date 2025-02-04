@@ -27,7 +27,7 @@ const { Link } = Typography
 export const useProjectsDashboardTable = ({ searchName }: { searchName: string }) => {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { userConfig } = useContext(MeContext)!
+  const { userConfig } = useContext(MeContext)
   const [filteredInfo, setFilteredInfo] = useState<Record<string, FilterValue | null>>({})
   const [paginationParams, setPaginationParams] = useState({
     page: 1,
@@ -35,14 +35,19 @@ export const useProjectsDashboardTable = ({ searchName }: { searchName: string }
   })
   const [ordering, setOrdering] = useState("is_private")
 
-  const { data: projects, isFetching } = useGetProjectsQuery({
-    is_archive: userConfig.projects?.is_show_archived,
-    favorites: userConfig.projects?.is_only_favorite ?? false,
-    page: paginationParams.page,
-    page_size: paginationParams.pageSize,
-    name: searchName,
-    ordering: ordering.length ? ordering : "is_private",
-  })
+  const { data: projects, isFetching } = useGetProjectsQuery(
+    {
+      is_archive: userConfig?.projects?.is_show_archived,
+      favorites: userConfig?.projects?.is_only_favorite ?? false,
+      page: paginationParams.page,
+      page_size: paginationParams.pageSize,
+      name: searchName,
+      ordering: ordering.length ? ordering : "is_private",
+    },
+    {
+      skip: !userConfig,
+    }
+  )
 
   const handleActionClick = (projectId: number, type: "overview" | "suites" | "plans") => {
     navigate(`/projects/${projectId}/${type}`)
@@ -78,7 +83,13 @@ export const useProjectsDashboardTable = ({ searchName }: { searchName: string }
       dataIndex: "icon",
       key: "icon",
       width: 50,
-      render: (text, record) => <ProjectIcon icon={record.icon} name={record.name} />,
+      render: (text, record) => (
+        <ProjectIcon
+          icon={record.icon}
+          name={record.name}
+          dataTestId="dashboard-table-project-icon"
+        />
+      ),
     },
     {
       title: t("Name"),

@@ -49,11 +49,9 @@ from testy.core.models import (
     Project,
     SystemMessage,
 )
-from testy.core.selectors.custom_attribute import CustomAttributeSelector
 from testy.tests_description.models import TestCase, TestCaseStep, TestSuite
 from testy.tests_representation.choices import ResultStatusType
 from testy.tests_representation.models import Parameter, ResultStatus, Test, TestPlan, TestResult, TestStepResult
-from testy.tests_representation.selectors.status import ResultStatusSelector
 from testy.users.choices import RoleTypes
 from testy.users.models import Group, Membership, Role
 
@@ -384,24 +382,18 @@ class CustomAttributeFactory(DjangoModelFactory):
     project = SubFactory(ProjectFactory)
     name = Sequence(lambda n: f'{constants.CUSTOM_ATTRIBUTE_NAME}{n}')
     type = CustomFieldType.TXT
-    is_required = False
-    is_suite_specific = False
-    suite_ids = []
-    content_types = LazyAttribute(
-        lambda _: list(CustomAttributeSelector.get_allowed_content_types().values_list('id', flat=True)),
-    )
+    applied_to = {
+        'testplan': {
+            'is_required': False,
+        },
+        'testcase': {
+            'is_required': False,
+            'suite_ids': [],
+        },
+    }
 
     class Meta:
         model = CustomAttribute
-
-    @post_generation
-    def status_specific(self, create, extracted, **kwargs):
-        if extracted:
-            self.status_specific = extracted
-        else:
-            self.status_specific = list(
-                ResultStatusSelector.status_list(project=self.project).values_list('id', flat=True),
-            )
 
 
 class PermissionFactory(DjangoModelFactory):

@@ -28,8 +28,8 @@ export const ChangeLang = () => {
   const { i18n } = useTranslation()
   const [value, update] = useCacheState("lang", config.defaultLang)
 
-  const handleChange = (value: string[]) => {
-    const nextLang = value as unknown as string
+  const handleChange = (newLang: string[]) => {
+    const nextLang = newLang as unknown as string
     update(nextLang)
     i18n.changeLanguage(nextLang)
   }

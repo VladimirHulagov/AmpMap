@@ -30,11 +30,11 @@ export const useTestCaseDetail = () => {
   const [getTestCaseById, { isFetching }] = useLazyGetTestCaseByIdQuery()
   const [restoreTestCase] = useRestoreTestCaseMutation()
 
-  const fetchTestCase = async (testCaseId: string, version?: string) => {
+  const fetchTestCase = async (newTestCaseId: string, newVersion?: string) => {
     try {
       const res = await getTestCaseById({
-        testCaseId,
-        version,
+        testCaseId: newTestCaseId,
+        version: newVersion,
       }).unwrap()
       dispatch(setDrawerTestCase(res))
     } catch (err: unknown) {
@@ -82,11 +82,11 @@ export const useTestCaseDetail = () => {
     dispatch(setDrawerTestCase(null))
   }
 
-  const handleChangeVersion = async (version: number) => {
-    setShowVersion(version)
-    searchParams.set("version", String(version))
+  const handleChangeVersion = async (newVersion: number) => {
+    setShowVersion(newVersion)
+    searchParams.set("version", String(newVersion))
     setSearchParams(searchParams)
-    await fetchTestCase(String(testCaseId), String(version))
+    await fetchTestCase(String(testCaseId), String(newVersion))
   }
 
   const handleRestoreVersion = () => {
@@ -121,6 +121,8 @@ export const useTestCaseDetail = () => {
           initInternalError(err)
         }
       },
+      okButtonProps: { "data-testid": "restore-test-case-button-confirm" },
+      cancelButtonProps: { "data-testid": "restore-test-case-button-cancel" },
     })
   }
 

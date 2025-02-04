@@ -46,11 +46,6 @@ export const customAttributeApi = createApi({
     }),
     getCustomAttributeContentTypes: builder.query<CustomAttributeContentType[], void>({
       query: () => ({ url: `${rootPath}/content-types/` }),
-      transformResponse: (response: CustomAttributeContentTypesResponse) =>
-        response?.map((type) => ({
-          label: type.name,
-          value: type.id,
-        })) ?? [],
     }),
   }),
 })

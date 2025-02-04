@@ -26,8 +26,8 @@ export const ProjectCardsSkeleton = ({ count = 6 }: Props) => {
             <div className={styles.data}>
               {Array(4)
                 .fill(null)
-                .map((_, i) => (
-                  <div className={styles.statItem} key={i}>
+                .map((__, innerIndex) => (
+                  <div className={styles.statItem} key={innerIndex}>
                     <Skeleton width={48} height={30} />
                     <Skeleton width="80%" height={22} />
                   </div>
@@ -37,8 +37,8 @@ export const ProjectCardsSkeleton = ({ count = 6 }: Props) => {
           <ul className={styles.btnsBlock}>
             {Array(3)
               .fill(null)
-              .map((_, i) => (
-                <Skeleton width="20%" height={24} key={i} />
+              .map((__, innerIndex) => (
+                <Skeleton width="20%" height={24} key={innerIndex} />
               ))}
           </ul>
         </div>

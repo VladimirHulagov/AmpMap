@@ -133,13 +133,13 @@ export const useTestCasesTable = () => {
           dataIndex: "name",
           key: "name",
           render: (text: string, record) => {
-            const queryParams = new URLSearchParams(location.search)
-            queryParams.delete("test_case")
+            const newQueryParams = new URLSearchParams(location.search)
+            newQueryParams.delete("test_case")
 
             return (
               <Link
                 id={record.name}
-                to={`/projects/${record.project}/suites/${testSuiteId ?? ""}?test_case=${record.id}${queryParams.size ? `&${queryParams.toString()}` : ""}`}
+                to={`/projects/${record.project}/suites/${testSuiteId ?? ""}?test_case=${record.id}${newQueryParams.size ? `&${newQueryParams.toString()}` : ""}`}
                 className={styles.link}
                 onClick={(e) => {
                   e.stopPropagation()

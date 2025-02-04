@@ -8,6 +8,7 @@ type Icon =
 export interface IconsPackType {
   ArchiveIcon: Icon
   ArrowIcon: Icon
+  ArrowLeftIcon: Icon
   BackIcon: Icon
   BookmarkFillIcon: Icon
   BookmarkIcon: Icon

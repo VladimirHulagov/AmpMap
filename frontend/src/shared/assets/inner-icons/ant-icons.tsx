@@ -23,6 +23,7 @@ import {
   UpOutlined,
   UserOutlined,
   UsergroupAddOutlined,
+  VerticalRightOutlined,
 } from "@ant-design/icons"
 
 import { IconsPackType } from "./types"
@@ -30,7 +31,8 @@ import { IconsPackType } from "./types"
 const AntIcons: IconsPackType = {
   ArchiveIcon: InboxOutlined,
   ArrowIcon: DownOutlined,
-  BackIcon: LeftOutlined,
+  ArrowLeftIcon: LeftOutlined,
+  BackIcon: VerticalRightOutlined,
   BookmarkFillIcon: StarFilled,
   BookmarkIcon: StarOutlined,
   CloseIcon: CloseOutlined,

@@ -101,6 +101,8 @@ export const useAdministrationStatusModal = () => {
           initInternalError(err)
         }
       },
+      okButtonProps: { "data-testid": "delete-status-button-confirm" },
+      cancelButtonProps: { "data-testid": "delete-status-button-cancel" },
     })
   }
 

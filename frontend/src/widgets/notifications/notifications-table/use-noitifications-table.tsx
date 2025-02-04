@@ -98,8 +98,8 @@ export const useNotificationsTable = () => {
     fetchData({ paginationData: newPagination })
   }
 
-  const handleSelectRows = (selectedRowKeys: React.Key[]) => {
-    setSelectedRowKeys(selectedRowKeys)
+  const handleSelectRows = (newSelectedRowKeys: React.Key[]) => {
+    setSelectedRowKeys(newSelectedRowKeys)
   }
 
   const handleRead = async () => {

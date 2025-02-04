@@ -14,6 +14,8 @@ interface Suite {
   total_estimates: string | null
   url: string
   created_at: string
+  attachments: IAttachment[]
+  attributes: AttributesObject
 }
 
 interface SuiteResponseUpdate {
@@ -35,6 +37,8 @@ interface SuiteUpdate {
   name: string
   description: string
   parent: number | null
+  attachments: number[]
+  attributes: AttributesObject
 }
 
 interface SuiteCreate {
@@ -42,6 +46,7 @@ interface SuiteCreate {
   project: number
   parent?: number | null
   description?: string
+  attributes: AttributesObject
 }
 
 interface GetTestSuiteQuery {

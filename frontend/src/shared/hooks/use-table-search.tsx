@@ -42,6 +42,7 @@ export const useTableSearch = (debounceTime = 300, defaultValue?: string) => {
           onPressEnter={() => handleSearch(selectedKeys as string[], confirm, dataIndex)}
           style={{ marginBottom: 8, display: "block" }}
           defaultValue={defaultValue}
+          data-testid={`${dataIndex}-search-input`}
         />
         <Space style={{ display: "flex", justifyContent: "right" }}>
           <Button
@@ -51,6 +52,7 @@ export const useTableSearch = (debounceTime = 300, defaultValue?: string) => {
             onClick={() => {
               close()
             }}
+            data-testid={`${dataIndex}-search-close`}
           >
             {t("Close")}
           </Button>
@@ -59,6 +61,7 @@ export const useTableSearch = (debounceTime = 300, defaultValue?: string) => {
             size="small"
             type="primary"
             onClick={() => handleSearch(selectedKeys as string[], confirm, dataIndex)}
+            data-testid={`${dataIndex}-search-submit`}
           >
             {t("Search")}
           </Button>
@@ -66,7 +69,10 @@ export const useTableSearch = (debounceTime = 300, defaultValue?: string) => {
       </div>
     ),
     filterIcon: (filtered: boolean) => (
-      <SearchOutlined style={{ color: filtered ? colors.accent : undefined }} />
+      <SearchOutlined
+        style={{ color: filtered ? colors.accent : undefined }}
+        data-testid={`${dataIndex}-search-icon`}
+      />
     ),
     render: (text: string) =>
       searchedColumn.some((i) => i === dataIndex) ? (

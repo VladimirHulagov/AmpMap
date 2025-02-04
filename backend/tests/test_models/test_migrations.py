@@ -31,6 +31,7 @@
 
 import pytest
 from allure_commons.utils import uuid4
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db.models import QuerySet
 from django.utils import timezone
@@ -250,7 +251,7 @@ def test_rollback_change_estimate_to_int(migrator):
 
 
 def test_create_base_system_status(migrator):
-    """Testing migration 0025_resultstatus"""
+    """Testing migration 0024_resultstatus"""
     old_state = migrator.apply_tested_migration(
         ('tests_representation', '0023_alter_historicaltestresult_status_and_more'),
     )
@@ -361,13 +362,14 @@ def test_change_result_status_to_fk(migrator):
 @pytest.mark.parametrize('status_type', (ResultStatusType.SYSTEM, ResultStatusType.CUSTOM))
 def test_rollback_change_result_status_to_fk(migrator, status_type):
     """
-    Testing rollback migrations 0026_historicaltestresult_status_temp_and_more...
+    Testing rollback migrations 0023_alter_historicaltestresult_status_and_more...
 
-    0029_rename_status_temp_historicaltestresult_status_and_more
+    0028_rename_status_temp_historicaltestresult_status_and_more
     """
     old_state = migrator.apply_initial_migration(
         [
             ('tests_representation', '0028_rename_status_temp_historicaltestresult_status_and_more'),
+            ('tests_description', '0016_alter_testsuite_level_alter_testsuite_lft_and_more'),
         ],
     )
 
@@ -383,14 +385,14 @@ def test_rollback_change_result_status_to_fk(migrator, status_type):
     test_step_result_model = old_state.apps.get_model('tests_representation', 'TestStepResult')
     status_model = old_state.apps.get_model('tests_representation', 'ResultStatus')
 
+    register(test_suite_model)
+    register(test_plan_model)
+
     project = project_model.objects.create(name='ProjectTest')
-    suite = test_suite_model.objects.create(name='SuiteTest', project=project)
+    suite = test_suite_model.objects.create(name='SuiteTest', project=project, lft=0, rght=0, tree_id=uuid4())
     test_case = test_case_model.objects.create(project=project, suite_id=suite.id, scenario='TestScenario')
     test_case_with_steps = test_case_with_steps.objects.create(project=project, scenario='TestScenario')
     test_plan = test_plan_model.objects.create(
-        lft=0,
-        rght=0,
-        level=0,
         name='TestPlanTest',
         project=project,
         started_at=timezone.now(),
@@ -436,9 +438,9 @@ def test_rollback_change_result_status_to_fk(migrator, status_type):
 
 def test_change_status_specific_choices_to_pk(migrator):
     """
-    Testing migrations 0023_customattribute_status_specific_temp_and_more...
+    Testing migrations 0014_customattribute_status_specific_and_more...
 
-    0026_rename_status_specific_temp_customattribute_status_specific
+    0020_rename_status_specific_temp_customattribute_status_specific
     """
     old_state = migrator.apply_initial_migration(
         ('core', '0014_customattribute_status_specific_and_more'),
@@ -479,9 +481,9 @@ def test_change_status_specific_choices_to_pk(migrator):
 
 def test_rollback_status_specific_to_choices(migrator):
     """
-    Testing rollback migrations 0023_customattribute_status_specific_temp_and_more...
+    Testing rollback migrations 0020_rename_status_specific_temp_customattribute_status_specific...
 
-    0026_rename_status_specific_temp_customattribute_status_specific
+    0014_customattribute_status_specific_and_more
     """
     old_state = migrator.apply_initial_migration(
         ('core', '0020_rename_status_specific_temp_customattribute_status_specific'),
@@ -519,4 +521,115 @@ def test_rollback_status_specific_to_choices(migrator):
     custom_attribute = custom_attribute_model.objects.first()
 
     assert custom_attribute.status_specific == [TestStatuses.PASSED, TestStatuses.FAILED]
+    migrator.reset()
+
+
+def test_change_custom_attributes_to_json(migrator):
+    """
+    Testing migrations 0024_customattribute_applied_to_and_more
+
+    0026_remove_customattribute_content_types_and_more
+    """
+    old_state = migrator.apply_initial_migration(
+        [
+            ('core', '0024_customattribute_applied_to_and_more'),
+        ],
+    )
+
+    project_model = old_state.apps.get_model('core', 'Project')
+    custom_attribute_model = old_state.apps.get_model('core', 'CustomAttribute')
+    test_suite_model = old_state.apps.get_model('tests_description', 'TestSuite')
+    project = project_model.objects.create(name='ProjectTest')
+    status_model = old_state.apps.get_model('tests_representation', 'ResultStatus')
+    result_model = old_state.apps.get_model('tests_representation', 'testresult')
+    ContentType.objects.get_for_model(result_model)
+    first_status = status_model.objects.create(project=project, name='first_status')
+    second_status = status_model.objects.create(project=project, name='second_status')
+    status_ids = [first_status.pk, second_status.pk]
+    ContentType.objects.get_for_model(status_model)
+    test_suite = test_suite_model.objects.create(name='SuiteTest', project=project, tree_id=1, lft=0, rght=0, level=0)
+    custom_attribute_model.objects.create(
+        project=project,
+        name='CustomAttributeTest',
+        type=CustomFieldType.TXT,
+        status_specific=status_ids,
+        content_types=list(CustomAttributeSelector.get_allowed_content_types().values_list('id', flat=True)),
+        is_suite_specific=True,
+        suite_ids=[test_suite.pk],
+        is_required=True,
+    )
+    custom_attribute = custom_attribute_model.objects.last()
+    assert custom_attribute.status_specific == status_ids
+    assert custom_attribute.suite_ids == [test_suite.pk]
+    assert custom_attribute.is_required
+
+    new_state = migrator.apply_tested_migration(
+        ('core', '0026_remove_customattribute_content_types_and_more'),
+    )
+
+    custom_attribute_model = new_state.apps.get_model('core', 'CustomAttribute')
+    custom_attribute = custom_attribute_model.objects.get(id=custom_attribute.id)
+    assert custom_attribute.applied_to
+    for ct_name in custom_attribute.applied_to.keys():
+        assert custom_attribute.applied_to[ct_name]['is_required']
+        assert custom_attribute.applied_to[ct_name]['suite_ids'] == [test_suite.pk]
+        assert custom_attribute.applied_to[ct_name]['status_specific'] == status_ids
+    migrator.reset()
+
+
+def test_rollback_custom_attributes_from_json(migrator):
+    """
+    Testing rollback migrations 0024_customattribute_applied_to
+
+    0026_remove_customattribute_content_types_and_more
+    """
+    old_state = migrator.apply_initial_migration(
+        [
+            ('core', '0026_remove_customattribute_content_types_and_more'),
+        ],
+    )
+
+    project_model = old_state.apps.get_model('core', 'Project')
+    custom_attribute_model = old_state.apps.get_model('core', 'CustomAttribute')
+    test_suite_model = old_state.apps.get_model('tests_description', 'TestSuite')
+    project = project_model.objects.create(name='ProjectTest')
+    status_model = old_state.apps.get_model('tests_representation', 'ResultStatus')
+    result_model = old_state.apps.get_model('tests_representation', 'testresult')
+    ContentType.objects.get_for_model(result_model)
+    first_status = status_model.objects.create(project=project, name='first_status')
+    second_status = status_model.objects.create(project=project, name='second_status')
+    case_model = old_state.apps.get_model('tests_description', 'TestCase')
+    ContentType.objects.get_for_model(case_model)
+    status_ids = [first_status.pk, second_status.pk]
+    ContentType.objects.get_for_model(status_model)
+    test_suite = test_suite_model.objects.create(name='SuiteTest', project=project, tree_id=1, lft=0, rght=0, level=0)
+    is_required = True
+    applied_to = {
+        'testcase': {
+            'is_required': is_required,
+            'suite_ids': [test_suite.pk],
+            'status_specific': status_ids,
+        },
+    }
+    custom_attribute_model.objects.create(
+        project=project,
+        name='CustomAttributeTest',
+        type=CustomFieldType.TXT,
+        applied_to=applied_to,
+    )
+    custom_attribute = custom_attribute_model.objects.last()
+    assert custom_attribute.applied_to == applied_to
+
+    new_state = migrator.apply_tested_migration(
+        ('core', '0024_customattribute_applied_to_and_more'),
+    )
+
+    custom_attribute_model = new_state.apps.get_model('core', 'CustomAttribute')
+    custom_attribute = custom_attribute_model.objects.get(id=custom_attribute.id)
+    assert custom_attribute.is_required is is_required
+    assert custom_attribute.is_suite_specific
+    assert custom_attribute.suite_ids == [test_suite.pk]
+    assert custom_attribute.status_specific == status_ids
+    ct_ids = list(ContentType.objects.filter(model='testcase').values_list('id', flat=True))
+    assert custom_attribute.content_types == ct_ids
     migrator.reset()

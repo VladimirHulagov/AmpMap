@@ -30,6 +30,8 @@ export const DeleteCustomAttribute = ({ attributeId }: Props) => {
           initInternalError(err)
         }
       },
+      okButtonProps: { "data-testid": "delete-attribute-button-confirm" },
+      cancelButtonProps: { "data-testid": "delete-attribute-button-cancel" },
     })
   }
 

@@ -61,9 +61,13 @@ export const TestCasesButtonFilterDrawer = () => {
 
   const [getSuiteTree] = useLazyGetDescendantsTreeQuery()
 
-  const { control, handleSubmit, getValues, setValue, reset } = useForm<TestCaseDataFilters>({
-    defaultValues: testCasesFilter,
-  })
+  const { control, handleSubmit, getValues, setValue, reset, watch } = useForm<TestCaseDataFilters>(
+    {
+      defaultValues: testCasesFilter,
+    }
+  )
+
+  const isArchive = watch("is_archive")
 
   useEffect(() => {
     reset(testCasesFilter)
@@ -140,6 +144,11 @@ export const TestCasesButtonFilterDrawer = () => {
     triggerSubmit()
   }
 
+  const handleShowArchiveChange = (toggle: boolean) => {
+    setValue("is_archive", toggle ? toggle : undefined)
+    triggerSubmit()
+  }
+
   const getSuitesTreeData = () => {
     return getSuiteTree(
       { parent: testSuiteId ? Number(testSuiteId) : null, project: project.id },
@@ -173,7 +182,11 @@ export const TestCasesButtonFilterDrawer = () => {
       >
         {t("Filter")}{" "}
         {!!testCasesFilterCount && (
-          <Badge color="var(--y-interactive-default)" count={testCasesFilterCount} />
+          <Badge
+            color="var(--y-interactive-default)"
+            count={testCasesFilterCount}
+            data-testid="test-cases-button-filter-drawer-badge"
+          />
         )}
       </Button>
       <Drawer
@@ -196,7 +209,10 @@ export const TestCasesButtonFilterDrawer = () => {
       >
         {isOpenFilter && (
           <Form onFinish={handleSubmit(onSubmit)} layout="vertical">
-            <Form.Item label={t("Name or ID")}>
+            <Form.Item
+              label={t("Name or ID")}
+              data-testid="test-cases-button-filter-drawer-name-or-id-container"
+            >
               <Controller
                 name="name_or_id"
                 control={control}
@@ -213,11 +229,15 @@ export const TestCasesButtonFilterDrawer = () => {
                     onChange={(e) => field.onChange(e.target.value)}
                     suffix={<SearchOutlined style={{ color: "rgba(0,0,0,.45)" }} />}
                     allowClear
+                    data-testid="test-cases-button-filter-drawer-name-or-id-input"
                   />
                 )}
               />
             </Form.Item>
-            <Form.Item label={t("Test Suite")}>
+            <Form.Item
+              label={t("Test Suite")}
+              data-testid="test-cases-button-filter-drawer-test-suite-container"
+            >
               <Controller
                 name="suites"
                 control={control}
@@ -251,6 +271,7 @@ export const TestCasesButtonFilterDrawer = () => {
                   />
                 </div>
               }
+              data-testid="test-cases-button-filter-drawer-labels-container"
             >
               <Controller
                 name="labels"
@@ -282,6 +303,7 @@ export const TestCasesButtonFilterDrawer = () => {
                   needConfirm={false}
                   maxDate={getDateValue("test_suite_created_before")}
                   allowClear
+                  data-testid="test-cases-button-filter-drawer-test-suite-created-at-after"
                 />
                 <DatePicker
                   onChange={(value) => handleUpdateDate(value, "test_suite_created_before")}
@@ -296,6 +318,7 @@ export const TestCasesButtonFilterDrawer = () => {
                   disabled={!getValues("test_suite_created_after")}
                   minDate={getDateValue("test_suite_created_after")}
                   allowClear
+                  data-testid="test-cases-button-filter-drawer-test-suite-created-at-before"
                 />
               </Flex>
             </Form.Item>
@@ -314,6 +337,7 @@ export const TestCasesButtonFilterDrawer = () => {
                   needConfirm={false}
                   maxDate={getDateValue("test_case_created_before")}
                   allowClear
+                  data-testid="test-cases-button-filter-drawer-test-case-created-at-after"
                 />
                 <DatePicker
                   onChange={(value) => handleUpdateDate(value, "test_case_created_before")}
@@ -328,6 +352,7 @@ export const TestCasesButtonFilterDrawer = () => {
                   disabled={!getValues("test_case_created_after")}
                   minDate={getDateValue("test_case_created_after")}
                   allowClear
+                  data-testid="test-cases-button-filter-drawer-test-case-created-at-before"
                 />
               </Flex>
             </Form.Item>
@@ -335,16 +360,13 @@ export const TestCasesButtonFilterDrawer = () => {
               <Controller
                 name="is_archive"
                 control={control}
-                render={({ field }) => (
+                render={() => (
                   <Toggle
                     id="archive-toggle"
                     label={t("Show Archived")}
                     labelFontSize={14}
-                    checked={!!field.value}
-                    onChange={(toggle) => {
-                      field.onChange(toggle ? toggle : undefined)
-                      triggerSubmit()
-                    }}
+                    checked={isArchive}
+                    onChange={handleShowArchiveChange}
                     size="lg"
                   />
                 )}

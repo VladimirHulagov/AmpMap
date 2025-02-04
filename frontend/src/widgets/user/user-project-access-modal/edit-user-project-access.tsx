@@ -15,7 +15,7 @@ export const EditUserProjectAccess = ({ user }: Props) => {
   }
   return (
     <Button
-      id="edit-user-project-access"
+      data-testid={`${user.username}-edit-user-project-access`}
       icon={<EditOutlined />}
       shape="circle"
       onClick={handleClick}

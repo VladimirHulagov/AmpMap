@@ -6,16 +6,22 @@ import { useGetConfigQuery, useGetMeQuery, useUpdateConfigMutation } from "entit
 import { selectUserConfig, setUserConfig } from "entities/user/model"
 
 interface MeContextType {
-  me: User
-  userConfig: UserConfig
+  me: User | null
+  userConfig: UserConfig | null
   updateConfig: (data: object) => Promise<void>
+  isLoading: boolean
 }
 
-export const MeContext = createContext<MeContextType | null>(null)
+export const MeContext = createContext<MeContextType>({
+  me: null,
+  userConfig: null,
+  updateConfig: async () => {},
+  isLoading: false,
+})
 
 export const MeProvider = ({ children }: PropsWithChildren) => {
-  const { data: me } = useGetMeQuery()
-  const { data: config } = useGetConfigQuery({}, { skip: !me })
+  const { data: me, isLoading: isMeLoading } = useGetMeQuery()
+  const { data: config, isLoading: isConfigLoading } = useGetConfigQuery({}, { skip: !me })
   const [updateConfigMutation] = useUpdateConfigMutation()
 
   const dispatch = useAppDispatch()
@@ -51,8 +57,9 @@ export const MeProvider = ({ children }: PropsWithChildren) => {
       me,
       userConfig,
       updateConfig,
+      isLoading: isMeLoading || isConfigLoading,
     }
-  }, [me, userConfig, updateConfig])
+  }, [me, userConfig, updateConfig, isMeLoading, isConfigLoading])
 
   if (!value) {
     return null

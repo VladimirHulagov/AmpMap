@@ -148,6 +148,12 @@ export const testPlanApi = createApi({
       }),
       async onQueryStarted({ id }, { dispatch, queryFulfilled }) {
         await queryFulfilled
+        dispatch(
+          testPlanApi.util.invalidateTags([
+            { type: "TestPlanTest", id },
+            { type: "TestPlanTest", id: "LIST" },
+          ])
+        )
         dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanStatistics", id }]))
         dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanHistogram", id }]))
         dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanLabels", id: "LIST" }]))
@@ -277,6 +283,7 @@ export const testPlanStatusesInvalidate = (id: string | number) =>
 
 export const {
   useGetTestPlanQuery,
+  useLazyGetTestPlanQuery,
   useLazyGetTestPlansQuery,
   useLazyGetTestPlansWithTestsQuery,
   useGetTestPlanAncestorsQuery,

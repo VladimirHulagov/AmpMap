@@ -43,7 +43,11 @@ from django.db.models import Q, QuerySet
 
 from tests import constants
 from tests.commons import RequestType, model_to_dict_via_serializer
-from tests.error_messages import REQUIRED_FIELD_MSG
+from tests.error_messages import (
+    FOUND_EMPTY_REQUIRED_CUSTOM_ATTRIBUTES_ERR_MSG,
+    MISSING_REQUIRED_CUSTOM_ATTRIBUTES_ERR_MSG,
+    REQUIRED_FIELD_MSG,
+)
 from tests.mock_serializers.v2 import (
     TestCaseUnionMockSerializer,
     TestSuiteMockOutputSerializer,
@@ -690,6 +694,102 @@ class TestSuiteEndpoints:
         actual_case_ids = [case['id'] for case in response_content['results']]
         assert len(actual_case_ids) == len(case_ids), 'Wrong number of found cases'
         assert sorted(actual_case_ids) == sorted(case_ids), 'Wrong found cases'
+
+    @allure.title('Test suite creation with custom attributes')
+    def test_suite_creation_with_custom_attributes(
+        self,
+        superuser_client,
+        project,
+        custom_attribute_factory,
+    ):
+        custom_attribute_name = 'awesome_attribute'
+        custom_attribute_value = 'some_value'
+        with allure.step('Create custom attribute'):
+            custom_attribute_factory(
+                project=project,
+                name=custom_attribute_name,
+                applied_to={
+                    'testsuite': {
+                        'is_required': True,
+                    },
+                },
+            )
+        suite_dict = {
+            'name': constants.TEST_SUITE_NAME,
+            'project': project.id,
+            'attributes': {custom_attribute_name: custom_attribute_value},
+        }
+        superuser_client.send_request(self.view_name_list, suite_dict, HTTPStatus.CREATED, RequestType.POST)
+        with allure.step('Validate suite exists'):
+            test_suite = TestSuite.objects.first()
+            assert test_suite, 'Suite was not created'
+            assert test_suite.attributes.get(custom_attribute_name) == custom_attribute_value, 'Wrong custom attribute'
+
+    @allure.title('Test suite cannot be created with blank required attributes')
+    def test_blank_required_attr_validation(
+            self,
+            superuser_client,
+            project,
+            custom_attribute_factory,
+    ):
+        custom_attribute_name = 'awesome_attribute'
+        with allure.step('Create custom attribute'):
+            custom_attribute_factory(
+                project=project,
+                name=custom_attribute_name,
+                applied_to={
+                    'testsuite': {
+                        'is_required': True,
+                    },
+                },
+            )
+        suite_dict = {
+            'name': constants.TEST_SUITE_NAME,
+            'project': project.id,
+            'attributes': {custom_attribute_name: None},
+        }
+        response = superuser_client.send_request(
+            self.view_name_list,
+            suite_dict,
+            HTTPStatus.BAD_REQUEST,
+            RequestType.POST,
+        )
+        with allure.step('Validate error message'):
+            assert response.json()['errors'][0] == FOUND_EMPTY_REQUIRED_CUSTOM_ATTRIBUTES_ERR_MSG.format(
+                [custom_attribute_name],
+            )
+
+    @allure.title('Test suite cannot be created without required attributes')
+    def test_required_attr_not_provided(
+            self,
+            superuser_client,
+            project,
+            custom_attribute_factory,
+    ):
+        with allure.step('Generate custom attribute'):
+            custom_attribute = custom_attribute_factory(
+                project=project,
+                applied_to={
+                    'testsuite': {
+                        'is_required': True,
+                    },
+                },
+            )
+        suite_dict = {
+            'name': constants.TEST_SUITE_NAME,
+            'project': project.id,
+            'attributes': {},
+        }
+        response = superuser_client.send_request(
+            self.view_name_list,
+            suite_dict,
+            HTTPStatus.BAD_REQUEST,
+            RequestType.POST,
+        )
+        with allure.step('Validate error message'):
+            assert response.json()['errors'][0] == MISSING_REQUIRED_CUSTOM_ATTRIBUTES_ERR_MSG.format(
+                [custom_attribute.name],
+            )
 
     @classmethod
     def _validate_copied_objects(

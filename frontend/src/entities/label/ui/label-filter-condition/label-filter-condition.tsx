@@ -22,6 +22,7 @@ export const LabelFilterCondition = ({ value, onChange, disabled = false }: Prop
         })}
         onClick={() => onChange("and")}
         disabled={disabled}
+        data-testid="label-filter-condition-and"
       >
         {t("and").toUpperCase()}
       </Button>
@@ -32,6 +33,7 @@ export const LabelFilterCondition = ({ value, onChange, disabled = false }: Prop
         })}
         onClick={() => onChange("or")}
         disabled={disabled}
+        data-testid="label-filter-condition-or"
       >
         {t("or").toUpperCase()}
       </Button>

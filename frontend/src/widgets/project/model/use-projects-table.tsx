@@ -63,7 +63,13 @@ export const useProjectsTable = () => {
       dataIndex: "icon",
       key: "icon",
       width: 50,
-      render: (text, record) => <ProjectIcon icon={record.icon} name={record.name} />,
+      render: (text, record) => (
+        <ProjectIcon
+          icon={record.icon}
+          name={record.name}
+          dataTestId="administration-table-project-icon"
+        />
+      ),
     },
     {
       title: t("Name"),

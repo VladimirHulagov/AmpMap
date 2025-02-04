@@ -42,7 +42,7 @@ class TestCustomAttributeModel:
 
     @pytest.mark.parametrize(
         'parameter_name', [
-            'project', 'name', 'type', 'is_required', 'is_suite_specific', 'suite_ids', 'content_types',
+            'project', 'name', 'type',
         ],
     )
     def test_not_null_constraint(self, parameter_name, custom_attribute_factory):

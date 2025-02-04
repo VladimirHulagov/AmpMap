@@ -21,7 +21,7 @@ export const useResizebleBlock = ({
   direction = "right",
   updater,
 }: Props) => {
-  const [value, update] = useCacheState(`${key}-width`, defaultWidth)
+  const [value, update] = useCacheState(`${key}-width`, defaultWidth, Number)
   const updateCursor = () => {
     document.body.style.cursor = "ew-resize"
     document.body.style.userSelect = "none"
@@ -42,8 +42,9 @@ export const useResizebleBlock = ({
     const styles = window.getComputedStyle(element)
     const w = parseInt(styles.width, 10)
 
-    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-      const offset = direction === "right" ? e.clientX - startPosX : startPosX - e.clientX
+    const handleMouseMove = (moveEvent: React.MouseEvent<HTMLDivElement>) => {
+      const offset =
+        direction === "right" ? moveEvent.clientX - startPosX : startPosX - moveEvent.clientX
       const calcNewWidth = w + offset
 
       const calcMaxWidth = maxAsPercent ? (document.body.clientWidth / 100) * maxWidth : maxWidth
@@ -76,6 +77,6 @@ export const useResizebleBlock = ({
   return {
     handleMouseDown,
     setWidth,
-    width: Number(value),
+    width: value,
   }
 }

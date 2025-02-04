@@ -73,6 +73,9 @@ class ParameterSerializer(ModelSerializer):
 
 class TestPlanUpdateSerializer(ModelSerializer):
     test_cases = ListField(child=IntegerField(required=False, allow_null=False), required=False, default=list)
+    attachments = PrimaryKeyRelatedField(
+        many=True, queryset=AttachmentSelector().attachment_list(), required=False,
+    )
 
     class Meta:
         model = TestPlan
@@ -88,6 +91,7 @@ class TestPlanUpdateSerializer(ModelSerializer):
             'project',
             'attributes',
             'description',
+            'attachments',
         )
         validators = [
             partial(
@@ -323,6 +327,7 @@ class TestPlanOutputSerializer(ModelSerializer):
     title = CharField(read_only=True)
     parent = ParentMinSerializer(read_only=True)
     has_children = BooleanField(read_only=True)
+    attachments = AttachmentSerializer(many=True, read_only=True)
 
     class Meta:
         model = TestPlan
@@ -342,6 +347,7 @@ class TestPlanOutputSerializer(ModelSerializer):
             'title',
             'has_children',
             'attributes',
+            'attachments',
         )
 
     @classmethod
@@ -456,6 +462,7 @@ class TestPlanCopySerializer(Serializer):
 class TestPlanMinSerializer(ModelSerializer):
     url = HyperlinkedIdentityField(view_name='api:v2:testplan-detail')
     parent = ParentMinSerializer(read_only=True)
+    attachments = PrimaryKeyRelatedField(many=True, required=False, read_only=True)
 
     class Meta:
         model = TestPlan

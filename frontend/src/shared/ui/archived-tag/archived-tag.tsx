@@ -30,6 +30,7 @@ export const ArchivedTag = ({ className, style, size = "md", ...props }: Props) 
           fontSize: sizeStyles[size] / 2,
           ...style,
         }}
+        data-testid="archived-tag"
         {...props}
       >
         A
