@@ -13,7 +13,7 @@ import styles from "./styles.module.css"
 
 interface Props {
   barType: SegmentedValue
-  testPlanId?: string
+  testPlanId?: number
   setAttribute: (attribute: string) => void
   dateHistogram: {
     start: Dayjs
@@ -32,20 +32,20 @@ export const TestPlanHistogramFilters = ({
   setBarType,
 }: Props) => {
   const { t } = useTranslation()
-  const { userConfig, updateConfig } = useContext(MeContext)!
+  const { userConfig, updateConfig } = useContext(MeContext)
   const [attributeValue, setAttributeValue] = useState(
-    userConfig.ui.graph_base_bar_attribute_input ?? ""
+    userConfig?.ui?.graph_base_bar_attribute_input ?? ""
   )
   const testPlanIdConfigKey = testPlanId ?? "root"
   const updateUserDateConfig = async (value: string, field: "start_date" | "end_date") => {
     await updateConfig({
       ...userConfig,
       ui: {
-        ...userConfig.ui,
+        ...userConfig?.ui,
         test_plan: {
-          ...userConfig.ui.test_plan,
+          ...userConfig?.ui?.test_plan,
           [testPlanIdConfigKey]: {
-            [field]: value ?? userConfig.ui.test_plan[testPlanIdConfigKey][field],
+            [field]: value ?? userConfig?.ui?.test_plan[testPlanIdConfigKey][field],
           },
         },
       },
@@ -71,7 +71,7 @@ export const TestPlanHistogramFilters = ({
       await updateConfig({
         ...userConfig,
         ui: {
-          ...userConfig.ui,
+          ...userConfig?.ui,
           graph_base_bar_attribute_input: "",
         },
       })
@@ -85,7 +85,7 @@ export const TestPlanHistogramFilters = ({
     await updateConfig({
       ...userConfig,
       ui: {
-        ...userConfig.ui,
+        ...userConfig?.ui,
         graph_base_bar_attribute_input: attributeValue,
       },
     })
@@ -99,9 +99,9 @@ export const TestPlanHistogramFilters = ({
     await updateConfig({
       ...userConfig,
       ui: {
-        ...userConfig.ui,
+        ...userConfig?.ui,
         test_plan: {
-          ...userConfig.ui.test_plan,
+          ...userConfig?.ui?.test_plan,
           [testPlanIdConfigKey]: undefined,
         },
       },
@@ -113,7 +113,7 @@ export const TestPlanHistogramFilters = ({
     await updateConfig({
       ...userConfig,
       ui: {
-        ...userConfig.ui,
+        ...userConfig?.ui,
         graph_base_bar_type: value,
       },
     })
@@ -123,7 +123,7 @@ export const TestPlanHistogramFilters = ({
     return dateHistogram.start.isSameOrAfter(current)
   }
 
-  const hasUserDataConfig = !!userConfig.ui?.test_plan?.[testPlanIdConfigKey]
+  const hasUserDataConfig = !!userConfig?.ui?.test_plan?.[testPlanIdConfigKey]
 
   return (
     <div className={styles.filtersBlock}>
@@ -140,6 +140,7 @@ export const TestPlanHistogramFilters = ({
           needConfirm={false}
           maxDate={dateHistogram.end}
           allowClear={false}
+          data-testid="test-plan-histogram-start-date-picker"
         />
         <DatePicker
           onChange={(date) => handleDatePickerChange(date as unknown as Dayjs, "end_date")}
@@ -154,6 +155,7 @@ export const TestPlanHistogramFilters = ({
           needConfirm={false}
           allowClear={false}
           disabledDate={disabledDate}
+          data-testid="test-plan-histogram-end-date-picker"
         />
         {hasUserDataConfig && (
           <Button onClick={handleResetUserDateConfig} id="reset-date-user-config">
@@ -162,7 +164,10 @@ export const TestPlanHistogramFilters = ({
         )}
       </Flex>
       {barType === "by_attr" && (
-        <div style={{ display: "flex", flexDirection: "column", position: "relative" }}>
+        <div
+          style={{ display: "flex", flexDirection: "column", position: "relative" }}
+          data-testid="test-plan-histogram-filters-by-attr"
+        >
           <span className={styles.byAttrLabel}>{t("Filter by test result attribute")}</span>
           <Input.Search
             style={{ width: 240 }}
@@ -180,11 +185,11 @@ export const TestPlanHistogramFilters = ({
         options={[
           {
             value: "by_time",
-            icon: <ClockCircleOutlined />,
+            icon: <ClockCircleOutlined data-testid="histogram-by-time-icon" />,
           },
           {
             value: "by_attr",
-            icon: <BracesIcon />,
+            icon: <BracesIcon data-testid="histogram-by-attr-icon" />,
           },
         ]}
         onChange={handleBarTypeChange}

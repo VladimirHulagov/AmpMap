@@ -15,8 +15,8 @@ interface Props {
 export const TestPlanPieEstimatesFilters = ({ setPeriod, value }: Props) => {
   const { t } = useTranslation()
 
-  const handleChange = (value: string) => {
-    setPeriod(value as EstimatePeriod)
+  const handleChange = (newValue: string) => {
+    setPeriod(newValue as EstimatePeriod)
   }
 
   return (
@@ -26,6 +26,7 @@ export const TestPlanPieEstimatesFilters = ({ setPeriod, value }: Props) => {
         display: "flex",
         alignItems: "center",
       }}
+      data-testid="test-plan-pie-estimates-filters"
     >
       <Select
         placeholder={t("Please select")}

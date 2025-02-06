@@ -11,7 +11,7 @@ import { testPlanApi, testPlanStatusesInvalidate } from "entities/test-plan/api"
 import { invalidatesList, providesList } from "shared/libs"
 
 const invalidateListTags = (
-  testPlanId: number,
+  testPlanId: number | string,
   testId: number,
   dispatch: ThunkDispatch<unknown, unknown, AnyAction>
 ) => {
@@ -38,7 +38,7 @@ export const resultApi = createApi({
       }),
       providesTags: (result) => providesList(result, "Result"),
     }),
-    updateResult: builder.mutation<Result, { id: Id; testPlanId: Id; body: ResultUpdate }>({
+    updateResult: builder.mutation<Result, { id: Id; testPlanId: Id | null; body: ResultUpdate }>({
       query: ({ id, body }) => ({
         url: `${rootPath}/${id}/`,
         method: "PATCH",
@@ -47,7 +47,7 @@ export const resultApi = createApi({
       async onQueryStarted({ testPlanId }, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled
-          invalidateListTags(testPlanId, data.test, dispatch)
+          invalidateListTags(testPlanId ?? "LIST", data.test, dispatch)
           dispatch(testApi.util.invalidateTags([{ type: "Test", id: "LIST" }]))
           dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanTest", id: "LIST" }]))
         } catch (error) {
@@ -56,7 +56,7 @@ export const resultApi = createApi({
       },
       invalidatesTags: (result, error) => (!error ? invalidatesList(result, "Result") : []),
     }),
-    createResult: builder.mutation<Result, { testPlanId: Id; body: ResultCreate }>({
+    createResult: builder.mutation<Result, { testPlanId: Id | null; body: ResultCreate }>({
       query: ({ body }) => ({
         url: `${rootPath}/`,
         method: "POST",
@@ -65,7 +65,7 @@ export const resultApi = createApi({
       async onQueryStarted({ testPlanId }, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled
-          invalidateListTags(testPlanId, data.test, dispatch)
+          invalidateListTags(testPlanId ?? "LIST", data.test, dispatch)
           dispatch(testApi.util.invalidateTags([{ type: "Test", id: "LIST" }]))
           dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanTest", id: "LIST" }]))
         } catch (error) {

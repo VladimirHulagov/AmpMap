@@ -106,7 +106,7 @@ export const LabelFilter = ({ value, onChange }: Props) => {
           const color = hasInLabels ? colors.accent : hasInNotLabels ? "line-through" : undefined
 
           return (
-            <li key={label.id}>
+            <li key={label.id} data-testid={`label-filter-label-${label.name}`}>
               <Label content={label.name} color={color} onClick={() => handleLableClick(label)} />
             </li>
           )
@@ -117,6 +117,7 @@ export const LabelFilter = ({ value, onChange }: Props) => {
           type="button"
           className={classNames("link-button", styles.showMore)}
           onClick={handleShowMore}
+          data-testid="label-filter-show-more"
         >
           {t("Show more")}
         </button>

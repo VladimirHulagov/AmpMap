@@ -16,8 +16,8 @@ export const TextArea: React.FC<CustomTextAreaProps> = forwardRef(
     const [tab, setTab] = useState<ViewTab>("md")
     const [textAreaHeight, setTextAreaHeight] = useState<number | null>(null)
 
-    const handleTabClick = (tab: ViewTab) => {
-      setTab(tab)
+    const handleTabClick = (newTab: ViewTab) => {
+      setTab(newTab)
     }
 
     useEffect(() => {

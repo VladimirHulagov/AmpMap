@@ -33,12 +33,14 @@ from typing import Any, Iterable
 
 from django.db import transaction
 
+from testy.core.services.attachments import AttachmentService
 from testy.tests_description.selectors.cases import TestCaseSelector
 from testy.tests_representation.models import Parameter, TestPlan
 from testy.tests_representation.services.tests import TestService
 
 _TEST_CASES = 'test_cases'
 _PARENT = 'parent'
+_ATTACHMENTS = 'attachments'
 
 
 class TestPlanService:
@@ -52,6 +54,8 @@ class TestPlanService:
         if test_cases_ids := data.get(_TEST_CASES, []):
             test_cases = TestCaseSelector.cases_by_ids(test_cases_ids, 'pk')
             TestService().bulk_test_create([test_plan], test_cases)
+        for attachment in data.get(_ATTACHMENTS, []):
+            AttachmentService().attachment_set_content_object(attachment, test_plan)
         return test_plan
 
     @transaction.atomic
@@ -73,6 +77,9 @@ class TestPlanService:
         if test_cases_ids := data.get('test_cases', []):
             test_cases = TestCaseSelector.cases_by_ids(test_cases_ids, 'pk')
             TestService().bulk_test_create(created_plans, test_cases)
+        for test_plan in created_plans:
+            for attachment in data.get(_ATTACHMENTS, []):
+                AttachmentService().attachment_set_content_object(attachment, test_plan)
         return created_plans
 
     @transaction.atomic
@@ -94,6 +101,9 @@ class TestPlanService:
             if create_test_case_ids := new_test_case_ids - old_test_case_ids:
                 cases = TestCaseSelector.cases_by_ids(create_test_case_ids, 'pk')
                 TestService().bulk_test_create([test_plan], cases)
+        attachments = data.get(_ATTACHMENTS, [])
+        AttachmentService().attachments_update_content_object(attachments, test_plan)
+        test_plan.refresh_from_db(fields=[_ATTACHMENTS])
         return test_plan
 
     @classmethod

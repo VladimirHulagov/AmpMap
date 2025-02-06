@@ -13,7 +13,7 @@ export const MarkdownViewerTabs = ({ id, tab, handleTabClick }: Props) => {
     <div className={styles.tabs}>
       <button
         id={`${id}-tabs-md`}
-        className={classNames(styles.tab, styles.firstTab, {
+        className={classNames(styles.tab, {
           [styles.active]: tab === "md",
         })}
         type="button"

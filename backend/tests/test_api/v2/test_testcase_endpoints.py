@@ -718,7 +718,15 @@ class TestCaseEndpoints:
         custom_attribute_value = 'some_value'
         expected_number_of_cases = 1
         with allure.step('Create custom attribute'):
-            custom_attribute_factory(project=project, name=custom_attribute_name, is_required=True)
+            custom_attribute_factory(
+                project=project,
+                name=custom_attribute_name,
+                applied_to={
+                    'testcase': {
+                        'is_required': True,
+                    },
+                },
+            )
         case_dict = {
             'name': constants.TEST_CASE_NAME,
             'project': project.id,
@@ -745,7 +753,15 @@ class TestCaseEndpoints:
     ):
         custom_attribute_name = 'awesome_attribute'
         with allure.step('Create custom attribute'):
-            custom_attribute_factory(project=project, name=custom_attribute_name, is_required=True)
+            custom_attribute_factory(
+                project=project,
+                name=custom_attribute_name,
+                applied_to={
+                    'testcase': {
+                        'is_required': True,
+                    },
+                },
+            )
         case_dict = {
             'name': constants.TEST_CASE_NAME,
             'project': project.id,
@@ -776,7 +792,14 @@ class TestCaseEndpoints:
         custom_attribute_factory,
     ):
         with allure.step('Generate custom attribute'):
-            custom_attribute = custom_attribute_factory(project=project, is_required=True)
+            custom_attribute = custom_attribute_factory(
+                project=project,
+                applied_to={
+                    'testcase': {
+                        'is_required': True,
+                    },
+                },
+            )
         case_dict = {
             'name': constants.TEST_CASE_NAME,
             'project': project.id,
@@ -808,9 +831,14 @@ class TestCaseEndpoints:
         custom_attribute_factory,
     ):
         expected_number_of_cases = 1
-        test_case_content_type_id = ContentType.objects.get_for_model(TestCase).id
-        allowed_content_types.remove(test_case_content_type_id)
-        custom_attribute_factory(project=project, is_required=True, content_types=allowed_content_types)
+        custom_attribute_factory(
+            project=project,
+            applied_to={
+                'testresult': {
+                    'is_required': True,
+                },
+            },
+        )
         case_dict = {
             'name': constants.TEST_CASE_NAME,
             'project': project.id,

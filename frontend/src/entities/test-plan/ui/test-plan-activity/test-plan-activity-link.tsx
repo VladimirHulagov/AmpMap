@@ -14,8 +14,13 @@ export const TestPlanActivityLink = ({
   isVisibleSeparator,
 }: TestPlanActivityLinkProps) => {
   return (
-    <div>
-      <Link to={`/projects/${projectId}/plans/${planId}`}>{title}</Link>
+    <div data-testid={`test-plan-activity-link-container-${title}`}>
+      <Link
+        to={`/projects/${projectId}/plans/${planId}`}
+        data-testid={`test-plan-activity-link-${title}`}
+      >
+        {title}
+      </Link>
       {isVisibleSeparator && <span className="ant-breadcrumb-separator">/</span>}
     </div>
   )

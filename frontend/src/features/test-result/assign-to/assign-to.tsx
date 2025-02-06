@@ -55,7 +55,11 @@ export const AssignTo = ({ onSuccess }: Props) => {
                 {t("Assign To")}
               </Button>
               {!isAssignetMe && (
-                <button className={styles.assignToMe} onClick={handleAssignToMe}>
+                <button
+                  className={styles.assignToMe}
+                  onClick={handleAssignToMe}
+                  data-testid="test-detail-assign-to-me"
+                >
                   {t("Assign To Me")}
                 </button>
               )}

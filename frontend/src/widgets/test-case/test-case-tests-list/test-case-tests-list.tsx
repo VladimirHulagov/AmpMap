@@ -116,7 +116,7 @@ export const TestCaseTestsList = ({ testCase, isShowArchive }: Props) => {
   ]
 
   const handleChange: TableProps<TestsWithPlanBreadcrumbs>["onChange"] = (
-    pagination: TablePaginationConfig,
+    _: TablePaginationConfig,
     filters: Record<string, FilterValue | null>,
     sorter
   ) => {

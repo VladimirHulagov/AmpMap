@@ -47,6 +47,7 @@ from testy.tests_description.validators import (
     CasesCopyProjectValidator,
     EstimateValidator,
     TestCaseCustomAttributeValuesValidator,
+    TestSuiteCustomAttributeValuesValidator,
 )
 from testy.users.api.v2.serializers import UserSerializer
 from testy.utilities.tree import get_breadcrumbs_treeview
@@ -279,7 +280,7 @@ class TestSuiteBaseSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TestSuite
-        fields = ('id', 'name', 'parent', 'project', 'url', 'description', 'suite_path')
+        fields = ('id', 'name', 'parent', 'project', 'url', 'description', 'suite_path', 'attributes')
 
 
 class TestSuiteCopyOutputSerializer(TestSuiteBaseSerializer):
@@ -296,7 +297,7 @@ class TestSuiteSerializer(TestSuiteBaseSerializer):
     class Meta:
         model = TestSuite
         fields = TestSuiteBaseSerializer.Meta.fields + ('test_cases',)
-        validators = [RecursionValidator(TestSuite)]
+        validators = [RecursionValidator(TestSuite), TestSuiteCustomAttributeValuesValidator()]
 
 
 class TestSuiteOutputSerializer(TestSuiteBaseSerializer):

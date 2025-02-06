@@ -19,6 +19,7 @@ export const SavedFilters = ({ options, value, onChange }: Props) => {
       defaultValue={value}
       value={value ?? t("Saved Filters")}
       rootClassName={styles.selectRoot}
+      data-testid="saved-filters-select"
     />
   )
 }

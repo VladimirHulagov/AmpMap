@@ -5,8 +5,8 @@ import { ChangeEvent, useContext, useRef } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate, useParams, useSearchParams } from "react-router-dom"
 
-import { CreateSuite } from "features/suite"
-import { CreateTestPlan } from "features/test-plan"
+import { ChangeTestSuite } from "features/suite"
+import { ChangeTestPlan } from "features/test-plan"
 
 import { ProjectContext } from "pages/project/project-layout"
 
@@ -65,8 +65,8 @@ export const Treebar = () => {
     minWidth: MIN_WITH_TREE,
     maxWidth: MAX_WITH_TREE_PERCENT,
     maxAsPercent: true,
-    updater: (width: number) => {
-      updateTreeSettings({ collapsed: width < 200 })
+    updater: (newWidth: number) => {
+      updateTreeSettings({ collapsed: newWidth < 200 })
     },
   })
 
@@ -138,7 +138,12 @@ export const Treebar = () => {
                 </Typography.Title>
               </Flex>
               <div className={styles.backBlock}>
-                <button className={styles.backBtn} type="button" onClick={handleCollapsedTreeBar}>
+                <button
+                  className={styles.backBtn}
+                  type="button"
+                  onClick={handleCollapsedTreeBar}
+                  data-testid="treebar-back-button"
+                >
                   <BackIcon width={24} height={24} />
                 </button>
               </div>
@@ -153,26 +158,29 @@ export const Treebar = () => {
               })}
             >
               {activeTab === "suites" ? (
-                <CreateSuite
+                <ChangeTestSuite
+                  type="create"
                   size={IS_MINIFY ? "small" : "default"}
                   colorType="primary"
-                  onSubmit={(newSuite) => {
-                    treebar.current?.refetchNodeBy((node) => node.id === newSuite.parent?.id)
-                  }}
                 />
               ) : (
-                <CreateTestPlan
+                <ChangeTestPlan
+                  type="create"
                   size={IS_MINIFY ? "small" : "default"}
                   colorType="primary"
-                  onSubmit={(newPlan) => {
-                    treebar.current?.refetchNodeBy((node) => node.id === newPlan.parent?.id)
-                  }}
                 />
               )}
             </div>
           </div>
           <div className={styles.searchBlock}>
-            <Input.Search placeholder={t("Search")} value={searchText} onChange={handleSearch} />
+            <div className={styles.searchInputWrapper} data-testid="treebar-search-input-wrapper">
+              <Input.Search
+                placeholder={t("Search")}
+                value={searchText}
+                onChange={handleSearch}
+                data-testid="treebar-search-input"
+              />
+            </div>
             {!IS_MINIFY && activeTab && (
               <Tooltip title={t("Filter & sort")}>
                 <Popover
@@ -184,6 +192,7 @@ export const Treebar = () => {
                   <Button
                     style={{ minWidth: 32 }}
                     icon={<FilterIcon width={24} height={24} color="var(--y-sky-60)" />}
+                    data-testid="treebar-filter-button"
                   />
                 </Popover>
               </Tooltip>
@@ -193,12 +202,13 @@ export const Treebar = () => {
                 style={{ minWidth: 32 }}
                 icon={<CollapseIcon width={18} height={18} color="var(--y-sky-60)" />}
                 onClick={handleCloseAll}
+                data-testid="treebar-collapse-all-button"
               />
             </Tooltip>
           </div>
         </div>
         {activeTab && !treeSettings.collapsed && (
-          <div className={styles.treeViewBlock}>
+          <div className={styles.treeViewBlock} data-testid={`tree-view-${activeTab}`}>
             <LazyTreeView
               // @ts-ignore // TODO fix forward ref type
               ref={treebar}

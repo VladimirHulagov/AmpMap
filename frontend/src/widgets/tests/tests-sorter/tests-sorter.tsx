@@ -42,7 +42,9 @@ export const TestsSorter = () => {
         content={
           <Flex gap={8} vertical style={{ minWidth: 200 }}>
             <Divider orientation="left" style={{ margin: 0 }} orientationMargin={0}>
-              <Typography.Text type="secondary">{t("Sort by")}</Typography.Text>
+              <Typography.Text type="secondary" data-testid="tests-sorter-sort-by-title">
+                {t("Sort by")}
+              </Typography.Text>
             </Divider>
             <Radio.Group
               onChange={(value) => {
@@ -50,27 +52,39 @@ export const TestsSorter = () => {
               }}
               value={sortBy}
               defaultValue={SORTER_OPTIONS[1].value}
+              data-testid="tests-sorter-sort-by-group"
             >
               <Space direction="vertical">
                 {SORTER_OPTIONS.map((option, index) => (
-                  <Radio key={index} value={option.value}>
+                  <Radio
+                    key={index}
+                    value={option.value}
+                    data-testid={`tests-sorter-sort-by-${option.value}`}
+                  >
                     {option.label}
                   </Radio>
                 ))}
               </Space>
             </Radio.Group>
             <Divider orientation="left" style={{ margin: "4px 0" }} orientationMargin={0}>
-              <Typography.Text type="secondary">{t("Order by")}</Typography.Text>
+              <Typography.Text type="secondary" data-testid="tests-sorter-order-by-title">
+                {t("Order by")}
+              </Typography.Text>
             </Divider>
             <Radio.Group
               onChange={(value) => {
                 handleOrdering(value.target.value as "asc" | "desc")
               }}
               value={orderBy}
+              data-testid="tests-sorter-order-by-group"
             >
               <Space direction="vertical">
-                <Radio value="asc">{t("Ascending")}</Radio>
-                <Radio value="desc">{t("Descending")}</Radio>
+                <Radio value="asc" data-testid="tests-sorter-order-by-asc">
+                  {t("Ascending")}
+                </Radio>
+                <Radio value="desc" data-testid="tests-sorter-order-by-desc">
+                  {t("Descending")}
+                </Radio>
               </Space>
             </Radio.Group>
           </Flex>
@@ -79,7 +93,11 @@ export const TestsSorter = () => {
         trigger="click"
         placement="bottom"
       >
-        <Button style={{ minWidth: 32 }} icon={<SorterIcon color="var(--y-sky-60)" />} />
+        <Button
+          style={{ minWidth: 32 }}
+          icon={<SorterIcon color="var(--y-sky-60)" />}
+          data-testid="tests-sorter-button"
+        />
       </Popover>
     </Tooltip>
   )

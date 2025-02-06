@@ -17,13 +17,20 @@ export const TestPlanActivityTable = ({
   return (
     <ul style={{ paddingLeft: 0 }}>
       {Object.entries(testPlanActivity.data.results).map(([dayStr, item], index) => (
-        <li style={{ marginBottom: 24, listStyle: "none" }} key={`${index}_${dayStr}`}>
-          <Typography.Paragraph strong>{dayjs(dayStr).format("D MMMM YYYY")}</Typography.Paragraph>
+        <li
+          style={{ marginBottom: 24, listStyle: "none" }}
+          key={`${index}_${dayStr}`}
+          data-testid={`test-plan-activity-table-group-${dayStr}`}
+        >
+          <Typography.Paragraph strong data-testid={`test-plan-activity-table-title-${dayStr}`}>
+            {dayjs(dayStr).format("D MMMM YYYY")}
+          </Typography.Paragraph>
           <Table
             columns={testPlanActivity.columns}
             dataSource={item}
             rowKey="action_timestamp"
             pagination={false}
+            data-testid={`test-plan-activity-table-${dayStr}`}
           />
         </li>
       ))}

@@ -85,6 +85,7 @@ class TestPlan(LtreeBaseModel, TestyArchiveMixin):
     description = models.TextField('description', default='', blank=True)
     comments = GenericRelation(Comment)
     attributes = models.JSONField(default=dict, blank=True)
+    attachments = GenericRelation(Attachment)
     objects: LtreeManager
 
     class Meta:

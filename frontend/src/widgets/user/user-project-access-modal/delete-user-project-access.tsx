@@ -39,7 +39,7 @@ export const DeleteUsetProjectAccess = ({ user }: Props) => {
 
   return (
     <Button
-      id="delete-user-details"
+      data-testid={`${user.username}-delete-user-project-access`}
       icon={<DeleteOutlined />}
       shape="circle"
       danger
@@ -49,6 +49,8 @@ export const DeleteUsetProjectAccess = ({ user }: Props) => {
           okText: t("Delete"),
           cancelText: t("Cancel"),
           onOk: handleModalConfirm,
+          okButtonProps: { "data-testid": "delete-user-button-confirm" },
+          cancelButtonProps: { "data-testid": "delete-user-button-cancel" },
         })
       }}
     />

@@ -12,12 +12,8 @@ interface CustomAttribute {
   project: number
   type: number
   name: string
-  is_required: boolean
-  is_suite_specific: boolean
   is_deleted: boolean
-  suite_ids: number[]
-  content_types: number[]
-  status_specific?: number[]
+  applied_to: CustomAttributeAppliedTo
 }
 
 interface GetCustomAttributesParams {
@@ -25,15 +21,46 @@ interface GetCustomAttributesParams {
   test?: number
 }
 
+interface CustomAttributeAppliedItemBase {
+  is_active: boolean
+  is_required: boolean
+}
+
+interface CustomAttributeAppliedItemTestCase extends CustomAttributeAppliedItemBase {
+  is_active: boolean
+  is_required: boolean
+  is_suite_specific: boolean
+  suite_ids: number[]
+}
+
+interface CustomAttributeAppliedItemTestResult extends CustomAttributeAppliedItemBase {
+  is_required: boolean
+  is_suite_specific: boolean
+  suite_ids: number[]
+  status_specific: number[]
+}
+
+type CustomAttributeModelType = "testresult" | "testcase" | "testplan" | "testsuite"
+
+interface CustomAttributeAppliedToUpdate {
+  testresult: CustomAttributeAppliedItemTestResult
+  testcase: CustomAttributeAppliedItemTestCase
+  testplan: CustomAttributeAppliedItemBase
+  testsuite: CustomAttributeAppliedItemBase
+}
+
+interface CustomAttributeAppliedTo {
+  testresult: Omit<CustomAttributeAppliedItemTestResult, "is_suite_specific">
+  testcase: Omit<CustomAttributeAppliedItemTestCase, "is_suite_specific">
+  testplan: CustomAttributeAppliedItemBase
+  testsuite: CustomAttributeAppliedItemBase
+}
+
 interface CustomAttributeUpdate {
   project: number
   name: string
   type: number
-  content_types: number[]
-  is_required?: boolean
-  is_suite_specific?: boolean
-  suite_ids?: number[]
-  status_specific?: number[]
+  applied_to: CustomAttributeAppliedToUpdate
 }
 
 type CustomAttributeTypes = "Text" | "List" | "JSON"
@@ -48,6 +75,8 @@ interface CustomAttributeContentTypeItemResponse {
 type CustomAttributeContentTypesResponse = CustomAttributeContentTypeItemResponse[]
 
 interface CustomAttributeContentType {
-  label: string
-  value: number
+  id: number
+  app_label: string
+  model: CustomAttributeModelType
+  name: string
 }

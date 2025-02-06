@@ -129,6 +129,10 @@
   gap: 8px;
 }
 
+.searchInputWrapper {
+  width: 100%;
+}
+
 .treeViewBlock {
   display: flex;
   position: relative;

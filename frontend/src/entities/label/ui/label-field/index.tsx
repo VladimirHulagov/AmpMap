@@ -16,7 +16,7 @@ export const LabelField = ({ title, labels }: LabelFieldProps) => {
       <Divider orientation="left" style={{ margin: 0 }} orientationMargin={0}>
         {title}
       </Divider>
-      <ul className={styles.list}>
+      <ul className={styles.list} data-testid="labels-list">
         {labels.map((label) => (
           <li key={label.id}>
             <Label content={label.name} color={colors.accent} />

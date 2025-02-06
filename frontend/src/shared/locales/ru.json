@@ -359,5 +359,12 @@
   "Test Case Created At": "Дата создания Тест Кейса",
   "Test Created At": "Дата создания Теста",
   "Unsaved Changes": "Несохранённые изменения",
-  "Not supported yet": "Не поддерживается в этой версии"
+  "Result Status": "Статус Результата",
+  "No custom attributes": "Нет кастомных аттрибутов",
+  "required": "обязательно",
+  "Not supported yet": "Не поддерживается в этой версии",
+  "Not Assigned": "Не назначено",
+  "At least one applied to must be active": "Необходимо выбрать хотя бы один активным",
+  "Attribute name": "Имя аттрибута",
+  "Copy link": "Скопировать ссылку"
 }

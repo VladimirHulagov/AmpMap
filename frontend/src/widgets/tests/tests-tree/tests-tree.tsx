@@ -14,7 +14,7 @@ import { TreeTable, TreeTableLoadMore } from "shared/ui"
 import { TestsTreeContext } from "./tests-tree-provider"
 
 interface Props {
-  testPlanId?: string | null
+  testPlanId?: number | null
 }
 
 export const TREE_KEY = "tests-tree"

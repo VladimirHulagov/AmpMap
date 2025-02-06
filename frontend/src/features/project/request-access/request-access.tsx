@@ -59,6 +59,8 @@ export const RequestProjectAccess = ({ project, type = "default" }: Props) => {
           onOk: handleRequestAccess,
           cancelText: t("Cancel"),
           okText: t("Send"),
+          okButtonProps: { "data-testid": "request-access-button-confirm" },
+          cancelButtonProps: { "data-testid": "request-access-button-cancel" },
         })
       }
     >

@@ -12,6 +12,11 @@ import {
 import { Navigate } from "react-router-dom"
 import { Main } from "widgets"
 
+import { ChangeTestSuiteView } from "features/suite"
+import { CreateTestCaseView } from "features/test-case/create-test-case/create-test-case-view"
+import { EditTestCaseView } from "features/test-case/edit-test-case/edit-test-case-view"
+import { ChangeTestPlanView } from "features/test-plan"
+
 import { ProjectDetailsAccessManagementPage } from "pages/administration/projects/project-details/access-management"
 import { ProjectDetailsSettingsPage } from "pages/administration/projects/project-details/settings"
 import { ProjectDetailsStatusesPage } from "pages/administration/projects/project-details/statuses"
@@ -25,17 +30,22 @@ import {
 import {
   ProjectLayout,
   ProjectMainPage,
-  TestPlanActivityPage,
-  TestPlansPage,
-  TestSuitesPage,
+  TestPlanActivityTab,
+  TestPlanLayout,
+  TestPlansAttachmentsTab,
+  TestPlansCustomAttributesTab,
+  TestPlansOverviewTab,
+  TestSuiteLayout,
+  TestSuitesAttachmentsTab,
+  TestSuitesCustomAttributesTab,
+  TestSuitesOverviewTab,
 } from "pages/project"
 
+import { config } from "shared/config"
 import { getLang } from "shared/libs"
 import "shared/styles/global.css"
 
 import { RequireAuth } from "./entities/auth/ui/require-auth"
-import { CreateTestCaseView } from "./features/test-case/create-test-case/create-test-case-view"
-import { EditTestCaseView } from "./features/test-case/edit-test-case/edit-test-case-view"
 import { ProjectsMain } from "./pages/administration/projects"
 import { ProjectDetailsCustomAttributesPage } from "./pages/administration/projects/project-details/custom-attributes"
 import { ProjectDetailsLabelsPage } from "./pages/administration/projects/project-details/labels"
@@ -47,6 +57,10 @@ import { DashboardPage } from "./pages/dashboard"
 import { LogoutPage } from "./pages/logout/logout"
 import { ProfilePage } from "./pages/profile/profile-page"
 import { ProjectOverviewPage } from "./pages/project/overview/overview"
+
+if (config.debugCss) {
+  import("shared/styles/debug.css")
+}
 
 dayjs.extend(isToday)
 dayjs.extend(updateLocale)
@@ -72,15 +86,40 @@ const router = createBrowserRouter(
 
               <Route element={<ProjectMainPage />}>
                 <Route path="suites">
-                  <Route index element={<TestSuitesPage />} />
-                  <Route path=":testSuiteId" element={<TestSuitesPage />} />
+                  <Route element={<TestSuiteLayout />}>
+                    <Route index element={<TestSuitesOverviewTab />} />
+                    <Route path=":testSuiteId" element={<TestSuitesOverviewTab />} />
+                    <Route
+                      path=":testSuiteId/custom-attributes"
+                      element={<TestSuitesCustomAttributesTab />}
+                    />
+                    <Route path=":testSuiteId/attachments" element={<TestSuitesAttachmentsTab />} />
+                  </Route>
+                  <Route path="new-test-suite" element={<ChangeTestSuiteView type="create" />} />
+                  <Route
+                    path=":testSuiteId/edit-test-suite"
+                    element={<ChangeTestSuiteView type="edit" />}
+                  />
                   <Route path=":testSuiteId/new-test-case" element={<CreateTestCaseView />} />
                   <Route path=":testSuiteId/edit-test-case" element={<EditTestCaseView />} />
                 </Route>
+
                 <Route path="plans">
-                  <Route index element={<TestPlansPage />} />
-                  <Route path=":testPlanId" element={<TestPlansPage />} />
-                  <Route path=":testPlanId/activity" element={<TestPlanActivityPage />} />
+                  <Route element={<TestPlanLayout />}>
+                    <Route index element={<TestPlansOverviewTab />} />
+                    <Route path=":testPlanId" element={<TestPlansOverviewTab />} />
+                    <Route path=":testPlanId/activity" element={<TestPlanActivityTab />} />
+                    <Route
+                      path=":testPlanId/custom-attributes"
+                      element={<TestPlansCustomAttributesTab />}
+                    />
+                    <Route path=":testPlanId/attachments" element={<TestPlansAttachmentsTab />} />
+                  </Route>
+                  <Route path="new-test-plan" element={<ChangeTestPlanView type="create" />} />
+                  <Route
+                    path=":testPlanId/edit-test-plan"
+                    element={<ChangeTestPlanView type="edit" />}
+                  />
                 </Route>
               </Route>
             </Route>

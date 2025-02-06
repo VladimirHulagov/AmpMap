@@ -10,19 +10,9 @@ import { MenuProps } from "antd/lib"
 import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
 
-import { useLazyGetTestSuiteAncestorsQuery } from "entities/suite/api"
-
-import { useLazyGetTestPlanAncestorsQuery } from "entities/test-plan/api"
-
-import { CopySuite, CreateSuite, DeleteSuite, EditSuite } from "features/suite"
+import { ChangeTestSuite, CopySuite, DeleteSuite } from "features/suite"
 import { CreateTestCase } from "features/test-case"
-import {
-  ArchiveTestPlan,
-  CopyTestPlan,
-  CreateTestPlan,
-  DeleteTestPlan,
-  EditTestPlan,
-} from "features/test-plan"
+import { ArchiveTestPlan, ChangeTestPlan, CopyTestPlan, DeleteTestPlan } from "features/test-plan"
 
 import { icons } from "shared/assets/inner-icons"
 import { LazyNodeProps, LazyTreeApi } from "shared/libs/tree"
@@ -31,7 +21,6 @@ import {
   refetchNodeAfterArchive,
   refetchNodeAfterCreateOrCopy,
   refetchNodeAfterDelete,
-  refetchNodeAfterEdit,
 } from "./utils"
 
 const { ArchiveIcon } = icons
@@ -54,9 +43,6 @@ export function useTreebarNodeContextMenu(
   props: TestPlanProps | TestSuiteProps
 ): MenuProps["items"] {
   const { t } = useTranslation()
-  const [getAncestorsPlan] = useLazyGetTestPlanAncestorsQuery()
-  const [getAncestorsSuite] = useLazyGetTestSuiteAncestorsQuery()
-
   const refetchParentAfterCreateOrCopy = (updatedEntity: BaseEntity) => {
     refetchNodeAfterCreateOrCopy(props.tree, updatedEntity)
   }
@@ -69,36 +55,18 @@ export function useTreebarNodeContextMenu(
     refetchNodeAfterDelete(props.tree, updatedEntity)
   }
 
-  const refetchParentAfterEdit = (
-    updatedEntity: TestPlan | SuiteResponseUpdate,
-    oldEntity: TestPlan | Suite
-  ) => {
-    const getAncestors = props.type === "suites" ? getAncestorsSuite : getAncestorsPlan
-    const fetchAncestors = (id: number) => {
-      return getAncestors(
-        {
-          id,
-          project: oldEntity.project,
-        },
-        false
-      ).unwrap()
-    }
-
-    refetchNodeAfterEdit(props.tree, updatedEntity, oldEntity, fetchAncestors)
-  }
-
   if (props.type === "plans") {
     return [
       {
         label: (
-          <CreateTestPlan
+          <ChangeTestPlan
+            type="create"
             as={
               <Flex gap={6} align="center">
                 <PlusOutlined style={{ fontSize: 14 }} /> {t("Create child plan")}
               </Flex>
             }
             testPlan={props.data}
-            onSubmit={refetchParentAfterCreateOrCopy}
           />
         ),
         key: "create_child_plan",
@@ -120,7 +88,8 @@ export function useTreebarNodeContextMenu(
       },
       !props.data.is_archive && {
         label: (
-          <EditTestPlan
+          <ChangeTestPlan
+            type="edit"
             as={
               <Flex gap={6} align="center">
                 <EditOutlined style={{ fontSize: 14 }} />
@@ -128,7 +97,6 @@ export function useTreebarNodeContextMenu(
               </Flex>
             }
             testPlan={props.data}
-            onSubmit={refetchParentAfterEdit}
           />
         ),
         key: "edit_plan",
@@ -182,7 +150,8 @@ export function useTreebarNodeContextMenu(
   return [
     {
       label: (
-        <CreateSuite
+        <ChangeTestSuite
+          type="create"
           as={
             <Flex gap={6} align="center">
               <PlusOutlined style={{ fontSize: 14 }} />
@@ -190,7 +159,6 @@ export function useTreebarNodeContextMenu(
             </Flex>
           }
           suite={props.data}
-          onSubmit={refetchParentAfterCreateOrCopy}
         />
       ),
       key: "create_child_suite",
@@ -212,7 +180,8 @@ export function useTreebarNodeContextMenu(
     },
     {
       label: (
-        <EditSuite
+        <ChangeTestSuite
+          type="edit"
           as={
             <Flex gap={6} align="center">
               <EditOutlined style={{ fontSize: 14 }} />
@@ -220,7 +189,6 @@ export function useTreebarNodeContextMenu(
             </Flex>
           }
           suite={props.data}
-          onSubmit={refetchParentAfterEdit}
         />
       ),
       key: "edit_suite",

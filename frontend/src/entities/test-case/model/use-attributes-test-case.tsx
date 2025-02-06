@@ -1,7 +1,4 @@
-import {
-  useGetCustomAttributeContentTypesQuery,
-  useGetCustomAttributesQuery,
-} from "entities/custom-attribute/api"
+import { useGetCustomAttributesQuery } from "entities/custom-attribute/api"
 import { convertAttribute } from "entities/custom-attribute/lib"
 import { useAttributes } from "entities/custom-attribute/model"
 import { useMemo } from "react"
@@ -16,29 +13,23 @@ interface UseAttributesProps {
 export const useAttributesTestCase = ({ mode, setValue }: UseAttributesProps) => {
   const { projectId, testSuiteId } = useParams<ParamProjectId & ParamTestSuiteId>()
 
-  const { data: contentTypes, isLoading: isLoadingContentTypes } =
-    useGetCustomAttributeContentTypesQuery()
   const { data, isLoading: isLoadingCustomAttributes } = useGetCustomAttributesQuery(
     { project: projectId ?? "" },
     { skip: !projectId }
   )
 
   const initAttributes = useMemo(() => {
-    if (!data || !contentTypes) return []
-
-    const contentTypeId = contentTypes?.find((type) => type.label === "Test Case")?.value ?? null
-
-    if (!contentTypeId) return []
+    if (!data) return []
 
     return data
-      .filter((attribute) => attribute.content_types?.includes(contentTypeId))
+      .filter((i) => i.applied_to.testcase)
       .filter((attribute) =>
-        attribute.is_suite_specific && testSuiteId
-          ? attribute.suite_ids.includes(Number(testSuiteId))
+        !!attribute.applied_to.testcase.suite_ids.length && testSuiteId
+          ? attribute.applied_to.testcase.suite_ids.includes(Number(testSuiteId))
           : true
       )
-      .map(convertAttribute)
-  }, [data, contentTypes])
+      .map((i) => convertAttribute({ attribute: i, model: "testcase" }))
+  }, [data])
 
   const handleSetValue = (attributes: Attribute[]) => {
     setValue("attributes", attributes, { shouldDirty: true })
@@ -65,7 +56,7 @@ export const useAttributesTestCase = ({ mode, setValue }: UseAttributesProps) =>
 
   return {
     attributes,
-    isLoading: isLoadingContentTypes || isLoadingCustomAttributes,
+    isLoading: isLoadingCustomAttributes,
     initAttributes,
     setAttributes,
     resetAttributes,

@@ -12,7 +12,10 @@ export const TestPlanActivityFilers = ({
   const { filters, handleChange } = useTestPlanActivityFilters(testPlanActivity)
 
   return (
-    <div style={{ display: "flex", marginBottom: 48, flexDirection: "column" }}>
+    <div
+      style={{ display: "flex", marginBottom: 48, flexDirection: "column" }}
+      data-testid="test-plan-activity-filters"
+    >
       <div
         style={{
           display: "flex",

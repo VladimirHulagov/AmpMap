@@ -28,6 +28,7 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
+from core.constants import CUSTOM_ATTRIBUTE_SUITE_SPECIFIC
 from django.db.models import Q
 from django_filters import rest_framework as filters
 from notifications.models import Notification
@@ -113,8 +114,16 @@ class CustomAttributeFilter(filters.FilterSet):
 
     @classmethod
     def filter_by_suite(cls, queryset, field_name, val):
-        non_suite_specific = queryset.filter(is_suite_specific__exact=False)
-        suite_specific = queryset.filter(**{f'{field_name}__contains': [val]})
+        non_suite_specific_condition = Q()
+        suite_specific_condition = Q()
+        for model_name in CUSTOM_ATTRIBUTE_SUITE_SPECIFIC:
+            non_suite_specific_condition |= Q(**{f'applied_to__{model_name}__{field_name}': []})
+            non_suite_specific_condition |= ~Q(**{f'applied_to__{model_name}__has_key': field_name})
+            suite_specific_condition |= Q(
+                **{f'applied_to__{model_name}__{field_name}__contains': [int(val)]},
+            )
+        non_suite_specific = queryset.filter(non_suite_specific_condition)
+        suite_specific = queryset.filter(suite_specific_condition)
         return non_suite_specific | suite_specific
 
     class Meta:

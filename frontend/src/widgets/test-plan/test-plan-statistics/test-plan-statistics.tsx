@@ -12,12 +12,12 @@ import { TestPlanPieCount } from "./test-plan-pie-count"
 import { TestPlanPieEstimates } from "./test-plan-pie-estimates/test-plan-pie-estimates"
 
 interface Props {
-  testPlanId?: string
+  testPlanId?: number
 }
 
 export const TestPlanStatistics = memo(({ testPlanId }: Props) => {
   const graphsRef = useRef<HTMLDivElement>(null)
-  const { userConfig, updateConfig } = useContext(MeContext)!
+  const { userConfig, updateConfig } = useContext(MeContext)
   const [pieHeight, setPieHeight] = useState(208)
 
   const handlePieHeightChange = (height: number) => {
@@ -34,14 +34,14 @@ export const TestPlanStatistics = memo(({ testPlanId }: Props) => {
     },
   })
 
-  const [segment, setSegment] = useState<SegmentedValue>(userConfig.ui?.graph_base_type || "pie")
+  const [segment, setSegment] = useState<SegmentedValue>(userConfig?.ui?.graph_base_type ?? "pie")
 
   const handleSegmentedChange = async (value: SegmentedValue) => {
     setSegment(value)
     await updateConfig({
       ...userConfig,
       ui: {
-        ...userConfig.ui,
+        ...userConfig?.ui,
         graph_base_type: value,
       },
     })
@@ -56,11 +56,11 @@ export const TestPlanStatistics = memo(({ testPlanId }: Props) => {
           options={[
             {
               value: "pie",
-              icon: <PieChartOutlined />,
+              icon: <PieChartOutlined data-testid="pie-chart-icon" />,
             },
             {
               value: "bar",
-              icon: <BarChartOutlined />,
+              icon: <BarChartOutlined data-testid="bar-chart-icon" />,
             },
           ]}
           onChange={handleSegmentedChange}

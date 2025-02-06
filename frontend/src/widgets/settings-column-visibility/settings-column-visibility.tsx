@@ -37,6 +37,7 @@ const SettingsColumnVisibilityComponent = ({ columns, id, visibilityColumns, onC
           options={options as unknown as CheckboxOptionType<string>[]}
           value={visibilityColumns.map((i) => i.key)}
           onChange={handleChange}
+          data-testid="settings-column-visibility-popover"
         />
       }
       title={

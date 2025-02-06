@@ -58,7 +58,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
-VERSION = '2.0.4'
+VERSION = '2.0.5'
 
 loaded_hosts = os.environ.get('ALLOWED_HOSTS', [])
 csrf_origins = os.environ.get('CSRF_TRUSTED_ORIGINS', [])
@@ -373,3 +373,5 @@ IS_RESULT_EDITABLE = True
 RESULT_EDIT_LIMIT = 60 * 60
 
 DJANGO_NOTIFICATIONS_CONFIG = {'USE_JSONFIELD': True}
+
+PROMETHEUS_MULTIPROC_DIR = os.getenv('prometheus_multiproc_dir')

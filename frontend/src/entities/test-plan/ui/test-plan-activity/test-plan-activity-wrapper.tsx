@@ -25,9 +25,17 @@ export const TestPlanActivityWrapper = () => {
 
   return (
     <div>
-      <Typography.Text style={{ fontSize: 20, marginBottom: 24, display: "block" }}>
+      <Typography.Text
+        style={{ fontSize: 20, marginBottom: 24, display: "block" }}
+        data-testid="test-plan-activity-title"
+      >
         {t("Activity")} -{" "}
-        <Link to={`/projects/${projectId}/plans/${testPlanId}`}>{testPlan.title}</Link>
+        <Link
+          to={`/projects/${projectId}/plans/${testPlanId}`}
+          data-testid="test-plan-activity-title-link"
+        >
+          {testPlan.title}
+        </Link>
       </Typography.Text>
       <TestPlanActivityFilers testPlanActivity={testPlanActivity} />
       <TestPlanActivityTable testPlanActivity={testPlanActivity} />

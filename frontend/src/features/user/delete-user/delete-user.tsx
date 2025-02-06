@@ -24,7 +24,8 @@ export const DeleteUser = ({ user }: { user: User }) => {
 
   return (
     <Button
-      id="delete-user-details"
+      id={`delete-user-details-${user.username}`}
+      data-testid={`delete-user-details-${user.username}`}
       icon={<DeleteOutlined />}
       shape="circle"
       danger
@@ -34,6 +35,8 @@ export const DeleteUser = ({ user }: { user: User }) => {
           okText: t("Delete"),
           cancelText: t("Cancel"),
           onOk: handleModalConfirm,
+          okButtonProps: { "data-testid": "delete-user-button-confirm" },
+          cancelButtonProps: { "data-testid": "delete-user-button-cancel" },
         })
       }}
     />

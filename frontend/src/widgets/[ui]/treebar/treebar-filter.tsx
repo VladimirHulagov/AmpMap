@@ -39,7 +39,7 @@ export const TreebarFilter = ({ activeTab }: Props) => {
   }
 
   return (
-    <Flex gap={8} vertical style={{ minWidth: 200 }}>
+    <Flex gap={8} vertical style={{ minWidth: 200 }} data-testid="treebar-filter-container">
       <Divider orientation="left" style={{ margin: 0 }} orientationMargin={0}>
         <Typography.Text type="secondary">{t("Sort by")}</Typography.Text>
       </Divider>
@@ -49,10 +49,11 @@ export const TreebarFilter = ({ activeTab }: Props) => {
         }}
         value={treeSettings[activeTab].filterBy}
         defaultValue={FILTER_OPTIONS[0].value}
+        data-testid="treebar-filter-group"
       >
         <Space direction="vertical">
           {FILTER_OPTIONS.map((option, index) => (
-            <Radio key={index} value={option.value}>
+            <Radio key={index} value={option.value} data-testid={`treebar-filter-${option.value}`}>
               {option.label}
             </Radio>
           ))}
@@ -64,10 +65,15 @@ export const TreebarFilter = ({ activeTab }: Props) => {
           handleSortBy(value.target.value as "asc" | "desc")
         }}
         value={treeSettings[activeTab].sortBy}
+        data-testid="treebar-filter-sort-by-group"
       >
         <Space direction="vertical">
-          <Radio value="asc">{t("Ascending")}</Radio>
-          <Radio value="desc">{t("Descending")}</Radio>
+          <Radio value="asc" data-testid="treebar-filter-ascending">
+            {t("Ascending")}
+          </Radio>
+          <Radio value="desc" data-testid="treebar-filter-descending">
+            {t("Descending")}
+          </Radio>
         </Space>
       </Radio.Group>
       {activeTab === "plans" && (

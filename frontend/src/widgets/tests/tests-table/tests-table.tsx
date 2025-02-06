@@ -4,7 +4,7 @@ import { memo } from "react"
 import { useTestsTable } from "./use-tests-table"
 
 interface Props {
-  testPlanId?: string
+  testPlanId?: number
 }
 
 export const TestsTable = memo(({ testPlanId }: Props) => {

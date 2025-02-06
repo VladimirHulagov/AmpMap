@@ -135,12 +135,17 @@ class TestPlanSelector:  # noqa: WPS214
 
     @classmethod
     def testplan_list_titled(cls) -> QuerySet[TestPlan]:
-        return cls.annotate_title(cls.testplan_list_raw()).prefetch_related(_PARAMETERS).order_by(_NAME)
+        return (
+            cls
+            .annotate_title(cls.testplan_list_raw())
+            .prefetch_related(_PARAMETERS, 'attachments')
+            .order_by(_NAME)
+        )
 
     @classmethod
     def testplan_list(cls) -> QuerySet[TestPlan]:
         plan_subq = TestPlan.objects.filter(parent=_OUTER_REF_PK)
-        qs = TestPlan.objects.all().prefetch_related(_PARAMETERS).select_related(_PARENT)
+        qs = TestPlan.objects.all().prefetch_related(_PARAMETERS, 'attachments').select_related(_PARENT)
         return cls.annotate_title(qs).annotate(
             has_children=Exists(plan_subq),
         ).order_by(_NAME)
@@ -382,8 +387,8 @@ class TestPlanSelector:  # noqa: WPS214
         return result_data
 
     @classmethod
-    def plans_by_ids(cls, ids: Iterable[int]) -> SoftDeleteTreeQuerySet[TestPlan]:
-        return TestPlan.objects.filter(id__in=ids)
+    def plans_by_ids(cls, ids: Iterable[int], field_name: str = 'id') -> SoftDeleteTreeQuerySet[TestPlan]:
+        return TestPlan.objects.filter(**{f'{field_name}__in': ids})
 
     @classmethod
     def annotate_plan_path(cls, qs: QuerySet[_MT], outer_ref_key: str = 'path') -> QuerySet[_MT]:

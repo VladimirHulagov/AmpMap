@@ -29,7 +29,8 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 CUSTOM_ATTRIBUTES_ALLOWED_APPS = ('tests_description', 'tests_representation')
-CUSTOM_ATTRIBUTES_ALLOWED_MODELS = ('testcase', 'testplan', 'testresult')
+CUSTOM_ATTRIBUTES_ALLOWED_MODELS = ('testcase', 'testplan', 'testresult', 'testsuite')
+CUSTOM_ATTRIBUTE_SUITE_SPECIFIC = ('testcase', 'testresult')
 CONTENT_TYPES_POSITIONS = (
     ('testresult', len(CUSTOM_ATTRIBUTES_ALLOWED_MODELS)),
 )

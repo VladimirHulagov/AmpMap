@@ -30,7 +30,6 @@
 # <http://www.gnu.org/licenses/>.
 from typing import Any, Iterable, Protocol
 
-from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils.deconstruct import deconstructible
 from rest_framework import serializers
@@ -41,12 +40,12 @@ from testy.tests_representation.selectors.status import ResultStatusSelector
 
 
 class ReturnsRequiredAttrs(Protocol):
-    def __call__(self, content_type_id: int) -> Iterable[CustomAttribute]:
+    def __call__(self, content_type_name: str) -> Iterable[CustomAttribute]:
         """
         Protocol for returning a list of required attributes.
 
         Args:
-            content_type_id: The content type ID to filter by.
+            content_type_name: The content type name to filter by.
         """
 
 
@@ -56,40 +55,60 @@ class CustomAttributeCreateValidator:
 
     def __call__(self, attrs: dict[str, Any], serializer):
         project = attrs.get('project')
-        is_suite_specific = attrs.get('is_suite_specific')
+        applied_to = attrs.get('applied_to')
+        if not project and serializer.instance:
+            project = serializer.instance.project
+
+        self._validate_all_suites_project_related(project, applied_to)
+
+    @classmethod
+    def _validate_all_suites_project_related(cls, project: Project, applied_to: dict[str, Any] | None) -> None:
+        if not cls._is_project_includes_all_suites(project, applied_to):
+            raise serializers.ValidationError('Field suite_ids contains non project-related items')
+
+    @classmethod
+    def _is_project_includes_all_suites(cls, project: Project, applied_to: dict[str, Any] | None) -> bool:
+        is_count_match = True
+        if applied_to is None:
+            return is_count_match
+        for ct_name in applied_to.keys():
+            suite_ids = applied_to.get(ct_name, {}).get('suite_ids', [])
+            if not suite_ids:
+                continue
+            requested_suites_count = len(suite_ids)
+            found_suites_count = TestSuite.objects.filter(project=project, id__in=suite_ids).count()
+
+            is_count_match = is_count_match and found_suites_count == requested_suites_count
+        return is_count_match
+
+
+@deconstructible
+class CustomAttributeV1CreateValidator:
+    requires_context = True
+
+    def __call__(self, attrs: dict[str, Any], serializer):
+        project = attrs.get('project')
         suites = attrs.get('suite_ids')
 
         if not project and serializer.instance:
             project = serializer.instance.project
 
-        self._validate_suite_related_fields(suites, is_suite_specific)
-        self._validate_all_suites_project_related(project, suites, is_suite_specific)
+        self._validate_all_suites_project_related(project, suites)
 
     @classmethod
-    def _validate_suite_related_fields(cls, suite_ids: list[int], is_suite_specific: bool):
-        if is_suite_specific and not suite_ids:
-            raise serializers.ValidationError('Empty suites list, while attribute is suite-specific')
-        elif not is_suite_specific and suite_ids:
-            raise serializers.ValidationError('Provided suites list, while attribute is not suite-specific')
-
-    @classmethod
-    def _validate_all_suites_project_related(cls, project: Project, suite_ids: list[int], is_suite_specific: bool):
-        if not cls._is_project_includes_all_suites(project, suite_ids, is_suite_specific):
+    def _validate_all_suites_project_related(cls, project: Project, suite_ids: list[int]):
+        if not cls._is_project_includes_all_suites(project, suite_ids):
             raise serializers.ValidationError('Field suite_ids contains non project-related items')
 
     @classmethod
-    def _is_project_includes_all_suites(cls, project: Project, suite_ids: list[int], is_suite_specific: bool) -> bool:
-        if not is_suite_specific:
+    def _is_project_includes_all_suites(cls, project: Project, suite_ids: list[int]) -> bool:
+        if not suite_ids:
             return True
 
         requested_suites_count = len(suite_ids)
-        found_suites_count = cls._suites_count_by_project_and_ids(project, suite_ids)
+        found_suites_count = TestSuite.objects.filter(project=project, id__in=suite_ids).count()
 
         return found_suites_count == requested_suites_count
-
-    @classmethod
-    def _suites_count_by_project_and_ids(cls, project: Project, suite_ids: list[int]) -> int:
-        return TestSuite.objects.filter(project=project, id__in=suite_ids).count()
 
 
 class BaseCustomAttributeValuesValidator:
@@ -98,8 +117,7 @@ class BaseCustomAttributeValuesValidator:
 
     @classmethod
     def _validate(cls, attributes: dict, required_attrs_getter: ReturnsRequiredAttrs):
-        content_type_id = ContentType.objects.get(app_label=cls.app_name, model=cls.model_name).id
-        required_attributes = required_attrs_getter(content_type_id=content_type_id)
+        required_attributes = required_attrs_getter(content_type_name=cls.model_name)
         attribute_keys = set(attributes.keys())
         if any(',' in attr_key for attr_key in attribute_keys):
             raise serializers.ValidationError('Attribute key has comma')

@@ -1,5 +1,3 @@
 export { CopySuite } from "./copy-suite/copy-suite"
-export { CreateSuite } from "./create-suite/create-suite"
-export { EditSuite } from "./edit-suite/edit-suite"
 export { DeleteSuite } from "./delete-suite/delete-suite"
-export { ActionFormSuite } from "./action-form-suite"
+export * from "./change-suite"

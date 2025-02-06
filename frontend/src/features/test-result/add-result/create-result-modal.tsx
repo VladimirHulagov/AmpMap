@@ -1,15 +1,13 @@
-import { PlusOutlined } from "@ant-design/icons"
-import { Button, Col, Divider, Form, Modal, Row, Select, Upload } from "antd"
+import { Button, Col, Divider, Form, Modal, Row, Select } from "antd"
+import { CustomAttributeAdd, CustomAttributeForm } from "entities/custom-attribute/ui"
 import { Controller } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 
 import { ErrorObj } from "shared/hooks/use-alert-error"
-import { AlertError, Attachment, Attribute, Status, Steps, TextAreaWithAttach } from "shared/ui"
+import { AlertError, Attachment, Status, Steps, TextAreaWithAttach } from "shared/ui"
 
 import { ApplyToStepsButton } from "../apply-to-steps-button/apply-to-steps-button"
 import { CreateResultModalProps, useCreateResultModal } from "./use-create-result-modal"
-
-const { Dragger } = Upload
 
 export const CreateResultModal = (props: CreateResultModalProps) => {
   const { t } = useTranslation()
@@ -131,27 +129,15 @@ export const CreateResultModal = (props: CreateResultModalProps) => {
                 )}
               />
             </Form.Item>
-
-            {attachmentsIds.map((field, index) => (
-              <input type="hidden" key={field.id} {...register(`attachments.${index}`)} />
-            ))}
-
-            <Attachment.List handleAttachmentRemove={onRemove} attachments={attachments} />
-
-            <div>
-              <Dragger
-                name="file"
-                multiple
-                showUploadList={false}
-                customRequest={onLoad}
-                onChange={onChange}
-                fileList={attachments}
-              >
-                <p className="ant-upload-text">
-                  {t("Drop files here to attach, or click to browse")}
-                </p>
-              </Dragger>
-            </div>
+            <Attachment.DropFiles
+              attachments={attachments}
+              attachmentsIds={attachmentsIds}
+              onChange={onChange}
+              onLoad={onLoad}
+              onRemove={onRemove}
+              register={register}
+              idInput="create-result-attachments-input"
+            />
           </Col>
           <Col>
             <Divider type="vertical" style={{ height: "100%" }} />
@@ -173,24 +159,17 @@ export const CreateResultModal = (props: CreateResultModalProps) => {
                   <Row
                     style={{ flexDirection: "column", marginTop: testCase.steps.length ? 24 : 0 }}
                   >
-                    <div className="ant-col ant-form-item-label">
-                      <label title="Attributes">{t("Attributes")}</label>
-                    </div>
-                    <Attribute.List
-                      fieldProps={field}
+                    <CustomAttributeForm
                       attributes={attributes}
-                      handleAttributeRemove={onAttributeRemove}
-                      handleAttributeChangeName={onAttributeChangeName}
-                      handleAttributeChangeValue={onAttributeChangeValue}
-                      handleAttributeChangeType={onAttributeChangeType}
+                      onChangeName={onAttributeChangeName}
+                      onChangeType={onAttributeChangeType}
+                      onChangeValue={onAttributeChangeValue}
+                      onRemove={onAttributeRemove}
+                      onBlur={field.onBlur}
                       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                       errors={errors?.attributes ? JSON.parse(errors?.attributes) : undefined}
                     />
-                    <div style={{ marginTop: 8 }}>
-                      <Button id="add-attribute-btn" type="dashed" block onClick={addAttribute}>
-                        <PlusOutlined /> {t("Add attribute")}
-                      </Button>
-                    </div>
+                    <CustomAttributeAdd onClick={addAttribute} />
                   </Row>
                 )}
               />

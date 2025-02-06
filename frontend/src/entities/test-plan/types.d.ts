@@ -38,6 +38,7 @@ interface TestPlan {
   project: number
   parent: Parent | null
   parameters: number[]
+  attachments: IAttachment[]
   started_at: string
   due_date: string
   finished_at: string | null
@@ -47,6 +48,7 @@ interface TestPlan {
   has_children: boolean
   labels?: string[]
   plan_path: string
+  attributes: AttributesObject
   started_at: string | null
   created_at: string
 }
@@ -59,15 +61,17 @@ interface TestPlanUpdate {
   test_cases: string[]
   started_at: string
   due_date: string
+  attributes: AttributesObject
 }
 
 interface TestPlanCreate extends TestPlan {
   description: string
   test_cases: string[]
-  attachments: number[]
   parent: number | null
   started_at: Dayjs
   due_date: Dayjs
+  attachments: number[]
+  attributes: AttributesObject
 }
 
 interface TestPlanStatistics {

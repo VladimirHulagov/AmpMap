@@ -53,7 +53,7 @@ export const TreebarBreadcrumbs = memo(({ activeTab, entityId }: Props) => {
   const activeBreadcrumb = breadcrumbs.find((i) => String(i.id) === entityId)
 
   return (
-    <div className={styles.breadcrumbsBlock}>
+    <div className={styles.breadcrumbsBlock} data-testid="treebar-breadcrumbs-block">
       <div className={styles.breadcrumbsIcons}>
         {!!breadcrumbs.length && (
           <ArrowIcon
@@ -68,10 +68,15 @@ export const TreebarBreadcrumbs = memo(({ activeTab, entityId }: Props) => {
 
               navigate(`/projects/${project.id}/${activeTab}/${link}`)
             }}
+            data-testid="treebar-breadcrumbs-back"
           />
         )}
       </div>
-      <Link to={`/projects/${project.id}/${activeTab}/`} className={styles.breadcrumbsTitle}>
+      <Link
+        to={`/projects/${project.id}/${activeTab}/`}
+        className={styles.breadcrumbsTitle}
+        data-testid="treebar-breadcrumbs-home"
+      >
         HOME
       </Link>
       {breadcrumbs.map((breadcrumb) => (
@@ -81,6 +86,7 @@ export const TreebarBreadcrumbs = memo(({ activeTab, entityId }: Props) => {
             to={`/projects/${project.id}/${activeTab}/${breadcrumb.id}?rootId=${breadcrumb.id}`}
             key={breadcrumb.id}
             className={styles.breadcrumbsTitle}
+            data-testid={`treebar-breadcrumbs-title-${breadcrumb.title}`}
           >
             {breadcrumb.title}
           </Link>

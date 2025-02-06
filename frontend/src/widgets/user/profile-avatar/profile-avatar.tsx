@@ -24,7 +24,7 @@ const mutex = new Mutex()
 
 export const ProfileAvatar = () => {
   const { t } = useTranslation()
-  const { me } = useContext(MeContext)!
+  const { me } = useContext(MeContext)
 
   const [nonce, setNonce] = useState(1)
   const [isEdit, setIsEdit] = useState(false)
@@ -66,8 +66,8 @@ export const ProfileAvatar = () => {
     return isCorrectType || Upload.LIST_IGNORE
   }
 
-  const handleChangeCrop = (crop: Crop, percentCrop: PercentCrop) => {
-    setPercentCrop(percentCrop)
+  const handleChangeCrop = (_: Crop, percent: PercentCrop) => {
+    setPercentCrop(percent)
   }
 
   const handleEditClick = () => {
@@ -125,8 +125,6 @@ export const ProfileAvatar = () => {
     }
   }
 
-
-
   if (isEdit && image.url) {
     return (
       <div className={styles.editBlock}>
@@ -140,11 +138,18 @@ export const ProfileAvatar = () => {
           minWidth={10}
           keepSelection
         >
-          <img src={image.url} />
+          <img id="profile-avatar-crop-image" src={image.url} />
         </ReactCrop>
         <div className={styles.btns}>
-          <Button onClick={handleEditClick}>Edit</Button>
-          <Button type="primary" onClick={handleSaveClick} loading={isLoading}>
+          <Button onClick={handleEditClick} id="profile-avatar-edit-button">
+            {t("Edit")}
+          </Button>
+          <Button
+            type="primary"
+            onClick={handleSaveClick}
+            loading={isLoading}
+            id="profile-avatar-save-button"
+          >
             {t("Save")}
           </Button>
         </div>
@@ -155,9 +160,11 @@ export const ProfileAvatar = () => {
   return (
     <div className={styles.wrapper}>
       <div className={styles.avatarBlock}>
-        <div className={styles.imageView}>
-          <UserAvatar avatar_link={me.avatar_link} size={180} nonce={nonce} />
-        </div>
+        {me && (
+          <div className={styles.imageView}>
+            <UserAvatar avatar_link={me.avatar_link} size={180} nonce={nonce} />
+          </div>
+        )}
       </div>
       <div className={styles.wrapperBtns}>
         <div className={styles.btns}>
@@ -168,12 +175,13 @@ export const ProfileAvatar = () => {
             style={{ width: 180 }}
             customRequest={() => {}}
             beforeUpload={beforeUpload}
+            id="profile-avatar-upload"
           >
-            <Button>{t("Edit")}</Button>
+            <Button id="profile-avatar-edit-button">{t("Edit")}</Button>
           </Upload>
 
-          {me.avatar_link && (
-            <Button danger onClick={handleDeleteClick}>
+          {me?.avatar_link && (
+            <Button danger onClick={handleDeleteClick} id="profile-avatar-delete-button">
               {t("Delete")}
             </Button>
           )}

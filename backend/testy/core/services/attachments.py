@@ -28,6 +28,7 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
+import logging
 import os
 from pathlib import Path
 from typing import Any
@@ -37,6 +38,8 @@ from django.db.models import Model
 from testy.core.models import Attachment
 from testy.core.selectors.attachments import AttachmentSelector
 from testy.core.services.media import MediaService
+
+logger = logging.getLogger(__name__)
 
 
 class AttachmentService(MediaService):
@@ -68,7 +71,7 @@ class AttachmentService(MediaService):
 
     def attachment_set_content_object(self, attachment: Attachment, content_object) -> Attachment:
         if attachment.content_object:
-            raise ValueError('Attachment already has content object.')
+            attachment = self.copy_attachment(attachment)
         attachment.content_object = content_object
         attachment.save()
         return attachment
@@ -109,3 +112,16 @@ class AttachmentService(MediaService):
         exclude_ids = [attachment.id for attachment in old_attachments]
         for attachment in AttachmentSelector.attachment_list_from_object_with_excluding(content_object, exclude_ids):
             attachment.delete()
+
+    def copy_attachment(self, attachment: Attachment) -> Attachment:
+        logger.info(f'Copying attachment {attachment}')
+        return Attachment(
+            project=attachment.project,
+            name=attachment.name,
+            filename=attachment.filename,
+            comment=attachment.comment,
+            file_extension=attachment.file_extension,
+            size=attachment.size,
+            user=attachment.user,
+            file=attachment.file,
+        )

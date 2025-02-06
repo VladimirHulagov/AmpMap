@@ -1,2 +1,3 @@
 export { TestPlanStatistics } from "./test-plan-statistics/test-plan-statistics"
-export { TestPlanDetail } from "./test-plan-detail/test-plan-detail"
+export { TestPlanDataActions } from "./test-plan-data-actions/test-plan-data-actions"
+export { TestPlanHeader } from "./test-plan-header"

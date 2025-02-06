@@ -27,6 +27,10 @@ export const makeAttributesJson = (attributes: Attribute[]) => {
       continue
     }
 
+    if (value === "") {
+      continue
+    }
+
     if (type === "JSON") {
       try {
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment

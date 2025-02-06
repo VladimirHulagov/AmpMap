@@ -38,7 +38,7 @@ export const SelectFilter = ({
 }: Props) => {
   const { t } = useTranslation()
 
-  const { userConfig, updateConfig } = useContext(MeContext)!
+  const { userConfig, updateConfig } = useContext(MeContext)
   const { project } = useContext(ProjectContext)!
 
   const filtersKey = type === "plans" ? "test_plans" : "test_suites"
@@ -169,12 +169,17 @@ export const SelectFilter = ({
         placeholder={t("Filter name")}
         value={filterSettings.editingValue}
         onChange={handleChangeEditValue}
+        data-testid="select-filter-input-editing"
       />
     )
   }
 
   if (!configFiltersKeys.length) {
-    return <h3 className={styles.title}>New Filter</h3>
+    return (
+      <h3 className={styles.title} data-testid="select-filter-title-new-filter">
+        {t("New Filter")}
+      </h3>
+    )
   }
 
   return (
@@ -182,7 +187,7 @@ export const SelectFilter = ({
       id="select-filter-popover"
       overlayInnerStyle={{ padding: "8px 0" }}
       content={
-        <ul className={styles.list}>
+        <ul className={styles.list} data-testid="select-filter-list">
           {configFiltersKeys.map((filterName, index) => {
             const id = `${filterName}-${index}`
 
@@ -192,21 +197,24 @@ export const SelectFilter = ({
                   <Input
                     className={styles.itemInput}
                     variant="borderless"
-                    placeholder="Filter name"
+                    placeholder={t("Filter name")}
                     value={editingItems[filterName] ?? filterName}
                     autoFocus
                     onChange={(e) => handleChangeItemEditValue(filterName, e.target.value)}
+                    data-testid={`select-filter-input-${filterName}`}
                   />
                   <Flex style={{ marginLeft: "auto" }} gap={7}>
                     <button
                       className={classNames(styles.btn, styles.saveRename)}
                       onClick={() => handleSaveItemValue(filterName)}
+                      data-testid={`select-filter-save-rename-${filterName}`}
                     >
                       <CheckOutlined />
                     </button>
                     <button
                       className={classNames(styles.btn, styles.closeRename)}
                       onClick={() => handleCloseEditingItemValue(filterName)}
+                      data-testid={`select-filter-close-rename-${filterName}`}
                     >
                       <CloseOutlined />
                     </button>
@@ -235,6 +243,7 @@ export const SelectFilter = ({
                       e.stopPropagation()
                       handleShowEdit(filterName)
                     }}
+                    data-testid={`select-filter-edit-${filterName}`}
                   >
                     <EditOutlined style={{ fontSize: 14 }} />
                   </button>
@@ -244,6 +253,7 @@ export const SelectFilter = ({
                       e.stopPropagation()
                       onDelete(filterName)
                     }}
+                    data-testid={`select-filter-delete-${filterName}`}
                   >
                     <DeleteOutlined style={{ fontSize: 14 }} />
                   </button>
@@ -264,14 +274,18 @@ export const SelectFilter = ({
     >
       <div className={styles.titleBlock}>
         {!filterSettings.editing && (
-          <h3 className={styles.title}>{filterSettings.selected ?? t("New Filter")}</h3>
+          <h3 className={styles.title} data-testid="select-filter-title">
+            {filterSettings.selected ?? t("New Filter")}
+          </h3>
         )}
         {!!configFiltersKeys.length && !filterSettings.editing && (
-          <ArrowIcon width={24} height={24} />
+          <ArrowIcon width={24} height={24} data-testid="select-filter-arrow" />
         )}
       </div>
       {filterSettings.hasUnsavedChanges && (
-        <span className={styles.unsaved}>{t("Unsaved Changes")}</span>
+        <span className={styles.unsaved} data-testid="select-filter-unsaved-changes">
+          {t("Unsaved Changes")}
+        </span>
       )}
     </Popover>
   )

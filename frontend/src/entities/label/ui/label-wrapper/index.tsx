@@ -63,7 +63,7 @@ export const LabelWrapper = ({
   }, [labels, searchValue])
 
   return (
-    <div className={styles.wrapper}>
+    <div className={styles.wrapper} data-testid="label-wrapper">
       <div className={styles.form}>
         <Input
           id="label-input"
@@ -79,19 +79,33 @@ export const LabelWrapper = ({
           onChange={handleInputChange}
           onKeyDown={(e) => handleSubmitInput(e, searchValue)}
           onBlur={fieldProps?.onBlur}
+          data-testid="label-wrapper-input"
         />
         {isShowPopup && (
-          <div id="label-popup" className={styles.popup} ref={popupRef}>
+          <div
+            id="label-popup"
+            className={styles.popup}
+            ref={popupRef}
+            data-testid="label-wrapper-popup"
+          >
             <ul>
               {searchingLabels.map((label) => (
-                <li key={label.id} onClick={() => handleAddLabel(label.name)}>
+                <li
+                  key={label.id}
+                  onClick={() => handleAddLabel(label.name)}
+                  data-testid={`label-wrapper-label-${label.name}`}
+                >
                   <HighLighterTesty searchWords={searchValue} textToHighlight={label.name} />
                 </li>
               ))}
               {isAlreadyAdded && (
                 <>
                   <div className={styles.line} />
-                  <span className={styles.newLabel} onClick={() => handleAddLabel(searchValue)}>
+                  <span
+                    className={styles.newLabel}
+                    onClick={() => handleAddLabel(searchValue)}
+                    data-testid="label-wrapper-already-added"
+                  >
                     <HighLighterTesty searchWords={searchValue} textToHighlight={searchValue} />(
                     {t("Already added")})
                   </span>
@@ -100,7 +114,11 @@ export const LabelWrapper = ({
               {!hasSearchingLabel && !isAlreadyAdded && !noAdding && (
                 <>
                   <div className={styles.line} />
-                  <span className={styles.newLabel} onClick={() => handleAddLabel(searchValue)}>
+                  <span
+                    className={styles.newLabel}
+                    onClick={() => handleAddLabel(searchValue)}
+                    data-testid="label-wrapper-new-label"
+                  >
                     <HighLighterTesty searchWords={searchValue} textToHighlight={searchValue} />(
                     {t("New label")})
                   </span>

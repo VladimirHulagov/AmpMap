@@ -1,13 +1,12 @@
 import { CloseOutlined, EditOutlined } from "@ant-design/icons"
 import { Button, Tag } from "antd"
-import React from "react"
 
 import { colors } from "shared/config"
 
 import styles from "./styles.module.css"
 
 interface LabelProps {
-  content: React.ReactNode
+  content: string
   color?: string
   onClick?: (label: LabelInForm) => void
   onDelete?: (label: LabelInForm) => void
@@ -23,7 +22,8 @@ export const Label = ({ content, color, onDelete, onClick, onEdit }: LabelProps)
         cursor: onClick ? "pointer" : "default",
         textDecoration: color === "line-through" ? "line-through" : undefined,
       }}
-      onClick={onClick ? () => onClick({ name: String(content) }) : undefined}
+      onClick={onClick ? () => onClick({ name: content }) : undefined}
+      data-testid={`label-${content}`}
     >
       {content}
       {onEdit && (
@@ -32,7 +32,8 @@ export const Label = ({ content, color, onDelete, onClick, onEdit }: LabelProps)
           className={styles.btn}
           icon={<EditOutlined style={{ fontSize: 14 }} />}
           shape="default"
-          onClick={() => onEdit({ name: String(content) })}
+          onClick={() => onEdit({ name: content })}
+          data-testid={`label-edit-${content}`}
         />
       )}
       {onDelete && (
@@ -41,7 +42,8 @@ export const Label = ({ content, color, onDelete, onClick, onEdit }: LabelProps)
           className={styles.btn}
           icon={<CloseOutlined style={{ fontSize: 14 }} />}
           shape="default"
-          onClick={() => onDelete({ name: String(content) })}
+          onClick={() => onDelete({ name: content })}
+          data-testid={`label-delete-${content}`}
         />
       )}
     </Tag>

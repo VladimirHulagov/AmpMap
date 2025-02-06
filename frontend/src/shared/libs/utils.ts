@@ -144,3 +144,7 @@ export const formatStringToStringArray = (value: string) =>
   value.split(",").filter((item) => item.length)
 export const formatStringToNumberArray = (value: string) =>
   formatStringToStringArray(value).map(Number)
+
+export const createConcatIdsFn = (title: string) => {
+  return (id: string) => `${title}-${id}`
+}

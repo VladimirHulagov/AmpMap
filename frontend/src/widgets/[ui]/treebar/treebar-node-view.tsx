@@ -6,6 +6,7 @@ import { Link, useSearchParams } from "react-router-dom"
 import { TestSuitePopoverInfo } from "entities/suite/ui"
 
 import { icons } from "shared/assets/inner-icons"
+import { createConcatIdsFn } from "shared/libs"
 import { LazyNodeProps, LazyTreeNodeApi, NodeId, TreeBaseLoadMore } from "shared/libs/tree"
 import { ArchivedTag, HighLighterTesty } from "shared/ui"
 
@@ -85,12 +86,15 @@ export const TreebarNodeView = ({
     urlParams.append("test_case", searchParams.get("test_case") ?? "")
   }
 
+  const getIdWithTitle = createConcatIdsFn(nodeTitle as string)
+
   return (
     <>
       <div
-        id={`${node.title}-${node.id}`}
+        id={`${node.title}`}
         key={`${node.title}-${node.id}-treebar`}
         style={{ paddingLeft: offset }}
+        data-testid={getIdWithTitle("treebar-node-view")}
       >
         <Dropdown
           menu={{ items: contextItems }}
@@ -110,7 +114,7 @@ export const TreebarNodeView = ({
           >
             <div className={styles.nodeLeftAction}>
               {type === "plans" && (node.data as unknown as TestPlan).is_archive && (
-                <ArchivedTag size="sm" />
+                <ArchivedTag size="sm" data-testid={getIdWithTitle("treebar-archived-tag")} />
               )}
               {node.props.isLoading && <Spin size="small" className={styles.loader} />}
               {!node.props.isLoading && node.props.canOpen && (
@@ -125,6 +129,7 @@ export const TreebarNodeView = ({
                     e.stopPropagation()
                     handleOpenClick()
                   }}
+                  data-testid={getIdWithTitle("treebar-arrow-icon")}
                 />
               )}
             </div>
@@ -136,6 +141,7 @@ export const TreebarNodeView = ({
               className={classNames(styles.treebarNodeLink, {
                 [styles.activeLink]: node.props.isSelected ?? IS_SELECTED_TREE_ID,
               })}
+              data-testid={getIdWithTitle("treebar-node-link")}
             >
               <HighLighterTesty
                 searchWords={searchText ?? ""}
@@ -154,7 +160,10 @@ export const TreebarNodeView = ({
                 }
                 placement="right"
               >
-                <InfoIcon className={styles.infoIcon} />
+                <InfoIcon
+                  className={styles.infoIcon}
+                  data-testid={getIdWithTitle("treebar-info-icon")}
+                />
               </Popover>
             )}
             {node.props.canOpen && (
@@ -168,6 +177,7 @@ export const TreebarNodeView = ({
                     e.stopPropagation()
                     onRoot(node.id)
                   }}
+                  data-testid={getIdWithTitle("treebar-expand-button")}
                 />
               </Tooltip>
             )}

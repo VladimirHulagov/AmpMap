@@ -11,14 +11,14 @@ import { useLazyGetProjectProgressQuery } from "entities/project/api"
 
 import { colors, formatBaseDate } from "shared/config"
 
-interface ProgressItemProps {
+interface ProgressItemProps extends HTMLDataAttribute {
   percent: number
   countStr: string
 }
 
-const ProgressItem = ({ percent, countStr }: ProgressItemProps) => {
+const ProgressItem = ({ percent, countStr, ...props }: ProgressItemProps) => {
   return (
-    <div>
+    <div {...props}>
       <div style={{ display: "flex", alignItems: "center", flexDirection: "row" }}>
         <Progress percent={percent} strokeColor={colors.accent} showInfo={false} />
         <span style={{ marginLeft: 6, fontSize: 14 }}>{percent}%</span>
@@ -93,7 +93,11 @@ export const useProjectOverviewProgress = () => {
         const countStr = `${record.tests_progress_total} / ${record.tests_total}`
 
         return (
-          <ProgressItem percent={record.tests_progress_total ? percent : 0} countStr={countStr} />
+          <ProgressItem
+            percent={record.tests_progress_total ? percent : 0}
+            countStr={countStr}
+            data-testid={`${record.title}-progress-item`}
+          />
         )
       },
     },
@@ -104,6 +108,7 @@ export const useProjectOverviewProgress = () => {
           onChange={handleChange as RangePickerProps<Dayjs>["onChange"]}
           disabledDate={disabledDateStart}
           size="small"
+          data-testid="project-overview-progress-date-picker"
         />
       ),
       dataIndex: "tests_progress_period",
@@ -117,6 +122,7 @@ export const useProjectOverviewProgress = () => {
           <ProgressItem
             percent={record.tests_progress_total ? percent : 0}
             countStr={String(record.tests_progress_period)}
+            data-testid={`${record.title}-progress-period-item`}
           />
         )
       },

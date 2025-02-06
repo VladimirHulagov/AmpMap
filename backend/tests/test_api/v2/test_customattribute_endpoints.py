@@ -36,12 +36,10 @@ from tests import constants
 from tests.commons import RequestType, model_to_dict_via_serializer
 from tests.error_messages import (
     DUPLICATE_CUSTOM_ATTRIBUTE_ERR_MSG,
-    EMPTY_SUITES_WHILE_SUITE_SPECIFIC_ERR_MSG,
-    FILLED_SUITES_WHILE_NOT_SUITE_SPECIFIC_ERR_MSG,
     REQUIRED_FIELD_MSG,
     SUITE_IDS_CONTAINS_NOT_RELATED_ITEMS,
 )
-from testy.core.api.v2.serializers import CustomAttributeOutputSerializer
+from testy.core.api.v2.serializers import CustomAttributeBaseSerializer
 from testy.core.choices import CustomFieldType
 from testy.core.models import CustomAttribute
 
@@ -59,7 +57,7 @@ class TestCustomAttributeEndpoints:
         for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
             expected_instances.append(
                 model_to_dict_via_serializer(
-                    custom_attribute_factory(project=project), CustomAttributeOutputSerializer,
+                    custom_attribute_factory(project=project), CustomAttributeBaseSerializer,
                 ),
             )
 
@@ -69,12 +67,12 @@ class TestCustomAttributeEndpoints:
             assert instance in expected_instances
 
     def test_retrieve(self, api_client, authorized_superuser, custom_attribute):
-        expected_dict = model_to_dict_via_serializer(custom_attribute, CustomAttributeOutputSerializer)
+        expected_dict = model_to_dict_via_serializer(custom_attribute, CustomAttributeBaseSerializer)
         response = api_client.send_request(self.view_name_detail, reverse_kwargs={'pk': custom_attribute.pk})
         actual_dict = response.json()
         assert actual_dict == expected_dict, 'Actual model dict is different from expected'
 
-    def test_creation(self, api_client, authorized_superuser, project, allowed_content_types):
+    def test_creation(self, api_client, authorized_superuser, project):
         expected_custom_attributes_count = 1
         assert CustomAttribute.objects.count() == 0, 'Extra custom attributes were found.'
 
@@ -82,7 +80,15 @@ class TestCustomAttributeEndpoints:
             'name': constants.CUSTOM_ATTRIBUTE_NAME,
             'project': project.pk,
             'type': CustomFieldType.TXT,
-            'content_types': allowed_content_types,
+            'applied_to': {
+                'testplan': {
+                    'is_required': False,
+                },
+                'testcase': {
+                    'is_required': False,
+                    'suite_ids': [],
+                },
+            },
         }
         api_client.send_request(self.view_name_list, custom_attribute_fields, HTTPStatus.CREATED, RequestType.POST)
         assert CustomAttribute.objects.count() == expected_custom_attributes_count, (
@@ -90,7 +96,7 @@ class TestCustomAttributeEndpoints:
             f'actual: {CustomAttribute.objects.count()}'
         )
 
-    def test_creation_case_insensitive(self, api_client, authorized_superuser, project, allowed_content_types):
+    def test_creation_case_insensitive(self, api_client, authorized_superuser, project):
         expected_custom_attributes_count = 1
         assert CustomAttribute.objects.count() == 0, 'Extra custom attributes were found.'
 
@@ -98,7 +104,11 @@ class TestCustomAttributeEndpoints:
             'name': constants.CUSTOM_ATTRIBUTE_NAME.lower(),
             'project': project.pk,
             'type': CustomFieldType.JSON,
-            'content_types': allowed_content_types,
+            'applied_to': {
+                'testplan': {
+                    'is_required': False,
+                },
+            },
         }
 
         api_client.send_request(
@@ -114,7 +124,11 @@ class TestCustomAttributeEndpoints:
             'name': constants.CUSTOM_ATTRIBUTE_NAME.upper(),
             'project': project.pk,
             'type': CustomFieldType.JSON,
-            'content_types': allowed_content_types,
+            'applied_to': {
+                'testplan': {
+                    'is_required': False,
+                },
+            },
         }
 
         response = api_client.send_request(
@@ -129,7 +143,7 @@ class TestCustomAttributeEndpoints:
 
     @pytest.mark.parametrize('expected_status', [HTTPStatus.OK, HTTPStatus.BAD_REQUEST])
     def test_update(
-        self, api_client, authorized_superuser, custom_attribute, project, expected_status, allowed_content_types,
+        self, api_client, authorized_superuser, custom_attribute, project, expected_status,
     ):
         updated_name = 'new_custom_attribute_name'
         custom_attribute_fields = {
@@ -138,7 +152,11 @@ class TestCustomAttributeEndpoints:
         if expected_status == HTTPStatus.OK:
             custom_attribute_fields['project'] = project.pk
             custom_attribute_fields['type'] = CustomFieldType.JSON
-            custom_attribute_fields['content_types'] = allowed_content_types
+            custom_attribute_fields['applied_to'] = {
+                'testplan': {
+                    'is_required': False,
+                },
+            }
 
         response = api_client.send_request(
             self.view_name_detail,
@@ -155,7 +173,7 @@ class TestCustomAttributeEndpoints:
         else:
             assert response.json()['project'][0] == REQUIRED_FIELD_MSG
             assert response.json()['type'][0] == REQUIRED_FIELD_MSG
-            assert response.json()['content_types'][0] == REQUIRED_FIELD_MSG
+            assert response.json()['applied_to'][0] == REQUIRED_FIELD_MSG
 
     def test_partial_update(self, api_client, authorized_superuser, custom_attribute):
         new_name = 'new_custom_attribute_name'
@@ -187,7 +205,6 @@ class TestCustomAttributeEndpoints:
     @pytest.mark.parametrize('request_type', [RequestType.PATCH, RequestType.PUT])
     def test_duplicates_not_allowed(
         self, api_client, authorized_superuser, custom_attribute_factory, project, request_type,
-        allowed_content_types,
     ):
         custom_attribute_factory(name=constants.CUSTOM_ATTRIBUTE_NAME, project=project)
 
@@ -199,7 +216,11 @@ class TestCustomAttributeEndpoints:
         if request_type == RequestType.PUT:
             custom_attribute_fields['project'] = project.id
             custom_attribute_fields['type'] = CustomFieldType.JSON
-            custom_attribute_fields['content_types'] = allowed_content_types
+            custom_attribute_fields['applied_to'] = {
+                'testplan': {
+                    'is_required': False,
+                },
+            }
 
         api_client.send_request(
             self.view_name_detail,
@@ -209,46 +230,28 @@ class TestCustomAttributeEndpoints:
             request_type=request_type,
         )
 
-    @pytest.mark.parametrize('is_suite_specific, suite_ids', [(False, [1, 2, 3]), (True, [])])
-    def test_suite_ids_if_is_suite_specific_provided(
-        self, api_client, authorized_superuser, project, is_suite_specific, suite_ids, allowed_content_types,
-    ):
-        custom_attribute_fields = {
-            'name': constants.CUSTOM_ATTRIBUTE_NAME,
-            'project': project.pk,
-            'type': CustomFieldType.TXT,
-            'content_types': allowed_content_types,
-            'is_suite_specific': is_suite_specific,
-            'suite_ids': suite_ids,
-        }
-
-        response = api_client.send_request(
-            self.view_name_list, custom_attribute_fields, HTTPStatus.BAD_REQUEST, RequestType.POST,
-        )
-
-        if is_suite_specific:
-            assert response.json()[_ERRORS][0] == EMPTY_SUITES_WHILE_SUITE_SPECIFIC_ERR_MSG
-        else:
-            assert response.json()[_ERRORS][0] == FILLED_SUITES_WHILE_NOT_SUITE_SPECIFIC_ERR_MSG
-
     @pytest.mark.parametrize('expected_status', [HTTPStatus.CREATED, HTTPStatus.BAD_REQUEST])
     def test_suite_is_a_part_of_project(
-        self, api_client, authorized_superuser, project, test_suite, expected_status, allowed_content_types,
+        self, api_client, authorized_superuser, project, test_suite_factory, expected_status,
     ):
         expected_custom_attributes_count = 1
+        if expected_status == HTTPStatus.CREATED:
+            test_suite = test_suite_factory(project=project)
+        else:
+            test_suite = test_suite_factory()
         assert CustomAttribute.objects.count() == 0, 'Extra custom attributes were found.'
 
-        broken_suite_id = [999]
         custom_attribute_fields = {
             'name': constants.CUSTOM_ATTRIBUTE_NAME,
             'project': project.pk,
             'type': CustomFieldType.TXT,
-            'content_types': allowed_content_types,
-            'is_suite_specific': True,
-            'suite_ids': [test_suite.id],
+            'applied_to': {
+                'testcase': {
+                    'is_required': False,
+                    'suite_ids': [test_suite.id],
+                },
+            },
         }
-        if expected_status == HTTPStatus.BAD_REQUEST:
-            custom_attribute_fields['suite_ids'] = broken_suite_id
 
         response = api_client.send_request(
             self.view_name_list, custom_attribute_fields, expected_status, RequestType.POST,
@@ -268,12 +271,19 @@ class TestCustomAttributeEndpoints:
         expected_status,
     ):
         expected_custom_attributes_count = 1
-        broken_suite_id = [999]
+        broken_suite_id = 999
         initial_suite = test_suite_factory(project=project)
         suite_for_update = test_suite_factory(project=project)
 
         custom_attribute = custom_attribute_factory(
-            name=constants.CUSTOM_ATTRIBUTE_NAME, project=project, suite_ids=[initial_suite.id],
+            name=constants.CUSTOM_ATTRIBUTE_NAME,
+            project=project,
+            applied_to={
+                'testcase': {
+                    'is_required': False,
+                    'suite_ids': [initial_suite.id],
+                },
+            },
         )
 
         assert CustomAttribute.objects.count() == expected_custom_attributes_count, (
@@ -282,8 +292,12 @@ class TestCustomAttributeEndpoints:
         )
 
         custom_attribute_fields_updated = {
-            'is_suite_specific': True,
-            'suite_ids': broken_suite_id if expected_status == HTTPStatus.BAD_REQUEST else [suite_for_update.id],
+            'applied_to': {
+                'testcase': {
+                    'is_required': False,
+                    'suite_ids': [suite_for_update.id] if expected_status == HTTPStatus.OK else [broken_suite_id],
+                },
+            },
         }
 
         response = api_client.send_request(
@@ -297,5 +311,5 @@ class TestCustomAttributeEndpoints:
         if expected_status == HTTPStatus.BAD_REQUEST:
             assert response.json()[_ERRORS][0] == SUITE_IDS_CONTAINS_NOT_RELATED_ITEMS
         else:
-            suite_ids = response.json()['suite_ids']
+            suite_ids = response.json()['applied_to']['testcase']['suite_ids']
             assert suite_ids == [suite_for_update.id], f'Expected suite ids {[suite_for_update.id]} actual: {suite_ids}'

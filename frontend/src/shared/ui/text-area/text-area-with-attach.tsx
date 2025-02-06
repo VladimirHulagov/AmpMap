@@ -62,8 +62,8 @@ export const TextAreaWithAttach = ({
     uploadRef.current.upload.uploader.uploadFiles(files)
   }
 
-  const handleTabClick = (tab: ViewTab) => {
-    setTab(tab)
+  const handleTabClick = (newTab: ViewTab) => {
+    setTab(newTab)
   }
 
   useEffect(() => {
@@ -88,7 +88,6 @@ export const TextAreaWithAttach = ({
         id={textAreaId}
         style={{
           fontSize: 13,
-          borderBottomLeftRadius: 0,
           display: tab === "md" ? "inline-block" : "none",
           ...fieldProps.style,
         }}
@@ -118,7 +117,7 @@ export const TextAreaWithAttach = ({
             icon={<PictureOutlined />}
             size={"small"}
             type="link"
-            style={{ marginLeft: "6px" }}
+            className={styles.pictureIcon}
           />
         </Upload>
       </div>

@@ -180,14 +180,14 @@ export const useTestCaseEditView = () => {
     scenario,
     expected,
     sort_order,
-    attachments,
+    attachments: attachmentsArgs,
   }: StepAttachNumber) => ({
     id: typeof id === "string" ? undefined : id,
     name,
     scenario,
     expected,
     sort_order,
-    attachments: attachments.map((x: number | IAttachment) => {
+    attachments: attachmentsArgs.map((x: number | IAttachment) => {
       if (typeof x === "object") return x.id
       return x
     }),
@@ -202,6 +202,8 @@ export const useTestCaseEditView = () => {
         cancelText: t("Cancel"),
         onOk: () => resolve(true),
         onCancel: () => resolve(false),
+        okButtonProps: { "data-testid": "change-suite-button-confirm" },
+        cancelButtonProps: { "data-testid": "change-suite-button-cancel" },
       })
     })
   }
@@ -220,18 +222,18 @@ export const useTestCaseEditView = () => {
       return
     }
 
+    const { isSuccess, attributesJson, errors: attributesErrors } = makeAttributesJson(attributes)
+    if (!isSuccess) {
+      setErrors({ attributes: JSON.stringify(attributesErrors) })
+      return
+    }
+
     const isSwitchingSuite = dataForm.suite && dataForm.suite !== Number(testSuiteId)
     if (isSwitchingSuite) {
       const isConfirmed = await confirmSwitchSuite()
       if (!isConfirmed) return
     }
     setErrors(null)
-
-    const { isSuccess, attributesJson, errors } = makeAttributesJson(attributes)
-    if (!isSuccess) {
-      setErrors({ attributes: JSON.stringify(errors) })
-      return
-    }
 
     try {
       const stepsFormat = dataForm.steps

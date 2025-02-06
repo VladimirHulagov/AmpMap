@@ -29,7 +29,7 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import Case, IntegerField, QuerySet, When
+from django.db.models import Case, IntegerField, Q, QuerySet, When
 
 from testy.core.constants import (
     CONTENT_TYPES_POSITIONS,
@@ -40,6 +40,7 @@ from testy.core.models import CustomAttribute, Project
 from testy.tests_description.models import TestSuite
 
 _NAME = 'name'
+_APPLIED_TO_LOOKUP = 'applied_to__'
 
 
 class CustomAttributeSelector:
@@ -52,32 +53,32 @@ class CustomAttributeSelector:
         cls,
         project: Project,
         suite: TestSuite,
-        content_type_id: int,
+        content_type_name: str,
     ) -> QuerySet[CustomAttribute]:
-        required_attr = cls._required_attributes_by_project_and_suite(project, suite, content_type_id)
+        required_attr = cls._required_attributes_by_project_and_suite(project, suite, content_type_name)
         return required_attr.values_list(_NAME, flat=True)
 
     @classmethod
-    def required_attribute_names_by_project(cls, project: Project, content_type_id: int) -> QuerySet[CustomAttribute]:
-        return cls._required_attributes_by_project(project).filter(
-            content_types__contains=[content_type_id],
-        ).values_list(_NAME, flat=True)
+    def required_attribute_names_by_project(cls, project: Project, content_type_name: str) -> QuerySet[CustomAttribute]:
+        return (
+            cls
+            ._required_attributes_by_project_and_model(project, content_type_name)
+            .values_list(_NAME, flat=True)
+        )
 
     @classmethod
     def required_attributes_by_status(
         cls,
         project: Project,
         suite: TestSuite,
-        content_type_id: int,
+        content_type_name: str,
         status,
     ) -> QuerySet[CustomAttribute]:
         required_attr = cls._required_attributes_by_project_and_suite(
             project,
             suite,
-            content_type_id,
-        ).filter(
-            status_specific__contains=[status.pk],
-        )
+            content_type_name,
+        ).filter(**{f'{_APPLIED_TO_LOOKUP}{content_type_name}__status_specific__contains': [status.id]})
         return required_attr.values_list(_NAME, flat=True)
 
     @classmethod
@@ -98,17 +99,24 @@ class CustomAttributeSelector:
 
     @classmethod
     def _required_attributes_by_project_and_suite(
-        cls, project: Project, suite: TestSuite, content_type_id: int,
+        cls, project: Project, suite: TestSuite, content_type_name: str,
     ) -> QuerySet[CustomAttribute]:
-        required_attr = cls._required_attributes_by_project(project)
-        non_suite_specific = required_attr.filter(is_suite_specific=False, content_types__contains=[content_type_id])
+        required_attr = cls._required_attributes_by_project_and_model(project, content_type_name)
+        non_suite_specific_condition = Q(**{f'{_APPLIED_TO_LOOKUP}{content_type_name}__suite_ids': []})
+        non_suite_specific_condition |= ~Q(**{f'{_APPLIED_TO_LOOKUP}{content_type_name}__has_key': 'suite_ids'})
+        non_suite_specific = required_attr.filter(non_suite_specific_condition)
         suite_specific = required_attr.filter(
-            is_suite_specific=True,
-            suite_ids__contains=[suite.id],
-            content_types__contains=[content_type_id],
+            **{f'{_APPLIED_TO_LOOKUP}{content_type_name}__suite_ids__contains': [suite.id]},
         )
         return non_suite_specific | suite_specific
 
     @classmethod
-    def _required_attributes_by_project(cls, project: Project) -> QuerySet[CustomAttribute]:
-        return CustomAttribute.objects.all().filter(project=project, is_required=True)
+    def _required_attributes_by_project_and_model(
+        cls,
+        project: Project,
+        model_name: str,
+    ) -> QuerySet[CustomAttribute]:
+        return CustomAttribute.objects.filter(
+            project=project,
+            **{f'applied_to__{model_name}__is_required': True},
+        )

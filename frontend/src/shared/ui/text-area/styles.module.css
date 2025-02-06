@@ -2,4 +2,9 @@
   display: flex;
   flex-direction: row;
   align-items: center;
+  margin-top: 8px;
+}
+
+.pictureIcon {
+  color: var(--y-sky-80);
 }

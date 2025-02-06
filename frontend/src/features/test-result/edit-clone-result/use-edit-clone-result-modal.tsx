@@ -85,6 +85,7 @@ export const useEditCloneResultModal = ({
 
   const {
     attributes: allAttributes,
+    isLoading: isLoadingAttributes,
     setAttributes,
     addAttribute,
     onAttributeChangeName,
@@ -129,6 +130,8 @@ export const useEditCloneResultModal = ({
   }, [isShow, isClone, testResult, statuses])
 
   useEffect(() => {
+    if (isLoadingAttributes) return
+
     const shouldSetDefaultStatus = defaultStatus && !watchStatus && isShow
     if (shouldSetDefaultStatus) {
       setValue("status", defaultStatus.id, { shouldDirty: true })
@@ -150,7 +153,7 @@ export const useEditCloneResultModal = ({
         steps: newSteps,
       })
     }
-  }, [defaultStatus, isShow, watchStatus, testResult.steps_results])
+  }, [defaultStatus, isShow, watchStatus, testResult.steps_results, isLoadingAttributes])
 
   const onCloseModal = () => {
     setIsShow(false)
@@ -173,13 +176,13 @@ export const useEditCloneResultModal = ({
   }
 
   const onSubmit: SubmitHandler<ResultFormData> = async (data) => {
-    if (!testResult || !testPlanId) return
+    if (!testResult) return
     setErrors(null)
 
-    const { isSuccess, attributesJson, errors } = makeAttributesJson(attributes)
+    const { isSuccess, attributesJson, errors: attributesErrors } = makeAttributesJson(attributes)
 
     if (!isSuccess) {
-      setErrors({ attributes: JSON.stringify(errors) })
+      setErrors({ attributes: JSON.stringify(attributesErrors) })
       return
     }
 
@@ -202,7 +205,7 @@ export const useEditCloneResultModal = ({
       if (!isClone) {
         newResult = await updatedTestResult({
           id: testResult.id,
-          testPlanId: Number(testPlanId),
+          testPlanId: testPlanId ? Number(testPlanId) : null,
           body: dataReq as ResultUpdate,
         }).unwrap()
       } else {
@@ -214,7 +217,7 @@ export const useEditCloneResultModal = ({
           })
           .filter((i) => i.step !== undefined) as StepResultCreate[]
         newResult = await createResult({
-          testPlanId: Number(testPlanId),
+          testPlanId: testPlanId ? Number(testPlanId) : null,
           body: { ...dataReq, steps_results: stepsResultCreate } as ResultCreate,
         }).unwrap()
       }
@@ -243,7 +246,7 @@ export const useEditCloneResultModal = ({
   }
 
   const isAllStepsSelected = testResult.steps_results.every((result) => watchSteps[result.id])
-  const isDisabledSubmit = !isDirty || !isAllStepsSelected || !watchStatus
+  const isDisabledSubmit = (!isDirty && !isClone) || !isAllStepsSelected || !watchStatus
 
   return {
     isLoading,

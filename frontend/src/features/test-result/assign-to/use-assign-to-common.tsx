@@ -16,7 +16,7 @@ export interface UpdateData {
 
 export const useAssignToCommon = ({ onSubmit }: Props) => {
   const { t } = useTranslation()
-  const { me } = useContext(MeContext)!
+  const { me } = useContext(MeContext)
 
   const [selectedUser, setSelectedUser] = useState<SelectData | null>(null)
 

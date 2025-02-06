@@ -1,4 +1,4 @@
-import { Button, Form, Input, Modal, Upload } from "antd"
+import { Button, Form, Input, Modal } from "antd"
 import { Controller } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 
@@ -71,7 +71,7 @@ export const TestCaseStepsModal = ({
               maxLength: { value: 255, message: t("Maximum length 255") },
               required: { value: true, message: t("Required field") },
             }}
-            render={({ field }) => <Input {...field} />}
+            render={({ field }) => <Input {...field} data-testid="test-case-steps-name-input" />}
           />
         </Form.Item>
         <Form.Item
@@ -122,21 +122,15 @@ export const TestCaseStepsModal = ({
             )}
           />
         </Form.Item>
-        <Attachment.List handleAttachmentRemove={onRemove} attachments={attachments} />
-        {attachmentsIds.map((field, index) => (
-          <input type="hidden" key={field.id} {...register(`attachments.${index}`)} />
-        ))}
-        <Upload.Dragger
-          name="file"
-          multiple
-          showUploadList={false}
-          customRequest={onLoad}
+        <Attachment.DropFiles
+          attachments={attachments}
+          attachmentsIds={attachmentsIds}
           onChange={onChange}
-          fileList={attachments}
-          height={80}
-        >
-          <p className="ant-upload-text">{t("Drop files here to attach, or click to browse")}</p>
-        </Upload.Dragger>
+          onLoad={onLoad}
+          onRemove={onRemove}
+          register={register}
+          idInput="test-case-steps-attachments-input"
+        />
       </Form>
     </Modal>
   )

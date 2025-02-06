@@ -61,21 +61,21 @@ export const useChangePassword = () => {
   const passwordConfirm = watch("confirm")
 
   useEffect(() => {
-    const [password, passwordConfirm] = getValues(["password", "confirm"])
-    if (!password && !passwordConfirm) {
+    const [newPassword, newPasswordConfirm] = getValues(["password", "confirm"])
+    if (!newPassword && !newPasswordConfirm) {
       setErrors(null)
       return
     }
-    const passwordValidation = validatePassword(password)
+    const passwordValidation = validatePassword(newPassword)
     if (passwordValidation) {
       setErrors(passwordValidation)
       return
     }
 
-    if (password !== passwordConfirm) {
+    if (newPassword !== newPasswordConfirm) {
       setErrors({ confirm: t("The passwords that you entered do not match!") })
     } else {
-      setErrors(validatePassword(password))
+      setErrors(validatePassword(newPassword))
     }
   }, [password, passwordConfirm])
 
@@ -95,9 +95,9 @@ export const useChangePassword = () => {
     }
 
     try {
-      const { password } = data
+      const { password: newPassword } = data
 
-      await updatePassword({ password }).unwrap()
+      await updatePassword({ password: newPassword }).unwrap()
       notification.success({
         message: t("Success"),
         closable: true,

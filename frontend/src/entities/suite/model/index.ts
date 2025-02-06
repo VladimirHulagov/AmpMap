@@ -1,1 +1,1 @@
-export * from "./use-test-suite-details"
+export * from "./use-attributes-test-suite"

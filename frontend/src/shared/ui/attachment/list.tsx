@@ -4,7 +4,7 @@ import { AttachmentItem } from "./item"
 
 interface AttachmentListProps {
   attachments: IAttachment[]
-  handleAttachmentRemove: (fileId: number) => void
+  handleAttachmentRemove?: (fileId: number) => void
   isShowNoAttachment?: boolean
 }
 

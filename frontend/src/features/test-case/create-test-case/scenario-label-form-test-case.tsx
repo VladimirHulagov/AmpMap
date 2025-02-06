@@ -1,6 +1,8 @@
-import { Checkbox, Flex, Space } from "antd"
+import { Flex } from "antd"
 import { Control, Controller } from "react-hook-form"
 import { useTranslation } from "react-i18next"
+
+import { Toggle } from "shared/ui"
 
 export const ScenarioLabelFormTestCase = ({
   control,
@@ -15,11 +17,13 @@ export const ScenarioLabelFormTestCase = ({
         name="is_steps"
         control={control}
         render={({ field }) => (
-          <Space.Compact style={{ marginLeft: "auto", marginBottom: 0 }}>
-            <Checkbox id="edit-steps-checkbox" checked={field.value} onChange={field.onChange}>
-              {t("Steps")}
-            </Checkbox>
-          </Space.Compact>
+          <Toggle
+            id="edit-steps-toggle"
+            label={t("Steps")}
+            checked={field.value}
+            onChange={field.onChange}
+            size="sm"
+          />
         )}
       />
     </Flex>

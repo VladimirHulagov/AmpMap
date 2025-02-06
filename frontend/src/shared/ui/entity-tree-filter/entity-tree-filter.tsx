@@ -143,12 +143,12 @@ export const EntityTreeFilter = <T extends BaseTreeFilterNode>({
   }, [visibleData, value])
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { value } = e.target
+    const { value: newValue } = e.target
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    const newExpandedKeys = findNodesWithParentKeys(treeData.data, value)
+    const newExpandedKeys = findNodesWithParentKeys(treeData.data, newValue)
     setExpandedKeys(newExpandedKeys)
-    setSearchValue(value)
+    setSearchValue(newValue)
     setAutoExpandParent(true)
   }
 
@@ -189,17 +189,17 @@ export const EntityTreeFilter = <T extends BaseTreeFilterNode>({
     let newCheckedKeys = [...checkedKeys]
 
     if (checked) {
-      const addKeys = (node: DataNode) => {
-        if (!newCheckedKeys.includes(node.key as string)) {
-          newCheckedKeys.push(node.key as string)
+      const addKeys = (addedNode: DataNode) => {
+        if (!newCheckedKeys.includes(addedNode.key as string)) {
+          newCheckedKeys.push(addedNode.key as string)
         }
-        node.children?.forEach(addKeys)
+        addedNode.children?.forEach(addKeys)
       }
       addKeys(node)
     } else {
-      const removeKeys = (node: DataNode) => {
-        newCheckedKeys = newCheckedKeys.filter((key) => key !== node.key)
-        node.children?.forEach(removeKeys)
+      const removeKeys = (removedNode: DataNode) => {
+        newCheckedKeys = newCheckedKeys.filter((key) => key !== removedNode.key)
+        removedNode.children?.forEach(removeKeys)
       }
       removeKeys(node)
     }
@@ -260,7 +260,7 @@ export const EntityTreeFilter = <T extends BaseTreeFilterNode>({
       onDropdownVisibleChange={handleDropdownVisibleChange}
       dropdownRender={() => (
         <>
-          <div className={styles.searchBlock}>
+          <div className={styles.searchBlock} data-testid="entity-tree-filter-search-block">
             <Input
               className={styles.input}
               placeholder={t("Search")}
@@ -274,10 +274,20 @@ export const EntityTreeFilter = <T extends BaseTreeFilterNode>({
           <div style={{ padding: "8px 16px" }}>
             <Flex align="center" justify="space-between" style={{ marginBottom: 8 }}>
               <Flex gap={8}>
-                <Button size="small" onClick={handleSelectAll} style={{ padding: "4px 8px" }}>
+                <Button
+                  size="small"
+                  onClick={handleSelectAll}
+                  style={{ padding: "4px 8px" }}
+                  data-testid="entity-tree-filter-select-all"
+                >
                   {t("Select all")}
                 </Button>
-                <Button onClick={onClear} size="small" style={{ padding: "4px 8px" }}>
+                <Button
+                  onClick={onClear}
+                  size="small"
+                  style={{ padding: "4px 8px" }}
+                  data-testid="entity-tree-filter-reset"
+                >
                   {t("Reset")}
                 </Button>
               </Flex>
@@ -308,9 +318,13 @@ export const EntityTreeFilter = <T extends BaseTreeFilterNode>({
                   checkedKeys={{ checked: checkedKeys, halfChecked }}
                   onCheck={handleCheck}
                   className={styles.tree}
+                  data-testid="entity-tree-filter-tree"
                 />
 
-                <span style={{ opacity: 0.7, marginTop: 4 }}>
+                <span
+                  style={{ opacity: 0.7, marginTop: 4 }}
+                  data-testid="entity-tree-filter-selected-count"
+                >
                   {t("Selected")}: {value.length}
                 </span>
               </>

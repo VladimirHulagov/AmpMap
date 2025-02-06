@@ -1,7 +1,4 @@
-import {
-  useGetCustomAttributeContentTypesQuery,
-  useGetCustomAttributesQuery,
-} from "entities/custom-attribute/api"
+import { useGetCustomAttributesQuery } from "entities/custom-attribute/api"
 import { convertAttribute } from "entities/custom-attribute/lib"
 import { useAttributes } from "entities/custom-attribute/model"
 import { useStatuses } from "entities/status/model/use-statuses"
@@ -25,28 +22,23 @@ export const useAttributesTestResult = ({ mode, setValue }: UseAttributesProps) 
 
   const selectedDrawerTest = useAppSelector(selectDrawerTest)
 
-  const { data: contentTypes } = useGetCustomAttributeContentTypesQuery()
-  const { data } = useGetCustomAttributesQuery(
+  const { data, isLoading } = useGetCustomAttributesQuery(
     { project: String(project.id), test: selectedDrawerTest?.id },
     { skip: !selectedDrawerTest }
   )
 
   const initAttributes = useMemo(() => {
-    if (!data || !contentTypes) return []
-
-    const contentTypeId = contentTypes?.find((type) => type.label === "Test Result")?.value ?? null
-
-    if (!contentTypeId) return []
+    if (!data) return []
 
     return data
-      .filter((attribute) => attribute.content_types?.includes(contentTypeId))
+      .filter((i) => i.applied_to.testresult)
       .filter((attribute) =>
-        attribute.is_suite_specific && selectedDrawerTest?.suite
-          ? attribute.suite_ids.includes(selectedDrawerTest?.suite)
+        !!attribute.applied_to.testresult.suite_ids.length && selectedDrawerTest?.suite
+          ? attribute.applied_to.testresult.suite_ids.includes(selectedDrawerTest?.suite)
           : true
       )
-      .map(convertAttribute)
-  }, [data, contentTypes])
+      .map((i) => convertAttribute({ attribute: i, model: "testresult" }))
+  }, [data])
 
   const handleSetValue = (attributes: Attribute[]) => {
     setValue("attributes", attributes, { shouldDirty: true })
@@ -78,6 +70,7 @@ export const useAttributesTestResult = ({ mode, setValue }: UseAttributesProps) 
 
   return {
     attributes,
+    isLoading,
     setAttributes,
     resetAttributes,
     addAttribute,

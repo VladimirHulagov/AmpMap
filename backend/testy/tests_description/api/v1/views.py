@@ -236,6 +236,7 @@ class TestCaseViewSet(TestyModelViewSet, TestyArchiveMixin):
         updated_test_case = TestCaseService.restore_version(serializer.validated_data.get('version'), pk)
         return Response(TestCaseRetrieveSerializer(updated_test_case, context=self.get_serializer_context()).data)
 
+    @cases_search_schema
     @action(methods=[_GET], url_path='search', url_name='search', detail=False)
     def cases_search(self, request):
         cases = self.get_queryset()

@@ -264,11 +264,7 @@ class CustomAttribute(BaseModel):
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
     name = models.CharField(max_length=settings.CHAR_FIELD_MAX_LEN)
     type = models.IntegerField(choices=CustomFieldType.choices, blank=False)
-    is_required = models.BooleanField(default=False)
-    is_suite_specific = models.BooleanField(blank=True, default=False)
-    suite_ids = ArrayField(models.PositiveIntegerField(), blank=True, default=list)
-    content_types = ArrayField(models.PositiveIntegerField(blank=False))
-    status_specific = ArrayField(models.BigIntegerField(), blank=True, default=list)
+    applied_to = models.JSONField(blank=True, default=dict)
 
     class Meta:
         ordering = (_NAME,)

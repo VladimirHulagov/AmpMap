@@ -36,7 +36,7 @@ export const Sidebar = memo(() => {
   const user = useAppSelector(selectUser)
   const { notificationsCount } = useNotificationWS()
 
-  const UP_LINKS = (projectId?: string) => [
+  const UP_LINKS = [
     {
       key: "overview",
       to: `/projects/${projectId}/overview`,
@@ -84,12 +84,12 @@ export const Sidebar = memo(() => {
 
   return (
     <div className={styles.wrapper}>
-      <Link id="logo" to="/" className={styles.logo}>
+      <Link id="logo" to="/">
         <TestyIcon />
       </Link>
       {location.pathname.includes("project") && !location.pathname.includes("administration") && (
         <ul className={styles.links}>
-          {UP_LINKS(projectId).map((link) => (
+          {UP_LINKS.map((link) => (
             <Tooltip key={link.key} title={link.title} placement="right">
               <Link
                 id={`sidebar-link-${link.key}`}

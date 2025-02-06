@@ -21,6 +21,7 @@ interface Attribute {
   type: AttributeType
   required?: boolean
   status_specific?: number[]
+  is_init: boolean
 }
 
 type AttributesObject = Record<string, string[] | string | object>
@@ -136,3 +137,5 @@ interface BaseEntity {
   id: number
   parent: Parent | null
 }
+
+type HTMLDataAttribute = Record<`data-${string}`, unknown>

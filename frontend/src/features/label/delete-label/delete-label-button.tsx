@@ -31,6 +31,8 @@ export const DeleteLabelButton = ({ label }: Props) => {
           initInternalError(err)
         }
       },
+      okButtonProps: { "data-testid": "delete-label-button-confirm" },
+      cancelButtonProps: { "data-testid": "delete-label-button-cancel" },
     })
   }
 

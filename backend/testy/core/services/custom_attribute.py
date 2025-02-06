@@ -35,26 +35,55 @@ from django.contrib.contenttypes.models import ContentType
 from testy.core.models import CustomAttribute
 from testy.tests_representation.selectors.status import ResultStatusSelector
 
+_STATUS_SPECIFIC = 'status_specific'
+
 
 class CustomAttributeService:
-    non_side_effect_fields = [
-        'name', 'project', 'type', 'is_required', 'is_suite_specific', 'suite_ids', 'status_specific',
-    ]
+    non_side_effect_fields = ['name', 'project', 'type', 'applied_to']
+    applied_to_fields = ['is_required', 'suite_ids', _STATUS_SPECIFIC]
 
     @classmethod
     def custom_attribute_create(cls, data: dict[str, Any]) -> CustomAttribute:
-        if data.get('status_specific') is None:
-            data['status_specific'] = list(
-                ResultStatusSelector
-                .status_list(project=data['project'])
-                .values_list('id', flat=True),
-            )
+        applied_to = data.get('applied_to')
+        statuses = list(
+            ResultStatusSelector
+            .status_list(project=data['project'])
+            .values_list('id', flat=True),
+        )
+        for fields in applied_to.values():
+            if _STATUS_SPECIFIC in fields and fields[_STATUS_SPECIFIC] is None:
+                fields[_STATUS_SPECIFIC] = statuses
         custom_attribute = CustomAttribute.model_create(
             fields=cls.non_side_effect_fields,
             data=data,
             commit=False,
         )
-        custom_attribute.content_types = cls._get_content_type_ids(data.get('content_types'))
+        custom_attribute.full_clean()
+        custom_attribute.save()
+        return custom_attribute
+
+    @classmethod
+    def custom_attribute_create_v1(cls, data: dict[str, Any]) -> CustomAttribute:
+        create_dict = {
+            data_key: data_value for data_key, data_value in data.items() if data_key in cls.non_side_effect_fields
+        }
+        if data.get(_STATUS_SPECIFIC) is None:
+            data[_STATUS_SPECIFIC] = list(
+                ResultStatusSelector
+                .status_list(project=data['project'])
+                .values_list('id', flat=True),
+            )
+        ct_names = [ct.model for ct in data.get('content_types', [])]
+        applied_to = dict.fromkeys(ct_names, {})
+        for ct_name in ct_names:
+            for field in cls.applied_to_fields:
+                applied_to[ct_name][field] = data.get(field)
+        create_dict['applied_to'] = applied_to
+        custom_attribute = CustomAttribute.model_create(
+            fields=cls.non_side_effect_fields,
+            data=create_dict,
+            commit=False,
+        )
         custom_attribute.full_clean()
         custom_attribute.save()
         return custom_attribute
@@ -66,12 +95,49 @@ class CustomAttributeService:
             data=data,
             commit=False,
         )
-        if content_types := data.get('content_types', []):
-            custom_attribute.content_types = cls._get_content_type_ids(content_types)
         custom_attribute.full_clean()
         custom_attribute.save()
         return custom_attribute
 
     @classmethod
-    def _get_content_type_ids(cls, content_types: list[ContentType]) -> list[int]:
-        return [content_type.id for content_type in content_types]
+    def custom_attribute_update_v1(cls, custom_attribute: CustomAttribute, data: dict[str, Any]) -> CustomAttribute:
+        update_dict = {
+            data_key: data_value for data_key, data_value in data.items() if data_key in cls.non_side_effect_fields
+        }
+        ct_names = (
+            ContentType
+            .objects
+            .filter(model__in=custom_attribute.applied_to.keys())
+            .values_list('model', flat=True)
+        )
+
+        if 'content_types' in data:
+            ct_names = [ct.model for ct in data.get('content_types', [])]
+        applied_to = dict.fromkeys(ct_names, {})
+        for ct_name in ct_names:
+            for field in cls.applied_to_fields:
+                if field_value := data.get(field):
+                    applied_to[ct_name][field] = field_value
+
+        custom_attribute, _ = custom_attribute.model_update(
+            fields=cls.non_side_effect_fields,
+            data=update_dict,
+            commit=False,
+        )
+        custom_attribute.applied_to = cls._update_nested_dict(custom_attribute.applied_to, applied_to)
+        custom_attribute.full_clean()
+        custom_attribute.save()
+        return custom_attribute
+
+    @classmethod
+    def _update_nested_dict(
+        cls,
+        old: dict[str, Any],
+        new: dict[str, Any],
+    ) -> dict[str, Any]:
+        for dict_key, dict_value in new.items():
+            if isinstance(dict_value, dict):
+                old[dict_key] = cls._update_nested_dict(old.get(dict_key, {}), dict_value)
+            else:
+                old[dict_key] = dict_value
+        return old

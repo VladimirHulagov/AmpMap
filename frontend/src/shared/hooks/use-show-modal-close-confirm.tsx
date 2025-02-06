@@ -11,6 +11,8 @@ export const useShowModalCloseConfirm = () => {
       okText: t("Ok"),
       cancelText: t("Cancel"),
       onOk: () => cb(),
+      okButtonProps: { "data-testid": "button-confirm" },
+      cancelButtonProps: { "data-testid": "button-cancel" },
     })
   }
 

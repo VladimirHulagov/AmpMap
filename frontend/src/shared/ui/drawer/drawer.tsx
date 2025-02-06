@@ -5,6 +5,7 @@ import { ReactNode, useRef } from "react"
 import SquareHalfIcon from "shared/assets/icons/square-half.svg?react"
 import { icons } from "shared/assets/inner-icons"
 import { useCacheState, useOnClickOutside, useResizebleBlock } from "shared/hooks"
+import { toBool } from "shared/libs"
 
 import { Portal } from "widgets/[ui]/portal"
 
@@ -48,7 +49,7 @@ export const Drawer = ({
   extra,
   children,
 }: Props) => {
-  const [isRightFixed, setIsRightFixed] = useCacheState(`isDrawerRightFixed`, false)
+  const [isRightFixed, setIsRightFixed] = useCacheState(`isDrawerRightFixed`, false, toBool)
 
   const handleRightSide = () => {
     setIsRightFixed(!isRightFixed)
@@ -88,12 +89,17 @@ export const Drawer = ({
             <Flex gap={16} justify="space-between" className={styles.header}>
               <Flex gap={4} style={{ minWidth: 68 }}>
                 <Col flex="32px" style={{ padding: 0, height: 32 }}>
-                  <CloseIcon className={styles.closeIcon} onClick={onClose} />
+                  <CloseIcon
+                    className={styles.closeIcon}
+                    onClick={onClose}
+                    id="drawer-close-icon"
+                  />
                 </Col>
                 <Col flex="32px" style={{ padding: 0, height: 32 }}>
                   <SquareHalfIcon
                     className={classNames(styles.closeIcon, { [styles.iconActive]: isRightFixed })}
                     onClick={handleRightSide}
+                    id="drawer-square-half-icon"
                   />
                 </Col>
               </Flex>

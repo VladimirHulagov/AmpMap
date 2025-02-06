@@ -65,6 +65,7 @@ export const useTestPlanActivityFilters = (
           onSearch={testPlanActivity.handleSearch}
           value={testPlanActivity.searchText}
           onChange={(e) => testPlanActivity.handleSearchChange(e.target.value)}
+          data-testid="test-plan-activity-search"
         />
       ),
     },

@@ -52,10 +52,12 @@ export const CustomAttributesTable = () => {
       render: (_, record) => <Space>{customAttributesObject[record.type]}</Space>,
     },
     {
-      title: t("Required"),
-      dataIndex: "is_required",
-      key: "is_required",
-      render: (_, record) => <Space>{String(record.is_required)}</Space>,
+      title: t("Applied To"),
+      dataIndex: "applied_to",
+      key: "applied_to",
+      render: (value) => {
+        return <Space>{Object.keys(value as object).join(", ")}</Space>
+      },
     },
     {
       title: t("Action"),

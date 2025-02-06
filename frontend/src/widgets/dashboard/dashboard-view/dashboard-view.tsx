@@ -10,7 +10,7 @@ import { DashboardHeader } from "../dashboard-header/dashboard-header"
 type ProjectViewType = "table" | "cards"
 
 export const DashboardView = () => {
-  const { userConfig, updateConfig } = useContext(MeContext)!
+  const { userConfig, updateConfig } = useContext(MeContext)
   const [searchByNameValue, setSearchByNameValue] = useState<string | undefined>(undefined)
   const searchByNameDebounce = useDebounce(searchByNameValue, 250, true)
   const [view, setView] = useCacheState<ProjectViewType>("dashboard-view", "cards")
@@ -19,8 +19,8 @@ export const DashboardView = () => {
     await updateConfig({
       ...userConfig,
       projects: {
-        ...userConfig.projects,
-        is_show_archived: !userConfig.projects?.is_show_archived,
+        ...userConfig?.projects,
+        is_show_archived: !userConfig?.projects?.is_show_archived,
       },
     })
   }
@@ -29,8 +29,8 @@ export const DashboardView = () => {
     await updateConfig({
       ...userConfig,
       projects: {
-        ...userConfig.projects,
-        is_only_favorite: !userConfig.projects?.is_only_favorite,
+        ...userConfig?.projects,
+        is_only_favorite: !userConfig?.projects?.is_only_favorite,
       },
     })
   }

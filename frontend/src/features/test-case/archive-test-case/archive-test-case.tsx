@@ -29,6 +29,7 @@ export const ArchiveTestCase = ({ testCase, onSubmit }: Props) => {
         danger
         style={{ width: "fit-content" }}
         onClick={() => setIsShow(true)}
+        data-testid="archive-test-case-btn"
       >
         {t("Archive")}
       </Dropdown.Button>

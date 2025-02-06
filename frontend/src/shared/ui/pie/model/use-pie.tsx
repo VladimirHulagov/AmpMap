@@ -99,6 +99,7 @@ export const usePie = ({
               borderBottom: isActive ? `1px solid ${colors.accent}` : "0",
             }}
             onClick={handleClick}
+            data-testid={`pie-legend-title-${label}`}
           >
             {label} <span className={styles.legendValue}>[0{estimateValue}] (0%)</span>
           </span>
@@ -113,6 +114,7 @@ export const usePie = ({
               borderBottom: isActive ? `1px solid ${colors.accent}` : "0",
             }}
             onClick={handleClick}
+            data-testid={`pie-legend-title-${label}`}
           >
             {label}{" "}
             <span className={styles.legendValue}>
@@ -130,6 +132,7 @@ export const usePie = ({
             borderBottom: isActive ? `1px solid ${colors.accent}` : "0",
           }}
           onClick={handleClick}
+          data-testid={`pie-legend-title-${label}`}
         >
           {value}{" "}
           <span className={styles.legendValue}>

@@ -1,10 +1,22 @@
 import { customAttributesObject } from "shared/config/custom-attribute-types"
 
-export const convertAttribute = (customAttribute: CustomAttribute): Attribute => ({
-  id: String(customAttribute.id),
-  name: customAttribute.name,
-  type: customAttributesObject[customAttribute.type],
-  value: "",
-  required: customAttribute.is_required,
-  status_specific: customAttribute.status_specific ?? [],
-})
+interface Props {
+  model: CustomAttributeModelType
+  attribute: CustomAttribute
+  is_init?: boolean
+}
+
+export const convertAttribute = ({ model, attribute, is_init = true }: Props): Attribute => {
+  const hasStatusSpecific = model === "testresult"
+  const appliedTo = attribute.applied_to[model] as CustomAttributeAppliedItemTestResult
+
+  return {
+    id: String(attribute.id),
+    name: attribute.name,
+    type: customAttributesObject[attribute.type],
+    value: "",
+    required: appliedTo?.is_required ?? false,
+    status_specific: hasStatusSpecific ? appliedTo.status_specific : [],
+    is_init,
+  }
+}

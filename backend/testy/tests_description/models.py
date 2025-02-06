@@ -58,6 +58,7 @@ class TestSuite(LtreeBaseModel):
     name = models.CharField(max_length=settings.CHAR_FIELD_MAX_LEN)
     description = models.TextField('description', default='', blank=True)
     comments = GenericRelation(Comment)
+    attributes = models.JSONField(default=dict, blank=True)
     objects: LtreeManager
 
     class Meta:

@@ -101,25 +101,27 @@ export const CreateEditParameterModal = ({ projectId }: CreateParameterModalProp
     ? `${t("Edit")} ${t("Parameter")} ${parameter?.data}`
     : `${t("Create")} ${t("Parameter")}`
 
+  const type = isEditMode ? "edit" : "create"
+
   return (
     <Modal
-      className="create-edit-parameter-modal"
+      className={`${type}-parameter-modal`}
       title={title}
       open={isShow}
       onCancel={handleCancel}
       width="600px"
       centered
       footer={[
-        <Button id="close-update-create-parameter" key="back" onClick={handleCancel}>
+        <Button key="back" onClick={handleCancel} data-testid={`${type}-parameter-close-button`}>
           {t("Close")}
         </Button>,
         <Button
-          id="update-create-parameter"
           loading={isLoading}
           key="submit"
           onClick={handleSubmit(onSubmit)}
           type="primary"
           disabled={!isDirty}
+          data-testid={`${type}-parameter-button`}
         >
           {isEditMode ? t("Update") : t("Create")}
         </Button>,
@@ -130,7 +132,11 @@ export const CreateEditParameterModal = ({ projectId }: CreateParameterModalProp
           <AlertError error={errors as ErrorObj} skipFields={["data", "group_name"]} />
         ) : null}
 
-        <Form id="create-edit-parameter-form" layout="vertical" onFinish={handleSubmit(onSubmit)}>
+        <Form
+          layout="vertical"
+          onFinish={handleSubmit(onSubmit)}
+          data-testid={`${type}-parameter-form`}
+        >
           <Form.Item
             label="Name"
             validateStatus={errors?.data ? "error" : ""}
@@ -139,7 +145,7 @@ export const CreateEditParameterModal = ({ projectId }: CreateParameterModalProp
             <Controller
               name="data"
               control={control}
-              render={({ field }) => <Input {...field} />}
+              render={({ field }) => <Input {...field} data-testid={`${type}-parameter-name`} />}
             />
           </Form.Item>
           <Form.Item
@@ -150,7 +156,7 @@ export const CreateEditParameterModal = ({ projectId }: CreateParameterModalProp
             <Controller
               name="group_name"
               control={control}
-              render={({ field }) => <Input {...field} />}
+              render={({ field }) => <Input {...field} data-testid={`${type}-parameter-group`} />}
             />
           </Form.Item>
         </Form>

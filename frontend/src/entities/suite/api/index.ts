@@ -86,9 +86,12 @@ export const suiteApi = createApi({
       },
       invalidatesTags: (result) => invalidatesList(result, "TestSuite"),
     }),
-    getSuite: builder.query<Suite, number>({
-      query: (suiteId) => `${rootPath}/${suiteId}/`,
-      providesTags: (result, error, suiteId) => [{ type: "TestSuite", id: suiteId }],
+    getSuite: builder.query<Suite, GetTestSuiteQuery>({
+      query: ({ suiteId, ...params }) => ({
+        url: `${rootPath}/${suiteId}/`,
+        params,
+      }),
+      providesTags: (result, error, { suiteId }) => [{ type: "TestSuite", id: suiteId }],
     }),
     getDescendantsTree: builder.query<
       SuiteDescendantsTree[],
@@ -148,6 +151,7 @@ export const suiteInvalidate = (id?: number) => {
 
 export const {
   useLazyGetTestSuitesQuery,
+  useLazyGetSuiteQuery,
   useGetTestSuitesQuery,
   useGetSuiteQuery,
   useGetTestSuiteAncestorsQuery,

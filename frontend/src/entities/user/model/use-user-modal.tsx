@@ -75,8 +75,8 @@ export const useUserModal = () => {
   const isAdmin = watch("is_superuser")
 
   useEffect(() => {
-    const [password, passwordConfirm] = getValues(["password", "confirm"])
-    if (password !== passwordConfirm && password && passwordConfirm) {
+    const [formPassword, formPasswordConfirm] = getValues(["password", "confirm"])
+    if (formPassword !== formPasswordConfirm && formPassword && formPasswordConfirm) {
       setErrors({ confirm: t("The passwords that you entered do not match!") })
     } else {
       setErrors(null)
@@ -98,30 +98,32 @@ export const useUserModal = () => {
   }, [isEditMode, modalUser])
 
   const onSubmit: SubmitHandler<Inputs> = async (data) => {
-    const [password, confirm, username, email] = getValues([
+    const [formPassword, confirm, username, email] = getValues([
       "password",
       "confirm",
       "username",
       "email",
     ])
 
-    const isShortChange = isEditMode && !password && !confirm
-    const fields = isShortChange ? { username, email } : { password, confirm, username, email }
+    const isShortChange = isEditMode && !formPassword && !confirm
+    const fields = isShortChange
+      ? { username, email }
+      : { password: formPassword, confirm, username, email }
 
-    const errors: ErrorData = {} as ErrorData
+    const newErrors: ErrorData = {} as ErrorData
     Object.keys(fields).forEach((key) => {
       const fieldName = key as keyof typeof fields
       if (!fields[fieldName]) {
-        errors[fieldName] = t("This field can not be empty!")
+        newErrors[fieldName] = t("This field can not be empty!")
       }
     })
 
-    if (password !== confirm && password && confirm) {
-      errors.confirm = t("The passwords that you entered do not match!")
+    if (formPassword !== confirm && formPassword && confirm) {
+      newErrors.confirm = t("The passwords that you entered do not match!")
     }
 
-    if (Object.keys(errors).length) {
-      setErrors(errors)
+    if (Object.keys(newErrors).length) {
+      setErrors(newErrors)
       return
     }
     setErrors(null)

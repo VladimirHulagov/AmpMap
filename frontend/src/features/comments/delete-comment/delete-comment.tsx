@@ -37,6 +37,8 @@ export const DeleteComment = ({ commentId }: { commentId: number }) => {
           okText: t("Delete"),
           cancelText: t("Cancel"),
           onOk: handleDelete,
+          okButtonProps: { "data-testid": "delete-comment-button-confirm" },
+          cancelButtonProps: { "data-testid": "delete-comment-button-cancel" },
         })
       }}
     >

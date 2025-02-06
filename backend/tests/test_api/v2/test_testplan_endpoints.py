@@ -39,6 +39,7 @@ from unittest import mock
 
 import allure
 import pytest
+from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q, QuerySet
 from django.forms import model_to_dict
 from django.utils import timezone
@@ -109,6 +110,7 @@ class TestPlanEndpoints:
         superuser_client,
         combined_parameters,
         project,
+        attachment_factory,
         number_of_param_groups,
         number_of_entities_in_group,
     ):
@@ -121,6 +123,7 @@ class TestPlanEndpoints:
             'started_at': constants.DATE,
             'parameters': parameters,
             'project': project.id,
+            'attachments': [attachment_factory(content_type=None, object_id=None).id],
         }
         response = superuser_client.send_request(
             self.view_name_list,
@@ -139,6 +142,9 @@ class TestPlanEndpoints:
             assert TestPlan.objects.count() == expected_number_of_plans, f'Expected number of test plans ' \
                                                                          f'"{expected_number_of_plans}"' \
                                                                          f'actual: "{TestPlan.objects.count()}"'
+        with allure.step('Validate attachments exist'):
+            for test_plan in TestPlan.objects.all():
+                assert test_plan.attachments.exists()
 
     @allure.title('Test due date validation')
     def test_due_date_restrictions(self, project, superuser_client):
@@ -1084,6 +1090,7 @@ class TestPlanEndpoints:
         superuser_client,
         test_result_factory,
         test_plan_factory,
+        attachment_factory,
         project,
         test_factory,
         to_plan,
@@ -1111,6 +1118,9 @@ class TestPlanEndpoints:
                 tests_to_copy.append(test)
             else:
                 test_factory(project=project, plan=plan, is_archive=True)
+        plan_ct = ContentType.objects.get_for_model(TestPlan)
+        for plan in plans_to_copy:
+            attachment_factory(object_id=plan.id, content_type=plan_ct)
         payload = {
             'plans': [
                 {
@@ -1129,6 +1139,8 @@ class TestPlanEndpoints:
         ).json()
         copied_plans_ids = [plan['id'] for plan in copied_plans_from_resp]
         copied_plans = list(TestPlan.objects.filter(Q(pk__in=copied_plans_ids)))
+        for plan in copied_plans:
+            assert plan.attachments.count() == 1, 'Attachment was not copied'
         copied_tests = list(Test.objects.filter(plan__pk__in=copied_plans_ids, is_archive=False))
         self._validate_copied_objects(
             sorted(plans_to_copy, key=attrgetter('name')),
@@ -1373,7 +1385,15 @@ class TestPlanEndpoints:
         custom_attribute_name = 'awesome_attribute'
         custom_attribute_value = 'some_value'
         with allure.step('Create custom attribute'):
-            custom_attribute_factory(project=project, name=custom_attribute_name, is_required=True)
+            custom_attribute_factory(
+                project=project,
+                name=custom_attribute_name,
+                applied_to={
+                    'testplan': {
+                        'is_required': True,
+                    },
+                },
+            )
         attributes = {custom_attribute_name: custom_attribute_value}
         payload = {
             'name': constants.TEST_PLAN_NAME,
@@ -1402,7 +1422,15 @@ class TestPlanEndpoints:
         parameters_count = 3
         custom_attribute_name = 'awesome_attribute'
         with allure.step('Create custom attribute'):
-            custom_attribute_factory(project=project, name=custom_attribute_name, is_required=True)
+            custom_attribute_factory(
+                project=project,
+                name=custom_attribute_name,
+                applied_to={
+                    'testplan': {
+                        'is_required': True,
+                    },
+                },
+            )
         payload = {
             'name': constants.TEST_PLAN_NAME,
             'project': project.id,
@@ -1435,7 +1463,14 @@ class TestPlanEndpoints:
         allure.dynamic.title(f'Test {request.node.callspec.id} plan cannot be created without required attributes')
         parameters_count = 3
         with allure.step('Generate custom attribute'):
-            custom_attribute = custom_attribute_factory(project=project, is_required=True)
+            custom_attribute = custom_attribute_factory(
+                project=project,
+                applied_to={
+                    'testplan': {
+                        'is_required': True,
+                    },
+                },
+            )
         payload = {
             'name': constants.TEST_PLAN_NAME,
             'project': project.id,

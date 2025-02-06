@@ -35,6 +35,10 @@
   height: 48px;
 }
 
+.tableBody {
+  position: relative;
+}
+
 .tableHead th:first-child,
 .tableBody tr:first-child {
   text-align: left;

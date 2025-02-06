@@ -41,7 +41,7 @@ export const ActionButtonsFilter = ({
 }: Props) => {
   const { t } = useTranslation()
 
-  const { userConfig, updateConfig } = useContext(MeContext)!
+  const { userConfig, updateConfig } = useContext(MeContext)
   const { project } = useContext(ProjectContext)!
   const filtersKey = type === "plans" ? "test_plans" : "test_suites"
   const [isOpen, setIsOpen] = useState(false)
@@ -176,10 +176,15 @@ export const ActionButtonsFilter = ({
         <button
           className={classNames(styles.renameBtn, styles.saveRename)}
           onClick={handleNewNameAccept}
+          data-testid="action-buttons-filter-rename-accept"
         >
           <CheckOutlined />
         </button>
-        <button className={styles.renameBtn} onClick={handleNewNameClose}>
+        <button
+          className={styles.renameBtn}
+          onClick={handleNewNameClose}
+          data-testid="action-buttons-filter-rename-close"
+        >
           <CloseOutlined />
         </button>
       </Flex>
@@ -195,6 +200,7 @@ export const ActionButtonsFilter = ({
               type="button"
               className={classNames("link-button", styles.actionBtn)}
               onClick={resetFilterToSelected}
+              data-testid="action-buttons-filter-reset"
             >
               <ResetIcon />
             </button>
@@ -207,20 +213,32 @@ export const ActionButtonsFilter = ({
             <ul className={styles.filterMenuList}>
               {filterSettings.hasUnsavedChanges && (
                 <li className={styles.filterMenuListItem} onClick={handleSaveChanges}>
-                  <button type="button" className={styles.btn}>
+                  <button
+                    type="button"
+                    className={styles.btn}
+                    data-testid="action-buttons-filter-save-changes"
+                  >
                     <CheckOutlined style={{ fontSize: 14 }} />
                   </button>
                   <span>{t("Save Changes")}</span>
                 </li>
               )}
               <li className={styles.filterMenuListItem} onClick={handleSaveAsNew}>
-                <button type="button" className={styles.btn}>
+                <button
+                  type="button"
+                  className={styles.btn}
+                  data-testid="action-buttons-filter-save-as-new"
+                >
                   <CopyOutlined style={{ fontSize: 14 }} />
                 </button>
                 <span>{t("Save as New Filter")}</span>
               </li>
               <li className={styles.filterMenuListItem} onClick={handleShowEdit}>
-                <button type="button" className={styles.btn}>
+                <button
+                  type="button"
+                  className={styles.btn}
+                  data-testid="action-buttons-filter-rename"
+                >
                   <EditOutlined style={{ fontSize: 14 }} />
                 </button>
                 <span>{t("Rename")}</span>
@@ -229,7 +247,11 @@ export const ActionButtonsFilter = ({
                 className={classNames(styles.filterMenuListItem, styles.delete)}
                 onClick={() => onDelete(filterSettings.selected ?? "")}
               >
-                <button type="button" className={styles.btn}>
+                <button
+                  type="button"
+                  className={styles.btn}
+                  data-testid="action-buttons-filter-delete"
+                >
                   <DeleteOutlined style={{ fontSize: 14 }} />
                 </button>
                 <span>{t("Delete")}</span>
@@ -242,7 +264,11 @@ export const ActionButtonsFilter = ({
           onOpenChange={setIsOpen}
           arrow={false}
         >
-          <button type="button" className={classNames("link-button", styles.actionBtn)}>
+          <button
+            type="button"
+            className={classNames("link-button", styles.actionBtn)}
+            data-testid="action-buttons-filter-context-menu"
+          >
             <ContextMenuIcon />
           </button>
         </Popover>
@@ -258,6 +284,7 @@ export const ActionButtonsFilter = ({
             type="button"
             className={classNames("link-button", styles.actionBtn)}
             onClick={clearFilter}
+            data-testid="action-buttons-filter-reset"
           >
             <ResetIcon />
           </button>
@@ -268,6 +295,7 @@ export const ActionButtonsFilter = ({
           type="button"
           className={classNames("link-button", styles.actionBtn)}
           onClick={handleShowEdit}
+          data-testid="action-buttons-filter-save"
         >
           <SaveIcon />
         </button>

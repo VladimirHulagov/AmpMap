@@ -28,7 +28,7 @@ import { TestPlanHistogramFilters } from "./test-plan-histogram-filters"
 type ValuesData = "passed" | "failed" | "skipped" | "broken" | "blocked" | "retest"
 
 interface Props {
-  testPlanId?: string
+  testPlanId?: number
 }
 
 const dataEmpty = [
@@ -81,21 +81,21 @@ export const TestPlanHistogram = ({ testPlanId }: Props) => {
   const { t } = useTranslation()
   const { projectId } = useParams<ParamProjectId>()
   const testsFilter = useAppSelector(selectFilter)
-  const { userConfig } = useContext(MeContext)!
+  const { userConfig } = useContext(MeContext)
 
   const [barType, setBarType] = useState<SegmentedValue>(
-    userConfig.ui?.graph_base_bar_type || "by_time"
+    userConfig?.ui?.graph_base_bar_type ?? "by_time"
   )
   const testPlanIdConfigKey = testPlanId ?? "root"
   const [dateHistogram, setDateHistogram] = useState({
-    start: userConfig.ui?.test_plan?.[testPlanIdConfigKey]?.start_date
-      ? dayjs(userConfig.ui?.test_plan?.[testPlanIdConfigKey]?.start_date)
+    start: userConfig?.ui?.test_plan?.[testPlanIdConfigKey]?.start_date
+      ? dayjs(userConfig?.ui?.test_plan?.[testPlanIdConfigKey]?.start_date)
       : dayjs().subtract(6, "days"),
-    end: userConfig.ui?.test_plan?.[testPlanIdConfigKey]?.end_date
-      ? dayjs(userConfig.ui?.test_plan?.[testPlanIdConfigKey]?.end_date)
+    end: userConfig?.ui?.test_plan?.[testPlanIdConfigKey]?.end_date
+      ? dayjs(userConfig?.ui?.test_plan?.[testPlanIdConfigKey]?.end_date)
       : dayjs(),
   })
-  const [attribute, setAttribute] = useState(userConfig.ui.graph_base_bar_attribute_input ?? "")
+  const [attribute, setAttribute] = useState(userConfig?.ui?.graph_base_bar_attribute_input ?? "")
   const { data: histogramData, isFetching } = useGetTestPlanHistogramQuery({
     project: Number(projectId),
     parent: testPlanId ? Number(testPlanId) : null,
@@ -115,7 +115,11 @@ export const TestPlanHistogram = ({ testPlanId }: Props) => {
     index: number
   ) => {
     return (
-      <span style={{ color: "var(--y-sky-80)" }} key={index}>
+      <span
+        style={{ color: "var(--y-sky-80)" }}
+        key={index}
+        data-testid={`test-plan-histogram-legend-${value}`}
+      >
         {value}
       </span>
     )

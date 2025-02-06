@@ -73,6 +73,9 @@ const lightTheme: ThemeConfig = {
       verticalLabelPadding: "0 0 5px 0",
       labelColor: "#6A6E83",
     },
+    Checkbox: {
+      borderRadiusSM: 2,
+    },
   },
 }
 

@@ -25,7 +25,7 @@ const { ArrowIcon } = icons
 const getLink = (
   node: LazyTreeNodeApi<Test | TestPlan, LazyNodeProps>,
   projectId: number,
-  testPlanId?: string | null
+  testPlanId?: number | null
 ) => {
   const queryParams = new URLSearchParams(location.search)
 
@@ -41,7 +41,7 @@ interface Props {
   node: LazyTreeNodeApi<Test | TestPlan, LazyNodeProps>
   visibleColumns: ColumnParam[]
   projectId: number
-  testPlanId?: string | null
+  testPlanId?: number | null
 }
 
 export const TestPlanTreeNodeView = ({ node, visibleColumns, projectId, testPlanId }: Props) => {
@@ -52,7 +52,7 @@ export const TestPlanTreeNodeView = ({ node, visibleColumns, projectId, testPlan
   const data = node.data as unknown as TestPlan
   const offset = node.props.level * 20 + 8
   const isSelected =
-    (testPlanId === String(node.id) && !node.props.isLeaf) ||
+    (testPlanId === node.id && !node.props.isLeaf) ||
     (String(drawerTest?.id) === String(node.id) && node.props.isLeaf)
   const link = getLink(node, projectId, testPlanId)
   const isVisible = (key: string) => visibleColumns.some((i) => i.key === key)

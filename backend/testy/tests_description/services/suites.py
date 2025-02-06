@@ -37,7 +37,7 @@ from testy.tests_description.models import TestSuite
 
 
 class TestSuiteService:
-    non_side_effect_fields = ['parent', 'project', 'name', 'description']
+    non_side_effect_fields = ['parent', 'project', 'name', 'description', 'attributes']
 
     def suite_create(self, data: dict[str, Any]) -> TestSuite:
         return TestSuite.model_create(
@@ -54,10 +54,16 @@ class TestSuiteService:
 
     @classmethod
     def unlink_custom_attributes(cls, suites: QuerySet[TestSuite]) -> None:
-        ids = suites.values_list('id', flat=True)
-        attributes = CustomAttribute.objects.filter(suite_ids__overlap=ids)
+        ids = list(suites.values_list('id', flat=True))
         attributes_to_update = []
-        for attribute in attributes:
-            attribute.suite_ids = list(set(attribute.suite_ids) - set(ids))
-            attributes_to_update.append(attribute)
-        CustomAttribute.objects.bulk_update(attributes_to_update, fields=['suite_ids'])
+        for content_type in ('testcase', 'testresult'):
+            attributes = CustomAttribute.objects.filter(
+                **{f'applied_to__{content_type}__suite_ids__overlap': ids},
+            )
+            for attribute in attributes:
+                suite_ids = attribute.applied_to[content_type]['suite_ids']
+                attribute.applied_to[content_type]['suite_ids'] = list(
+                    set(suite_ids) - set(ids),
+                )
+                attributes_to_update.append(attribute)
+            CustomAttribute.objects.bulk_update(attributes_to_update, fields=['applied_to'])

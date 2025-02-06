@@ -33,6 +33,7 @@ export const useAttributes = ({
         name: "",
         value: "",
         type: "Text",
+        is_init: false,
         ...addAttributeAdditionalParams,
       },
     ] as Attribute[]
@@ -96,6 +97,7 @@ export const useAttributes = ({
           name: key,
           type: "Text",
           value: attributesJson[key],
+          is_init: false,
           ...getJsonAdditionalParams,
         })
       } else if (Array.isArray(attributesJson[key])) {
@@ -105,6 +107,7 @@ export const useAttributes = ({
           name: key,
           type: "List",
           value: array.join("\r\n"),
+          is_init: false,
           ...getJsonAdditionalParams,
         })
       } else if (typeof attributesJson[key] === "object") {
@@ -113,6 +116,7 @@ export const useAttributes = ({
           name: key,
           type: "JSON",
           value: JSON.stringify(attributesJson[key], null, 2),
+          is_init: false,
           ...getJsonAdditionalParams,
         })
       }
@@ -120,13 +124,15 @@ export const useAttributes = ({
 
     // add missing custom attributes
     initAttributes.forEach((attr) => {
-      const existingAttribute = newAttributes.find((attr) => attr.name === attr.name)
+      const existingAttribute = newAttributes.find((lookupAttr) => lookupAttr.name === attr.name)
       if (!existingAttribute) {
         newAttributes.push(attr)
       } else if (attr.type !== existingAttribute.type) {
         existingAttribute.type = attr.type
       } else if (attr.required && !existingAttribute.required) {
         existingAttribute.required = attr.required as boolean
+      } else {
+        existingAttribute.is_init = true
       }
     })
 

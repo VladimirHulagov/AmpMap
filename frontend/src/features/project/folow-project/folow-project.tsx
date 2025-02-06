@@ -11,7 +11,7 @@ const { BookmarkIcon, BookmarkFillIcon } = icons
 
 export const FolowProject = ({ project }: { project: Project }) => {
   const { t } = useTranslation()
-  const { userConfig, updateConfig } = useContext(MeContext)!
+  const { userConfig, updateConfig } = useContext(MeContext)
 
   const handleFavoriteClick = async (e: React.MouseEvent) => {
     e.preventDefault()
@@ -19,16 +19,16 @@ export const FolowProject = ({ project }: { project: Project }) => {
     if (!project.is_visible) {
       return
     }
-    const isNew = !userConfig.projects?.favorite.some((i) => i === project.id)
+    const isNew = !userConfig?.projects?.favorite.some((i) => i === project.id)
 
     const newProjectIds = isNew
-      ? userConfig.projects?.favorite.concat([project.id])
-      : userConfig.projects?.favorite.filter((i) => Number(i) !== Number(project.id))
+      ? userConfig?.projects?.favorite.concat([project.id])
+      : userConfig?.projects?.favorite.filter((i) => Number(i) !== Number(project.id))
 
     const newConfig = {
       ...userConfig,
       projects: {
-        ...userConfig.projects,
+        ...userConfig?.projects,
         favorite: newProjectIds,
       },
     }
@@ -51,18 +51,17 @@ export const FolowProject = ({ project }: { project: Project }) => {
     }
   }
 
+  const isFavoriteActive = !!userConfig?.projects?.favorite?.some((i) => i === project.id)
+
   return (
     <Tooltip title={t("Add to favorites")}>
       <div
         id={`${project.name}-project-favorite-btn`}
+        data-test-active={isFavoriteActive}
         className={styles.icon}
         onClick={handleFavoriteClick}
       >
-        {!userConfig.projects?.favorite?.some((i) => i === project.id) ? (
-          <BookmarkIcon />
-        ) : (
-          <BookmarkFillIcon />
-        )}
+        {!isFavoriteActive ? <BookmarkIcon /> : <BookmarkFillIcon />}
       </div>
     </Tooltip>
   )

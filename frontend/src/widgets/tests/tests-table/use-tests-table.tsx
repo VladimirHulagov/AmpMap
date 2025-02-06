@@ -29,6 +29,7 @@ import { ProjectContext } from "pages/project"
 
 import { colors, config } from "shared/config"
 import { paginationSchema } from "shared/config/query-schemas"
+import { NOT_ASSIGNED_FILTER_VALUE } from "shared/constants"
 import { useUrlSyncParams } from "shared/hooks"
 import { ArchivedTag, HighLighterTesty, Status } from "shared/ui"
 import { UntestedStatus } from "shared/ui/status"
@@ -114,7 +115,7 @@ export const useTestsTable = ({ testPlanId }: Props) => {
     ordering: reqParams.ordering,
     page: reqParams.page,
     page_size: reqParams.page_size,
-    assignee: reqParams.assignee,
+    assignee: reqParams.assignee.filter((assignee) => assignee !== NOT_ASSIGNED_FILTER_VALUE),
     unassigned: reqParams.assignee.includes("null") ? true : undefined,
     search: reqParams.name_or_id,
     show_descendants: true,
@@ -261,13 +262,13 @@ export const useTestsTable = ({ testPlanId }: Props) => {
           dataIndex: "name",
           key: "name",
           render: (text: string, record) => {
-            const queryParams = new URLSearchParams(location.search)
-            queryParams.delete("test")
+            const newQueryParams = new URLSearchParams(location.search)
+            newQueryParams.delete("test")
 
             return (
               <Link
                 id={record.name}
-                to={`/projects/${record.project}/plans/${testPlanId ?? ""}?test=${record.id}${queryParams.size ? `&${queryParams.toString()}` : ""}`}
+                to={`/projects/${record.project}/plans/${testPlanId ?? ""}?test=${record.id}${newQueryParams.size ? `&${newQueryParams.toString()}` : ""}`}
                 className={styles.link}
                 onClick={(e) => {
                   e.stopPropagation()

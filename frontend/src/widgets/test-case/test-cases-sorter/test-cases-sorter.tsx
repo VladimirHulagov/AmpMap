@@ -47,10 +47,15 @@ export const TestCasesSorter = () => {
               }}
               value={sortBy ?? SORTER_OPTIONS[1].value}
               defaultValue={SORTER_OPTIONS[1].value}
+              data-testid="test-cases-sort-by"
             >
               <Space direction="vertical">
                 {SORTER_OPTIONS.map((option, index) => (
-                  <Radio key={index} value={option.value}>
+                  <Radio
+                    key={index}
+                    value={option.value}
+                    data-testid={`test-cases-sort-by-${option.value}`}
+                  >
                     {option.label}
                   </Radio>
                 ))}
@@ -64,10 +69,15 @@ export const TestCasesSorter = () => {
                 handleOrdering(value.target.value as "asc" | "desc")
               }}
               value={orderBy}
+              data-testid="test-cases-order-by"
             >
               <Space direction="vertical">
-                <Radio value="asc">{t("Ascending")}</Radio>
-                <Radio value="desc">{t("Descending")}</Radio>
+                <Radio value="asc" data-testid="test-cases-order-by-asc">
+                  {t("Ascending")}
+                </Radio>
+                <Radio value="desc" data-testid="test-cases-order-by-desc">
+                  {t("Descending")}
+                </Radio>
               </Space>
             </Radio.Group>
           </Flex>
@@ -75,8 +85,13 @@ export const TestCasesSorter = () => {
         arrow={false}
         trigger="click"
         placement="bottom"
+        data-testid="test-cases-sorter-popover"
       >
-        <Button style={{ minWidth: 32 }} icon={<SorterIcon color="var(--y-sky-60)" />} />
+        <Button
+          style={{ minWidth: 32 }}
+          icon={<SorterIcon color="var(--y-sky-60)" />}
+          data-testid="test-cases-sorter"
+        />
       </Popover>
     </Tooltip>
   )

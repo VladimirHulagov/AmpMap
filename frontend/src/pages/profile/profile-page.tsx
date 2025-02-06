@@ -34,7 +34,7 @@ export const ProfileFields = ({ profile }: { profile: User }) => {
 export const ProfilePage = () => {
   const { t } = useTranslation()
   const dispatch = useDispatch()
-  const { me } = useContext(MeContext)!
+  const { me } = useContext(MeContext)
 
   const handleClickEdit = () => {
     dispatch(showEditProfileModal())
@@ -64,7 +64,7 @@ export const ProfilePage = () => {
                 </Col>
               </Row>
               <Divider />
-              <ProfileFields profile={me} />
+              {me && <ProfileFields profile={me} />}
             </Card>
           </Content>
         </Col>
