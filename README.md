@@ -5,7 +5,6 @@ published in 2023 as an open source project under AGPLv3 license.
 <br />
 
 ## Introduction
-___
 
 **TestY is lightweight and uses following technologies and frameworks:**
 * Django for backend
@@ -39,7 +38,7 @@ text, list, json
 <br />
 
 ## Getting started
-___
+
 ### Requirements and preconditions
 
 * Make sure that you have installed and running docker
@@ -129,7 +128,7 @@ testy_redis       0.0.0.0:6380->6379/tcp   Up ## seconds (healthy)
 <br />
 
 ## Documentation
-___
+
 The documentation for TestY is still in progress therefore you can use 
 [this article](https://habr.com/ru/companies/yadro/articles/881714/) to khow the system better.
 For non-russian users we suggest to use Google, Yandex translate services 
@@ -159,7 +158,7 @@ and can be found by URL: <br />
 <br />
 
 ## Known issues
-___
+
 * Repository clone under Windows by git or in IDE may convert the line ending separator from LF to CRLF. 
 It breaks `/backend/testy/scripts/entrypoint.sh` and `testy` container exits with non-obvious error 
 `entrypoint.sh: no such file or directory`. Please revert CRLF back to LF.
@@ -167,7 +166,7 @@ It breaks `/backend/testy/scripts/entrypoint.sh` and `testy` container exits wit
 <br />
 
 ## FAQ
-___
+
 <u>Question:</u> I open the page and try to log in but got *Login Failed* message<br />
 <u>Answer:</u> Make sure that you open same URL as you defined for *VITE_APP_API_ROOT* in `.env` file. 
 
@@ -187,14 +186,14 @@ but anyway better to use SSD/NVMe storage type due to performance reasons.
 <br />
 
 ## Contribution
-___
+
 For contribution check out 
 [the rules](https://gitlab-pub.yadro.com/testy/testy/-/blob/main/CONTRIBUTING.md).
 
 <br />
 
 ## Contacts
-___
+
 Please send a message [testy@yadro.com](mailto:testy@yadro.com) if you would like 
 * to tell any feedback about TestY
 * to (un)subscribe on a mail list where we announce new releases (usually monthly or even less often)
@@ -202,5 +201,6 @@ Please send a message [testy@yadro.com](mailto:testy@yadro.com) if you would lik
 <br />
 
 ## License
+
 This project is licensed under the terms of the 
 [AGPLv3 license](https://gitlab-pub.yadro.com/testy/testy/-/blob/main/LICENSE).
