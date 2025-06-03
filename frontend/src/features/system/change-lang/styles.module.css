@@ -1,0 +1,9 @@
+.select {
+  width: 125px;
+}
+
+.label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

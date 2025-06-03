@@ -33,7 +33,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
-from factory import LazyAttribute, Sequence, SubFactory, post_generation
+from factory import LazyAttribute, LazyFunction, Sequence, SubFactory, post_generation
 from factory.django import DjangoModelFactory
 from notifications.models import Notification
 
@@ -64,7 +64,12 @@ class ProjectFactory(DjangoModelFactory):
 
     name = Sequence(lambda n: f'{constants.PROJECT_NAME}{n}')
     description = constants.DESCRIPTION
-    settings = {'is_result_editable': True, 'result_edit_limit': 3600, 'status_order': {}}
+    settings = LazyFunction(lambda: {
+        'is_result_editable': True,
+        'result_edit_limit': 3600,
+        'status_order': {},
+        'default_status': None,
+    })
 
 
 class ParameterFactory(DjangoModelFactory):
@@ -347,6 +352,13 @@ class AttachmentCommentFactory(AttachmentBaseFactory):
         model = Attachment
 
 
+class AttachmentTestSuiteFactory(AttachmentBaseFactory):
+    content_object = factory.SubFactory(TestSuiteFactory)
+
+    class Meta:
+        model = Attachment
+
+
 class SystemMessageFactory(DjangoModelFactory):
     content = Sequence(lambda n: f'{constants.SYSTEM_MESSAGE}{n}')
     level = constants.SYSTEM_MESSAGE_TYPE
@@ -382,7 +394,7 @@ class CustomAttributeFactory(DjangoModelFactory):
     project = SubFactory(ProjectFactory)
     name = Sequence(lambda n: f'{constants.CUSTOM_ATTRIBUTE_NAME}{n}')
     type = CustomFieldType.TXT
-    applied_to = {
+    applied_to = LazyFunction(lambda: {
         'testplan': {
             'is_required': False,
         },
@@ -390,7 +402,7 @@ class CustomAttributeFactory(DjangoModelFactory):
             'is_required': False,
             'suite_ids': [],
         },
-    }
+    })
 
     class Meta:
         model = CustomAttribute

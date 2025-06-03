@@ -28,20 +28,20 @@ export const Main = () => {
     pathname.includes("projects") && (pathname.includes("suites") || pathname.includes("plans"))
 
   return (
-    <Layout
-      style={{ display: "flex", flexDirection: "row", minHeight: "100vh", maxWidth: "100vw" }}
-    >
+    <Layout style={{ display: "flex", flexDirection: "row", maxWidth: "100vw" }}>
       <Sidebar />
-      <Layout>
+      <Layout style={{ width: "calc(100vw - 80px)" }}>
         <SystemMessages />
-        <Content style={{ minHeight: "100vh", zIndex: 1 }}>
+        <Content
+          style={{ zIndex: 1, minHeight: "100vh", display: "flex", flexDirection: "column" }}
+        >
           {appError ? (
             <ErrorPage code={appError.code as ResultStatusType} message={appError.message} />
           ) : (
             <Outlet />
           )}
         </Content>
-        {!HAS_TREE && <Footer />}
+        {!HAS_TREE && <Footer style={{ background: "var(--y-secondary-color-background)" }} />}
       </Layout>
       <BtnToTop />
     </Layout>

@@ -1,8 +1,7 @@
-import { Modal, notification } from "antd"
-import { useContext, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
 import { useTranslation } from "react-i18next"
-import { useNavigate, useParams, useSearchParams } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 
 import { useAttachments } from "entities/attachment/model"
 
@@ -13,11 +12,14 @@ import { useGetTestSuitesQuery } from "entities/suite/api"
 import { useGetTestCaseByIdQuery, useUpdateTestCaseMutation } from "entities/test-case/api"
 import { useAttributesTestCase } from "entities/test-case/model"
 
-import { ProjectContext } from "pages/project"
+import { useProjectContext } from "pages/project"
 
-import { useConfirmBeforeRedirect, useErrors, useShowModalCloseConfirm } from "shared/hooks"
-import { getPrevPageSearch, makeAttributesJson } from "shared/libs"
+import { useConfirmBeforeRedirect, useErrors } from "shared/hooks"
+import { makeAttributesJson } from "shared/libs"
+import { antdModalCloseConfirm, antdModalConfirm, antdNotification } from "shared/libs/antd-modals"
 import { AlertSuccessChange } from "shared/ui"
+
+import { formattingAttachmentForSteps, sortingSteps } from "../utils"
 
 interface SubmitData extends Omit<TestCaseFormData, "steps"> {
   steps?: StepAttachNumber[]
@@ -38,32 +40,12 @@ interface ErrorData {
   attributes?: string | null
 }
 
-interface SortingStep {
-  id: undefined
-  name: string
-  scenario: string
-  expected: string
-  sort_order: number
-  attachments: number[]
-}
-
 type TabType = "general" | "attachments"
-
-const sortingSteps = (steps: SortingStep[]) => {
-  const sortList = steps.sort((a: SortingStep, b: SortingStep) => a.sort_order - b.sort_order)
-
-  return sortList.map((step, index) => ({
-    ...step,
-    sort_order: index + 1,
-  }))
-}
 
 export const useTestCaseEditView = () => {
   const { t } = useTranslation()
-  const { project } = useContext(ProjectContext)!
-  const { showModal } = useShowModalCloseConfirm()
+  const project = useProjectContext()
   const navigate = useNavigate()
-  const { testSuiteId } = useParams<ParamTestSuiteId>()
   const [searchParams, setSearchParams] = useSearchParams()
   const testCaseId = searchParams.get("test_case")
 
@@ -77,17 +59,7 @@ export const useTestCaseEditView = () => {
   )
 
   const [errors, setErrors] = useState<ErrorData | null>(null)
-  const {
-    handleSubmit,
-    reset,
-    control,
-    setValue,
-    register,
-    setError: setFormError,
-    clearErrors,
-    formState: { isDirty, errors: formErrors },
-    watch,
-  } = useForm<TestCaseFormData>({
+  const editForm = useForm<TestCaseFormData>({
     defaultValues: {
       name: "",
       description: "",
@@ -104,9 +76,20 @@ export const useTestCaseEditView = () => {
       steps: [],
     },
   })
+  const {
+    control,
+    formState: { errors: formErrors, isDirty },
+    watch,
+    setValue,
+    reset,
+    setError: setFormError,
+    register,
+    clearErrors,
+    handleSubmit,
+  } = editForm
 
-  const isSteps = watch("is_steps")
-  const steps = watch("steps")
+  const isSteps = watch("is_steps") ?? false
+  const steps = watch("steps") ?? []
 
   const [selectedSuite, setSelectedSuite] = useState<SelectData | null>(null)
   const [updateTestCase, { isLoading }] = useUpdateTestCaseMutation()
@@ -132,12 +115,15 @@ export const useTestCaseEditView = () => {
     onAttributeChangeValue,
     onAttributeRemove,
     getAttributeJson,
-  } = useAttributesTestCase({ mode: "edit", setValue })
+  } = useAttributesTestCase({
+    mode: "edit",
+    setValue,
+    testSuiteId: String(selectedSuite?.value ?? testCase?.suite?.id ?? "") || null,
+  })
 
   const labelProps = useTestCaseFormLabels({
     setValue,
     testCase: testCase ?? null,
-    isShow: true,
     isEditMode: true,
     defaultLabels: testCase?.labels.map((l) => Number(l.id)) ?? [],
   })
@@ -160,7 +146,7 @@ export const useTestCaseEditView = () => {
 
   const handleCloseModal = () => {
     setIsRedirectByUser()
-    redirectToTestCase()
+    redirectToPrev()
     setErrors(null)
     setTab("general")
     reset()
@@ -174,36 +160,13 @@ export const useTestCaseEditView = () => {
     setTab(activeKey as TabType)
   }
 
-  const formattingAttachmentForSteps = ({
-    id,
-    name,
-    scenario,
-    expected,
-    sort_order,
-    attachments: attachmentsArgs,
-  }: StepAttachNumber) => ({
-    id: typeof id === "string" ? undefined : id,
-    name,
-    scenario,
-    expected,
-    sort_order,
-    attachments: attachmentsArgs.map((x: number | IAttachment) => {
-      if (typeof x === "object") return x.id
-      return x
-    }),
-  })
-
   const confirmSwitchSuite = () => {
     return new Promise((resolve) => {
-      Modal.confirm({
+      antdModalConfirm("change-suite", {
         title: t("Do you want to change suite?"),
-        content: t("Please confirm to change suite."),
-        okText: t("Ok"),
-        cancelText: t("Cancel"),
         onOk: () => resolve(true),
         onCancel: () => resolve(false),
-        okButtonProps: { "data-testid": "change-suite-button-confirm" },
-        cancelButtonProps: { "data-testid": "change-suite-button-cancel" },
+        content: t("Please confirm to change suite."),
       })
     })
   }
@@ -228,7 +191,7 @@ export const useTestCaseEditView = () => {
       return
     }
 
-    const isSwitchingSuite = dataForm.suite && dataForm.suite !== Number(testSuiteId)
+    const isSwitchingSuite = dataForm.suite && dataForm.suite !== Number(testCase?.suite.id)
     if (isSwitchingSuite) {
       const isConfirmed = await confirmSwitchSuite()
       if (!isConfirmed) return
@@ -239,7 +202,6 @@ export const useTestCaseEditView = () => {
       const stepsFormat = dataForm.steps
         ? dataForm.steps.map((step) => formattingAttachmentForSteps(step))
         : []
-
       const sortSteps = sortingSteps(stepsFormat)
 
       const newTestCase = await updateTestCase({
@@ -258,19 +220,18 @@ export const useTestCaseEditView = () => {
         test_case: String(testCase.id),
       })
       handleCloseModal()
-      notification.success({
-        message: t("Success"),
-        closable: true,
+      antdNotification.success("edit-test-case", {
         description: (
           <AlertSuccessChange
             id={String(newTestCase.id)}
             action="updated"
             title={t("Test Case")}
-            link={`/projects/${project.id}/suites/${testSuiteId}?test_case=${newTestCase.id}`}
+            link={`/projects/${project.id}/suites/${testCase.suite.id}?test_case=${newTestCase.id}`}
+            data-testid="edit-test-case-success-notification-description"
           />
         ),
       })
-      if (dataForm.suite !== Number(testSuiteId)) {
+      if (dataForm.suite !== Number(testCase?.suite.id)) {
         navigate(`/projects/${project.id}/suites/${dataForm.suite}?test_case=${newTestCase.id}`)
       }
     } catch (err: unknown) {
@@ -290,24 +251,18 @@ export const useTestCaseEditView = () => {
     if (isLoading) return
 
     if (isDirty) {
-      showModal(handleCloseModal)
+      antdModalCloseConfirm(handleCloseModal)
       return
     }
 
     handleCloseModal()
   }
 
-  const redirectToTestCase = () => {
-    const prevSearchKey = searchParams.get("prevSearch")
-    const url = `/projects/${project.id}/suites/${testSuiteId}?test_case=${testCase?.id ?? ""}`
-
-    if (!prevSearchKey) {
-      navigate(url)
-      return
-    }
-
-    const prevSearchResult = getPrevPageSearch(prevSearchKey)
-    navigate(`${url}&${prevSearchResult}`)
+  const redirectToPrev = () => {
+    const prevUrl = searchParams.get("prevUrl")
+    navigate(
+      prevUrl ?? `/projects/${project.id}/suites/${selectedSuite?.value}?test_case=${testCaseId}`
+    )
   }
 
   const handleSelectSuite = (selectedData: SelectData) => {
@@ -356,13 +311,10 @@ export const useTestCaseEditView = () => {
   const title = `${t("Edit Test Case")} '${testCase?.name}'`
 
   return {
+    editForm,
     title,
     isLoading:
-      isLoading ||
-      isLoadingTestCase ||
-      isLoadingAttachments ||
-      isLoadingAttributesTestCase ||
-      isLoadingSuites,
+      isLoading || isLoadingTestCase || isLoadingAttachments || isLoadingAttributesTestCase,
     errors,
     formErrors,
     control,

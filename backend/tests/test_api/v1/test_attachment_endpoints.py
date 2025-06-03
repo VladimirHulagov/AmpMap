@@ -247,20 +247,30 @@ class TestAttachmentEndpoints:
         Attachment.deleted_objects.all().hard_delete()
         assert len(os.listdir(attachment_file_path)) == 2, 'All related files must be deleted, other should exist.'
 
-    @pytest.mark.parametrize('extension', ['.txt'])
     @pytest.mark.django_db(transaction=True)
     def test_cascade_soft_delete(
-        self, api_client, authorized_superuser, create_file, project,
-        attachment_test_case_factory, test_result_factory, test_case_factory, test_factory,
+        self,
+        api_client,
+        authorized_superuser,
+        project,
+        attachment_test_suite_factory,
+        attachment_test_case_factory,
+        attachment_test_result_factory,
+        test_result_factory,
+        test_case_factory,
+        test_factory,
+        test_suite_factory,
     ):
-        case = test_case_factory(project=project)
+        suite = test_suite_factory(project=project)
+        case = test_case_factory(project=project, suite=suite)
         test = test_factory(case=case, project=project)
         result = test_result_factory(test=test, project=project)
+        attachment_test_suite_factory(project=project, content_object=suite)
         attachment_test_case_factory(project=project, content_object=case)
-        attachment_test_case_factory(project=project, content_object=result)
+        attachment_test_result_factory(project=project, content_object=result)
         api_client.send_request(
-            'api:v1:testcase-detail',
-            reverse_kwargs={'pk': case.id},
+            'api:v1:testsuite-detail',
+            reverse_kwargs={'pk': suite.id},
             request_type=RequestType.DELETE,
             expected_status=HTTPStatus.NO_CONTENT,
         )

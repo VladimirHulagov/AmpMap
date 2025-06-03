@@ -1,4 +1,3 @@
-import { notification } from "antd"
 import { useEffect, useState } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
 import { useTranslation } from "react-i18next"
@@ -9,6 +8,7 @@ import { useUpdatePasswordMutation } from "entities/user/api"
 import { selectUserModal } from "entities/user/model"
 
 import { useErrors } from "shared/hooks"
+import { antdNotification } from "shared/libs/antd-modals"
 
 interface Inputs {
   password: string
@@ -98,9 +98,7 @@ export const useChangePassword = () => {
       const { password: newPassword } = data
 
       await updatePassword({ password: newPassword }).unwrap()
-      notification.success({
-        message: t("Success"),
-        closable: true,
+      antdNotification.success("change-password", {
         description: t("Password updated successfully"),
       })
       handleCancel()

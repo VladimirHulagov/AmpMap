@@ -12,20 +12,15 @@ import { useLogoutMutation } from "entities/auth/api"
 import { selectUser } from "entities/auth/model"
 
 import NotificationIcon from "shared/assets/icons/bell.svg?react"
-import TestyIcon from "shared/assets/icons/testy.svg?react"
-import { icons } from "shared/assets/inner-icons"
+import DashboardIcon from "shared/assets/yi-icons/dashboard.svg?react"
+import LogoutIcon from "shared/assets/yi-icons/logout.svg?react"
+import TestPlansIcon from "shared/assets/yi-icons/test-plans.svg?react"
+import TestSuitesIcon from "shared/assets/yi-icons/test-suites.svg?react"
+import TestyIcon from "shared/assets/yi-icons/testy.svg?react"
+import UserGroupsIcon from "shared/assets/yi-icons/user-groups.svg?react"
+import UserIcon from "shared/assets/yi-icons/user.svg?react"
 
 import styles from "./styles.module.css"
-
-const {
-  ColumnViewIcon,
-  DashboardIcon,
-  LogoutIcon,
-  TestPlansIcon,
-  TestSuitesIcon,
-  UserGroupsIcon,
-  UserIcon,
-} = icons
 
 export const Sidebar = memo(() => {
   const { t } = useTranslation()
@@ -59,13 +54,6 @@ export const Sidebar = memo(() => {
 
   const MIDDLE_LINKS = [
     {
-      key: "administration/projects",
-      to: "/administration/projects",
-      title: t("Projects"),
-      icon: <ColumnViewIcon className={styles.icon} />,
-      is_private: false,
-    },
-    {
       key: "administration/users",
       to: "/administration/users",
       title: t("Users"),
@@ -85,7 +73,7 @@ export const Sidebar = memo(() => {
   return (
     <div className={styles.wrapper}>
       <Link id="logo" to="/">
-        <TestyIcon />
+        <TestyIcon width={40} height={40} />
       </Link>
       {location.pathname.includes("project") && !location.pathname.includes("administration") && (
         <ul className={styles.links}>
@@ -135,7 +123,7 @@ export const Sidebar = memo(() => {
             <NotificationIcon className={styles.icon} />
             <Badge
               className={classNames(styles.badge, { [styles.hide]: !notificationsCount })}
-              color="var(--y-interactive-default)"
+              color="var(--y-color-accent)"
               count={notificationsCount}
               showZero={false}
             />

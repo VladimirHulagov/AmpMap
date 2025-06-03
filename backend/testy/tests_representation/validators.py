@@ -45,7 +45,9 @@ from testy.core.selectors.project_settings import ProjectSettings
 from testy.core.validators import BaseCustomAttributeValuesValidator
 from testy.tests_description.selectors.cases import TestCaseSelector
 from testy.tests_representation.choices import ResultStatusType, TestStatuses
+from testy.tests_representation.models import ResultStatus, TestPlan
 from testy.tests_representation.selectors.status import ResultStatusSelector
+from testy.users.models import User
 from testy.users.selectors.roles import RoleSelector
 from testy.utilities.time import WorkTimeProcessor
 from testy.validators import FieldsToComparator
@@ -207,19 +209,11 @@ class TestPlanCasesValidator:
             raise ValidationError(self.err_msg.format(archived_cases))
 
 
-class BulkUpdateExcludeIncludeValidator:
-    err_msg = 'Included_tests and excluded_tests should not be provided.'
-
-    def __call__(self, attrs):
-        if all([attrs.get('included_tests'), attrs.get('excluded_tests')]):
-            raise ValidationError(self.err_msg)
-
-
 class MoveTestsSameProjectValidator:
     err_msg = 'All tests must be in {0} project.'
 
     def __call__(self, attrs: dict[str, Any]):
-        dst_plan = attrs.get('plan')
+        dst_plan = TestPlan.objects.get(id=attrs.get('plan_id'))
         current_plan = attrs.get('current_plan')
         if current_plan.project.pk != dst_plan.project.pk:
             raise ValidationError(self.err_msg.format(dst_plan.project.name))
@@ -248,15 +242,16 @@ class TestResultCustomAttributeValuesValidator(BaseCustomAttributeValuesValidato
 
     def __call__(self, attrs: dict[str, Any], serializer):
         attributes = attrs.get('attributes', {})
+        serializer_instance = getattr(serializer, 'instance', None)
         if test := attrs.get('test'):
             project = test.project
             suite = test.case.suite
-        elif instance := serializer.instance:
-            project = instance.project
-            suite = instance.test.case.suite
+        elif serializer_instance:
+            project = serializer_instance.project
+            suite = serializer_instance.test.case.suite
         else:
             return
-        status = attrs.get(_STATUS, getattr(serializer.instance, _STATUS, None))
+        status = attrs.get(_STATUS, getattr(serializer_instance, _STATUS, None))
         attr_getter = partial(
             CustomAttributeSelector.required_attributes_by_status,
             project=project,
@@ -281,10 +276,11 @@ class AssigneeValidator:
 
     def __call__(self, data, serializer):
         assignee = data.get('assignee')
-        if not assignee:
+        assignee_id = data.get('assignee_id')
+        if not any((assignee, assignee_id)):
             return
-        view_action = serializer.context['view'].action
-        project = self._get_project(data, serializer, view_action)
+        assignee = assignee or User.objects.filter(id=assignee_id).first()
+        project = self._get_project(data, serializer)
         is_restricted = RoleSelector.restricted_project_access(assignee)
         if not project.is_private and not is_restricted:
             return
@@ -292,7 +288,23 @@ class AssigneeValidator:
             raise ValidationError('User is not a member of a project.')
 
     @classmethod
-    def _get_project(cls, data, serializer, action: str) -> Project:
-        if action == 'bulk_update_tests':
-            return data.get('current_plan').project
+    def _get_project(cls, data, serializer) -> Project:
         return data.get(_PROJECT) or serializer.instance.project
+
+
+class StatusExistsValidator:
+    def __call__(self, status_id: int):
+        if not ResultStatus.objects.filter(id=status_id).exists():
+            raise ValidationError('Status does not exist.')
+
+
+class PlanExistsValidator:
+    def __call__(self, plan_id: int):
+        if not TestPlan.objects.filter(id=plan_id).exists():
+            raise ValidationError('Test plan does not exist.')
+
+
+class AssigneeExistsValidator:
+    def __call__(self, user_id: int):
+        if not User.objects.filter(id=user_id).exists():
+            raise ValidationError('Assignee does not exist.')

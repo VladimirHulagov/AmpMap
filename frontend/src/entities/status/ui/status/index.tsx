@@ -1,5 +1,4 @@
-import { CloseOutlined, EditOutlined } from "@ant-design/icons"
-import { Button, Tag } from "antd"
+import { Tag } from "antd"
 import React from "react"
 
 import { colors } from "shared/config"
@@ -10,11 +9,9 @@ interface StatusProps {
   content: React.ReactNode
   color?: string
   onClick?: (status: StatusInForm) => void
-  onDelete?: (status: StatusInForm) => void
-  onEdit?: (status: StatusInForm) => void
 }
 
-export const Status = ({ content, color, onDelete, onClick, onEdit }: StatusProps) => {
+export const Status = ({ content, color, onClick }: StatusProps) => {
   return (
     <Tag
       className={styles.status}
@@ -26,24 +23,6 @@ export const Status = ({ content, color, onDelete, onClick, onEdit }: StatusProp
       onClick={onClick ? () => onClick({ name: String(content) }) : undefined}
     >
       {content}
-      {onEdit && (
-        <Button
-          id="status-edit"
-          className={styles.btn}
-          icon={<EditOutlined style={{ fontSize: 14 }} />}
-          shape="default"
-          onClick={() => onEdit({ name: String(content) })}
-        />
-      )}
-      {onDelete && (
-        <Button
-          id="status-delete"
-          className={styles.btn}
-          icon={<CloseOutlined style={{ fontSize: 14 }} />}
-          shape="default"
-          onClick={() => onDelete({ name: String(content) })}
-        />
-      )}
     </Tag>
   )
 }

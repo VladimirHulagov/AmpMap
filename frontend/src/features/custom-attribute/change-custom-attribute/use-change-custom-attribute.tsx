@@ -1,17 +1,17 @@
-import { notification } from "antd"
 import {
   useCreateCustomAttributeMutation,
   useGetCustomAttributeContentTypesQuery,
   useUpdateCustomAttributeMutation,
 } from "entities/custom-attribute/api"
 import { useStatuses } from "entities/status/model/use-statuses"
-import { useContext, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 
-import { ProjectContext } from "pages/project"
+import { useProjectContext } from "pages/project"
 
 import { useErrors, useModal } from "shared/hooks"
+import { antdNotification } from "shared/libs/antd-modals"
 
 interface ErrorData {
   name?: string
@@ -38,7 +38,7 @@ const defaultFormValue = {
 
 export const useChangeCustomAttribute = ({ formType, attribute }: PropsChangeCustomAttribute) => {
   const { t } = useTranslation()
-  const { project } = useContext(ProjectContext)!
+  const project = useProjectContext()
   const { statuses } = useStatuses({ project: project.id })
   const { handleClose: handleCloseModal, handleShow, isShow } = useModal()
 
@@ -97,9 +97,7 @@ export const useChangeCustomAttribute = ({ formType, attribute }: PropsChangeCus
 
     try {
       await createAttribute({ ...data, project: project.id, applied_to: filteredApplied }).unwrap()
-      notification.success({
-        message: t("Success"),
-        closable: true,
+      antdNotification.success("create-custom-attribute", {
         description: t("Attribute created successfully"),
       })
       handleClose()
@@ -136,9 +134,7 @@ export const useChangeCustomAttribute = ({ formType, attribute }: PropsChangeCus
         },
       }).unwrap()
 
-      notification.success({
-        message: t("Success"),
-        closable: true,
+      antdNotification.success("edit-custom-attribute", {
         description: t("Attribute edited successfully"),
       })
       handleClose()

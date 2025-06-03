@@ -88,6 +88,7 @@ const initialState: TestStateFilters = {
     test_created_after: initFilter.test_created_after,
   },
   settings: {
+    filterProjectId: null,
     selected: null,
     editing: false,
     editingValue: "",
@@ -95,19 +96,19 @@ const initialState: TestStateFilters = {
     hasUnsavedChanges: false,
   },
   ordering: initOrdering.ordering,
+  shouldResetForm: false,
 }
 
 export const updateFilter = createAction<Partial<TestStateFilters["filter"]>>(
   "testsFilter/updateFilter"
 )
 
+export const clearFilter = createAction("testsFilter/clearFilter")
+
 export const testsfilterSlice = createSlice({
   name: "testsFilter",
   initialState,
   reducers: {
-    clearFilter: (state) => {
-      state.filter = testEmptyFilter
-    },
     updateFilterSettings: (state, action: PayloadAction<Partial<FilterSettings>>) => {
       state.settings = {
         ...state.settings,
@@ -120,6 +121,12 @@ export const testsfilterSlice = createSlice({
     updateOrdering: (state, action: PayloadAction<Partial<TestStateFilters["ordering"]>>) => {
       state.ordering = action.payload
     },
+    resetFormComplete: (state) => {
+      state.shouldResetForm = false
+    },
+    reinitializeFilter: (state) => {
+      state.filter = queryParamsBySchema(testFilterSchema)
+    },
   },
   extraReducers: (builder) => {
     builder.addCase(updateFilter, (state, action) => {
@@ -128,11 +135,20 @@ export const testsfilterSlice = createSlice({
         ...action.payload,
       }
     })
+    builder.addCase(clearFilter, (state) => {
+      state.filter = testEmptyFilter
+      state.shouldResetForm = true
+    })
   },
 })
 
-export const { clearFilter, updateFilterSettings, updateOrdering, resetFilterSettings } =
-  testsfilterSlice.actions
+export const {
+  updateFilterSettings,
+  updateOrdering,
+  resetFilterSettings,
+  resetFormComplete,
+  reinitializeFilter,
+} = testsfilterSlice.actions
 
 export const selectFilter = (state: RootState) => state.testsFilter.filter
 export const selectFilterCount = (state: RootState) => {
@@ -152,5 +168,6 @@ export const selectFilterCount = (state: RootState) => {
 }
 export const selectFilterSettings = (state: RootState) => state.testsFilter.settings
 export const selectOrdering = (state: RootState) => state.testsFilter.ordering
+export const selectShouldResetForm = (state: RootState) => state.testsFilter.shouldResetForm
 
 export const testsfilterReducer = testsfilterSlice.reducer

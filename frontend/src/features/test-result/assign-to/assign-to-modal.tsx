@@ -1,10 +1,11 @@
-import { Button, Form, Modal } from "antd"
-import { useContext } from "react"
+import { Form, Modal } from "antd"
 import { useTranslation } from "react-i18next"
 
 import { UserSearchInput } from "entities/user/ui"
 
-import { ProjectContext } from "pages/project"
+import { useProjectContext } from "pages/project"
+
+import { Button } from "shared/ui"
 
 import styles from "./styles.module.css"
 import { UpdateData } from "./use-assign-to-common"
@@ -24,6 +25,8 @@ interface Props {
   isAssignToMe: boolean
 }
 
+const TEST_ID = "assign-to"
+
 export const AssingToModal = ({
   isOpenModal,
   errors,
@@ -38,21 +41,28 @@ export const AssingToModal = ({
   isAssignToMe,
 }: Props) => {
   const { t } = useTranslation()
-  const { project } = useContext(ProjectContext)!
+  const project = useProjectContext()
 
   return (
     <Modal
-      className="test-assign-to-modal"
-      title={t("Assign To")}
+      bodyProps={{ "data-testid": `${TEST_ID}-modal-body` }}
+      wrapProps={{ "data-testid": `${TEST_ID}-modal-wrapper` }}
+      title={<span data-testid={`${TEST_ID}-modal-title`}>{t("Assign To")}</span>}
       open={isOpenModal}
       onCancel={handleClose}
       footer={[
-        <Button key="back" onClick={handleClose}>
+        <Button
+          data-testid={`${TEST_ID}-modal-cancel-button`}
+          key="back"
+          onClick={handleClose}
+          color="secondary-linear"
+        >
           {t("Cancel")}
         </Button>,
         <Button
+          data-testid={`${TEST_ID}-modal-save-button`}
           key="submit"
-          type="primary"
+          color="accent"
           onClick={handleSubmitForm}
           disabled={!isDirty && !!selectedUser}
           loading={isLoadingUpdateTest}
@@ -78,6 +88,16 @@ export const AssingToModal = ({
               {t("Assign To Me")}
             </button>
           )}
+          <button
+            className={styles.assignToMeModal}
+            onClick={() => {
+              handleAssignUserClear()
+              handleSubmitForm()
+            }}
+            type="button"
+          >
+            {t("Unassign")}
+          </button>
         </Form.Item>
       </Form>
     </Modal>

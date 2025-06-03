@@ -1,8 +1,8 @@
-import { Button, UploadFile, notification } from "antd"
+import { UploadFile } from "antd"
 import Upload, { RcFile, UploadChangeParam } from "antd/lib/upload"
 import { Mutex } from "async-mutex"
-import { MeContext } from "processes"
-import { useContext, useState } from "react"
+import { useMeContext } from "processes"
+import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Crop, PercentCrop, ReactCrop } from "react-image-crop"
 
@@ -10,6 +10,8 @@ import { useDeleteAvatarMutation, useUploadAvatarMutation } from "entities/user/
 import { UserAvatar } from "entities/user/ui/user-avatar/user-avatar"
 
 import { fileReader, getNumberToFixed } from "shared/libs"
+import { antdNotification } from "shared/libs/antd-modals"
+import { Button } from "shared/ui"
 
 import styles from "./styles.module.css"
 
@@ -24,7 +26,7 @@ const mutex = new Mutex()
 
 export const ProfileAvatar = () => {
   const { t } = useTranslation()
-  const { me } = useContext(MeContext)
+  const { me } = useMeContext()
 
   const [nonce, setNonce] = useState(1)
   const [isEdit, setIsEdit] = useState(false)
@@ -57,9 +59,8 @@ export const ProfileAvatar = () => {
   const beforeUpload = (file: RcFile) => {
     const isCorrectType = file.type === "image/png" || file.type === "image/jpeg"
     if (!isCorrectType) {
-      notification.error({
-        message: t("Error!"),
-        description: `${file.name} is not a png or jpg file`,
+      antdNotification.error("profile-avatar", {
+        description: `${file.name} ${t("is not a png or jpg file")}`,
       })
     }
 
@@ -104,17 +105,14 @@ export const ProfileAvatar = () => {
     try {
       await uploadAvatar(fmData).unwrap()
 
-      notification.success({
-        message: t("Success"),
-        closable: true,
+      antdNotification.success("profile-avatar", {
         description: t("Avatar was updated successfully"),
       })
       setNonce(nonce + 1)
     } catch (err) {
       const error = err as RequestError
       console.error(error)
-      notification.error({
-        message: t("Error!"),
+      antdNotification.error("profile-avatar", {
         // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
         description: `${error.data.errors[0]}. ${t("Showing detail in console log.")}`,
       })
@@ -141,11 +139,15 @@ export const ProfileAvatar = () => {
           <img id="profile-avatar-crop-image" src={image.url} />
         </ReactCrop>
         <div className={styles.btns}>
-          <Button onClick={handleEditClick} id="profile-avatar-edit-button">
+          <Button
+            onClick={handleEditClick}
+            id="profile-avatar-edit-button"
+            color="secondary-linear"
+          >
             {t("Edit")}
           </Button>
           <Button
-            type="primary"
+            color="accent"
             onClick={handleSaveClick}
             loading={isLoading}
             id="profile-avatar-save-button"
@@ -177,11 +179,18 @@ export const ProfileAvatar = () => {
             beforeUpload={beforeUpload}
             id="profile-avatar-upload"
           >
-            <Button id="profile-avatar-edit-button">{t("Edit")}</Button>
+            <Button id="profile-avatar-edit-button" color="secondary-linear">
+              {t("Edit")}
+            </Button>
           </Upload>
 
           {me?.avatar_link && (
-            <Button danger onClick={handleDeleteClick} id="profile-avatar-delete-button">
+            <Button
+              danger
+              color="secondary-linear"
+              onClick={handleDeleteClick}
+              id="profile-avatar-delete-button"
+            >
               {t("Delete")}
             </Button>
           )}

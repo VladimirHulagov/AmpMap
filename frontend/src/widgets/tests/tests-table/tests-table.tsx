@@ -41,6 +41,7 @@ export const TestsTable = memo(({ testPlanId }: Props) => {
         preserveSelectedRowKeys: true,
       }}
       rowKey="id"
+      data-testid="tests-table"
     />
   )
 })

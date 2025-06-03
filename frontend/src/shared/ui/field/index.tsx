@@ -8,33 +8,51 @@ interface IFieldProps {
   title: string
   value: string | number | JSX.Element
   markdown?: boolean
+  showLine?: boolean
+  textStyles?: React.CSSProperties
+  titleStyles?: React.CSSProperties
 }
 
-export const Field = ({ id, dataTestId, title, value, markdown = false }: IFieldProps) => {
-  if (value) {
-    return (
-      <>
-        <Divider orientation="left" style={{ margin: 0 }} orientationMargin={0}>
-          {title}
-        </Divider>
-        {markdown ? (
-          <div className="content markdown" id={id} data-testid={dataTestId}>
-            <Markdown content={value as string} />
-          </div>
-        ) : (
-          <div style={{ padding: 8 }}>
-            <Typography>
-              <Typography.Paragraph id={id}>
-                <Typography.Text style={{ whiteSpace: "pre-wrap" }} data-testid={dataTestId}>
-                  {value}
-                </Typography.Text>
-              </Typography.Paragraph>
-            </Typography>
-          </div>
-        )}
-      </>
-    )
+export const Field = ({
+  id,
+  dataTestId,
+  title,
+  value,
+  markdown = false,
+  showLine = true,
+  textStyles = {},
+  titleStyles = { fontSize: 16, fontWeight: 500 },
+}: IFieldProps) => {
+  if (!value) {
+    return
   }
 
-  return null
+  return (
+    <div>
+      {showLine ? (
+        <Divider orientation="left" style={{ marginTop: 0, ...titleStyles }} orientationMargin={0}>
+          {title}
+        </Divider>
+      ) : (
+        <div style={titleStyles}>{title}</div>
+      )}
+
+      {markdown ? (
+        <div className="markdown" id={id} data-testid={dataTestId} style={textStyles}>
+          <Markdown content={value as string} />
+        </div>
+      ) : (
+        <Typography>
+          <Typography.Paragraph id={id}>
+            <Typography.Text
+              style={{ whiteSpace: "pre-wrap", ...textStyles }}
+              data-testid={dataTestId}
+            >
+              {value}
+            </Typography.Text>
+          </Typography.Paragraph>
+        </Typography>
+      )}
+    </div>
+  )
 }

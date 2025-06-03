@@ -1,3 +1,128 @@
+Version 2.1.0
+--------------
+*Status: General availability*
+
+Release overview:
+
+Dark theme:
+
+* Implemented dark theme
+* Now, there are three options: dark, light and system
+
+Bulk Actions:
+
+* Move test cases between Test-Suites within the project
+* Labels change
+* Delete tests from a Test Plan
+* Adding Test Results
+
+Changes in filters:
+
+* Now filter reflects Statistics pane
+* Removed quick filter from statistics
+
+Test-case creation:
+
+* Reworked test-case creation/edit form
+* Inline editing of steps
+* Added expand all/collapse all for steps
+
+Child plans statistics:
+
+* Added statistics for child plans inside of tree-view
+* Added Child Plans tab on Statistics pane which contains a progress for the first level of child plans.
+
+Overview:
+
+* Reworked Overview tab
+* Added “Assign to me” section
+* Transferred Project Administration functionality to Overview tab
+* Project creation now available on the Dashboard
+
+Test Results:
+
+* Reworked Test-Results adding/editing form
+* Added an ability to add results right from the grid/tree view without necessity to open test
+
+Documentation:
+
+* Added installation and user guides.
+
+*Released: 03-06-2025*
+
+- Improved UX for "Edit Test Case" (TMS-598)
+- Added child test plan execution status to parent test plan page (TMS-650)
+- Add ability to view intermediate test plan results (TMS-699)
+- Added button to expand all test case steps (TMS-708)
+- Test plans favorites (TMS-1205)
+- Moved project Description (TMS-1227)
+- Added button to copy code block to clipboard (TMS-1294)
+- Added the ability to create/update all steps without a modal window (TMS-1309)
+- Dark theme (TMS-1500)
+- Added code support in MD (TMS-1531)
+- Added bulk update of test results (TMS-500)
+- Placed Scenario and Expected fields in edit/new test case creation mode with alignment in line (TMS-640)
+- Added possibility to bulk transfer of test cases from one suite to another (TMS-964)
+- Added bulk deletion of tests from a test plan (TMS-987)
+- Added button to collapse all results except for the last one (TMS-1100)
+- Added Inheritance of parent test plan date (TMS-1237)
+- Added the ability to create test cases without falling into a suite (TMS-1339)
+- Added attachments for Test Suites and Test Plans (TMS-1408)
+- Added "copy link" to context menu on suites and plans (TMS-1436)
+- Added an ability to copy steps when creating tests (TMS-1437)
+- Added an ability to navigate between Project Administration and Project (TMS-1438)
+
+**Bug fixes**:
+
+- Test can be assigned to a deactivated user (TMS-611)
+- Test creation endpoint (TMS-993)
+- "Not Found" when trying to select a parent suite (TMS-1444)
+- Searching cases when suite was deleted (TMS-1454)
+- Incorrect counting of plans and tests (TMS-1458)
+- Fixed issue where parent element was not being sent (TMS-1459)
+- Test plans are copied with parameters (TMS-1460)
+- When directly following a link to change a suite/plan, data is not pulled in (TMS-1462)
+- Layout was inconsistent when small tree and large names (TMS-1465)
+- Statistics was not updated when adding results (TMS-1473)
+- Bad request when filtering by unassigned (TMS-1475)
+- Test case cloning form not clearing (TMS-1485)
+- Error on Cancel test case creation form (TMS-1493)
+- Duplicated labels when restoring (TMS-1495)
+- Archived test case icon should be displayed depending on the selected version (TMS-1496)
+- Crumb trail was not updated the right side of the test plan ([TMS-1502] )
+- When creating a test plan, fields were going to the menu and the test files were not loading scenarios (TMS-1507)
+- "Show Archived" switch was not changing state (TMS-1518)
+- Removed possibility to add results for archived tests (TMS-1519)
+- Fixed statistics error with empty project (TMS-1521)
+- When opening for editing a test case from root (without selecting an active suite), undefined was substituted into the URL (TMS-1523)
+- Status was not reset when resetting the filter (TMS-1524)
+- When clicking on a version in the History of a test case, the selected version was not opening (TMS-1525)
+- "Internal server error" on loading tests when creating a plan (TMS-1526)
+- Text does not fit on the access request button (TMS-1527)
+- Error outputting statuses if there is no project (TMS-1528)
+- Test not found when adding a result (TMS-1529)
+- Incorrect warning message on update test-case (TMS-1532)
+- "Not found" error when using video filter (TMS-1536)
+- Filter was not reset when switching between projects (TMS-1537)
+- Right side of Test Plans did not fit after switching to grid view (TMS-1538)
+- Strange behavior with incorrect URL (TMS-1539)
+- Incorrect use of Suite Specific attributes (TMS-1540)
+- Right side of the application climbs onto the left (tree, sidebar) (TMS-1544)
+- Issue with incorrect page_size=(awd, NaN, ..etc) (TMS-1547)
+- Bug when clicking on visual in comments (TMS-1135)
+- Archive button is available for archive case opened with version (TMS-1154)
+- Test plan: sorting in case sensitive test plan tree (TMS-1179)
+- Incorrect use of nested search parameter when filtering (TMS-1559)
+- Text alignment issues in delete confirmation window (TMS-1575)
+- "Not found" error when navigating in plan tree with pagination (TMS-1576)
+- Added error handling for activity request (TMS-1583)
+- "Not found" on pagination in test cases (TMS-1590)
+- Added link to download attachment in tests (TMS-1609)
+- Test case curtain was taking a long time to open when switching between versions (TMS-1611)
+- Step order change was not saving when editing test case (TMS-1614)
+- When editing a test, you cannot change a single step (TMS-1630)
+- Test case Update does not work if you add a step and change its position (TMS-1639)
+
 Version 2.0.5
 --------------
 *Status: General availability*

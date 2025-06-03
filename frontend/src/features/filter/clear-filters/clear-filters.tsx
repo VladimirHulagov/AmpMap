@@ -1,11 +1,7 @@
-import { Button } from "antd"
 import { useTranslation } from "react-i18next"
 
-import { icons } from "shared/assets/inner-icons"
-
-import styles from "./styles.module.css"
-
-const { ResetIcon } = icons
+import ResetIcon from "shared/assets/yi-icons/reset.svg?react"
+import { Button } from "shared/ui"
 
 interface Props {
   isVisible: boolean
@@ -22,8 +18,7 @@ export const ClearFilters = ({ isVisible, onClear }: Props) => {
       id="btn-clear-filter-test-plan"
       icon={<ResetIcon width={16} height={16} />}
       onClick={onClear}
-      ghost
-      className={styles.clearFilter}
+      color="ghost"
       style={{ gap: 4, width: "fit-content" }}
     >
       {t("Clear")}

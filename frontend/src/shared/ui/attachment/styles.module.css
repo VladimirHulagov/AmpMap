@@ -1,0 +1,58 @@
+.addButton {
+  height: 100%;
+  padding: 0;
+  margin-bottom: 8px;
+  border-style: dashed;
+  background: none;
+  font-weight: 400;
+  border-color: var(--y-color-control-border);
+}
+
+.addButton:hover {
+  border-color: var(--y-color-control-border-hover);
+}
+
+.addButton > span {
+  width: 100%;
+  display: block;
+}
+
+.addButton > span > div {
+  width: 100%;
+  display: block;
+}
+
+.addButtonContent {
+  height: 60px;
+  width: 100%;
+  display: block;
+}
+
+.button {
+  min-height: 64px;
+  font-size: 14px;
+  line-height: 24px;
+  font-weight: 400;
+  width: 100%;
+}
+
+.button:hover {
+  border-color: var();
+  background-color: transparent;
+}
+
+.label {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.dividerLabel {
+  margin: 0;
+  font-size: 14px;
+}
+
+.attachmentList {
+  margin: 0;
+  padding: 0;
+  list-style-type: none;
+}

@@ -2,6 +2,8 @@ import { createApi } from "@reduxjs/toolkit/dist/query/react"
 
 import { baseQueryWithLogout } from "app/apiSlice"
 
+import { testRelatedEntitiesInvalidate } from "entities/test/api"
+
 import { invalidatesList } from "shared/libs"
 
 const rootPath = "comments"
@@ -31,6 +33,14 @@ export const commentsApi = createApi({
         method: "POST",
         body,
       }),
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled
+          dispatch(testRelatedEntitiesInvalidate)
+        } catch (error) {
+          console.error(error)
+        }
+      },
       invalidatesTags: [{ type: "Comments", id: "LIST" }],
     }),
     updateComment: builder.mutation<CommentType, UpdateCommentsRequest>({
@@ -39,6 +49,14 @@ export const commentsApi = createApi({
         method: "PUT",
         body,
       }),
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled
+          dispatch(testRelatedEntitiesInvalidate)
+        } catch (error) {
+          console.error(error)
+        }
+      },
       invalidatesTags: (result) => invalidatesList(result, "Comments"),
     }),
     deleteComment: builder.mutation<void, number>({
@@ -46,6 +64,14 @@ export const commentsApi = createApi({
         url: `${rootPath}/${id}/`,
         method: "DELETE",
       }),
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled
+          dispatch(testRelatedEntitiesInvalidate)
+        } catch (error) {
+          console.error(error)
+        }
+      },
       invalidatesTags: [{ type: "Comments", id: "LIST" }],
     }),
   }),

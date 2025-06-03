@@ -50,7 +50,12 @@ export const TextArea: React.FC<CustomTextAreaProps> = forwardRef(
           }}
           {...props}
         />
-        <MarkdownViewer tab={tab} textAreaHeight={textAreaHeight} value={props.value as string} />
+        <MarkdownViewer
+          tab={tab}
+          textAreaHeight={textAreaHeight}
+          value={props.value as string}
+          style={{ boxSizing: "border-box" }}
+        />
         <div id={`${id}-bottom`} className={styles.row}>
           <MarkdownViewerTabs id={id} tab={tab} handleTabClick={handleTabClick} />
         </div>

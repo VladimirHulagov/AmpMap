@@ -1,11 +1,12 @@
-import { DeleteOutlined } from "@ant-design/icons"
-import { Button, Col, Flex, Input, Tooltip } from "antd"
+import { Col, Flex, Input, Tooltip } from "antd"
 import cn from "classnames"
 import classNames from "classnames"
 import { Noop } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 
+import DeleteIcon from "shared/assets/yi-icons/delete.svg?react"
 import { colors } from "shared/config"
+import { Button } from "shared/ui"
 import { FontsIcon, JsonIcon, ListIcon } from "shared/ui/icons"
 
 import styles from "./styles.module.css"
@@ -74,7 +75,8 @@ export const CustomAttributeFormItem = ({
                 disabled={attribute.is_init}
                 icon={<FontsIcon />}
                 onClick={() => onChangeType(attribute.id, "Text")}
-                type="text"
+                color="ghost"
+                shape="square"
                 className={classNames(styles.buttonType, {
                   [styles.active]: attribute.type === "Text",
                   [styles.disabled]: attribute.is_init,
@@ -88,7 +90,8 @@ export const CustomAttributeFormItem = ({
                 disabled={attribute.is_init}
                 icon={<ListIcon />}
                 onClick={() => onChangeType(attribute.id, "List")}
-                type="text"
+                color="ghost"
+                shape="square"
                 className={classNames(styles.buttonType, {
                   [styles.active]: attribute.type === "List",
                   [styles.disabled]: attribute.is_init,
@@ -102,7 +105,8 @@ export const CustomAttributeFormItem = ({
                 disabled={attribute.is_init}
                 icon={<JsonIcon />}
                 onClick={() => onChangeType(attribute.id, "JSON")}
-                type="text"
+                color="ghost"
+                shape="square"
                 className={classNames(styles.buttonType, {
                   [styles.active]: attribute.type === "JSON",
                   [styles.disabled]: attribute.is_init,
@@ -116,8 +120,9 @@ export const CustomAttributeFormItem = ({
                 id={`attribute-type-json-${index}`}
                 disabled={attribute.required ?? attribute.is_init}
                 danger
-                type="text"
-                icon={<DeleteOutlined />}
+                color="ghost"
+                shape="square"
+                icon={<DeleteIcon width={20} height={20} />}
                 onClick={() => onRemove(attribute.id)}
                 style={{ marginLeft: "auto" }}
                 className={classNames(styles.buttonType, {

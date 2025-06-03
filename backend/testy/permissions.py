@@ -29,6 +29,7 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 from rest_framework import permissions
+from rest_framework.exceptions import ValidationError
 
 from testy.tests_representation.models import Test
 
@@ -42,9 +43,12 @@ class IsAdminOrForbidArchiveUpdate(permissions.BasePermission):
 
 class ForbidChangesOnArchivedProject(permissions.BasePermission):
     def has_permission(self, request, view):
-        if not request.data:
+        if not request.data or view.action != 'create':
             return True
-        if view.action == 'create' and Test.objects.get(pk=request.data['test']).project.is_archive:  # noqa: WPS221
+        test = Test.objects.filter(pk=request.data['test']).first()
+        if not test:
+            raise ValidationError('Could not retrieve test from request')
+        if test.project.is_archive:
             return False
         return True
 

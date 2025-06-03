@@ -1,5 +1,5 @@
-import { MeContext } from "processes"
-import { useContext, useEffect, useState } from "react"
+import { useMeContext } from "processes"
+import { useEffect, useState } from "react"
 import { useInView } from "react-intersection-observer"
 
 import { useLazyGetProjectsQuery } from "entities/project/api"
@@ -13,7 +13,7 @@ interface RequestParams {
 }
 
 export const useProjectsDashboardCards = ({ searchName }: { searchName: string }) => {
-  const { userConfig } = useContext(MeContext)
+  const { userConfig } = useMeContext()
   const [paginationParams, setPagingationParams] = useState({ page: 1, page_size: 10 })
   const [projects, setProjects] = useState<Project[]>([])
   const [isLastPage, setIsLastPage] = useState(false)

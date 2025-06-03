@@ -2,7 +2,6 @@
   display: flex;
   width: 100%;
   column-gap: 72px;
-  margin-top: 24px;
 }
 
 .graphsTitle {
@@ -16,9 +15,8 @@
   display: flex;
   flex-direction: column;
   row-gap: 16px;
-  min-height: 288px;
-  width: 100%;
   position: relative;
+  width: 100%;
 }
 
 .barWrapper {
@@ -52,7 +50,5 @@
   font-size: 15px;
   align-items: center;
   justify-content: center;
-  position: absolute;
-  bottom: 0;
   width: 100%;
 }

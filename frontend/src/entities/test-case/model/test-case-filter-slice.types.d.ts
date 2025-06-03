@@ -2,6 +2,7 @@ interface TestCaseStateFilters {
   filter: TestCaseDataFilters
   settings: FilterSettings
   ordering: string
+  shouldResetForm: boolean
 }
 
 interface TestCaseDataFilters {

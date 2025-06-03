@@ -110,7 +110,7 @@ class Command(BaseCommand):
         plan_to_copy = get_object_or_404(TestPlan, pk=src_plan_id)
 
         tests_to_copy = TestSelector().test_list_with_last_status()
-        tests_to_copy = TestSuiteSelector.annotate_suite_path(tests_to_copy, 'case__suite__path')
+        tests_to_copy = TestSuiteSelector.annotate_suite_path(tests_to_copy, 'case__suite')
 
         plans_to_copy = plan_to_copy.get_descendants(
             include_self=True,

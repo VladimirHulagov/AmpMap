@@ -30,38 +30,38 @@ export const useAssignTo = ({ onSuccess }: Props) => {
   }
 
   const {
-    isOpenModal,
     errors,
     isDirty,
+    isOpen,
     me,
-    handleClose,
     handleOpenAssignModal,
     handleAssignUserChange,
     handleAssignUserClear,
     handleAssignToMe,
     setSelectedUser,
+    handleClose,
     handleSubmitForm,
     selectedUser,
   } = useAssignToCommon({ onSubmit: assignRequest })
 
   useEffect(() => {
-    if (!activeTest?.assignee) return
+    if (!activeTest?.assignee || !isOpen) return
     setSelectedUser({
       label: String(activeTest.assignee_username),
       value: Number(activeTest.assignee),
     })
-  }, [activeTest])
+  }, [activeTest, isOpen])
 
   return {
     activeTest,
-    isOpenModal,
     errors,
+    isOpen,
     isDirty,
     isLoadingUpdateTest,
     me,
     selectedUser,
-    handleClose,
     handleSubmitForm,
+    handleClose,
     handleOpenAssignModal,
     handleAssignUserChange,
     handleAssignUserClear,

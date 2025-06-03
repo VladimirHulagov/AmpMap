@@ -1,7 +1,7 @@
 import { SearchOutlined } from "@ant-design/icons"
-import { Badge, Button, DatePicker, Flex, Form, Input } from "antd"
+import { Badge, DatePicker, Flex, Form, Input } from "antd"
 import dayjs, { Dayjs } from "dayjs"
-import { useContext, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { Controller, SubmitHandler, useForm } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 import { useParams } from "react-router-dom"
@@ -15,10 +15,13 @@ import { useLazyGetDescendantsTreeQuery } from "entities/suite/api"
 import {
   clearFilter,
   resetFilterSettings,
+  resetFormComplete,
   selectFilter,
   selectFilterCount,
   selectFilterSettings,
   selectOrdering,
+  selectShouldResetForm,
+  testCasesEmptyFilter,
   testCasesFilterSchema,
   testCasesOrderingSchema,
   updateFilter,
@@ -28,15 +31,13 @@ import {
 
 import { FilterControl } from "features/filter"
 
-import { ProjectContext } from "pages/project"
+import { useProjectContext } from "pages/project"
 
-import { icons } from "shared/assets/inner-icons"
+import FilterPlusIcon from "shared/assets/yi-icons/filter-plus.svg?react"
 import { useUrlSyncParams } from "shared/hooks"
-import { Drawer, EntityTreeFilter, Toggle } from "shared/ui"
+import { Button, Drawer, EntityTreeFilter, Toggle } from "shared/ui"
 
 import styles from "./styles.module.css"
-
-const { FilterPlusIcon } = icons
 
 type DateFields =
   | "test_suite_created_after"
@@ -47,7 +48,7 @@ type DateFields =
 export const TestCasesButtonFilterDrawer = () => {
   const { t } = useTranslation()
 
-  const { project } = useContext(ProjectContext)!
+  const project = useProjectContext()
   const { testSuiteId } = useParams<ParamTestSuiteId>()
 
   const dispatch = useAppDispatch()
@@ -55,13 +56,12 @@ export const TestCasesButtonFilterDrawer = () => {
   const testCasesOrdering = useAppSelector(selectOrdering)
   const testCasesFilterSettings = useAppSelector(selectFilterSettings)
   const testCasesFilterCount = useAppSelector(selectFilterCount)
+  const testCasesShouldResetForm = useAppSelector(selectShouldResetForm)
   const [isOpenFilter, setIsOpenFilter] = useState(false)
-  //Value for check projectId with previous
-  const [projectId, setProjectId] = useState(project.id)
 
   const [getSuiteTree] = useLazyGetDescendantsTreeQuery()
 
-  const { control, handleSubmit, getValues, setValue, reset, watch } = useForm<TestCaseDataFilters>(
+  const { control, handleSubmit, getValues, setValue, watch, reset } = useForm<TestCaseDataFilters>(
     {
       defaultValues: testCasesFilter,
     }
@@ -70,8 +70,11 @@ export const TestCasesButtonFilterDrawer = () => {
   const isArchive = watch("is_archive")
 
   useEffect(() => {
-    reset(testCasesFilter)
-  }, [testCasesFilter])
+    if (testCasesShouldResetForm) {
+      reset(testCasesEmptyFilter)
+      dispatch(resetFormComplete())
+    }
+  }, [testCasesShouldResetForm])
 
   const handleUpdateFilterData = (params: Partial<TestDataFilters>) => {
     dispatch(updateFilter(params))
@@ -163,27 +166,31 @@ export const TestCasesButtonFilterDrawer = () => {
   const getDateValue = (key: DateFields) => (getValues(key) ? dayjs(getValues(key)) : undefined)
 
   useEffect(() => {
-    if (projectId === project.id) {
+    if (
+      testCasesFilterSettings.filterProjectId !== null &&
+      testCasesFilterSettings.filterProjectId !== project.id
+    ) {
+      dispatch(clearFilter())
+      dispatch(resetFilterSettings())
       return
     }
 
-    dispatch(clearFilter())
-    dispatch(resetFilterSettings())
-    setProjectId(project.id)
-  }, [project.id])
+    dispatch(updateFilterSettings({ filterProjectId: project.id }))
+  }, [project.id, testCasesFilterSettings.filterProjectId])
 
   return (
     <>
       <Button
         id="btn-filter-test-plan"
-        icon={<FilterPlusIcon />}
+        icon={<FilterPlusIcon width={18} height={18} />}
         onClick={handleOpenFilter}
         style={{ gap: 4, width: "fit-content" }}
+        color="secondary-linear"
       >
         {t("Filter")}{" "}
         {!!testCasesFilterCount && (
           <Badge
-            color="var(--y-interactive-default)"
+            color="var(--y-color-accent)"
             count={testCasesFilterCount}
             data-testid="test-cases-button-filter-drawer-badge"
           />
@@ -191,7 +198,7 @@ export const TestCasesButtonFilterDrawer = () => {
       </Button>
       <Drawer
         id="tests-drawer-filter"
-        title={
+        header={
           <FilterControl
             type="suites"
             filterData={testCasesFilter as unknown as Record<string, unknown>}

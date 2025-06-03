@@ -1,5 +1,5 @@
 import { CopyOutlined } from "@ant-design/icons"
-import { Button, Form, Input, Modal } from "antd"
+import { Form, Input, Modal } from "antd"
 import { Controller } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 import { useParams } from "react-router-dom"
@@ -7,6 +7,7 @@ import { useParams } from "react-router-dom"
 import { useLazyGetTestSuitesQuery } from "entities/suite/api"
 
 import { LazyNodeProps, LazyTreeNodeApi } from "shared/libs/tree"
+import { Button } from "shared/ui"
 
 import { BaseSearchEntity, LazyTreeSearch } from "widgets/lazy-tree-search/lazy-tree-search"
 
@@ -16,6 +17,8 @@ interface Props {
   testCase: TestCase
   onSubmit?: (suite: TestCase) => void
 }
+
+const TEST_ID = "copy-test-case"
 
 export const CopyTestCase = ({ testCase, onSubmit }: Props) => {
   const { t } = useTranslation()
@@ -27,23 +30,33 @@ export const CopyTestCase = ({ testCase, onSubmit }: Props) => {
 
   return (
     <>
-      <Button id="copy-test-case" icon={<CopyOutlined />} onClick={handleShow}>
+      <Button
+        id="copy-test-case"
+        icon={<CopyOutlined />}
+        onClick={handleShow}
+        color="secondary-linear"
+      >
         {t("Copy")}
       </Button>
       <Modal
-        className="copy-test-case-modal"
-        title={`${t("Copy Test Case")} '${testCase.name}'`}
+        bodyProps={{ "data-testid": `${TEST_ID}-modal-body` }}
+        wrapProps={{ "data-testid": `${TEST_ID}-modal-wrapper` }}
+        title={
+          <span
+            data-testid={`${TEST_ID}-modal-title`}
+          >{`${t("Copy Test Case")} '${testCase.name}'`}</span>
+        }
         open={isShow}
         onCancel={handleCancel}
         centered
         footer={[
-          <Button id="cancel-btn" key="back" onClick={handleCancel}>
+          <Button id="cancel-btn" key="back" onClick={handleCancel} color="secondary-linear">
             {t("Cancel")}
           </Button>,
           <Button
             id="save-btn"
             key="submit"
-            type="primary"
+            color="accent"
             loading={isLoading}
             onClick={handleSubmit}
             disabled={isLoading}

@@ -30,11 +30,13 @@
 # <http://www.gnu.org/licenses/>.
 from typing import Any, Iterable, Protocol
 
+from core.choices import LabelsActionChoices
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.deconstruct import deconstructible
 from rest_framework import serializers
 
-from testy.core.models import CustomAttribute, Project
+from testy.core.models import CustomAttribute, Label, Project
 from testy.tests_description.models import TestCase, TestSuite
 from testy.tests_representation.selectors.status import ResultStatusSelector
 
@@ -186,3 +188,34 @@ class CasesCopyProjectValidator:
         cases_projects = cases.values_list('project_id', flat=True).distinct('project_id')
         if cases_projects.count() != 1 or cases_projects[0] != dst_suite.project_id:
             raise serializers.ValidationError('Cannot copy case to another project.')
+
+
+class BulkUpdateLabelValidator:
+    def __call__(self, attrs: dict[str, Any]):  # noqa: WPS231
+        project = attrs.get('project')
+        labels = attrs.get('labels')
+        if not labels:
+            return
+        labels_action = attrs.get('labels_action')
+        if labels_action is None:
+            raise serializers.ValidationError('Labels action must be specified')
+        if labels_action == LabelsActionChoices.DELETE.value:
+            return
+        for label in labels:
+            if label.get('id'):
+                continue
+            name = label.get('name')
+            if Label.objects.filter(name__iexact=name, project=project).exists():
+                raise serializers.ValidationError(f'Label with name "{name}" already exists')
+
+
+class BulkUpdateExcludeIncludeValidator:
+    err_msg = 'Included and excluded keys should not be provided.'
+
+    def __init__(self, include_key: str, exclude_key: str):
+        self.include_key = include_key
+        self.exclude_key = exclude_key
+
+    def __call__(self, attrs):
+        if all([attrs.get(self.include_key), attrs.get(self.exclude_key)]):
+            raise ValidationError(self.err_msg)

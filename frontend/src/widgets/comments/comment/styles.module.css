@@ -1,0 +1,56 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  padding: 8px 8px 8px 0;
+}
+
+.actions {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.actions button {
+  color: var(--y-color-text-tertiary);
+}
+
+.hashActive {
+  background-color: var(--y-secondary-color-background);
+}
+
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-grow: 1;
+}
+
+.edited {
+  color: var(--y-color-text-tertiary);
+}
+
+.link {
+  color: var(--y-secondary-color-text-tertiary);
+  text-decoration: underline;
+}
+
+.arrowIcon {
+  color: var(--y-color-secondary-inline);
+  transition: all 0.2s ease-in;
+  min-width: 16px;
+  margin-right: 8px;
+  margin-top: 2px;
+  cursor: pointer;
+  user-select: none;
+  transform: rotate(-90deg);
+}
+
+.arrowIconOpen {
+  transform: rotate(0deg);
+}
+
+.commentBody {
+  padding: 8px 8px 8px 28px;
+}

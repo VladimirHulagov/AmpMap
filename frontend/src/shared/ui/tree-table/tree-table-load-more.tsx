@@ -1,9 +1,10 @@
-import { Button, Spin } from "antd"
+import { Spin } from "antd"
 import classNames from "classnames"
 import { useTranslation } from "react-i18next"
 
 import { LazyNodeProps, LazyTreeNodeApi } from "shared/libs/tree"
 
+import { Button } from "../button"
 import styles from "./styles.module.css"
 
 interface Props<TData, TProps extends LazyNodeProps> {
@@ -49,7 +50,7 @@ export const TreeTableLoadMore = <TData, TProps extends LazyNodeProps>({
     <tr id={`node-${nodeTitle}-more`} className={styles.loadMoreContainer}>
       <td colSpan={100} className={classNames(styles.loadMore, { [styles.isRoot]: isRoot })}>
         <span style={{ width: offset, height: 1, float: "left" }} />
-        <Button id={`node-${nodeTitle}-more-btn`} size="small" type="link" onClick={onMore}>
+        <Button id={`node-${nodeTitle}-more-btn`} size="s" color="ghost" onClick={onMore}>
           {t("Load more")}
         </Button>
       </td>

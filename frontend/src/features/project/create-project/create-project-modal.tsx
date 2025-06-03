@@ -1,4 +1,4 @@
-import { Button, Form, Input, Modal, Switch, Upload, notification } from "antd"
+import { Form, Input, Modal, Switch, Upload } from "antd"
 import { RcFile, UploadChangeParam, UploadFile } from "antd/lib/upload"
 import { useState } from "react"
 import { Controller, SubmitHandler, useForm } from "react-hook-form"
@@ -7,9 +7,10 @@ import { useTranslation } from "react-i18next"
 import { useCreateProjectMutation } from "entities/project/api"
 import { ProjectIcon } from "entities/project/ui"
 
-import { ErrorObj, useErrors, useShowModalCloseConfirm } from "shared/hooks"
+import { ErrorObj, useErrors } from "shared/hooks"
 import { fileReader } from "shared/libs"
-import { AlertError, AlertSuccessChange } from "shared/ui"
+import { antdModalCloseConfirm, antdNotification } from "shared/libs/antd-modals"
+import { AlertError, AlertSuccessChange, Button } from "shared/ui"
 
 const { TextArea } = Input
 
@@ -25,9 +26,10 @@ interface Props {
   setIsShow: (isShow: boolean) => void
 }
 
+const TEST_ID = "create-project"
+
 export const CreateProjectModal = ({ isShow, setIsShow }: Props) => {
   const { t } = useTranslation()
-  const { showModal } = useShowModalCloseConfirm()
   const [errors, setErrors] = useState<ErrorData | null>(null)
   const {
     handleSubmit,
@@ -65,15 +67,14 @@ export const CreateProjectModal = ({ isShow, setIsShow }: Props) => {
       const newProject = await createProject(fmData).unwrap()
 
       onCloseModal()
-      notification.success({
-        message: t("Success"),
-        closable: true,
+      antdNotification.success("create-project", {
         description: (
           <AlertSuccessChange
             action="created"
             title="Project"
-            link={`/administration/projects/${newProject.id}/overview/`}
+            link={`/projects/${newProject.id}/overview/`}
             id={String(newProject.id)}
+            data-testid="create-project-success-notification-description"
           />
         ),
       })
@@ -93,7 +94,7 @@ export const CreateProjectModal = ({ isShow, setIsShow }: Props) => {
     if (isLoading) return
 
     if (isDirty) {
-      showModal(onCloseModal)
+      antdModalCloseConfirm(onCloseModal)
       return
     }
 
@@ -113,8 +114,7 @@ export const CreateProjectModal = ({ isShow, setIsShow }: Props) => {
   const beforeUpload = (file: RcFile) => {
     const isCorrectType = file.type === "image/png" || file.type === "image/jpeg"
     if (!isCorrectType) {
-      notification.error({
-        message: t("Error!"),
+      antdNotification.error("create-project", {
         description: `${file.name} ${t("is not a png or jpg file")}`,
       })
     }
@@ -129,22 +129,28 @@ export const CreateProjectModal = ({ isShow, setIsShow }: Props) => {
 
   return (
     <Modal
-      className="create-project-modal"
-      title={`${t("Create")} ${t("Project")}`}
+      bodyProps={{ "data-testid": `${TEST_ID}-modal-body` }}
+      wrapProps={{ "data-testid": `${TEST_ID}-modal-wrapper` }}
+      title={<span data-testid={`${TEST_ID}-modal-title`}>{`${t("Create")} ${t("Project")}`}</span>}
       open={isShow}
       onCancel={handleCancel}
       width="600px"
       centered
       footer={[
-        <Button id="close-create-project" key="back" onClick={handleCancel}>
+        <Button
+          id="modal-close-create-project"
+          key="back"
+          onClick={handleCancel}
+          color="secondary-linear"
+        >
           {t("Close")}
         </Button>,
         <Button
-          id="create-project"
+          id="modal-create-project"
           loading={isLoading}
           key="submit"
           onClick={handleSubmit(onSubmit)}
-          type="primary"
+          color="accent"
           disabled={!isDirty}
         >
           {t("Create")}
@@ -183,14 +189,17 @@ export const CreateProjectModal = ({ isShow, setIsShow }: Props) => {
                       beforeUpload={beforeUpload}
                       data-testid="create-project-upload-icon-input"
                     >
-                      <Button size="middle" data-testid="create-project-upload-icon-button">
+                      <Button
+                        color="secondary-linear"
+                        data-testid="create-project-upload-icon-button"
+                      >
                         {t("Upload icon")}
                       </Button>
                     </Upload>
                     {localIcon && (
                       <Button
-                        size="middle"
                         danger
+                        color="secondary-linear"
                         onClick={handleDeleteIconClick}
                         data-testid="create-project-delete-icon-button"
                       >

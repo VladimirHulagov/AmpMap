@@ -1,6 +1,9 @@
 import { createApi } from "@reduxjs/toolkit/dist/query/react"
+import { openComment } from "entities/comments/model/slice"
 
 import { baseQueryWithLogout } from "app/apiSlice"
+
+import { openTestResults } from "entities/result/model/slice"
 
 import { testPlanApi } from "entities/test-plan/api"
 
@@ -11,7 +14,7 @@ const rootPath = "tests"
 export const testApi = createApi({
   reducerPath: "testApi",
   baseQuery: baseQueryWithLogout,
-  tagTypes: ["Test"],
+  tagTypes: ["Test", "TestRelatedEntities"],
   endpoints: (builder) => ({
     getTest: builder.query<Test, string>({
       query: (testId) => ({
@@ -44,27 +47,34 @@ export const testApi = createApi({
         method: "PUT",
         body,
       }),
-      async onQueryStarted({ current_plan, plan }, { dispatch, queryFulfilled }) {
+      async onQueryStarted({ current_plan, plan_id, project }, { dispatch, queryFulfilled }) {
         await queryFulfilled
+
+        const cacheIdCurrentPlan = `${project}-${current_plan}`
+        const cacheIdPlan = `${project}-${plan_id ?? null}`
+
         dispatch(
-          testPlanApi.util.invalidateTags([{ type: "TestPlanStatistics", id: current_plan }])
+          testPlanApi.util.invalidateTags([
+            { type: "TestPlanStatistics", id: cacheIdCurrentPlan },
+            { type: "TestPlanStatistics", id: cacheIdPlan },
+          ])
         )
         dispatch(
           testPlanApi.util.invalidateTags([
-            { type: "TestPlanHistogram", id: current_plan },
-            { type: "TestPlanHistogram", id: plan },
+            { type: "TestPlanHistogram", id: cacheIdCurrentPlan },
+            { type: "TestPlanHistogram", id: cacheIdPlan },
           ])
         )
         dispatch(
           testPlanApi.util.invalidateTags([
             { type: "TestPlanLabels", id: "LIST" },
-            { type: "TestPlanLabels", id: plan },
+            { type: "TestPlanLabels", id: plan_id },
           ])
         )
         dispatch(
           testPlanApi.util.invalidateTags([
             { type: "TestPlanCasesIds", id: current_plan },
-            { type: "TestPlanCasesIds", id: plan },
+            { type: "TestPlanCasesIds", id: plan_id },
           ])
         )
 
@@ -77,8 +87,42 @@ export const testApi = createApi({
       },
       invalidatesTags: (result) => invalidatesList(result, "Test"),
     }),
+    getRelatedEntities: builder.query<
+      PaginationResponse<(Result | CommentType)[]>,
+      GetTestRelatedEntitiesParams
+    >({
+      query: ({ test_id, ...params }) => ({
+        url: `${rootPath}/${test_id}/results-union/`,
+        params,
+      }),
+      providesTags: [{ type: "TestRelatedEntities" }],
+      async onQueryStarted(params, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled
+
+          if (data) {
+            const firstResult = data.results.find(({ type }) => type === "result")
+            const firstComment = data.results.find(({ type }) => type === "comment")
+
+            if (firstResult) {
+              dispatch(openTestResults([firstResult.id]))
+            }
+
+            if (firstComment) {
+              dispatch(openComment([firstComment.id]))
+            }
+          }
+        } catch (error) {
+          console.error(error)
+        }
+      },
+    }),
   }),
 })
+
+export const testRelatedEntitiesInvalidate = testApi.util.invalidateTags([
+  { type: "TestRelatedEntities" },
+])
 
 export const {
   useGetTestQuery,
@@ -87,4 +131,5 @@ export const {
   useUpdateTestMutation,
   useBulkUpdateMutation,
   useGetTestsQuery,
+  useGetRelatedEntitiesQuery,
 } = testApi

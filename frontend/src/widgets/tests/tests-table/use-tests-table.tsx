@@ -1,8 +1,10 @@
+import { PlusOutlined } from "@ant-design/icons"
+import { Tooltip } from "antd"
 import { ColumnsType } from "antd/es/table"
-import { FilterValue, RowSelectMethod } from "antd/es/table/interface"
+import { FilterValue } from "antd/es/table/interface"
 import { TablePaginationConfig } from "antd/lib"
 import dayjs from "dayjs"
-import { Key, useContext, useEffect, useMemo } from "react"
+import { useEffect, useMemo, useRef } from "react"
 import { useTranslation } from "react-i18next"
 import { Link, useSearchParams } from "react-router-dom"
 
@@ -17,6 +19,7 @@ import {
   selectOrdering,
   selectSettings,
   setDrawerTest,
+  setDrawerView,
   setPagination,
   updateSettings,
 } from "entities/test/model"
@@ -25,16 +28,18 @@ import { useGetTestPlanTestsQuery } from "entities/test-plan/api"
 
 import { UserAvatar, UserUsername } from "entities/user/ui"
 
-import { ProjectContext } from "pages/project"
+import { useProjectContext } from "pages/project"
 
 import { colors, config } from "shared/config"
 import { paginationSchema } from "shared/config/query-schemas"
 import { NOT_ASSIGNED_FILTER_VALUE } from "shared/constants"
-import { useUrlSyncParams } from "shared/hooks"
+import { useRowSelection, useUrlSyncParams } from "shared/hooks"
 import { ArchivedTag, HighLighterTesty, Status } from "shared/ui"
 import { UntestedStatus } from "shared/ui/status"
 
 import styles from "./styles.module.css"
+
+const ADD_RESULT_KEY = "add_result"
 
 interface Props {
   testPlanId: Id | null
@@ -42,7 +47,7 @@ interface Props {
 
 export const useTestsTable = ({ testPlanId }: Props) => {
   const { t } = useTranslation()
-  const { project } = useContext(ProjectContext)!
+  const project = useProjectContext()
   const [searchParams, setSearchParams] = useSearchParams()
   const dispatch = useAppDispatch()
 
@@ -51,32 +56,46 @@ export const useTestsTable = ({ testPlanId }: Props) => {
   const testsOrdering = useAppSelector(selectOrdering)
   const tableSettings = useAppSelector(selectSettings<TestTableParams>("table"))
 
+  const testPlanIdPrev = useRef(testPlanId)
+
+  const getPaginationPageForReq = () => {
+    /**
+     * Фикс ситуации, когда testPlanId уже поменялся, а tableSettings поменяется на следующем рендере
+     * и запрос отправляется со смешанными параметрами
+     */
+    const isPaginationFirstPage = tableSettings.page === 1
+    const sameTestPlanId = testPlanIdPrev.current === testPlanId
+
+    if (isPaginationFirstPage) {
+      testPlanIdPrev.current = testPlanId
+    }
+
+    return sameTestPlanId ? tableSettings.page : 1
+  }
+
   const reqParams = useMemo(() => {
+    const page = getPaginationPageForReq()
+
     return {
       ...testsFilter,
-      testPlanId: tableSettings.testPlanId ?? testPlanId,
+      testPlanId,
       ordering: testsOrdering,
-      page: tableSettings.page,
+      page,
       page_size: tableSettings.page_size,
     }
-  }, [tableSettings, testsOrdering, testsFilter])
+  }, [tableSettings, testsOrdering, testsFilter, testPlanId])
 
   useEffect(() => {
-    dispatch(
-      updateSettings({
-        key: "table",
-        settings: {
-          testPlanId,
-        },
-      })
-    )
-
     return () => {
       dispatch(
         updateSettings({
           key: "table",
           settings: {
             page: 1,
+            selectedRows: [],
+            excludedRows: [],
+            isAllSelectedTableBulk: false,
+            hasBulk: false,
           },
         })
       )
@@ -104,7 +123,6 @@ export const useTestsTable = ({ testPlanId }: Props) => {
   const queryParams = {
     project: project.id,
     testPlanId: reqParams.testPlanId ?? undefined,
-    nested_search: true,
     is_archive: reqParams.is_archive,
     labels: reqParams.labels,
     not_labels: reqParams.not_labels,
@@ -140,23 +158,20 @@ export const useTestsTable = ({ testPlanId }: Props) => {
   })
 
   const data = reqParams.testPlanId ? testPlanData : rootTestsData
-  const isFetching = reqParams.testPlanId ? isFetchingTestPlan : isRootTestsFetching
 
-  useEffect(() => {
-    if (tableSettings.isAllSelectedTableBulk && data?.results) {
-      const newSelectedRows = data.results
-        .map((test) => test.id)
-        .filter((id) => !tableSettings.excludedRows.includes(id))
+  const { handleSelectRows } = useRowSelection({
+    tableSettings,
+    data,
+    dispatch: (settings: Partial<TestTableParams>) =>
       dispatch(
         updateSettings({
           key: "table",
-          settings: {
-            selectedRows: newSelectedRows,
-          },
+          settings: { ...settings },
         })
-      )
-    }
-  }, [data])
+      ),
+  })
+
+  const isFetching = reqParams.testPlanId ? isFetchingTestPlan : isRootTestsFetching
 
   const handleTableChange = (pagination: TablePaginationConfig) => {
     dispatch(
@@ -174,78 +189,6 @@ export const useTestsTable = ({ testPlanId }: Props) => {
     searchParams.set("test", String(testClick.id))
     setSearchParams(searchParams)
     dispatch(setDrawerTest(testClick))
-  }
-
-  const handleSelectRows = (
-    selectedRowKeys: Key[],
-    selectedRows: Test[],
-    info: {
-      type: RowSelectMethod
-    }
-  ) => {
-    dispatch(
-      updateSettings({
-        key: "table",
-        settings: {
-          selectedRows: selectedRowKeys as number[],
-          hasBulk: !!selectedRowKeys.length,
-        },
-      })
-    )
-
-    if (info.type === "all") {
-      const newIsAllSelected = !tableSettings.isAllSelectedTableBulk
-      dispatch(
-        updateSettings({
-          key: "table",
-          settings: {
-            excludedRows: [],
-            isAllSelectedTableBulk: newIsAllSelected,
-          },
-        })
-      )
-      if (!newIsAllSelected) {
-        dispatch(
-          updateSettings({
-            key: "table",
-            settings: {
-              selectedRows: [],
-              hasBulk: false,
-            },
-          })
-        )
-      } else {
-        dispatch(
-          updateSettings({
-            key: "table",
-            settings: {
-              selectedRows: data?.results.map((test) => test.id) ?? [],
-            },
-          })
-        )
-      }
-    } else {
-      if (tableSettings.isAllSelectedTableBulk) {
-        //Exclude
-        const notThisPageExcluded = tableSettings.excludedRows.filter(
-          (id) => !data?.results.find((test) => test.id === id)
-        )
-        const currentPageExcluded =
-          data?.results
-            .filter((test) => !selectedRowKeys.includes(test.id))
-            .map((test) => test.id) ?? []
-
-        dispatch(
-          updateSettings({
-            key: "table",
-            settings: {
-              excludedRows: [...notThisPageExcluded, ...currentPageExcluded],
-              hasBulk: true,
-            },
-          })
-        )
-      }
-    }
   }
 
   const columns: ColumnsType<Test> = useMemo(() => {
@@ -355,8 +298,30 @@ export const useTestsTable = ({ testPlanId }: Props) => {
           width: 150,
           render: (value: string) => dayjs(value).format("YYYY-MM-DD HH:mm"),
         },
+        {
+          key: ADD_RESULT_KEY,
+          width: 76,
+          render: () => (
+            <Tooltip title={t("Add Result")}>
+              <div
+                onClick={() => {
+                  dispatch(setDrawerView({ view: "addResult", shouldClose: true }))
+                }}
+              >
+                <PlusOutlined
+                  style={{ marginRight: 4, color: "var(--y-color-secondary-inline)" }}
+                  height={16}
+                  width={16}
+                />
+                {t("Result")}
+              </div>
+            </Tooltip>
+          ),
+        },
       ] as ColumnsType<Test>
-    ).filter((col) => tableSettings.visibleColumns.some((i) => i.key === col.key))
+    ).filter((col) =>
+      tableSettings.visibleColumns.some((i) => i.key === col.key || col.key === ADD_RESULT_KEY)
+    )
   }, [testsFilter, tableSettings])
 
   const paginationTable: TablePaginationConfig = {

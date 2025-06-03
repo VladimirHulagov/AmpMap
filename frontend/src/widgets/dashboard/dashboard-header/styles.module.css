@@ -6,14 +6,19 @@
   position: sticky;
   height: 76px;
   top: 0;
-  background-color: #f5f5f5;
+  background-color: var(--y-secondary-color-background);
   z-index: 1000;
   margin-bottom: 12px;
 }
 
+.searchBlock {
+  max-width: 350px;
+  width: 100%;
+}
+
 .row {
-  margin-left: auto;
-  margin-right: 16px;
+  margin-left: 8px;
+  margin-right: auto;
 }
 
 .searchIcon {
@@ -22,12 +27,29 @@
 }
 
 .viewBtn {
-  background-color: var(--y-grey-10) !important;
-  border-color: var(--y-grey-10) !important;
-  box-shadow: none !important;
-  color: var(--y-sky-40) !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: var(--y-color-text-tertiary);
+  outline: 1px solid transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  background-color: transparent;
 }
 
-.viewBtnActive {
-  border-color: var(--y-sky-40) !important;
+.viewBtn:hover {
+  color: var(--y-color-text-secondary);
+}
+
+.viewBtn:focus {
+  outline-color: var(--y-color-accent);
+}
+
+.viewBtn.active {
+  border-color: var(--y-color-border);
+  outline-color: transparent;
+  color: var(--y-color-text-secondary);
 }

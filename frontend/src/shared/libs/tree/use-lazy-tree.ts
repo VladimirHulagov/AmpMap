@@ -7,6 +7,7 @@ import {
   TreeFetcherAncestors,
   TreeNodeData,
   TreeNodeFetcher,
+  TreeNodeUpdate,
 } from "./api"
 
 export interface UseLazyTreeProps<TData, TProps> {
@@ -20,6 +21,7 @@ export interface UseLazyTreeProps<TData, TProps> {
   rootId?: NodeId | null
   skipInit?: boolean
   cacheKey?: string
+  onUpdate?: (data: TreeNodeUpdate<TData, LazyNodeProps>[]) => void
 }
 
 export const useLazyTree = <TData, TProps extends LazyNodeProps>({
@@ -32,6 +34,7 @@ export const useLazyTree = <TData, TProps extends LazyNodeProps>({
   cacheKey,
   selectedId,
   rootId,
+  onUpdate,
 }: UseLazyTreeProps<TData, TProps>) => {
   const [, forceRerender] = useReducer((x: number) => x + 1, 0)
 
@@ -45,6 +48,7 @@ export const useLazyTree = <TData, TProps extends LazyNodeProps>({
       cacheKey,
       selectedId,
       rootId,
+      onUpdate,
     })
   }, [])
 

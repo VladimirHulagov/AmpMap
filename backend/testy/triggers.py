@@ -35,11 +35,18 @@ def get_statistic_triggers(
     count_field: str,
     decrement_cond: Q | None = None,
     increment_cond: Q | None = None,
+    hard_delete_condition: Q | None = None,
 ) -> list[Trigger]:
     if decrement_cond is None:
-        decrement_cond = Q(old__is_deleted=False, new__is_deleted=True) | Q(old__is_archive=False, new__is_archive=True)
+        is_deleted_condition = Q(old__is_deleted=False, new__is_deleted=True) & Q(old__is_archive=False)
+        is_archive_condition = Q(old__is_archive=False, new__is_archive=True) & Q(old__is_deleted=False)
+        decrement_cond = is_deleted_condition | is_archive_condition
     if increment_cond is None:
-        increment_cond = Q(old__is_deleted=True, new__is_deleted=False) | Q(old__is_archive=True, new__is_archive=False)
+        is_deleted_condition = Q(old__is_deleted=True, new__is_deleted=False) & Q(new__is_archive=False)
+        is_archive_condition = Q(old__is_archive=True, new__is_archive=False) & Q(new__is_deleted=False)
+        increment_cond = is_deleted_condition | is_archive_condition
+    if hard_delete_condition is None:
+        hard_delete_condition = Q(old__is_deleted=False, old__is_archive=False)
     return [
         Trigger(
             name=f'{count_field}_increment_statistics_on_insert',
@@ -86,5 +93,6 @@ def get_statistic_triggers(
             WHERE project_id = OLD.project_id;
             RETURN OLD;
             """.format(count_field=count_field),  # noqa: S608
+            condition=hard_delete_condition,
         ),
     ]

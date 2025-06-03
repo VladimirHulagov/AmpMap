@@ -116,12 +116,22 @@ class TestRolePermissions:
                 [RequestType.PATCH, RequestType.PUT, RequestType.DELETE, RequestType.GET],
             ),
             ('label', 'label_factory', [RequestType.PATCH, RequestType.PUT, RequestType.DELETE, RequestType.GET]),
+            (
+                'customattribute', 'custom_attribute_factory',
+                [RequestType.PATCH, RequestType.PUT, RequestType.DELETE, RequestType.GET],
+            ),
+            (
+                'test', 'test_factory',
+                [RequestType.PATCH, RequestType.PUT, RequestType.GET],
+            ),
         ],
         ids=[
             'suite permissions',
             'case permissions',
             'plan permissions',
             'label permissions',
+            'customattribute permissions',
+            'test permissions',
         ],
     )
     def test_private_project_forbidden_actions(
@@ -166,6 +176,75 @@ class TestRolePermissions:
                     additional_error_msg=f'Validation failed for list action with request {request_type.value}',
                 )
 
+    @pytest.mark.parametrize(
+        'model_name, factory_name, request_types',
+        [
+            (
+                'testsuite', 'test_suite_factory',
+                [RequestType.PATCH, RequestType.PUT, RequestType.DELETE, RequestType.GET],
+            ),
+            ('testcase', 'test_case_factory', [RequestType.PUT, RequestType.DELETE, RequestType.GET]),
+            (
+                'testplan', 'test_plan_factory',
+                [RequestType.PATCH, RequestType.PUT, RequestType.DELETE, RequestType.GET],
+            ),
+            ('label', 'label_factory', [RequestType.PATCH, RequestType.PUT, RequestType.DELETE, RequestType.GET]),
+            (
+                'customattribute', 'custom_attribute_factory',
+                [RequestType.PATCH, RequestType.PUT, RequestType.DELETE, RequestType.GET],
+            ),
+            (
+                'test', 'test_factory',
+                [RequestType.PATCH, RequestType.PUT, RequestType.GET],
+            ),
+        ],
+        ids=[
+            'Test suite permissions',
+            'Test case permissions',
+            'Test plan permissions',
+            'Label permissions',
+            'Custom attributes permissions',
+            'Test permissions',
+        ],
+    )
+    def test_private_project_allowed(
+            self,
+            admin,
+            project_factory,
+            authorized_client,
+            user,
+            model_name,
+            factory_name,
+            request,
+            request_types,
+            mock_tests_channel_layer,
+    ):
+        view_name_detail = f'api:v1:{model_name}-detail'
+        view_name_list = f'api:v1:{model_name}-list'
+        project = project_factory(is_private=True)
+        factory = request.getfixturevalue(factory_name)
+        instance = factory(is_private=True) if model_name == 'project' else factory(project=project)
+
+        with self._role(project, user, admin):
+            for request_type in request_types:
+                response = authorized_client.send_request(
+                    view_name=view_name_detail,
+                    reverse_kwargs={'pk': instance.pk},
+                    request_type=request_type,
+                    validate_status=False,
+                )
+                assert response.status_code != HTTPStatus.FORBIDDEN, f'Failed for {request_type.value}'
+
+            for request_type in (RequestType.POST, RequestType.GET):
+                response = authorized_client.send_request(
+                    view_name=view_name_list,
+                    request_type=request_type,
+                    data={'project': project.pk} if request_type == RequestType.POST else None,
+                    query_params={'project': project.pk} if request_type == RequestType.GET else None,
+                    validate_status=False,
+                )
+                assert response.status_code != HTTPStatus.FORBIDDEN
+
     @allure.title('Test result permissions')
     def test_result_permissions(
         self,
@@ -203,7 +282,7 @@ class TestRolePermissions:
                 LIST_VIEW_NAMES['result'],
                 request_type=RequestType.GET,
                 expected_status=HTTPStatus.FORBIDDEN,
-                query_params={'test': instance.test.pk},
+                query_params={'project': project.pk},
             )
 
     @pytest.mark.parametrize(
@@ -223,6 +302,10 @@ class TestRolePermissions:
                 [RequestType.PATCH, RequestType.PUT, RequestType.DELETE, RequestType.GET],
             ),
             ('label', 'label_factory', [RequestType.PATCH, RequestType.PUT, RequestType.DELETE, RequestType.GET]),
+            (
+                'customattribute', 'custom_attribute_factory',
+                [RequestType.PATCH, RequestType.PUT, RequestType.DELETE, RequestType.GET],
+            ),
         ],
         ids=[
             'suite permissions',
@@ -230,6 +313,7 @@ class TestRolePermissions:
             'plan permissions',
             'result permissions',
             'label permissions',
+            'custom attribute permissions',
         ],
     )
     def test_private_project_permissions_allowing_actions(
@@ -353,6 +437,8 @@ class TestRolePermissions:
             ('testplan', 'test_plan_factory'),
             ('testresult', 'test_result_factory'),
             ('label', 'label_factory'),
+            ('customattribute', 'custom_attribute_factory'),
+            ('test', 'test_factory'),
         ],
         ids=[
             'project permissions',
@@ -361,6 +447,8 @@ class TestRolePermissions:
             'plan permissions',
             'result permissions',
             'label permissions',
+            'customattribute permissions',
+            'test permissions',
         ],
     )
     def test_public_project_allowed_actions(
@@ -448,6 +536,8 @@ class TestRolePermissions:
             ('testplan', 'test_plan_factory'),
             ('testresult', 'test_result_factory'),
             ('label', 'label_factory'),
+            ('customattribute', 'custom_attribute_factory'),
+            ('test', 'test_factory'),
         ],
         ids=[
             'project permissions',
@@ -456,6 +546,8 @@ class TestRolePermissions:
             'plan permissions',
             'result permissions',
             'label permissions',
+            'custom attribute permissions',
+            'test permissions',
         ],
     )
     def test_public_project_external_user_permission(
@@ -498,6 +590,19 @@ class TestRolePermissions:
             },
             expected_status=HTTPStatus.OK if model_name == 'project' else HTTPStatus.FORBIDDEN,
         )
+        if model_name == 'testcase':
+            authorized_client.send_request(
+                view_name='api:v2:testcase-search',
+                query_params={'project': project.pk},
+                expected_status=HTTPStatus.FORBIDDEN,
+            )
+        if model_name == 'test':
+            authorized_client.send_request(
+                view_name='api:v2:test-bulk-update',
+                request_type=RequestType.PUT,
+                data={'assignee': user.pk, 'project': project.pk},
+                expected_status=HTTPStatus.FORBIDDEN,
+            )
 
     @allure.title('Test list display for external user')
     def test_projects_display_for_external_user(

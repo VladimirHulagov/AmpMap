@@ -1,27 +1,31 @@
-import { UserAddOutlined } from "@ant-design/icons"
-import { Button, Divider, Typography } from "antd"
+import { Typography } from "antd"
 import { useTranslation } from "react-i18next"
 
+import "entities/user/ui"
+import { UserSearchPopover } from "entities/user/ui"
 import { UserAvatar } from "entities/user/ui/user-avatar/user-avatar"
 
-import { AssingToModal } from "./assign-to-modal"
+import { useProjectContext } from "pages/project"
+
+import ArrowIcon from "shared/assets/yi-icons/arrow.svg?react"
+
 import styles from "./styles.module.css"
 import { useAssignTo } from "./use-assign-to"
 
 interface Props {
   onSuccess?: () => void
+  canChange?: boolean
 }
 
-export const AssignTo = ({ onSuccess }: Props) => {
+export const AssignTo = ({ onSuccess, canChange = true }: Props) => {
   const { t } = useTranslation()
   const {
     activeTest,
-    isOpenModal,
-    errors,
     isDirty,
     isLoadingUpdateTest,
     me,
     selectedUser,
+    isOpen,
     handleClose,
     handleOpenAssignModal,
     handleSubmitForm,
@@ -29,57 +33,56 @@ export const AssignTo = ({ onSuccess }: Props) => {
     handleAssignUserClear,
     handleAssignToMe,
   } = useAssignTo({ onSuccess })
+  const project = useProjectContext()
 
-  const isAssignetMe = Number(activeTest?.assignee) === Number(me?.id)
+  const isAssigneMe = Number(activeTest?.assignee) === Number(me?.id)
 
   return (
     <>
-      <Divider orientation="left" style={{ margin: 0 }} orientationMargin={0}>
-        {t("Assign To")}
-      </Divider>
-      <div style={{ padding: 8, marginBottom: 8 }}>
-        <Typography id="test-case-assign-to">
-          <div className={styles.assignBlock}>
-            <UserAvatar size={32} avatar_link={activeTest?.avatar_link ?? null} />
-            <Typography.Text id="test-case-assign-to-user">
-              {activeTest?.assignee_username ? activeTest?.assignee_username : t("Nobody")}
-            </Typography.Text>
-            <div className={styles.assignRow}>
-              <Button
-                id="assign-to-btn"
-                icon={<UserAddOutlined style={{ fontSize: 14 }} />}
-                key="submit"
-                onClick={handleOpenAssignModal}
-                size="small"
-              >
-                {t("Assign To")}
-              </Button>
-              {!isAssignetMe && (
-                <button
-                  className={styles.assignToMe}
-                  onClick={handleAssignToMe}
-                  data-testid="test-detail-assign-to-me"
-                >
-                  {t("Assign To Me")}
-                </button>
-              )}
-            </div>
-          </div>
-        </Typography>
+      <div>
+        <span className={styles.label}>{t("Assignee")}</span>
+        {!isAssigneMe && canChange && (
+          <span
+            data-testid="test-detail-assign-to-me"
+            onClick={handleAssignToMe}
+            className={styles.assignToMe}
+          >
+            {t("Assign To Me")}
+          </span>
+        )}
       </div>
-      <AssingToModal
-        isOpenModal={isOpenModal}
-        errors={errors}
-        isDirty={isDirty}
-        isLoadingUpdateTest={isLoadingUpdateTest}
+      <UserSearchPopover
+        project={project}
+        isOpen={isOpen}
+        activeTest={activeTest}
+        onClose={handleClose}
+        onOpen={handleOpenAssignModal}
         selectedUser={selectedUser}
-        handleClose={handleClose}
-        handleOpenAssignModal={handleOpenAssignModal}
-        handleSubmitForm={handleSubmitForm}
-        handleAssignUserChange={handleAssignUserChange}
-        handleAssignUserClear={handleAssignUserClear}
-        handleAssignToMe={handleAssignToMe}
-        isAssignToMe={isAssignetMe}
+        onChange={handleAssignUserChange}
+        onClear={handleAssignUserClear}
+        onSubmitForm={handleSubmitForm}
+        onAssignToMe={handleAssignToMe}
+        isAssigenMe={isAssigneMe}
+        isDirty={isDirty}
+        isLoadingUpdate={isLoadingUpdateTest}
+        canChange={canChange}
+        label={
+          <div
+            style={{ marginTop: 8, cursor: canChange ? "pointer" : undefined, userSelect: "none" }}
+          >
+            <Typography id="test-case-assign-to">
+              <div className={styles.assignBlock} onClick={handleOpenAssignModal}>
+                <UserAvatar size={32} avatar_link={activeTest?.avatar_link ?? null} />
+                <Typography.Text id="test-case-assign-to-user">
+                  {activeTest?.assignee_username ? activeTest?.assignee_username : t("Nobody")}
+                </Typography.Text>
+                {canChange && (
+                  <ArrowIcon width={16} height={16} className={styles.arrow} id="assign-to-btn" />
+                )}
+              </div>
+            </Typography>
+          </div>
+        }
       />
     </>
   )

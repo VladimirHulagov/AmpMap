@@ -25,3 +25,11 @@ export const UntestedStatus = () => {
     </Tag>
   )
 }
+
+export const PlaceholderStatus = ({ placeholder }: { placeholder: string }) => {
+  return (
+    <Tag className="status" color="default" id="placeholder-status">
+      {placeholder}
+    </Tag>
+  )
+}

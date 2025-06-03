@@ -1,11 +1,11 @@
 import { EditOutlined, PlusOutlined } from "@ant-design/icons"
-import { Button, Form, Input, Modal, Select } from "antd"
+import { Form, Input, Modal, Select } from "antd"
 import { Controller } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 
 import { customAttributeTypes } from "shared/config/custom-attribute-types"
 import { ErrorObj } from "shared/hooks"
-import { AlertError } from "shared/ui"
+import { AlertError, Button } from "shared/ui"
 
 import { SelectContentTypes } from "./ui"
 import { PropsChangeCustomAttribute, useChangeCustomAttribute } from "./use-change-custom-attribute"
@@ -28,29 +28,38 @@ export const ChangeCustomAttribute = (props: PropsChangeCustomAttribute) => {
   const isCreate = formType === "create"
   const title = isCreate ? t("Create") : t("Edit")
   const titleBtn = isCreate ? t("Create") : t("Update")
+  const testId = `${formType}-custom-attribute`
 
   return (
     <>
       <Button
         id={isCreate ? "create-custom-attribute" : `${formType}-custom-attribute-${attribute?.id}`}
         icon={isCreate ? <PlusOutlined /> : <EditOutlined />}
-        type={isCreate ? "primary" : undefined}
+        color={isCreate ? "accent" : "secondary-linear"}
         style={isCreate ? { marginBottom: 16, float: "right" } : undefined}
-        shape={isCreate ? "default" : "circle"}
+        shape={isCreate ? "rect" : "circle"}
         onClick={handleShow}
       >
         {isCreate ? t("Create Custom Attribute") : ""}
       </Button>
       <Modal
-        className={`${formType}-custom-attribute-modal`}
-        title={`${title} ${t("Custom Attribute")}`}
+        bodyProps={{ "data-testid": `${testId}-modal-body` }}
+        wrapProps={{ "data-testid": `${testId}-modal-wrapper` }}
+        title={
+          <span data-testid={`${testId}-modal-title`}>{`${title} ${t("Custom Attribute")}`}</span>
+        }
         open={isShow}
         onCancel={handleClose}
         width="600px"
         centered
         destroyOnClose
         footer={[
-          <Button id={`close-${formType}-attribute`} key="back" onClick={handleClose}>
+          <Button
+            id={`close-${formType}-attribute`}
+            key="back"
+            onClick={handleClose}
+            color="secondary-linear"
+          >
             {t("Close")}
           </Button>,
           <Button
@@ -58,7 +67,7 @@ export const ChangeCustomAttribute = (props: PropsChangeCustomAttribute) => {
             loading={isLoading}
             key="submit"
             onClick={handleSubmitForm}
-            type="primary"
+            color="accent"
             disabled={!isDirty}
           >
             {titleBtn}
@@ -83,7 +92,7 @@ export const ChangeCustomAttribute = (props: PropsChangeCustomAttribute) => {
               <Controller
                 name="name"
                 control={control}
-                render={({ field }) => <Input {...field} />}
+                render={({ field }) => <Input {...field} data-testid={`${testId}-name-input`} />}
               />
             </Form.Item>
             <Form.Item
@@ -102,6 +111,7 @@ export const ChangeCustomAttribute = (props: PropsChangeCustomAttribute) => {
                     placeholder={t("Please select")}
                     style={{ width: "100%" }}
                     options={customAttributeTypes}
+                    data-testid={`${testId}-type-select`}
                   />
                 )}
               />

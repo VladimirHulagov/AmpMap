@@ -1,13 +1,5 @@
 import { makeNode } from "processes/treebar-provider/utils"
-import {
-  PropsWithChildren,
-  RefObject,
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useRef,
-} from "react"
+import { PropsWithChildren, RefObject, createContext, useCallback, useMemo, useRef } from "react"
 
 import { useAppSelector } from "app/hooks"
 
@@ -16,7 +8,7 @@ import { useLazyGetTestSuiteAncestorsQuery } from "entities/suite/api"
 
 import { selectDrawerTestCase, selectFilter, selectOrdering } from "entities/test-case/model"
 
-import { ProjectContext } from "pages/project"
+import { useProjectContext } from "pages/project"
 
 import { config } from "shared/config"
 import {
@@ -46,7 +38,7 @@ export interface TestCasesTreeContextType {
 export const TestCasesTreeContext = createContext<TestCasesTreeContextType | null>(null)
 
 export const TestCasesTreeProvider = ({ children }: PropsWithChildren) => {
-  const { project } = useContext(ProjectContext)!
+  const project = useProjectContext()
 
   const testCasesTree = useRef<LazyTreeApi<TestCase | Suite, LazyNodeProps>>(null)
 

@@ -1,23 +1,42 @@
-import { Col, Row } from "antd"
 import { SystemMessages } from "widgets"
+
+import { useAppSelector } from "app/hooks"
 
 import { Auth } from "entities/auth/auth"
 
+import { selectThemeValue } from "entities/system/model/slice-theme"
+
+import { ChangeLang, ChangeTheme } from "features/system"
+
+import LogoDark from "shared/assets/logo/testy-dark.svg?react"
+import LogoLight from "shared/assets/logo/testy-light.svg?react"
 import { Copyright } from "shared/ui"
 
+import styles from "./styles.module.css"
+
 export const LoginPage = () => {
+  const themeValue = useAppSelector(selectThemeValue)
+
   return (
-    <Row justify="center" align="middle" style={{ minHeight: "100vh", position: "relative" }}>
-      <div style={{ position: "absolute", top: 0, width: "100%" }}>
+    <div className={styles.wrapper}>
+      <div className={styles.topBlock}>
         <SystemMessages />
       </div>
-      <Col xl={6} lg={8} md={10} sm={12} xs={24}>
-        <div>
-          <h1 style={{ marginBottom: 24, textAlign: "center" }}>TestY</h1>
+      <div className={styles.settingsBlock}>
+        <ChangeTheme variant="borderless" />
+        <ChangeLang variant="borderless" />
+      </div>
+      <div className={styles.body}>
+        {themeValue === "dark" ? (
+          <LogoDark className={styles.logo} />
+        ) : (
+          <LogoLight className={styles.logo} />
+        )}
+        <div className={styles.form}>
+          <Auth />
         </div>
-        <Auth />
-        <Copyright />
-      </Col>
-    </Row>
+        <Copyright className={styles.footer} />
+      </div>
+    </div>
   )
 }

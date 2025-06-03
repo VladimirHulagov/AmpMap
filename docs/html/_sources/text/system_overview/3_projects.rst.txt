@@ -1,0 +1,15 @@
+.. _projects:
+
+Раздел Projects
+===============
+
+В разделе представлены все проекты, созданные в системе TestY. Проекты
+можно просматривать и администрировать:
+
+|image11|
+
++Create projects, Clear filters and sorters, Show archived
+
+.. |image11| image:: ../../static/image11.png
+   :class: confluence-embedded-image
+   :width: 1000px

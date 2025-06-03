@@ -92,6 +92,7 @@ class TestPlan(LtreeBaseModel, TestyArchiveMixin):
         default_related_name = 'test_plans'
         triggers = get_triggers('plan') + get_statistic_triggers('plans_count')
         indexes = get_indexes('plan')
+        ordering = ['id']
 
 
 class ResultStatus(BaseModel):
@@ -119,6 +120,13 @@ class Test(BaseModel):
     class Meta:
         default_related_name = 'tests'
         triggers = get_statistic_triggers('tests_count')
+        indexes = [
+            BTreeIndex(
+                fields=['plan', 'id'],
+                name='idx_test_plan_id_is_deleted',
+                condition=models.Q(is_deleted=False),
+            ),
+        ]
 
 
 class TestResult(BaseModel):
@@ -152,6 +160,10 @@ class TestResult(BaseModel):
                 'is_archive',
                 'created_at',
                 name='results_histogram_idx',
+            ),
+            BTreeIndex(
+                fields=['test', 'created_at'],
+                name='idx_result_test_id_created_at',
             ),
         ]
 

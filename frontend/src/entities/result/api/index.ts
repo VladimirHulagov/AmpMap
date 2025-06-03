@@ -4,21 +4,32 @@ import { statusInvalidate } from "entities/status/api"
 
 import { baseQueryWithLogout } from "app/apiSlice"
 
-import { testApi } from "entities/test/api"
+import { openTestResults } from "entities/result/model/slice"
+
+import { testApi, testRelatedEntitiesInvalidate } from "entities/test/api"
 
 import { testPlanApi, testPlanStatusesInvalidate } from "entities/test-plan/api"
 
 import { invalidatesList, providesList } from "shared/libs"
 
 const invalidateListTags = (
+  projectId: number | string,
   testPlanId: number | string,
   testId: number,
   dispatch: ThunkDispatch<unknown, unknown, AnyAction>
 ) => {
   dispatch(testApi.util.invalidateTags([{ type: "Test", id: testId }]))
 
-  dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanStatistics", id: testPlanId }]))
-  dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanHistogram", id: testPlanId }]))
+  dispatch(
+    testPlanApi.util.invalidateTags([
+      { type: "TestPlanStatistics", id: `${projectId}-${testPlanId}` },
+    ])
+  )
+  dispatch(
+    testPlanApi.util.invalidateTags([
+      { type: "TestPlanHistogram", id: `${projectId}-${testPlanId}` },
+    ])
+  )
 
   dispatch(statusInvalidate)
   dispatch(testPlanStatusesInvalidate(testPlanId))
@@ -37,6 +48,17 @@ export const resultApi = createApi({
         params: { test: testId, is_archive: showArchive, project },
       }),
       providesTags: (result) => providesList(result, "Result"),
+      async onQueryStarted(params, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled
+
+          if (data) {
+            dispatch(openTestResults([data[0].id]))
+          }
+        } catch (error) {
+          console.error(error)
+        }
+      },
     }),
     updateResult: builder.mutation<Result, { id: Id; testPlanId: Id | null; body: ResultUpdate }>({
       query: ({ id, body }) => ({
@@ -47,9 +69,10 @@ export const resultApi = createApi({
       async onQueryStarted({ testPlanId }, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled
-          invalidateListTags(testPlanId ?? "LIST", data.test, dispatch)
+          invalidateListTags(data.project, testPlanId ?? "LIST", data.test, dispatch)
           dispatch(testApi.util.invalidateTags([{ type: "Test", id: "LIST" }]))
           dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanTest", id: "LIST" }]))
+          dispatch(testRelatedEntitiesInvalidate)
         } catch (error) {
           console.error(error)
         }
@@ -65,9 +88,10 @@ export const resultApi = createApi({
       async onQueryStarted({ testPlanId }, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled
-          invalidateListTags(testPlanId ?? "LIST", data.test, dispatch)
+          invalidateListTags(data.project, testPlanId ?? "LIST", data.test, dispatch)
           dispatch(testApi.util.invalidateTags([{ type: "Test", id: "LIST" }]))
           dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanTest", id: "LIST" }]))
+          dispatch(testRelatedEntitiesInvalidate)
         } catch (error) {
           console.error(error)
         }
@@ -77,5 +101,9 @@ export const resultApi = createApi({
   }),
 })
 
-export const { useCreateResultMutation, useUpdateResultMutation, useLazyGetResultsQuery } =
-  resultApi
+export const {
+  useCreateResultMutation,
+  useUpdateResultMutation,
+  useGetResultsQuery,
+  useLazyGetResultsQuery,
+} = resultApi

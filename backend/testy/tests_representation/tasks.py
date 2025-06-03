@@ -28,6 +28,8 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
+from typing import Any
+
 from celery import shared_task
 from django.contrib.contenttypes.models import ContentType
 
@@ -47,3 +49,12 @@ def notify_bulk_assign(tests_mapping: dict[str, int], assignee_id: int, user_id:
     ct_id = ContentType.objects.get_for_model(Test).pk
     for test in tests:
         TestService.notify_assignee(test, tests_mapping.get(str(test.pk)), assignee_id, user_id, ct_id)
+
+
+@shared_task(name='bulk_update_tests')
+def bulk_update_tests(
+    payload: dict[str, Any],
+    test_ids: list[int],
+    user_id: int | None = None,
+) -> None:
+    TestService().bulk_update_tests(test_ids=test_ids, user_id=user_id, payload=payload, is_async=True)

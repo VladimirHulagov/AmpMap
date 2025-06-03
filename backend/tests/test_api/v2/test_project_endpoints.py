@@ -670,6 +670,62 @@ class TestProjectEndpoints:
                 archived.save()
                 self._validate_statistics_count(project, attr_name, 0)
 
+    @pytest.mark.parametrize(
+        'fixture, attr_name',
+        [
+            ('test_factory', 'tests_count'),
+            ('test_plan_factory', 'plans_count'),
+            ('test_case_factory', 'cases_count'),
+        ],
+    )
+    def test_valid_project_statistics_on_archive_and_delete(self, project, request, fixture, attr_name):
+        allure.dynamic.title(f'Test statistics trigger for {attr_name}')
+
+        factory = request.getfixturevalue(fixture)
+        instance = factory(project=project)
+        project.projectstatistics.refresh_from_db()
+        with allure.step('Validate insert triggers work'):
+            self._validate_statistics_count(project, attr_name, 1)
+
+        with allure.step('Validate archive triggers work'):
+            instance.is_archive = True
+            instance.save()
+            self._validate_statistics_count(project, attr_name, 0)
+        with allure.step('Validate delete triggers work'):
+            instance.delete()
+            self._validate_statistics_count(project, attr_name, 0)
+        with allure.step('Validate hard delete triggers work'):
+            instance.hard_delete()
+            self._validate_statistics_count(project, attr_name, 0)
+
+    @pytest.mark.parametrize('attribute_ordering', [['is_deleted', 'is_archive'], ['is_archive', 'is_deleted']])
+    @pytest.mark.parametrize(
+        'fixture, attr_name',
+        [
+            ('test_factory', 'tests_count'),
+            ('test_plan_factory', 'plans_count'),
+            ('test_case_factory', 'cases_count'),
+        ],
+    )
+    def test_valid_project_statistics_on_restoring(self, project, request, fixture, attr_name, attribute_ordering):
+        allure.dynamic.title(f'Test statistics trigger for {attr_name} on restoring')
+
+        factory = request.getfixturevalue(fixture)
+        instance = factory(project=project)
+        for attribute in attribute_ordering:
+            setattr(instance, attribute, True)
+            instance.save()
+
+        project.projectstatistics.refresh_from_db()
+        with allure.step('Validate insert triggers work'):
+            self._validate_statistics_count(project, attr_name, 0)
+
+        with allure.step('Validate restore triggers work'):
+            for idx, instance_attr_name in enumerate(attribute_ordering):
+                setattr(instance, instance_attr_name, False)
+                instance.save()
+                self._validate_statistics_count(project, attr_name, int(idx == len(attribute_ordering) - 1))
+
     @classmethod
     def _validate_statistics_count(cls, project, attr_name, expected_count):
         project.refresh_from_db()

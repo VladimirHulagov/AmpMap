@@ -1,12 +1,12 @@
-import { Button, Input, Modal } from "antd"
+import { Input, Modal } from "antd"
 import Search from "antd/lib/input/Search"
 import { makeNode } from "processes/treebar-provider/utils"
-import { ChangeEvent, useContext, useEffect, useState } from "react"
+import { ChangeEvent, useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 
 import { useLazyGetTestSuiteAncestorsQuery, useLazyGetTestSuitesQuery } from "entities/suite/api"
 
-import { ProjectContext } from "pages/project"
+import { useProjectContext } from "pages/project"
 
 import { config } from "shared/config"
 import { useDebounce } from "shared/hooks"
@@ -17,6 +17,7 @@ import {
   NodeId,
   TreeNodeFetcher,
 } from "shared/libs/tree"
+import { Button } from "shared/ui"
 
 import styles from "./styles.module.css"
 import { TreeNodeSuiteView } from "./tree-node-suite-view"
@@ -26,9 +27,11 @@ interface Props {
   onChange: (suite: SelectData) => void
 }
 
+const TEST_ID = "select-suite"
+
 export const SelectSuiteTestCase = ({ suite, onChange }: Props) => {
   const { t } = useTranslation()
-  const { project } = useContext(ProjectContext)!
+  const project = useProjectContext()
   const [isSelectSuiteModalOpened, setIsSelectSuiteModalOpened] = useState(false)
   const [searchText, setSearchText] = useState("")
   const searchDebounce = useDebounce(searchText, 250, true)
@@ -92,16 +95,23 @@ export const SelectSuiteTestCase = ({ suite, onChange }: Props) => {
         />
       </div>
       <Modal
+        bodyProps={{ "data-testid": `${TEST_ID}-modal-body` }}
+        wrapProps={{ "data-testid": `${TEST_ID}-modal-wrapper` }}
         title={t("Select suite")}
         open={isSelectSuiteModalOpened}
         onCancel={() => setIsSelectSuiteModalOpened(false)}
         width="700px"
         className="select-suite-modal"
         footer={[
-          <Button id="close-btn" key="back" onClick={() => setIsSelectSuiteModalOpened(false)}>
+          <Button
+            id="close-btn"
+            key="back"
+            onClick={() => setIsSelectSuiteModalOpened(false)}
+            color="secondary-linear"
+          >
             {t("Close")}
           </Button>,
-          <Button id="select-suite" key="submit" type="primary" onClick={handleSelectApply}>
+          <Button id="select-suite" key="submit" color="accent" onClick={handleSelectApply}>
             {t("Select")}
           </Button>,
         ]}

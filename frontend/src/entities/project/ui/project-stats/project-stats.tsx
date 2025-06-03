@@ -1,8 +1,14 @@
+import classNames from "classnames"
 import { useTranslation } from "react-i18next"
+import { Link } from "react-router-dom"
+
+import TestPlansIcon from "shared/assets/yi-icons/test-plans.svg?react"
+import TestSuitesIcon from "shared/assets/yi-icons/test-suites.svg?react"
 
 import styles from "./styles.module.css"
 
 interface Props {
+  projectId: number
   testSuites: number
   testCases: number
   testPlans: number
@@ -10,6 +16,7 @@ interface Props {
 }
 
 export const ProjectStats = ({
+  projectId,
   testSuites = 0,
   testCases = 0,
   testPlans = 0,
@@ -19,37 +26,49 @@ export const ProjectStats = ({
 
   return (
     <ul className={styles.wrapper} data-testid="project-stats">
-      <li
-        className={styles.card}
+      <Link
+        to={`/projects/${projectId}/suites`}
+        className={classNames(styles.card, styles.link)}
         style={{ borderColor: "var(--y-graph-primary)" }}
         data-testid="project-stats-test-suites"
       >
-        <span className={styles.cardValue}>{testSuites}</span>
-        <span>{t("Test Suites")}</span>
-      </li>
+        <div className={styles.cardContent}>
+          <span className={styles.cardTitle}>{t("Test Suites")}</span>
+          <span className={styles.cardValue}>{testSuites}</span>
+        </div>
+        <TestSuitesIcon className={styles.cardIcon} />
+      </Link>
       <li
         className={styles.card}
         style={{ borderColor: "var(--y-graph-secondary)" }}
         data-testid="project-stats-test-cases"
       >
-        <span className={styles.cardValue}>{testCases}</span>
-        <span>{t("Test Cases")}</span>
+        <div className={styles.cardContent}>
+          <span className={styles.cardTitle}>{t("Test Cases")}</span>
+          <span className={styles.cardValue}>{testCases}</span>
+        </div>
       </li>
-      <li
-        className={styles.card}
+      <Link
+        to={`/projects/${projectId}/plans`}
+        className={classNames(styles.card, styles.link)}
         style={{ borderColor: "var(--y-graph-fourth)" }}
         data-testid="project-stats-test-plans"
       >
-        <span className={styles.cardValue}>{testPlans}</span>
-        <span>{t("Test Plans")}</span>
-      </li>
+        <div className={styles.cardContent}>
+          <span className={styles.cardTitle}>{t("Test Plans")}</span>
+          <span className={styles.cardValue}>{testPlans}</span>
+        </div>
+        <TestPlansIcon className={styles.cardIcon} />
+      </Link>
       <li
         className={styles.card}
         style={{ borderColor: "var(--y-graph-fifth)" }}
         data-testid="project-stats-tests"
       >
-        <span className={styles.cardValue}>{tests}</span>
-        <span>{t("Tests")}</span>
+        <div className={styles.cardContent}>
+          <span className={styles.cardTitle}>{t("Tests")}</span>
+          <span className={styles.cardValue}>{tests}</span>
+        </div>
       </li>
     </ul>
   )

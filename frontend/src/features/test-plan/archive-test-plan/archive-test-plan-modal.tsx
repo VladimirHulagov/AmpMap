@@ -1,4 +1,3 @@
-import { notification } from "antd"
 import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 
@@ -8,6 +7,7 @@ import {
 } from "entities/test-plan/api"
 
 import { initInternalError } from "shared/libs"
+import { antdNotification } from "shared/libs/antd-modals"
 import { AlertSuccessChange } from "shared/ui"
 
 import { ModalConfirmDeleteArchive } from "widgets/[ui]/modal-confirm-delete-archive"
@@ -36,11 +36,14 @@ export const ArchiveTestPlanModal = ({ isShow, setIsShow, testPlan, onSubmit }: 
     try {
       await archiveTestPlan(testPlan.id).unwrap()
       navigate(`/projects/${testPlan.project}/plans`)
-      notification.success({
-        message: t("Success"),
-        closable: true,
+      antdNotification.success("archive-test-plan", {
         description: (
-          <AlertSuccessChange id={String(testPlan.id)} action="archived" title={t("Test Plan")} />
+          <AlertSuccessChange
+            id={String(testPlan.id)}
+            action="archived"
+            title={t("Test Plan")}
+            data-testid="archive-test-plan-success-notification-description"
+          />
         ),
       })
       onSubmit?.(testPlan)

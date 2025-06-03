@@ -1,19 +1,18 @@
 import { CheckOutlined, CloseOutlined, DeleteOutlined, EditOutlined } from "@ant-design/icons"
-import { Flex, Input, InputRef, Popover, notification } from "antd"
+import { Flex, Input, InputRef, Popover } from "antd"
 import classNames from "classnames"
-import { MeContext } from "processes"
-import { ChangeEvent, useContext, useEffect, useMemo, useRef, useState } from "react"
+import equal from "fast-deep-equal"
+import { useMeContext } from "processes"
+import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 
-import { ProjectContext } from "pages/project"
+import { useProjectContext } from "pages/project"
 
-import { icons } from "shared/assets/inner-icons"
-import { deepEqualObjects } from "shared/libs"
+import ArrowIcon from "shared/assets/yi-icons/arrow.svg?react"
+import { antdNotification } from "shared/libs/antd-modals"
 import { QuryParamsSchema, queryParamsBySchema } from "shared/libs/query-params"
 
 import styles from "./styles.module.css"
-
-const { ArrowIcon } = icons
 
 interface Props {
   type: "plans" | "suites"
@@ -38,8 +37,8 @@ export const SelectFilter = ({
 }: Props) => {
   const { t } = useTranslation()
 
-  const { userConfig, updateConfig } = useContext(MeContext)
-  const { project } = useContext(ProjectContext)!
+  const { userConfig, updateConfig } = useMeContext()
+  const project = useProjectContext()
 
   const filtersKey = type === "plans" ? "test_plans" : "test_suites"
   const [isOpen, setIsOpen] = useState(false)
@@ -84,8 +83,7 @@ export const SelectFilter = ({
   const handleSaveItemValue = async (oldName: string) => {
     const newName = editingItems[oldName]
     if (!newName.length) {
-      notification.error({
-        message: t("Error!"),
+      antdNotification.error("select-filter", {
         description: t("Name filter cant be empty!"),
       })
       return
@@ -112,9 +110,7 @@ export const SelectFilter = ({
     delete editItems[oldName]
     setEditingItems(editItems)
 
-    notification.success({
-      message: t("Success"),
-      closable: true,
+    antdNotification.success("update-filter", {
       description: t("Filter updated successfully"),
     })
 
@@ -151,7 +147,7 @@ export const SelectFilter = ({
       url: savedFilterValue,
     })
 
-    const isEqualObject = deepEqualObjects(parsedSavedFilterValue, filterData)
+    const isEqualObject = equal(parsedSavedFilterValue, filterData)
     if (isEqualObject) {
       updateSettings({ hasUnsavedChanges: false })
       return

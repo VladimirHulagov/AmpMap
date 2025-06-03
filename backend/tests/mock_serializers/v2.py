@@ -38,6 +38,7 @@ from tests.mock_serializers.base import (
     BaseTestSuiteMockOutputSerializer,
     BaseTestSuiteRetrieveMockSerializer,
 )
+from testy.comments.api.v2.serializers import CommentUnionSerializer
 from testy.core.api.v2.serializers import (
     NotificationSettingSerializer,
     ParentMinSerializer,
@@ -57,6 +58,7 @@ from testy.tests_description.models import TestSuite
 from testy.tests_representation.api.v2.serializers import (
     TestPlanOutputSerializer,
     TestPlanUnionSerializer,
+    TestResultUnionSerializer,
     TestSerializer,
     TestUnionSerializer,
 )
@@ -206,7 +208,7 @@ class TestUnionMockSerializer(TestUnionSerializer):
         return result.status.name
 
     def get_assignee_username(self, instance):
-        return instance.assignee.username
+        return getattr(instance.assignee, 'username', None)
 
     def get_suite_path(self, instance):
         return '/'.join(suite.name for suite in instance.case.suite.get_ancestors(include_self=True))
@@ -269,3 +271,18 @@ class TestCaseUnionMockSerializer(TestCaseUnionSerializer):
 
     def get_is_leaf(self, instance):
         return True
+
+
+class TestResultUnionMockSerializer(TestResultUnionSerializer):
+    type = SerializerMethodField()
+    latest = SerializerMethodField()
+
+    def get_type(self, instance):
+        return 'result'
+
+
+class CommentUnionMockSerializer(CommentUnionSerializer):
+    type = SerializerMethodField()
+
+    def get_type(self, instance):
+        return 'comment'

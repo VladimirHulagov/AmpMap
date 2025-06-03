@@ -39,16 +39,18 @@ from testy.users.models import User
 
 
 class CommentService:
-    non_side_effect_fields = ['content', 'content_type', 'object_id']
+    non_side_effect_fields = ['content', 'object_id']
 
+    @classmethod
     @transaction.atomic
-    def comment_create(self, data: dict[str, Any], user: User) -> Comment:
+    def comment_create(cls, data: dict[str, Any], user: User) -> Comment:
         comment: Comment = Comment.model_create(
-            fields=self.non_side_effect_fields,
+            fields=cls.non_side_effect_fields,
             data=data,
             commit=False,
         )
         comment.user = user
+        comment.content_type = data.get('model')
         comment.full_clean()
         comment.save()
 
@@ -57,13 +59,16 @@ class CommentService:
 
         return comment
 
+    @classmethod
     @transaction.atomic
-    def comment_update(self, comment: Comment, data: dict[str, Any]) -> Comment:
+    def comment_update(cls, comment: Comment, data: dict[str, Any]) -> Comment:
         comment, _ = comment.model_update(
-            fields=self.non_side_effect_fields,
+            fields=cls.non_side_effect_fields,
             data=data,
             commit=False,
         )
+        if content_type := data.get('model'):
+            comment.content_type = content_type
         comment.full_clean()
         comment.save()
 

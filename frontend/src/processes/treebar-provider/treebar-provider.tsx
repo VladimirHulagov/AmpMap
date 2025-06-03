@@ -25,10 +25,12 @@ interface TreebarProviderContextType {
     | RefObject<LazyTreeApi<TestPlan, LazyNodeProps>>
   searchText: string
   treeSettings: TreeSettings
+  treebarWidth: number
   setSearchText: Dispatch<SetStateAction<string>>
   updateTreeSettings: (newSettings: Partial<TreeSettings>) => void
   fetcher: TreeNodeFetcher<TestPlan | Suite, LazyNodeProps>
   fetcherAncestors: TreeFetcherAncestors
+  updateTreebarWidth: (width: number) => void
   skipInit: boolean
   initParent: string | null
   selectedId: string | null
@@ -37,6 +39,10 @@ interface TreebarProviderContextType {
 }
 
 export const TreebarContext = createContext<TreebarProviderContextType | null>(null)
+export const MIN_WITH_TREE = 72
+export const DEFAULT_WITH_TREE = 374
+export const MAX_WITH_TREE_PERCENT = 70
+export const MAX_SMALLEST_SIZE = 172
 
 export const TreebarProvider = ({ children }: PropsWithChildren) => {
   const [searchParams] = useSearchParams()
@@ -49,6 +55,9 @@ export const TreebarProvider = ({ children }: PropsWithChildren) => {
   const [searchText, setSearchText] = useState(searchParams.get("treeSearch") ?? "")
   const searchDebounce = useDebounce(searchText, 250, true)
   const initParent = searchParams.get("rootId")
+  const [treebarWidth, updateTreebarWidth] = useState(
+    treeSettings.collapsed ? MIN_WITH_TREE : DEFAULT_WITH_TREE
+  )
 
   const activeTab = useMemo(() => {
     setSearchText("")
@@ -87,8 +96,10 @@ export const TreebarProvider = ({ children }: PropsWithChildren) => {
       searchText,
       treeSettings,
       initParent,
+      treebarWidth,
       updateTreeSettings,
       setSearchText,
+      updateTreebarWidth,
       activeTab: activeTab as "suites" | "plans",
     }
 
@@ -97,7 +108,7 @@ export const TreebarProvider = ({ children }: PropsWithChildren) => {
       ...(activeTab === "suites" ? contextSuite : contextPlan),
       initDependencies: [...initDeps, activeTab],
     }
-  }, [initParent, activeTab, contextSuite, contextPlan])
+  }, [treebarWidth, initParent, activeTab, contextSuite, contextPlan])
 
   if (!activeTab) {
     return null

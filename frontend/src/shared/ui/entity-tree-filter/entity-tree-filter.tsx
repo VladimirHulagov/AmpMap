@@ -1,11 +1,12 @@
-import { SearchOutlined } from "@ant-design/icons"
-import { Button, Flex, Input, Select, Tree, TreeDataNode } from "antd"
+import { CaretDownOutlined, SearchOutlined } from "@ant-design/icons"
+import { Flex, Input, Select, Tree, TreeDataNode } from "antd"
 import { DataNode } from "antd/es/tree"
 import { TreeProps } from "antd/lib"
+import classNames from "classnames"
 import React, { Key, useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 
-import { ContainerLoader, Toggle } from "shared/ui"
+import { Button, ContainerLoader, Toggle } from "shared/ui"
 
 import styles from "./styles.module.css"
 import { BaseTreeFilterNode, treeFilterFormat } from "./utils"
@@ -23,6 +24,7 @@ interface Props<T> {
   onChange: (keys: number[]) => void
   onClose?: () => void
   onClear?: () => void
+  showFullOnly?: boolean
 }
 
 function findNodesWithParentKeys(
@@ -89,12 +91,13 @@ export const EntityTreeFilter = <T extends BaseTreeFilterNode>({
   onChange,
   onClose,
   onClear,
+  showFullOnly = false,
 }: Props<T>) => {
   const { t } = useTranslation()
 
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const [isShowFullTree, setIsShowFullTree] = useState(false)
+  const [isShowFullTree, setIsShowFullTree] = useState(showFullOnly)
   const [halfChecked, setHalfChecked] = useState<string[]>([])
   const [expandedKeys, setExpandedKeys] = useState<Key[]>([])
   const [autoExpandParent, setAutoExpandParent] = useState(true)
@@ -275,30 +278,34 @@ export const EntityTreeFilter = <T extends BaseTreeFilterNode>({
             <Flex align="center" justify="space-between" style={{ marginBottom: 8 }}>
               <Flex gap={8}>
                 <Button
-                  size="small"
+                  size="s"
                   onClick={handleSelectAll}
                   style={{ padding: "4px 8px" }}
+                  color="secondary-linear"
                   data-testid="entity-tree-filter-select-all"
                 >
                   {t("Select all")}
                 </Button>
                 <Button
                   onClick={onClear}
-                  size="small"
+                  size="s"
                   style={{ padding: "4px 8px" }}
+                  color="secondary-linear"
                   data-testid="entity-tree-filter-reset"
                 >
                   {t("Reset")}
                 </Button>
               </Flex>
-              <Toggle
-                id={`${type}-toggle-show-full-tree`}
-                label={t("Show full tree")}
-                labelFontSize={14}
-                checked={isShowFullTree}
-                onChange={handleShowFullTree}
-                size="sm"
-              />
+              {!showFullOnly && (
+                <Toggle
+                  id={`${type}-toggle-show-full-tree`}
+                  label={t("Show full tree")}
+                  labelFontSize={14}
+                  checked={isShowFullTree}
+                  onChange={handleShowFullTree}
+                  size="sm"
+                />
+              )}
             </Flex>
             {isLoading && <ContainerLoader />}
             {!isLoading && (
@@ -319,6 +326,19 @@ export const EntityTreeFilter = <T extends BaseTreeFilterNode>({
                   onCheck={handleCheck}
                   className={styles.tree}
                   data-testid="entity-tree-filter-tree"
+                  switcherIcon={(node) => {
+                    return (
+                      <CaretDownOutlined
+                        data-testid={
+                          `node-arrow-${node?.titleText}` +
+                          (node.expanded ? "_expanded" : "_closed")
+                        }
+                        className={classNames(styles.arrow, {
+                          [styles.expanded]: node.expanded,
+                        })}
+                      />
+                    )
+                  }}
                 />
 
                 <span

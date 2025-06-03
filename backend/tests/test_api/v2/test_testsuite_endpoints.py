@@ -32,6 +32,7 @@ import json
 import re
 from collections import defaultdict
 from copy import deepcopy
+from functools import partial
 from http import HTTPStatus
 from typing import Any, Iterable
 
@@ -54,6 +55,7 @@ from tests.mock_serializers.v2 import (
     TestSuiteRetrieveMockSerializer,
     TestSuiteUnionMockSerializer,
 )
+from testy.core.choices import LabelTypes
 from testy.core.models import Attachment, Label, LabeledItem
 from testy.tests_description.models import TestCase, TestCaseStep, TestSuite
 from testy.utilities.sql import get_max_level
@@ -98,30 +100,36 @@ class TestSuiteEndpoints:
             assert actual_dict == expected_dict, 'Actual model dict is different from expected'
 
     @allure.title('Test creation')
-    def test_creation(self, superuser_client, project):
+    def test_creation(self, superuser_client, project, attachment_factory):
         expected_number_of_suites = 1
         suite_dict = {
             'name': constants.TEST_CASE_NAME,
             'project': project.id,
+            'attachments': [attachment_factory(content_type=None, object_id=None).id],
         }
         superuser_client.send_request(self.view_name_list, suite_dict, HTTPStatus.CREATED, RequestType.POST)
         with allure.step('Validate object was created'):
             assert TestSuite.objects.count() == expected_number_of_suites, f'Expected number of users ' \
                                                                            f'"{expected_number_of_suites}"' \
                                                                            f'actual: "{TestSuite.objects.count()}"'
+        with allure.step('Validate attachments exist'):
+            suite = TestSuite.objects.last()
+            assert suite.attachments.exists()
 
     @pytest.mark.parametrize(
         'request_type',
         [RequestType.PATCH, RequestType.PUT],
         ids=['partial update', 'update'],
     )
-    def test_update(self, test_suite, superuser_client, project, request_type, request):
+    def test_update(self, test_suite, superuser_client, project, request_type, attachment_factory, request):
         allure.dynamic.title(f'Test {request.node.callspec.id}')
         new_name = 'new_expected_test_case_name'
+        attachments = [attachment_factory(content_type=None, object_id=None).id]
         suite_dict = {
             'id': test_suite.id,
             'name': new_name,
             'project': project.id,
+            'attachments': attachments,
         }
         superuser_client.send_request(
             self.view_name_detail,
@@ -133,6 +141,9 @@ class TestSuiteEndpoints:
         with allure.step('Validate name was updated'):
             assert actual_name == new_name, f'Suite names do not match. Expected name "{actual_name}", ' \
                                             f'actual: "{new_name}"'
+        with allure.step('Validate attachments exist'):
+            test_suite.refresh_from_db()
+            assert list(test_suite.attachments.values_list('id', flat=True).order_by('id')) == attachments
 
     @allure.title('Test partial update on put not allowed')
     def test_required_fields_on_update(self, superuser_client, test_suite):
@@ -181,6 +192,10 @@ class TestSuiteEndpoints:
     @pytest.mark.parametrize('is_project_specified', [False, True], ids=['project not specified', 'project specified'])
     @pytest.mark.parametrize('is_name_specified', [False, True], ids=['new name not specified', 'new name specified'])
     @pytest.mark.parametrize('is_suite_specified', [False, True], ids=['suite not specified', 'suite is specified'])
+    @pytest.mark.parametrize(
+        'is_suite_attached', [False, True],
+        ids=['suite without attachments', 'suite with attachments'],
+    )
     def test_suites_copy(
         self,
         api_client,
@@ -193,6 +208,7 @@ class TestSuiteEndpoints:
         is_suite_specified,
         is_project_specified,
         is_name_specified,
+        is_suite_attached,
         request,
         user_fixture,
     ):
@@ -209,6 +225,15 @@ class TestSuiteEndpoints:
             section_1 = test_suite_factory(project=source_project, parent=child_suite)
             section_2 = test_suite_factory(project=source_project, parent=child_suite)
         source_suites = [root_suite, child_suite, section_1, section_2]
+
+        with allure.step('Generate suites with attachments'):
+            if is_suite_attached:
+                for suite in source_suites:
+                    suite.refresh_from_db()
+                    attachment = attachment_factory(content_object=suite)
+                    suite.description = attach_reference.format(attachment_id=attachment.id)
+                    suite.save()
+
         attachments_section_2 = []
         attachments_steps_section_2 = []
         with allure.step('Create cases for suite section_1'):
@@ -379,15 +404,31 @@ class TestSuiteEndpoints:
 
         copied_suites = TestSuite.objects.all().exclude(pk__in=self.get_ids_from_list(source_suites)).order_by('id')
 
+        test_suites_common_changed_attr = ['id', 'parent']
+        test_suites_common_copied_attr = ['name', 'description']
+        validate_copied_suites = partial(
+            self._validate_copied_objects,
+            changed_attr_names=test_suites_common_changed_attr,
+            project_id_changed=is_project_specified,
+            copied_attr_names=test_suites_common_copied_attr,
+        )
+
+        if is_suite_attached:
+            test_suites_common_copied_attr = ['name']
+            validate_copied_suites = partial(
+                validate_copied_suites,
+                attach_reference_fields=['description'],
+                copied_attr_names=test_suites_common_copied_attr,
+            )
+
         if is_name_specified:
             if is_suite_specified:
                 copied_suites = copied_suites.exclude(id=dst_suite.id)
-            self._validate_copied_objects(
+            validate_copied_suites(
                 source_suites[:1],
                 copied_suites[:1],
-                changed_attr_names=['id', 'name', 'parent'],
-                copied_attr_names=['description'],
-                project_id_changed=is_project_specified,
+                changed_attr_names=['name', *test_suites_common_changed_attr],
+                copied_attr_names=[] if is_suite_attached else ['description'],
             )
             source_suites = source_suites[1:]
             copied_suites = copied_suites.exclude(id=copied_suites.first().id)
@@ -398,22 +439,10 @@ class TestSuiteEndpoints:
                     copied_suites.filter(Q(path__descendant=path) | Q(path__ancestor=path)),
                 ), 'Tree was not rebuild properly'
                 copied_suites = copied_suites.exclude(id=dst_suite.id)
-                self._validate_copied_objects(
-                    source_suites,
-                    copied_suites,
-                    changed_attr_names=['id', 'parent'],
-                    copied_attr_names=['name', 'description'],
-                    project_id_changed=is_project_specified,
-                )
+                validate_copied_suites(source_suites, copied_suites)
         else:
             with allure.step('Validate copied suites'):
-                self._validate_copied_objects(
-                    source_suites,
-                    copied_suites,
-                    changed_attr_names=['id', 'parent'],
-                    copied_attr_names=['name', 'description'],
-                    project_id_changed=is_project_specified,
-                )
+                validate_copied_suites(source_suites, copied_suites)
             with allure.step('Validate tree was rebuilt'):
                 assert len(copied_suites) == len(
                     copied_suites.filter(Q(path__descendant=path) | Q(path__ancestor=path)),
@@ -495,6 +524,32 @@ class TestSuiteEndpoints:
                 reverse_kwargs={'pk': src_case_id},
             ).json()
             assert len(resp_body['steps']) == 2
+
+    def test_suite_recursive_copying(self, authorized_superuser_client, project, test_suite_factory):
+        root_suite = test_suite_factory(project=project)
+        child_suite = test_suite_factory(project=project, parent=root_suite)
+        grand_child_suite = test_suite_factory(project=project, parent=child_suite)
+        root_suite.refresh_from_db()
+        expected_suite_count = root_suite.get_descendants(include_self=True).count()
+        payload = {
+            'dst_project_id': project.pk,
+            'dst_suite_id': root_suite.pk,
+            'suites': [{'id': root_suite.pk, 'new_name': 'copied_suite'}],
+        }
+        authorized_superuser_client.send_request(
+            self.view_name_copy,
+            data=payload,
+            request_type=RequestType.POST,
+        )
+        copied_root_suite = TestSuite.objects.filter(name='copied_suite').first()
+        assert copied_root_suite, 'Suite was not copied'
+        assert copied_root_suite.parent_id == root_suite.id, 'Invalid parent id'
+        copied_suites = copied_root_suite.get_descendants(include_self=True)
+        assert expected_suite_count == copied_suites.count()
+        child_copied_suite = copied_suites.get(parent=copied_root_suite)
+        assert child_suite.name == child_copied_suite.name
+        grand_child_copied_suite = copied_suites.get(parent=child_copied_suite)
+        assert grand_child_copied_suite.name == grand_child_suite.name
 
     def test_suite_union(self, test_suite_factory, test_case_factory, project, authorized_superuser_client):
         roots = []
@@ -791,6 +846,40 @@ class TestSuiteEndpoints:
                 [custom_attribute.name],
             )
 
+    def test_copy_suite_with_existed_labels(
+        self,
+        authorized_superuser_client,
+        project_factory,
+        label_factory,
+        labeled_item_factory,
+        test_suite_factory,
+        test_case_factory,
+    ):
+        label_name = 'label_name'
+        with allure.step('Create labels and projects'):
+            current_project = project_factory()
+            current_label = label_factory(name=label_name, project=current_project, type=LabelTypes.CUSTOM.value)
+            dst_project = project_factory()
+            dst_label = label_factory(name=label_name, project=dst_project, type=LabelTypes.SYSTEM.value)
+        suite = test_suite_factory(project=current_project)
+        case = test_case_factory(suite=suite, project=current_project)
+        labeled_item_factory(content_object=case, label=current_label)
+        with allure.step('Send request to copy suite with case'):
+            authorized_superuser_client.send_request(
+                self.view_name_copy,
+                data={
+                    'suites': [{'id': suite.id}],
+                    'dst_project_id': dst_project.id,
+                },
+                request_type=RequestType.POST,
+            )
+        with allure.step('Validate case was copied'):
+            assert TestCase.objects.filter(project_id=dst_project.id).count() == 1
+        new_case = TestCase.objects.filter(project_id=dst_project.id).first()
+        with allure.step('Validate label exists'):
+            assert new_case.labeled_items.exists()
+            assert new_case.labeled_items.first().label_id == dst_label.id
+
     @classmethod
     def _validate_copied_objects(
         cls,
@@ -1012,6 +1101,25 @@ class TestSuiteEndpointsQueryParams:
         ).json_strip(as_json=False)
         assert len(actual_test_plans) == 1, 'Found extra suite'
         assert actual_test_plans[0]['id'] == search_id, 'Found incorrect suite'
+
+    @pytest.mark.parametrize('search_param', ('search', 'treesearch'), ids=['search param', 'treesearch param'])
+    def test_empty_search(
+        self,
+        authorized_superuser_client,
+        project,
+        search_param,
+    ):
+        allure.dynamic.title('Search test by non existent condition')
+        search_name = 'search_name'
+        if search_param == 'treesearch':
+            query_params = {search_param: search_name, 'parent': 'null'}
+        else:
+            query_params = {search_param: search_name}
+        actual_test_plans = authorized_superuser_client.send_request(
+            self.view_name_list,
+            query_params={'project': project.id, 'ordering': 'id', **query_params},
+        ).json_strip(as_json=False)
+        assert not len(actual_test_plans)
 
     @pytest.mark.parametrize('param_name', ('path', 'path_exact'))
     def test_search_by_path_exact(self, superuser_client, test_suite_factory, project, param_name):

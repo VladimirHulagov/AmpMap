@@ -31,14 +31,28 @@
 from functools import partial
 
 from rest_framework import serializers
-from rest_framework.fields import BooleanField, CharField, IntegerField, ListField, SerializerMethodField, empty
+from rest_framework.fields import (
+    BooleanField,
+    CharField,
+    IntegerField,
+    JSONField,
+    ListField,
+    SerializerMethodField,
+    empty,
+)
 from rest_framework.relations import HyperlinkedIdentityField, PrimaryKeyRelatedField
 
-from testy.core.api.v2.serializers import AttachmentSerializer, CopyDetailSerializer, ParentMinSerializer
+from testy.core.api.v2.serializers import (
+    AttachmentSerializer,
+    CopyDetailSerializer,
+    InputLabelSerializer,
+    ParentMinSerializer,
+)
+from testy.core.choices import LabelsActionChoices
 from testy.core.models import Label, LabeledItem
 from testy.core.selectors.attachments import AttachmentSelector
 from testy.core.selectors.projects import ProjectSelector
-from testy.core.validators import RecursionValidator
+from testy.core.validators import BulkUpdateExcludeIncludeValidator, BulkUpdateLabelValidator, RecursionValidator
 from testy.serializer_fields import EstimateField
 from testy.tests_description.models import TestCase, TestCaseStep, TestSuite
 from testy.tests_description.selectors.cases import TestCaseSelector, TestCaseStepSelector
@@ -46,6 +60,7 @@ from testy.tests_description.selectors.suites import TestSuiteSelector
 from testy.tests_description.validators import (
     CasesCopyProjectValidator,
     EstimateValidator,
+    MoveCasesSameProjectValidator,
     TestCaseCustomAttributeValuesValidator,
     TestSuiteCustomAttributeValuesValidator,
 )
@@ -179,6 +194,7 @@ class TestCaseListSerializer(TestCaseBaseSerializer):
     current_version = SerializerMethodField(read_only=True)
     suite = ParentMinSerializer(read_only=True)
     suite_path = CharField(read_only=True)
+    source_archived = BooleanField(read_only=True, source='is_archive')
 
     def __init__(self, instance=None, version=None, data=empty, **kwargs):
         self._version = version
@@ -186,7 +202,16 @@ class TestCaseListSerializer(TestCaseBaseSerializer):
 
     class Meta(TestCaseBaseSerializer.Meta):
         fields = TestCaseBaseSerializer.Meta.fields + (
-            'attachments', 'url', 'steps', 'labels', 'versions', 'current_version', 'suite', 'created_at', 'suite_path',
+            'attachments',
+            'url',
+            'steps',
+            'labels',
+            'versions',
+            'current_version',
+            'suite',
+            'created_at',
+            'suite_path',
+            'source_archived',
         )
 
     def get_current_version(self, instance):
@@ -226,6 +251,7 @@ class TestCaseRetrieveSerializer(TestCaseBaseSerializer):
     versions = SerializerMethodField()
     current_version = SerializerMethodField(read_only=True)
     suite = ParentMinSerializer(read_only=True)
+    source_archived = SerializerMethodField()
 
     def __init__(self, instance=None, version=None, data=empty, **kwargs):
         self._version = version
@@ -233,8 +259,18 @@ class TestCaseRetrieveSerializer(TestCaseBaseSerializer):
 
     class Meta(TestCaseBaseSerializer.Meta):
         fields = TestCaseBaseSerializer.Meta.fields + (
-            'attachments', 'url', 'steps', 'labels', 'versions', 'current_version', 'suite',
+            'attachments',
+            'url',
+            'steps',
+            'labels',
+            'versions',
+            'current_version',
+            'suite',
+            'source_archived',
         )
+
+    def get_source_archived(self, instance):
+        return instance.history.latest().is_archive
 
     def get_versions(self, instance):
         return instance.history.values_list('history_id', flat=True).order_by('-history_id').all()
@@ -293,10 +329,13 @@ class TestSuiteUpdateOutputSerializer(TestSuiteBaseSerializer):
 
 class TestSuiteSerializer(TestSuiteBaseSerializer):
     test_cases = TestCaseListSerializer(many=True, read_only=True)
+    attachments = PrimaryKeyRelatedField(
+        many=True, queryset=AttachmentSelector().attachment_list(), required=False,
+    )
 
     class Meta:
         model = TestSuite
-        fields = TestSuiteBaseSerializer.Meta.fields + ('test_cases',)
+        fields = TestSuiteBaseSerializer.Meta.fields + ('test_cases', 'attachments')
         validators = [RecursionValidator(TestSuite), TestSuiteCustomAttributeValuesValidator()]
 
 
@@ -408,9 +447,10 @@ class TestCaseRestoreSerializer(serializers.Serializer):
 
 class TestSuiteRetrieveSerializer(TestSuiteOutputSerializer):
     breadcrumbs = SerializerMethodField()
+    attachments = AttachmentSerializer(many=True, read_only=True)
 
     class Meta(TestSuiteBaseSerializer.Meta):
-        fields = TestSuiteOutputSerializer.Meta.fields + ('breadcrumbs',)
+        fields = TestSuiteOutputSerializer.Meta.fields + ('breadcrumbs', 'attachments')
 
     @classmethod
     def get_breadcrumbs(cls, instance: TestSuite):
@@ -489,3 +529,43 @@ class TestSuiteUnionSerializer(TestSuiteOutputSerializer):
             'created_at',
             'suite_path',
         )
+
+
+class BulkUpdateTestCasesSerializer(serializers.Serializer):
+    project = PrimaryKeyRelatedField(queryset=ProjectSelector.project_list_raw(), required=True)
+    current_suite = PrimaryKeyRelatedField(queryset=TestSuiteSelector.suite_list_raw(), required=False, allow_null=True)
+    labels = InputLabelSerializer(many=True, required=False, allow_empty=True)
+    labels_action = serializers.ChoiceField(choices=LabelsActionChoices.choices, required=False, allow_null=False)
+    suite = PrimaryKeyRelatedField(queryset=TestSuiteSelector.suite_list_raw(), required=False, allow_null=False)
+    included_cases = PrimaryKeyRelatedField(
+        queryset=TestCaseSelector().case_list(),
+        required=False,
+        many=True,
+        allow_empty=True,
+    )
+    excluded_cases = PrimaryKeyRelatedField(
+        queryset=TestCaseSelector().case_list(),
+        required=False,
+        many=True,
+        allow_empty=True,
+    )
+    filter_conditions = JSONField(required=False, allow_null=False, initial=dict, default=dict)
+
+    class Meta:
+        validators = [
+            BulkUpdateLabelValidator(),
+            partial(
+                validator_launcher,
+                validator_instance=BulkUpdateExcludeIncludeValidator(
+                    include_key='included_cases',
+                    exclude_key='excluded_cases',
+                ),
+                fields_to_validate=['included_cases', 'excluded_cases', 'filter_conditions'],
+                none_valid_fields=['included_cases', 'excluded_cases', 'filter_conditions'],
+            ),
+            partial(
+                validator_launcher,
+                validator_instance=MoveCasesSameProjectValidator(),
+                fields_to_validate=['current_suite', 'suite'],
+            ),
+        ]

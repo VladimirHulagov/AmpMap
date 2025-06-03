@@ -1,12 +1,12 @@
 import { WechatOutlined } from "@ant-design/icons"
-import { Button, Pagination } from "antd"
+import { Pagination } from "antd"
 import { useGetCommentsQuery } from "entities/comments/api"
 import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 
 import { AddComment } from "features/comments"
 
-import { ContainerLoader } from "shared/ui"
+import { Button, ContainerLoader } from "shared/ui"
 
 import { CommentList } from ".."
 import styles from "./styles.module.css"
@@ -68,7 +68,12 @@ export const Comments = ({ model, object_id, ordering, onUpdateCommentsCount }: 
       <CommentList comments={data.results ?? []} />
       <div className={styles.footer}>
         {!isShowAdd && (
-          <Button id="add-comment-btn" onClick={handleAddCommentClick} icon={<WechatOutlined />}>
+          <Button
+            id="add-comment-btn"
+            onClick={handleAddCommentClick}
+            icon={<WechatOutlined />}
+            color="secondary-linear"
+          >
             {t("Add comment")}
           </Button>
         )}

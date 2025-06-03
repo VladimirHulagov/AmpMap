@@ -774,3 +774,19 @@ class TestResultEndpoints:
             query_params=query_params,
         )
         assert response.json()['errors'][0] == ATTRIBUTES_PARAMETER_NOT_PASSED
+
+    def test_create_result_if_test_doesnt_exist(self, authorized_client, project, user, result_status_factory):
+        wrong_test_id = 9999
+        result_dict = {
+            'status': result_status_factory(project=project).pk,
+            'user': user.id,
+            'comment': constants.TEST_COMMENT,
+            'test': wrong_test_id,
+        }
+        response = authorized_client.send_request(
+            'api:v2:testresult-list',
+            expected_status=HTTPStatus.BAD_REQUEST,
+            request_type=RequestType.POST,
+            data=result_dict,
+        ).json()
+        assert error_messages.TEST_IS_ABSENT in response

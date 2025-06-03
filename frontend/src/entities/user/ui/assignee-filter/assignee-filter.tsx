@@ -1,6 +1,6 @@
 import { Select, Spin } from "antd"
-import { MeContext } from "processes"
-import { useContext, useEffect, useState } from "react"
+import { useMeContext } from "processes"
+import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useInView } from "react-intersection-observer"
 
@@ -19,6 +19,8 @@ interface Props {
   onClose?: () => void
 }
 
+const PAGE_SIZE = 10
+
 export const AssigneeFilter = ({
   value,
   placeholder,
@@ -28,7 +30,7 @@ export const AssigneeFilter = ({
   onClose,
 }: Props) => {
   const { t } = useTranslation()
-  const { me } = useContext(MeContext)
+  const { me } = useMeContext()
 
   const [search, setSearch] = useState<string>("")
   const [searchUsers, setSearchUsers] = useState<User[]>([])
@@ -51,6 +53,8 @@ export const AssigneeFilter = ({
   }
 
   const handleSearch = async (newValue: string) => {
+    setCurrentPage(1)
+
     if (!newValue.length) {
       setSearchUsers([])
       setSearch("")
@@ -65,7 +69,7 @@ export const AssigneeFilter = ({
     setIsLoading(true)
     const res = await getUsers({
       page: 1,
-      page_size: 10,
+      page_size: PAGE_SIZE,
       username: newValue,
       ...additionalFilter,
     }).unwrap()
@@ -96,14 +100,20 @@ export const AssigneeFilter = ({
   }
 
   useEffect(() => {
-    if (!inView || !search.length || isLastPage || isLoading) return
+    if (!inView || !search.length) return
 
     const fetch = async () => {
       setIsLoadingMore(true)
+
+      const additionalFilter = project
+        ? { [project.is_private ? "project" : "exclude_external"]: project.id }
+        : {}
+
       const res = await getUsers({
         page: currentPage + 1,
-        page_size: 10,
+        page_size: PAGE_SIZE,
         username: search,
+        ...additionalFilter,
       }).unwrap()
 
       if (!res.pages.next) {
@@ -119,7 +129,7 @@ export const AssigneeFilter = ({
     }
 
     fetch()
-  }, [inView, search, isLastPage, isLoading])
+  }, [inView, search])
 
   useEffect(() => {
     if (!value?.length || isLoadingInitUsers || selectedUsers.length) {
@@ -132,14 +142,17 @@ export const AssigneeFilter = ({
 
     const fetchUsers = async () => {
       setIsLoadingInitUsers(true)
-      const loadedUsers: User[] = []
-      for (const needLoadUserId of assignedUserIdsFromFilter) {
-        const loadedUser = await getUserById(Number(needLoadUserId)).unwrap()
-        loadedUsers.push(loadedUser)
+      try {
+        const loadedUsers = await Promise.all(
+          assignedUserIdsFromFilter.map((userId) => getUserById(Number(userId)).unwrap())
+        )
+        setSelectedUsers(loadedUsers)
+        setIsLastPage(true)
+      } catch (error) {
+        console.error("Failed to load users", error)
+      } finally {
+        setIsLoadingInitUsers(false)
       }
-      setSelectedUsers(loadedUsers)
-      setIsLastPage(true)
-      setIsLoadingInitUsers(false)
     }
     fetchUsers()
   }, [value, isLoadingInitUsers, me])
@@ -166,7 +179,9 @@ export const AssigneeFilter = ({
       onClear={onClear}
       open={isOpen}
       onDropdownVisibleChange={handleDropdownVisibleChange}
-      notFoundContent={t("No matches")}
+      notFoundContent={
+        <span style={{ color: "var(--y-color-control-placeholder)" }}>{t("No matches")}</span>
+      }
       allowClear
       style={{ width: "100%" }}
     >
@@ -199,12 +214,12 @@ export const AssigneeFilter = ({
           </Select.Option>
         ))}
       {!!searchUsers.length && !isLastPage && !isLoadingMore && (
-        <Select.Option value="">
+        <Select.Option value="" data-testid="assignee-filter-load-more-ref">
           <div ref={ref} />
         </Select.Option>
       )}
       {isLoadingMore && (
-        <Select.Option value="">
+        <Select.Option value="" data-testid="assignee-filter-loader">
           <div style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
             <Spin />
           </div>

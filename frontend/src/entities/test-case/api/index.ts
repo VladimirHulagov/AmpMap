@@ -19,7 +19,7 @@ const rootPath = "cases"
 export const testCaseApi = createApi({
   reducerPath: "testCaseApi",
   baseQuery: baseQueryWithLogout,
-  tagTypes: ["TestCase", "TestCaseHistoryChanges", "TestCaseTestsList"],
+  tagTypes: ["TestCase", "TestCaseHistoryChanges", "TestCaseTestsList", "TestPlanTestCases"],
   endpoints: (builder) => ({
     searchTestCases: builder.query<SuiteWithCases[], SearchTestCasesQuery>({
       query: (params) => ({
@@ -84,6 +84,19 @@ export const testCaseApi = createApi({
               { type: "TestCase", id: "LIST" },
               { type: "TestCaseHistoryChanges", id: "LIST" },
             ],
+    }),
+    bulkUpdate: builder.mutation<TestCase[], TestCaseBulkUpdate>({
+      query: (body) => ({
+        url: `${rootPath}/bulk-update/`,
+        method: "PUT",
+        body,
+      }),
+      invalidatesTags: [{ type: "TestPlanTestCases", id: "LIST" }],
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        await queryFulfilled
+        dispatch(suiteInvalidate())
+        dispatch(labelInvalidate)
+      },
     }),
     archiveTestCase: builder.mutation<void, number>({
       query: (id) => ({
@@ -172,6 +185,7 @@ export const testCaseApi = createApi({
       invalidatesTags: [{ type: "TestCase", id: "LIST" }],
     }),
     getTestPlanTestCases: builder.query<PaginationResponse<TestCase[]>, SearchTestCasesQuery>({
+      providesTags: [{ type: "TestPlanTestCases", id: "LIST" }],
       query: (params) => ({
         url: `${rootPath}/`,
         params: {
@@ -198,4 +212,5 @@ export const {
   useGetTestCaseArchivePreviewQuery,
   useRestoreTestCaseMutation,
   useGetTestPlanTestCasesQuery,
+  useBulkUpdateMutation,
 } = testCaseApi

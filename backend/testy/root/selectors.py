@@ -28,8 +28,7 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-
-from django.db.models import QuerySet
+from django.db.models import Model, QuerySet
 
 from testy.root.auth.models import TTLToken
 
@@ -38,3 +37,18 @@ class TTLTokenSelector:
     @classmethod
     def token_list_by_user_id(cls, user_id: int) -> QuerySet[TTLToken]:
         return TTLToken.objects.filter(user__pk=user_id)
+
+
+class BulkUpdateSelector:
+    @classmethod
+    def list_for_bulk_operation(
+        cls,
+        queryset: QuerySet[Model],
+        included_objects: list[Model] | None,
+        excluded_objects: list[Model] | None,
+    ) -> QuerySet[Model]:
+        if included_objects:
+            queryset = queryset.filter(pk__in=[obj.pk for obj in included_objects])
+        if excluded_objects:
+            queryset = queryset.exclude(pk__in=[obj.pk for obj in excluded_objects])
+        return queryset

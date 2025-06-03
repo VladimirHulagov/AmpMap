@@ -1,5 +1,6 @@
 import classNames from "classnames"
 
+import { Button } from "../button"
 import styles from "./styles.module.css"
 
 interface Props {
@@ -11,7 +12,7 @@ interface Props {
 export const MarkdownViewerTabs = ({ id, tab, handleTabClick }: Props) => {
   return (
     <div className={styles.tabs}>
-      <button
+      <Button
         id={`${id}-tabs-md`}
         className={classNames(styles.tab, {
           [styles.active]: tab === "md",
@@ -20,8 +21,8 @@ export const MarkdownViewerTabs = ({ id, tab, handleTabClick }: Props) => {
         onClick={() => handleTabClick("md")}
       >
         editor (.md)
-      </button>
-      <button
+      </Button>
+      <Button
         id={`${id}-tabs-view`}
         className={classNames(styles.tab, {
           [styles.active]: tab === "view",
@@ -30,7 +31,7 @@ export const MarkdownViewerTabs = ({ id, tab, handleTabClick }: Props) => {
         onClick={() => handleTabClick("view")}
       >
         visual
-      </button>
+      </Button>
     </div>
   )
 }

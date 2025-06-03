@@ -4,7 +4,7 @@
   align-items: center;
   gap: 4px;
   transition: all 0.2s ease-in;
-  color: var(--y-sky-50);
+  color: var(--y-grey-30);
 }
 
 .action svg {
@@ -12,5 +12,5 @@
 }
 
 .action svg:hover {
-  color: var(--y-pending-hover);
+  color: var(--y-color-secondary-inline-hover);
 }

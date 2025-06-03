@@ -14,7 +14,7 @@
   height: 100%;
   flex-grow: 1;
   border-bottom: 1px solid var(--y-grey-20);
-  border-left: 1px solid var(--y-sky-20);
+  border-left: 1px solid var(--y-grey-20);
 }
 
 .isRoot {

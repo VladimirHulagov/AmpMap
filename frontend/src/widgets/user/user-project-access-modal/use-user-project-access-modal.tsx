@@ -1,4 +1,3 @@
-import { notification } from "antd"
 import {
   useAssignRoleMutation,
   useGetRolesQuery,
@@ -21,6 +20,7 @@ import { useAppDispatch, useAppSelector } from "app/hooks"
 import { UserSearchOption } from "entities/user/ui"
 
 import { useErrors } from "shared/hooks"
+import { antdNotification } from "shared/libs/antd-modals"
 
 interface UpdateData {
   user: string
@@ -88,9 +88,7 @@ export const useUserProjectAccessModal = () => {
       const description = isEditMode
         ? t("User updated successfully")
         : t("User assigned successfully")
-      notification.success({
-        message: t("Success"),
-        closable: true,
+      antdNotification.success("user-project-access", {
         description,
       })
 
@@ -100,8 +98,7 @@ export const useUserProjectAccessModal = () => {
       setSelectedUser(null)
     } catch (err) {
       onHandleError(err)
-      notification.error({
-        message: t("Error!"),
+      antdNotification.error("user-project-access", {
         description: t("User assign error"),
       })
     }

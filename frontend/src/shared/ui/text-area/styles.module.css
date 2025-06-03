@@ -6,5 +6,9 @@
 }
 
 .pictureIcon {
-  color: var(--y-sky-80);
+  color: var(--y-color-text-primary);
+}
+
+.pictureIcon:hover {
+  color: var(--y-color-accent) !important;
 }

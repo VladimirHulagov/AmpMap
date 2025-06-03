@@ -1,10 +1,10 @@
-import { notification } from "antd"
 import { useTranslation } from "react-i18next"
 import { useNavigate, useParams } from "react-router-dom"
 
 import { useDeleteTestPlanMutation, useGetTestPlanDeletePreviewQuery } from "entities/test-plan/api"
 
 import { initInternalError } from "shared/libs"
+import { antdNotification } from "shared/libs/antd-modals"
 import { AlertSuccessChange } from "shared/ui"
 
 import { ModalConfirmDeleteArchive } from "widgets/[ui]/modal-confirm-delete-archive"
@@ -33,12 +33,18 @@ export const DeleteTestPlanModal = ({ isShow, setIsShow, testPlan, onSubmit }: P
   const handleDelete = async () => {
     try {
       await deleteTestPlan(testPlan.id).unwrap()
-      notification.success({
-        message: t("Success"),
-        closable: true,
+      antdNotification.success("delete-test-plan", {
         description: (
-          <AlertSuccessChange id={String(testPlan.id)} action="deleted" title={t("Test Plan")} />
+          <AlertSuccessChange
+            id={String(testPlan.id)}
+            action="deleted"
+            title={t("Test Plan")}
+            data-testid="delete-test-plan-success-notification-description"
+          />
         ),
+        props: {
+          "data-testid": "delete-test-plan-success-notification",
+        },
       })
       onSubmit?.(testPlan)
       if (testPlanId && testPlan.id === Number(testPlanId)) {

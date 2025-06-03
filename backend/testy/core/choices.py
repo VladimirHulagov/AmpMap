@@ -28,6 +28,7 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
+import enum
 
 from django.db import models
 from django.utils.translation import gettext_lazy as _
@@ -60,3 +61,16 @@ class ActionCode(models.IntegerChoices):
     TEST_UNASSIGNED = 1, 'Test unassigned'
     TEST_CASE_MODIFIED = 2, 'Test case modified'
     TEST_PLAN_MODIFIED = 3, 'Test plan modified'
+    TEST_BULK_UPDATE = 4, 'Test bulk update'
+
+
+class LabelsActionChoices(models.TextChoices):
+    ADD = 'add', 'add'
+    UPDATE = 'update', 'update'
+    DELETE = 'delete', 'delete'
+    CLEAR = 'clear', 'clear'
+
+
+class ArrayCompareOperator(enum.Enum):
+    CONTAINS = 'contains'
+    OVERLAP = 'overlap'

@@ -1,11 +1,11 @@
 import { PictureOutlined } from "@ant-design/icons"
-import { Button, Input, Upload } from "antd"
+import { Input, Upload } from "antd"
 import { TextAreaProps } from "antd/lib/input/TextArea"
 import type { UploadRequestOption } from "rc-upload/lib/interface"
-import { useEffect, useRef, useState } from "react"
+import { CSSProperties, useEffect, useRef, useState } from "react"
 import { UseFormSetValue } from "react-hook-form"
 
-import { MarkdownViewer, MarkdownViewerTabs } from ".."
+import { Button, MarkdownViewer, MarkdownViewerTabs } from ".."
 import styles from "./styles.module.css"
 
 interface TSTextAreaProps {
@@ -20,6 +20,7 @@ interface TSTextAreaProps {
   // TODO fix it
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   setValue: UseFormSetValue<any>
+  style?: CSSProperties
 }
 
 type ViewTab = "md" | "view"
@@ -31,6 +32,7 @@ export const TextAreaWithAttach = ({
   stateAttachments,
   customRequest,
   setValue,
+  style,
 }: TSTextAreaProps) => {
   const [tab, setTab] = useState<ViewTab>("md")
   const [textAreaHeight, setTextAreaHeight] = useState<number | null>(null)
@@ -99,6 +101,7 @@ export const TextAreaWithAttach = ({
         tab={tab}
         textAreaHeight={textAreaHeight}
         value={fieldProps.value as string}
+        style={style}
       />
       <div id={`${textAreaId}-bottom`} className={styles.row}>
         <MarkdownViewerTabs id={textAreaId} tab={tab} handleTabClick={handleTabClick} />
@@ -115,8 +118,9 @@ export const TextAreaWithAttach = ({
           <Button
             id={`${uploadId}-upload-attachment-button`}
             icon={<PictureOutlined />}
-            size={"small"}
-            type="link"
+            size="s"
+            color="ghost"
+            shape="square"
             className={styles.pictureIcon}
           />
         </Upload>

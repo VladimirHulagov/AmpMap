@@ -1,15 +1,16 @@
 import ReactMarkdown from "react-markdown"
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
-import { oneLight } from "react-syntax-highlighter/dist/esm/styles/prism"
 import remarkGfm from "remark-gfm"
 
+import { MarkdownCheckbox } from "./markdown-checkbox/markdown-checkbox"
+import { MarkdownCodeBlock } from "./markdown-code-block/markdown-code-block"
 import "./styles.css"
 
 interface MarkdownProps extends HTMLDataAttribute {
   content: string
+  pStyles?: React.CSSProperties
 }
 
-export const Markdown = ({ content, ...props }: MarkdownProps) => {
+export const Markdown = ({ content, pStyles = {}, ...props }: MarkdownProps) => {
   return (
     <ReactMarkdown
       children={content}
@@ -20,24 +21,15 @@ export const Markdown = ({ content, ...props }: MarkdownProps) => {
             <img {...propsImg} />
           </a>
         ),
-        code({ inline, className = "", children, ...propsCode }) {
-          const match = /language-(\w+)/.exec(className)
-          return !inline && match ? (
-            <SyntaxHighlighter
-              {...propsCode}
-              children={String(children).replace(/\n$/, "")}
-              style={oneLight}
-              language={match[1]}
-              PreTag="div"
-            />
-          ) : (
-            <code {...propsCode} className={className}>
-              {children}
-            </code>
-          )
-        },
+        code: MarkdownCodeBlock,
         p: ({ children }) => {
-          return <p style={{ whiteSpace: "pre-wrap" }}>{children}</p>
+          return <p style={{ whiteSpace: "pre-wrap", ...pStyles }}>{children}</p>
+        },
+        input: ({ type, ...inputProps }) => {
+          if (type === "checkbox") {
+            return <MarkdownCheckbox {...inputProps} />
+          }
+          return <input type={type} {...inputProps} />
         },
       }}
       remarkPlugins={[remarkGfm]}

@@ -68,6 +68,7 @@ export const NotificationSettingsTable = () => {
       id="administration-projects-labels"
       rowClassName="administration-projects-labels-row"
       pagination={false}
+      data-testid="notification-settings-table"
     />
   )
 }

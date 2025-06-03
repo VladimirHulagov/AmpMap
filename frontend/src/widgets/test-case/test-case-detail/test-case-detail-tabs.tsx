@@ -1,9 +1,9 @@
 import { ArrowDownOutlined } from "@ant-design/icons"
-import { Button, Tabs } from "antd"
+import { Tabs } from "antd"
 import { useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 
-import { Toggle } from "shared/ui"
+import { Button, Toggle } from "shared/ui"
 
 import { Comments } from "widgets/comments"
 
@@ -12,7 +12,13 @@ import { TestCaseTestsList } from "../test-case-tests-list/test-case-tests-list"
 
 type TabsEnum = "comments" | "tests" | "history"
 
-export const TestCaseDetailTabs = ({ testCase }: { testCase: TestCase }) => {
+export const TestCaseDetailTabs = ({
+  testCase,
+  onChangeVersion,
+}: {
+  testCase: TestCase
+  onChangeVersion: (v: number) => Promise<void>
+}) => {
   const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<TabsEnum>("comments")
   const [isShowArchive, setIsShowArchive] = useState(false)
@@ -54,7 +60,7 @@ export const TestCaseDetailTabs = ({ testCase }: { testCase: TestCase }) => {
       {
         key: "history",
         label: t("History"),
-        children: <TestCaseHistoryChanges testCase={testCase} />,
+        children: <TestCaseHistoryChanges testCase={testCase} onChangeVersion={onChangeVersion} />,
       },
     ]
   }, [commentsCount, commentOrdering, testCase, isShowArchive])
@@ -64,7 +70,7 @@ export const TestCaseDetailTabs = ({ testCase }: { testCase: TestCase }) => {
       case "comments":
         return (
           <Button
-            type="text"
+            color="ghost"
             onClick={handleCommentOrderingClick}
             data-testid="test-case-detail-comments-order-btn"
           >

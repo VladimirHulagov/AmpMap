@@ -30,11 +30,12 @@
 # <http://www.gnu.org/licenses/>.
 from django.db import models
 from django.utils import timezone
+from django_cte import CTEQuerySet
 
 from testy.root.ltree.querysets import LtreeQuerySet
 
 
-class SoftDeleteQuerySet(models.query.QuerySet):
+class SoftDeleteQuerySet(CTEQuerySet):
     def delete(self, cascade=None):
         return self.update(is_deleted=True, deleted_at=timezone.now())
 

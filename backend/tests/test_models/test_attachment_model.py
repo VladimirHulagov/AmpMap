@@ -39,17 +39,29 @@ from testy.core.models import Attachment
 @pytest.mark.usefixtures('media_directory')
 class TestAttachmentModel:
     @pytest.mark.parametrize('parameter_name', ['project_id', 'name', 'filename', 'size', 'file_extension'])
-    def test_not_null_constraint(self, parameter_name, attachment_test_case_factory):
+    @pytest.mark.parametrize(
+        'factory_name',
+        ['attachment_test_case_factory', 'attachment_test_result_factory', 'attachment_test_suite_factory'],
+    )
+    def test_not_null_constraint(self, request, parameter_name, factory_name):
+        factory = request.getfixturevalue(factory_name)
         with pytest.raises(IntegrityError) as err:
-            attachment_test_case_factory(**{parameter_name: None})
+            factory(**{parameter_name: None})
         assert NOT_NULL_ERR_MSG.format(relation='core_attachment', column=parameter_name) in str(err.value), \
             'Expected error message was not found.'
 
-    def test_valid_model_creation(self, attachment_test_case):
+    @pytest.mark.parametrize(
+        'factory_name',
+        ['attachment_test_case', 'attachment_test_result', 'attachment_test_suite'],
+    )
+    def test_valid_model_creation(self, request, factory_name):
+        instance = request.getfixturevalue(factory_name)
         assert Attachment.objects.count() == 1
-        assert Attachment.objects.get(id=attachment_test_case.id) == attachment_test_case
+        assert Attachment.objects.get(id=instance.id) == instance
 
-    @pytest.mark.parametrize('factory_name', ['attachment_test_case', 'attachment_test_result'])
+    @pytest.mark.parametrize(
+        'factory_name', ['attachment_test_case', 'attachment_test_result', 'attachment_test_suite'],
+    )
     def test_cascade_deletion(self, factory_name, request):
         instance = request.getfixturevalue(factory_name)
         model_class = instance.content_type.model_class()

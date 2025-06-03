@@ -165,6 +165,50 @@ class TestRecovery:
         for model, _ in self.model_to_key:
             assert not model.deleted_objects.count()
 
+    @pytest.mark.parametrize(
+        'instances_key, detail_view',
+        [
+            ('project', project_view_name_detail),
+            ('testcase', case_view_name_detail),
+            ('testsuite', suite_view_name_detail),
+        ],
+        ids=['projects', 'cases', 'suites'],
+    )
+    def test_valid_labeled_item_recovery(
+        self,
+        authorized_superuser_client,
+        project,
+        label_factory,
+        labeled_item_factory,
+        test_case_factory,
+        test_suite_factory,
+        instances_key,
+        detail_view,
+    ):
+        suite = test_suite_factory(project=project)
+        case = test_case_factory(project=project, suite=suite)
+        label = label_factory(project=project)
+        labeled_item_factory(content_object=case, label=label)
+        labeled_item_factory(content_object=case, label=label, is_deleted=True)
+        reverse_kwargs = {
+            'project': project.id,
+            'testcase': case.id,
+            'testsuite': suite.id,
+        }
+        authorized_superuser_client.send_request(
+            detail_view,
+            request_type=RequestType.DELETE,
+            expected_status=HTTPStatus.NO_CONTENT,
+            reverse_kwargs={'pk': reverse_kwargs.get(instances_key)},
+        )
+        authorized_superuser_client.send_request(
+            self.recovery_view_name.format(instances_key),
+            request_type=RequestType.POST,
+            data={'instance_ids': [reverse_kwargs.get(instances_key)]},
+        )
+        case.refresh_from_db()
+        assert case.labeled_items.count() == 1, 'Wrong number of labeled items'
+
     def _validate_restored_objects(self, expected_objects):
         actual_objects = {
             'project': [],

@@ -9,7 +9,7 @@ const rootPath = "custom-attributes"
 export const customAttributeApi = createApi({
   reducerPath: "customAttributeApi",
   baseQuery: baseQueryWithLogout,
-  tagTypes: ["CustomAttribute"],
+  tagTypes: ["CustomAttribute", "BulkResultsCustomAttribute"],
   endpoints: (builder) => ({
     getCustomAttributes: builder.query<CustomAttribute[], GetCustomAttributesParams>({
       query: (params) => ({
@@ -24,7 +24,10 @@ export const customAttributeApi = createApi({
         method: "POST",
         body,
       }),
-      invalidatesTags: (result) => invalidatesList(result, "CustomAttribute"),
+      invalidatesTags: (result) => [
+        ...invalidatesList(result, "CustomAttribute"),
+        { type: "BulkResultsCustomAttribute" },
+      ],
     }),
     updateCustomAttribute: builder.mutation<
       CustomAttribute,
@@ -35,17 +38,30 @@ export const customAttributeApi = createApi({
         method: "PATCH",
         body,
       }),
-      invalidatesTags: (result) => invalidatesList(result, "CustomAttribute"),
+      invalidatesTags: (result) => [
+        ...invalidatesList(result, "CustomAttribute"),
+        { type: "BulkResultsCustomAttribute" },
+      ],
     }),
     deleteCustomAttribute: builder.mutation<void, Id>({
       query: (id) => ({
         url: `${rootPath}/${id}/`,
         method: "DELETE",
       }),
-      invalidatesTags: (result) => invalidatesList(result, "CustomAttribute"),
+      invalidatesTags: (result) => [
+        ...invalidatesList(result, "CustomAttribute"),
+        { type: "BulkResultsCustomAttribute" },
+      ],
     }),
     getCustomAttributeContentTypes: builder.query<CustomAttributeContentType[], void>({
       query: () => ({ url: `${rootPath}/content-types/` }),
+    }),
+    getBulkAddResultCustomAttribute: builder.query<
+      CustomAttributesBulkAddResultResponse,
+      GetCustomAttributeBulkAddResultParams
+    >({
+      query: (params) => ({ url: `${rootPath}/testresult/`, params }),
+      providesTags: () => [{ type: "BulkResultsCustomAttribute" }],
     }),
   }),
 })
@@ -56,4 +72,5 @@ export const {
   useUpdateCustomAttributeMutation,
   useDeleteCustomAttributeMutation,
   useGetCustomAttributeContentTypesQuery,
+  useGetBulkAddResultCustomAttributeQuery,
 } = customAttributeApi

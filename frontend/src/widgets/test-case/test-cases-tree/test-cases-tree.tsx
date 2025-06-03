@@ -7,7 +7,7 @@ import { TestSuiteTreeNode } from "entities/suite/ui"
 
 import { selectFilter, selectOrdering, selectSettings } from "entities/test-case/model"
 
-import { ProjectContext } from "pages/project"
+import { useProjectContext } from "pages/project"
 
 import { LazyNodeProps, LazyTreeNodeApi, LazyTreeView } from "shared/libs/tree"
 import { TreeTable, TreeTableLoadMore } from "shared/ui"
@@ -16,7 +16,7 @@ import { TestCasesTreeContext } from "./test-cases-tree-provider"
 
 export const TestsCasesTree = () => {
   const { testSuiteId = null } = useParams<ParamTestSuiteId>()
-  const { project } = useContext(ProjectContext)!
+  const project = useProjectContext()
   const { testCasesTree, skipInit, fetcher, fetcherAncestors } = useContext(TestCasesTreeContext)!
 
   const testCasesTreeSettings = useAppSelector(selectSettings<TestTreeParams>("tree"))

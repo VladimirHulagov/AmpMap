@@ -1,7 +1,9 @@
 .tableWrapper {
   overflow-x: auto;
-  border: 1px solid var(--y-sky-20);
-  border-radius: 4px;
+}
+
+.bordered {
+  border: 1px solid var(--y-color-border);
 }
 
 .table {
@@ -11,11 +13,11 @@
 
 .table td {
   text-align: center;
-  border-top: 1px solid var(--y-sky-20);
+  border-top: 1px solid var(--y-color-border);
 }
 
 .tableHead th {
-  background-color: var(--y-grey-10);
+  background-color: var(--y-color-datatable-header-background);
   padding: 14px 0;
   font-size: 14px;
   font-weight: 600;
@@ -62,7 +64,7 @@
   height: 100%;
   min-height: 40px;
   border-top: none !important;
-  border-left: 1px solid var(--y-sky-20);
+  border-left: 1px solid var(--y-color-border);
   padding: 12px 0;
 }
 

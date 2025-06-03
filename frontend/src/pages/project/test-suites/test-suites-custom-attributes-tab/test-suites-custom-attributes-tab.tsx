@@ -2,7 +2,7 @@ import { Flex } from "antd"
 import { CustomAttributeInTab } from "entities/custom-attribute/ui"
 import { useTranslation } from "react-i18next"
 
-import { useTestSuiteContext } from "../test-suite-layout"
+import { useTestSuiteContext } from "../test-suite-layout/test-suite-layout"
 
 export const TestSuitesCustomAttributesTab = () => {
   const { t } = useTranslation()

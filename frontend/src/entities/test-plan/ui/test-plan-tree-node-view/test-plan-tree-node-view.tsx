@@ -1,4 +1,5 @@
-import { Spin } from "antd"
+import { PlusOutlined } from "@ant-design/icons"
+import { Spin, Tooltip } from "antd"
 import classNames from "classnames"
 import dayjs from "dayjs"
 import { useTranslation } from "react-i18next"
@@ -8,19 +9,20 @@ import { useAppDispatch, useAppSelector } from "app/hooks"
 
 import { Label } from "entities/label/ui"
 
-import { selectDrawerTest, setDrawerTest } from "entities/test/model"
+import { selectDrawerTest, setDrawerTest, setDrawerView } from "entities/test/model"
+
+import { useTestPlanStatisticsContext } from "entities/test-plan/model"
 
 import { UserAvatar, UserUsername } from "entities/user/ui"
 
-import { icons } from "shared/assets/inner-icons"
+import ArrowIcon from "shared/assets/yi-icons/arrow.svg?react"
 import { colors } from "shared/config"
 import { LazyNodeProps, LazyTreeNodeApi } from "shared/libs/tree"
 import { ArchivedTag, Status, TreeTableLoadMore } from "shared/ui"
 import { UntestedStatus } from "shared/ui/status"
 
 import styles from "./styles.module.css"
-
-const { ArrowIcon } = icons
+import { TestPlanStatisticPopover } from "./test-plan-statistic-popover/test-plan-statistic-popover"
 
 const getLink = (
   node: LazyTreeNodeApi<Test | TestPlan, LazyNodeProps>,
@@ -48,8 +50,9 @@ export const TestPlanTreeNodeView = ({ node, visibleColumns, projectId, testPlan
   const { t } = useTranslation()
   const dispatch = useAppDispatch()
   const drawerTest = useAppSelector(selectDrawerTest)
+  const { childStatistics } = useTestPlanStatisticsContext()
 
-  const data = node.data as unknown as TestPlan
+  const data = node.data
   const offset = node.props.level * 20 + 8
   const isSelected =
     (testPlanId === node.id && !node.props.isLeaf) ||
@@ -59,6 +62,40 @@ export const TestPlanTreeNodeView = ({ node, visibleColumns, projectId, testPlan
 
   const handleMoreClick = async () => {
     await node.more()
+  }
+
+  const isTest = (_data: Test | TestPlan): _data is Test => {
+    return node.props.isLeaf
+  }
+
+  const renderLastStatus = () => {
+    if (isTest(data)) {
+      const hasLastStatus = data.last_status
+      return (
+        <td className={styles.containerItem}>
+          {hasLastStatus ? (
+            <Status
+              id={data.last_status}
+              name={data.last_status_name}
+              color={data.last_status_color}
+            />
+          ) : (
+            <UntestedStatus />
+          )}
+        </td>
+      )
+    }
+
+    const hasStatistics = childStatistics?.[node.id]?.statistics?.length
+    return (
+      <td className={styles.containerItem}>
+        {hasStatistics ? (
+          <TestPlanStatisticPopover statistics={childStatistics?.[node.id]} />
+        ) : (
+          <Spin size="small" className={styles.loader} />
+        )}
+      </td>
+    )
   }
 
   return (
@@ -107,18 +144,7 @@ export const TestPlanTreeNodeView = ({ node, visibleColumns, projectId, testPlan
             </Link>
           </td>
         )}
-        {isVisible("last_status") && (
-          <td className={styles.containerItem}>
-            {node.props.isLeaf && !(data as unknown as Test).last_status && <UntestedStatus />}
-            {node.props.isLeaf && (data as unknown as Test).last_status && (
-              <Status
-                id={(data as unknown as Test).last_status}
-                name={(data as unknown as Test).last_status_name}
-                color={(data as unknown as Test).last_status_color}
-              />
-            )}
-          </td>
-        )}
+        {isVisible("last_status") && renderLastStatus()}
         {isVisible("id") && <td className={styles.containerItem}>{node.data.id}</td>}
         {isVisible("suite_path") && (
           <td className={styles.containerItem}>
@@ -144,7 +170,7 @@ export const TestPlanTreeNodeView = ({ node, visibleColumns, projectId, testPlan
         {isVisible("labels") && (
           <td className={styles.containerItem}>
             <ul className={styles.list}>
-              {node.props.isLeaf &&
+              {isTest(data) &&
                 (data as unknown as Test).labels.map((label) => (
                   <li key={label.id}>
                     <Label content={label.name} color={colors.accent} />
@@ -155,7 +181,7 @@ export const TestPlanTreeNodeView = ({ node, visibleColumns, projectId, testPlan
         )}
         {isVisible("started_at") && (
           <td className={styles.containerItem}>
-            {node.props.isLeaf ? "" : dayjs(data.started_at).format("YYYY-MM-DD HH:mm")}
+            {isTest(data) ? "" : dayjs(data.started_at).format("YYYY-MM-DD HH:mm")}
           </td>
         )}
         {isVisible("created_at") && (
@@ -163,6 +189,26 @@ export const TestPlanTreeNodeView = ({ node, visibleColumns, projectId, testPlan
             {dayjs(data.created_at).format("YYYY-MM-DD HH:mm")}
           </td>
         )}
+        <td className={styles.containerItem}>
+          {isTest(data) && (
+            <Tooltip title={t("Add Result")}>
+              <Link
+                to={link}
+                className={styles.addResultText}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  if (node.props.isLeaf) {
+                    dispatch(setDrawerTest(node.data as Test))
+                    dispatch(setDrawerView({ view: "addResult", shouldClose: true }))
+                  }
+                }}
+              >
+                <PlusOutlined className={styles.addResultIcon} />
+                {t("Result")}
+              </Link>
+            </Tooltip>
+          )}
+        </td>
       </tr>
       {node.parent?.props.hasMore && node.isLast && (
         <TreeTableLoadMore

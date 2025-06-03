@@ -1,16 +1,13 @@
-import classNames from "classnames"
-import { useContext, useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 
 import { useGetLabelsQuery } from "entities/label/api"
+import { LabelList } from "entities/label/ui"
 
-import { ProjectContext } from "pages/project"
+import { useProjectContext } from "pages/project"
 
 import { colors } from "shared/config"
 
 import { Label } from "../label"
-import { SkeletonLabelFilter } from "./skeleton-label-filter"
-import styles from "./styles.module.css"
 
 export interface LabelFilterValue {
   labels: number[]
@@ -25,12 +22,8 @@ interface Props {
 
 export const LabelFilter = ({ value, onChange }: Props) => {
   const { t } = useTranslation()
-  const { project } = useContext(ProjectContext)!
+  const project = useProjectContext()
   const { data, isLoading } = useGetLabelsQuery({ project: project.id.toString() })
-
-  const [showAll, setShowAll] = useState(false)
-  const [isOverflowing, setIsOverflowing] = useState(false)
-  const listRef = useRef<HTMLUListElement>(null)
 
   const handleLableClick = (label: LabelInForm) => {
     const labelId = Number(label.id)
@@ -64,64 +57,19 @@ export const LabelFilter = ({ value, onChange }: Props) => {
     }
   }
 
-  const handleShowMore = () => {
-    setShowAll(true)
-    setIsOverflowing(false)
-  }
-
-  useEffect(() => {
-    if (!listRef.current || !data?.length) {
-      return
-    }
-
-    const checkOverflow = () => {
-      setIsOverflowing(listRef.current!.scrollHeight > 52) // 52px = two rows
-    }
-    checkOverflow()
-
-    const resizeObserver = new ResizeObserver(checkOverflow)
-    resizeObserver.observe(listRef.current)
-
-    return () => resizeObserver.disconnect()
-  }, [data])
-
-  if (isLoading) {
-    return <SkeletonLabelFilter />
-  }
-
-  if (!data?.length) {
-    return <span className={styles.noData}>{t("No data")}</span>
-  }
-
   return (
-    <>
-      <ul
-        ref={listRef}
-        id="label-filter"
-        className={classNames(styles.list, { [styles.maxSize]: showAll })}
-      >
-        {(data ?? []).map((label) => {
-          const hasInLabels = value.labels.some((i) => i === label.id)
-          const hasInNotLabels = value.not_labels.some((i) => i === label.id)
-          const color = hasInLabels ? colors.accent : hasInNotLabels ? "line-through" : undefined
+    <LabelList id="label-filter" isLoading={isLoading} showMore={{ text: t("Show more") }}>
+      {(data ?? []).map((label) => {
+        const hasInLabels = value.labels.some((i) => i === label.id)
+        const hasInNotLabels = value.not_labels.some((i) => i === label.id)
+        const color = hasInLabels ? colors.accent : hasInNotLabels ? "line-through" : undefined
 
-          return (
-            <li key={label.id} data-testid={`label-filter-label-${label.name}`}>
-              <Label content={label.name} color={color} onClick={() => handleLableClick(label)} />
-            </li>
-          )
-        })}
-      </ul>
-      {isOverflowing && !showAll && (
-        <button
-          type="button"
-          className={classNames("link-button", styles.showMore)}
-          onClick={handleShowMore}
-          data-testid="label-filter-show-more"
-        >
-          {t("Show more")}
-        </button>
-      )}
-    </>
+        return (
+          <li key={label.id} data-testid={`label-filter-label-${label.name}`}>
+            <Label content={label.name} color={color} onClick={() => handleLableClick(label)} />
+          </li>
+        )
+      })}
+    </LabelList>
   )
 }

@@ -10,9 +10,17 @@ interface Props {
   id?: string
   title: string
   value: string
+  showLine?: boolean
+  titleStyles?: React.CSSProperties
 }
 
-export const FieldWithHide = ({ id, title, value }: Props) => {
+export const FieldWithHide = ({
+  id,
+  title,
+  value,
+  showLine = true,
+  titleStyles = { fontSize: 16, fontWeight: 500 },
+}: Props) => {
   const { t } = useTranslation()
 
   const valueLines = useMemo(() => {
@@ -32,9 +40,13 @@ export const FieldWithHide = ({ id, title, value }: Props) => {
 
   return (
     <>
-      <Divider orientation="left" style={{ margin: 0 }} orientationMargin={0}>
-        {title}
-      </Divider>
+      {showLine ? (
+        <Divider orientation="left" style={{ margin: 0, ...titleStyles }} orientationMargin={0}>
+          {title}
+        </Divider>
+      ) : (
+        <div style={titleStyles}>{title}</div>
+      )}
 
       <Row align="middle" id={id}>
         <Col flex="auto">

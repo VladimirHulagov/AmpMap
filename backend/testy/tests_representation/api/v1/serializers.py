@@ -34,9 +34,11 @@ from rest_framework.fields import BooleanField, CharField, DateTimeField, Intege
 from rest_framework.relations import HyperlinkedIdentityField, PrimaryKeyRelatedField
 from rest_framework.reverse import reverse
 from rest_framework.serializers import JSONField, ModelSerializer, Serializer
+from tests_representation.validators import AssigneeExistsValidator, PlanExistsValidator
 
 from testy.core.api.v1.serializers import AttachmentSerializer
 from testy.core.selectors.attachments import AttachmentSelector
+from testy.core.validators import BulkUpdateExcludeIncludeValidator
 from testy.serializer_fields import EstimateField
 from testy.tests_description.api.v1.serializers import TestCaseLabelOutputSerializer
 from testy.tests_description.selectors.cases import TestCaseStepSelector
@@ -45,7 +47,6 @@ from testy.tests_representation.selectors.parameters import ParameterSelector
 from testy.tests_representation.selectors.testplan import TestPlanSelector
 from testy.tests_representation.selectors.tests import TestSelector
 from testy.tests_representation.validators import (
-    BulkUpdateExcludeIncludeValidator,
     DateRangeValidator,
     MoveTestsSameProjectValidator,
     ResultStatusValidator,
@@ -130,6 +131,7 @@ class TestSerializer(ModelSerializer):
     avatar_link = SerializerMethodField(read_only=True)
     test_suite_description = CharField(read_only=True)
     estimate = EstimateField(read_only=True, allow_null=True, allow_blank=True)
+    assignee = PrimaryKeyRelatedField(queryset=UserSelector.list_active(), required=False, allow_null=True)
 
     class Meta:
         model = Test
@@ -167,6 +169,12 @@ class TestSerializer(ModelSerializer):
         return self.context['request'].build_absolute_uri(
             reverse('avatar-path', kwargs={'pk': instance.assignee.id}),
         )
+
+
+class TestInputSerializer(TestSerializer):
+    class Meta(TestSerializer.Meta):
+        read_only_fields = []
+        ref_name = 'TestInputSerializerV1'
 
 
 class TestStepResultSerializer(ModelSerializer):
@@ -461,18 +469,17 @@ class BulkUpdateTestsSerializer(Serializer):
         allow_null=False,
         required=False,
     )
-    plan = PrimaryKeyRelatedField(
-        queryset=TestPlanSelector.testplan_list_raw(),
+    plan_id = IntegerField(
         required=False,
         allow_null=False,
-        allow_empty=False,
+        validators=[PlanExistsValidator()],
     )
-    assignee = PrimaryKeyRelatedField(
-        queryset=UserSelector().user_list(),
-        allow_empty=False,
+    assignee_id = IntegerField(
         allow_null=True,
         required=False,
+        validators=[AssigneeExistsValidator()],
     )
+    is_deleted = BooleanField(required=False, allow_null=False)
     filter_conditions = JSONField(required=False, allow_null=False, initial=dict, default=dict)
 
     class Meta:
@@ -480,11 +487,14 @@ class BulkUpdateTestsSerializer(Serializer):
             partial(
                 validator_launcher,
                 validator_instance=MoveTestsSameProjectValidator(),
-                fields_to_validate=['current_plan', 'plan'],
+                fields_to_validate=['current_plan', 'plan_id'],
             ),
             partial(
                 validator_launcher,
-                validator_instance=BulkUpdateExcludeIncludeValidator(),
+                validator_instance=BulkUpdateExcludeIncludeValidator(
+                    include_key='included_tests',
+                    exclude_key='excluded_tests',
+                ),
                 fields_to_validate=['included_tests', 'excluded_tests', 'filter_conditions'],
                 none_valid_fields=['included_tests', 'excluded_tests', 'filter_conditions'],
             ),

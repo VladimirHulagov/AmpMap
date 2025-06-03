@@ -28,32 +28,43 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from typing import Optional
+from typing import TYPE_CHECKING, Any, Iterable, Optional
 
-from django.db.models import OuterRef, QuerySet, Subquery
+from comments.selectors.comments import CommentSelector
+from django.db.models import CharField, OuterRef, QuerySet, Subquery, Value
 from django.db.models.functions import Trunc
 from tests_representation.exceptions import AttributeParameterIsAbsent
 
+from testy.comments.models import Comment
 from testy.tests_representation.models import Test, TestPlan, TestResult
+
+if TYPE_CHECKING:
+    from testy.comments.api.v2.serializers import CommentUnionSerializer
+    from testy.tests_representation.api.v2.serializers import TestResultUnionSerializer
 
 _TEST = 'test'
 _CREATED_AT_DESC = '-created_at'
 _ID = 'id'
 _RESULT_STATUS = 'status'
+_TYPE = 'type'
+_COMMENT = 'comment'
+_RESULT = 'result'
 
 
 class TestResultSelector:
-    def result_list(self) -> QuerySet[TestResult]:
+    @classmethod
+    def result_list(cls) -> QuerySet[TestResult]:
         return TestResult.objects.all(
         ).order_by(
             _CREATED_AT_DESC,
         ).prefetch_related(
             'user', 'steps_results', 'attachments', _RESULT_STATUS,
         ).annotate(
-            latest_result_id=self.get_latest_result_by_test_subquery(),
+            latest_result_id=cls.get_latest_result_by_test_subquery(),
         )
 
-    def result_by_test_plan_ids(self, test_plan_ids, filters=None):
+    @classmethod
+    def result_by_test_plan_ids(cls, test_plan_ids, filters=None):
         if not filters:
             filters = {}
         return TestResult.objects.select_related(_TEST).filter(
@@ -63,7 +74,7 @@ class TestResultSelector:
 
     @classmethod
     def result_list_by_ids(cls, test_plan_ids: list[int]) -> QuerySet[TestResult]:
-        return TestResult.objects.filter(pk__in=test_plan_ids)
+        return cls.result_list().filter(pk__in=test_plan_ids)
 
     @classmethod
     def result_by_attributes(
@@ -83,9 +94,16 @@ class TestResultSelector:
     def result_cascade_history_list_by_test_plan(cls, instance: TestPlan):
         instances = instance.get_descendants(include_self=True).values_list(_ID, flat=True)
         tests = Test.objects.filter(plan__in=instances).values_list(_ID, flat=True)
-        return (
+        # TODO: fix pagination issue on prod (request is slow if not all qs recieved)
+        history_ids = list(
             TestResult.history
             .filter(test__in=tests)
+            .values_list('history_id', flat=True),
+        )
+        return (
+            TestResult
+            .history
+            .filter(history_id__in=history_ids)
             .order_by('-history_date')
             .prefetch_related('test', 'test__case', 'test__plan', 'project', 'history_user', _RESULT_STATUS)
             .annotate(
@@ -111,3 +129,72 @@ class TestResultSelector:
                 test_id=OuterRef(outer_ref_key),
             ).order_by(_CREATED_AT_DESC).values(_ID)[:1],
         )
+
+    @classmethod
+    def result_list_by_tests(cls, tests: Iterable[Test]):
+        return TestResult.objects.select_related(_TEST).filter(test_id__in=[test.id for test in tests])
+
+    @classmethod
+    def get_results_by_test(cls, test: Test) -> QuerySet[TestResult]:
+        return cls.result_list().filter(test=test)
+
+    @classmethod
+    def union_results_and_comments(
+        cls,
+        results: QuerySet[TestResult],
+        comments: QuerySet[Comment],
+        type_union: str | None = None,
+    ) -> QuerySet:
+        values = ('id', 'type', 'created_at')
+
+        results_prepared = (
+            results
+            .annotate(type=Value('result', output_field=CharField()))
+            .values(*values)
+        )
+
+        comments_prepared = (
+            comments
+            .annotate(type=Value('comment', output_field=CharField()))
+            .values(*values)
+        )
+        queryset = results_prepared.union(comments_prepared)
+        if type_union and type_union.lower() == _RESULT.lower():
+            queryset = results_prepared
+        if type_union and type_union.lower() == _COMMENT.lower():
+            queryset = comments_prepared
+        return queryset.order_by('created_at')
+
+    @classmethod
+    def get_union_data(  # noqa: WPS231
+        cls,
+        union_data: QuerySet[dict[str, Any]],
+        result_serializer: 'type[TestResultUnionSerializer]',
+        comment_serializer: 'type[CommentUnionSerializer]',
+    ) -> list[dict[str, Any]]:
+        result_ids = []
+        comment_ids = []
+
+        for elem in union_data:
+            if elem[_TYPE] == _RESULT:
+                result_ids.append(elem[_ID])
+            elif elem[_TYPE] == _COMMENT:
+                comment_ids.append(elem[_ID])
+
+        db_results = cls.result_list_by_ids(result_ids).annotate(type=Value('result', output_field=CharField()))
+        db_comments = (
+            CommentSelector
+            .comment_list_by_ids(comment_ids)
+            .annotate(type=Value('comment', output_field=CharField()))
+        )
+        results = {result.pk: result for result in db_results}
+        comments = {comment.pk: comment for comment in db_comments}
+
+        result_data = []
+
+        for elem in union_data:
+            serializer = result_serializer if elem[_TYPE] == _RESULT else comment_serializer
+            objects_dict = results if elem[_TYPE] == _RESULT else comments
+            if data_dict := objects_dict.get(elem[_ID]):
+                result_data.append(serializer(data_dict).data)
+        return result_data

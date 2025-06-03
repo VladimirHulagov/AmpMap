@@ -1,5 +1,7 @@
-import { Button, Space, Table } from "antd"
+import { Space, Table } from "antd"
 import { useTranslation } from "react-i18next"
+
+import { Button } from "shared/ui"
 
 import { useUsersProjectAccessTable } from "./use-users-project-access-table"
 
@@ -15,7 +17,7 @@ export const UsersProjectAccessTable = ({ isManageable = false }: Props) => {
   return (
     <>
       <Space style={{ marginBottom: 16, display: "flex", justifyContent: "right" }}>
-        <Button id="clear-filters-and-sorters" onClick={clearAll}>
+        <Button id="clear-filters-and-sorters" onClick={clearAll} color="secondary-linear">
           {t("Clear filters and sorters")}
         </Button>
       </Space>
@@ -27,6 +29,7 @@ export const UsersProjectAccessTable = ({ isManageable = false }: Props) => {
         style={{ marginTop: 12 }}
         onChange={handleChange}
         pagination={paginationTable}
+        data-testid="users-project-access-table"
       />
     </>
   )

@@ -1,7 +1,7 @@
 import { TablePaginationConfig } from "antd"
 import { ColumnsType } from "antd/lib/table"
 import dayjs from "dayjs"
-import { useMemo } from "react"
+import { useEffect, useMemo, useRef } from "react"
 import { useTranslation } from "react-i18next"
 import { Link, useParams, useSearchParams } from "react-router-dom"
 
@@ -24,7 +24,7 @@ import {
 
 import { colors, config } from "shared/config"
 import { paginationSchema } from "shared/config/query-schemas"
-import { useUrlSyncParams } from "shared/hooks"
+import { useRowSelection, useUrlSyncParams } from "shared/hooks"
 import { ArchivedTag, HighLighterTesty } from "shared/ui"
 
 import styles from "./styles.module.css"
@@ -38,6 +38,41 @@ export const useTestCasesTable = () => {
   const testCasesFilter = useAppSelector(selectFilter)
   const testCasesOrdering = useAppSelector(selectOrdering)
   const tableSettings = useAppSelector(selectSettings<TestTableParams>("table"))
+
+  const testSuiteIdPrev = useRef(testSuiteId)
+
+  useEffect(() => {
+    if (testSuiteIdPrev.current === testSuiteId || tableSettings.page === 1) {
+      testSuiteIdPrev.current = testSuiteId
+    }
+  }, [testSuiteId, tableSettings.page])
+  const isWaitingForChangeSuite = testSuiteIdPrev.current !== testSuiteId
+
+  useEffect(() => {
+    dispatch(
+      updateSettings({
+        key: "table",
+        settings: {
+          testSuiteId: Number(testSuiteId),
+        },
+      })
+    )
+
+    return () => {
+      dispatch(
+        updateSettings({
+          key: "table",
+          settings: {
+            page: 1,
+            selectedRows: [],
+            excludedRows: [],
+            isAllSelectedTableBulk: false,
+            hasBulk: false,
+          },
+        })
+      )
+    }
+  }, [testSuiteId])
 
   const syncObject = { page: tableSettings.page, page_size: tableSettings.page_size }
   useUrlSyncParams({
@@ -78,12 +113,12 @@ export const useTestCasesTable = () => {
       ...queryParams,
     },
     {
-      skip: !projectId || !testSuiteId,
+      skip: !projectId || !testSuiteId || isWaitingForChangeSuite,
     }
   )
   const { data: suitesFromRoot, isFetching: isSuitesFromRootFetching } =
     useGetTestPlanTestCasesQuery(queryParams, {
-      skip: !projectId || !!testSuiteId,
+      skip: !projectId || !!testSuiteId || isWaitingForChangeSuite,
     })
 
   const data = testSuiteId ? suitesData : suitesFromRoot
@@ -94,6 +129,18 @@ export const useTestCasesTable = () => {
     setSearchParams(searchParams)
     dispatch(setDrawerTestCase(testCase))
   }
+
+  const { handleSelectRows } = useRowSelection({
+    tableSettings,
+    data,
+    dispatch: (settings: Partial<TestCaseTableParams>) =>
+      dispatch(
+        updateSettings({
+          key: "table",
+          settings: { ...settings },
+        })
+      ),
+  })
 
   const handleTableChange = (pagination: TablePaginationConfig) => {
     dispatch(
@@ -193,9 +240,11 @@ export const useTestCasesTable = () => {
     data: data?.results,
     columns,
     isLoading: isFetching,
+    selectedRows: tableSettings.selectedRows,
     selectedTestCase,
     paginationTable,
     handleTableChange,
     handleRowClick,
+    handleSelectRows,
   }
 }

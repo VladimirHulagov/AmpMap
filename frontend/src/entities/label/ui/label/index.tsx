@@ -1,7 +1,9 @@
 import { CloseOutlined, EditOutlined } from "@ant-design/icons"
-import { Button, Tag } from "antd"
+import { Tag } from "antd"
+import classNames from "classnames"
 
 import { colors } from "shared/config"
+import { Button } from "shared/ui"
 
 import styles from "./styles.module.css"
 
@@ -11,12 +13,13 @@ interface LabelProps {
   onClick?: (label: LabelInForm) => void
   onDelete?: (label: LabelInForm) => void
   onEdit?: (label: LabelInForm) => void
+  className?: string
 }
 
-export const Label = ({ content, color, onDelete, onClick, onEdit }: LabelProps) => {
+export const Label = ({ content, color, onDelete, onClick, onEdit, className }: LabelProps) => {
   return (
     <Tag
-      className={styles.label}
+      className={classNames(styles.label, className)}
       color={color !== "line-through" ? color : colors.accent}
       style={{
         cursor: onClick ? "pointer" : "default",
@@ -31,7 +34,9 @@ export const Label = ({ content, color, onDelete, onClick, onEdit }: LabelProps)
           id="label-edit"
           className={styles.btn}
           icon={<EditOutlined style={{ fontSize: 14 }} />}
-          shape="default"
+          color="accent"
+          shape="circle"
+          size="s"
           onClick={() => onEdit({ name: content })}
           data-testid={`label-edit-${content}`}
         />
@@ -41,8 +46,13 @@ export const Label = ({ content, color, onDelete, onClick, onEdit }: LabelProps)
           id="label-delete"
           className={styles.btn}
           icon={<CloseOutlined style={{ fontSize: 14 }} />}
-          shape="default"
+          color="accent"
+          shape="circle"
+          size="s"
           onClick={() => onDelete({ name: content })}
+          onMouseDown={(e) => {
+            e.stopPropagation()
+          }}
           data-testid={`label-delete-${content}`}
         />
       )}

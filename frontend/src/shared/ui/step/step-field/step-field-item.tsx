@@ -1,7 +1,9 @@
 import { Collapse, Divider, Typography } from "antd"
+import classNames from "classnames"
 
 import { Attachment, Markdown } from "shared/ui"
-import styles from "shared/ui/step/styles.module.css"
+
+import styles from "./styles.module.css"
 
 interface StepFieldItemProps {
   step: Step
@@ -15,9 +17,13 @@ export const StepFieldItem = ({ step }: StepFieldItemProps) => {
         <Collapse ghost style={{ padding: 0, margin: 0 }}>
           <Collapse.Panel
             id="steps-collapse"
-            className="collapse-wrapper"
+            className={classNames("collapse-wrapper", styles.stepsCollapseWrapper)}
             header={
-              <Typography.Title level={5} style={{ marginTop: 0, marginBottom: 0 }}>
+              <Typography.Title
+                level={5}
+                style={{ marginTop: 0, marginBottom: 0 }}
+                data-testid={`step-name-${step.name}`}
+              >
                 {step.name}
               </Typography.Title>
             }

@@ -1,6 +1,5 @@
 import { TreebarProvider } from "processes"
 import { Outlet } from "react-router-dom"
-import { FooterView as Footer } from "widgets"
 
 import { Treebar } from "widgets/[ui]/treebar/treebar"
 
@@ -12,10 +11,7 @@ export const ProjectMainPage = () => {
       <div className={styles.wrapper}>
         <Treebar />
         <div className={styles.containerContent}>
-          <div className={styles.wrapperContent}>
-            <Outlet />
-          </div>
-          <Footer />
+          <Outlet />
         </div>
         <div id="portal-root" />
       </div>

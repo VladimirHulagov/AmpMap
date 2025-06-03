@@ -475,6 +475,32 @@ class TestSuiteEndpoints:
             ).json()
             assert len(resp_body['steps']) == 2
 
+    def test_suite_recursive_copying(self, authorized_superuser_client, project, test_suite_factory):
+        root_suite = test_suite_factory(project=project)
+        child_suite = test_suite_factory(project=project, parent=root_suite)
+        grand_child_suite = test_suite_factory(project=project, parent=child_suite)
+        root_suite.refresh_from_db()
+        expected_suite_count = root_suite.get_descendants(include_self=True).count()
+        payload = {
+            'dst_project_id': project.pk,
+            'dst_suite_id': root_suite.pk,
+            'suites': [{'id': root_suite.pk, 'new_name': 'copied_suite'}],
+        }
+        authorized_superuser_client.send_request(
+            self.view_name_copy,
+            data=payload,
+            request_type=RequestType.POST,
+        )
+        copied_root_suite = TestSuite.objects.filter(name='copied_suite').first()
+        assert copied_root_suite, 'Suite was not copied'
+        assert copied_root_suite.parent_id == root_suite.id, 'Invalid parent id'
+        copied_suites = copied_root_suite.get_descendants(include_self=True)
+        assert expected_suite_count == copied_suites.count()
+        child_copied_suite = copied_suites.get(parent=copied_root_suite)
+        assert child_suite.name == child_copied_suite.name
+        grand_child_copied_suite = copied_suites.get(parent=child_copied_suite)
+        assert grand_child_copied_suite.name == grand_child_suite.name
+
     @classmethod
     def _validate_copied_objects(
         cls,
@@ -625,7 +651,7 @@ class TestSuiteEndpointsQueryParams:
             self.view_name_list,
             expected_status=HTTPStatus.OK,
             request_type=RequestType.GET,
-            query_params={'project': project.pk, 'is_flat': True, 'search': search_name},
+            query_params={'project': project.pk, 'is_flat': True, 'search': search_name, 'ordering': 'id'},
         ).json()['results']
         with allure.step('Validate response body'):
             assert expected_output == actual_suite_list[0]

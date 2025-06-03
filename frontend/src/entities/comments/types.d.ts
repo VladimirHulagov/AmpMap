@@ -6,6 +6,7 @@ interface CommentType {
   created_at: string
   updated_at: string
   deleted_at: string | null
+  type?: "comment"
 }
 
 interface GetCommentsRequest {
@@ -26,4 +27,8 @@ interface UpdateCommentsRequest {
   comment_id: number
   content: string
   attachments?: string[]
+}
+
+interface CommentState {
+  openedComments: number[]
 }

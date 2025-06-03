@@ -1,17 +1,16 @@
-import { Button, Flex, Input, Space } from "antd"
+import { Flex, Input } from "antd"
 import classNames from "classnames"
-import { MeContext } from "processes"
-import { useContext } from "react"
+import { useMeContext } from "processes"
 import { useTranslation } from "react-i18next"
 
-import { ChangeLang } from "features/user"
+import { CreateProject } from "features/project"
+import { ChangeLang, ChangeTheme } from "features/system"
 
-import { icons } from "shared/assets/inner-icons"
+import ColumnViewIcon from "shared/assets/yi-icons/column-view.svg?react"
+import TableIcon from "shared/assets/yi-icons/table.svg?react"
 import { Toggle } from "shared/ui"
 
 import styles from "./styles.module.css"
-
-const { ColumnViewIcon, TableIcon } = icons
 
 interface Props {
   searchText: string
@@ -31,16 +30,15 @@ export const DashboardHeader = ({
   setView,
 }: Props) => {
   const { t } = useTranslation()
-  const { userConfig } = useContext(MeContext)
+  const { userConfig } = useMeContext()
 
   return (
     <div className={styles.header} data-testid="dashboard-header">
-      <div data-testid="dashboard-header-search">
+      <div className={styles.searchBlock} data-testid="dashboard-header-search">
         <Input.Search
           placeholder={t("Search")}
           value={searchText}
           onChange={(e) => onChangeSearch(e.target.value)}
-          style={{ maxWidth: 360 }}
           size="large"
           allowClear
           data-testid="dashboard-header-search-input"
@@ -62,23 +60,29 @@ export const DashboardHeader = ({
           size="lg"
         />
       </Flex>
-      <ChangeLang />
-      <Space style={{ marginLeft: 16 }}>
-        <Button
-          className={classNames(styles.viewBtn, { [styles.viewBtnActive]: view === "cards" })}
-          ghost={view !== "cards"}
+      <Flex gap={16}>
+        <ChangeTheme />
+        <ChangeLang />
+        <CreateProject />
+      </Flex>
+      <Flex align="center" gap={4} style={{ marginLeft: 16 }}>
+        <button
+          type="button"
+          className={classNames(styles.viewBtn, { [styles.active]: view === "cards" })}
           onClick={() => setView("cards")}
-          icon={<ColumnViewIcon width={24} height={24} />}
           data-testid="dashboard-header-view-btn-cards"
-        />
-        <Button
-          className={classNames(styles.viewBtn, { [styles.viewBtnActive]: view === "table" })}
-          ghost={view !== "table"}
+        >
+          <ColumnViewIcon width={24} height={24} />
+        </button>
+        <button
+          type="button"
+          className={classNames(styles.viewBtn, { [styles.active]: view === "table" })}
           onClick={() => setView("table")}
-          icon={<TableIcon width={24} height={24} />}
           data-testid="dashboard-header-view-btn-table"
-        />
-      </Space>
+        >
+          <TableIcon width={24} height={24} />
+        </button>
+      </Flex>
     </div>
   )
 }

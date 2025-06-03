@@ -1,16 +1,11 @@
-import { StepField } from "shared/ui/step/step-field"
-
-import { Step } from "./step"
-import { StepResult } from "./step-result"
-import { StepResultInCreateModal } from "./step-result-in-create-modal"
-import { StepResultInEditModal } from "./step-result-in-edit-modal"
+import { ScenarioStep } from "./scenario-step"
+import { StepField } from "./step-field"
+import { StepList } from "./steps-list/step-list"
 
 const Steps = {
-  Step,
+  StepList,
+  ScenarioStep,
   Field: StepField,
-  Result: StepResult,
-  ResultInCreateModal: StepResultInCreateModal,
-  ResultInEditModal: StepResultInEditModal,
 }
 
 export { Steps }

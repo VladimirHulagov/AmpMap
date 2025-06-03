@@ -129,11 +129,9 @@ testy_redis       0.0.0.0:6380->6379/tcp   Up ## seconds (healthy)
 
 ## Documentation
 
-The documentation for TestY is still in progress therefore you can use 
-[this article](https://habr.com/ru/companies/yadro/articles/881714/) to khow the system better.
-For non-russian users we suggest to use Google, Yandex translate services 
-or AI (LLM) chatbots.
-   
+The documentation provided in Sphinx format (ReST): https://gitlab-pub.yadro.com/testy/testy/-/blob/main/docs/source/index.rst?ref_type=heads
+
+Compiled HTML documentation is available on running TestY by `/docs/` endpoint.
 
 ### Upgrade
 

@@ -1,8 +1,10 @@
 import { TableOutlined } from "@ant-design/icons"
-import { Button, Checkbox, Divider, Popover, Tooltip, Typography } from "antd"
+import { Checkbox, Divider, Popover, Tooltip, Typography } from "antd"
 import { CheckboxOptionType } from "antd/lib"
 import { memo } from "react"
 import { useTranslation } from "react-i18next"
+
+import { Button } from "shared/ui"
 
 interface Props {
   id: string
@@ -49,7 +51,18 @@ const SettingsColumnVisibilityComponent = ({ columns, id, visibilityColumns, onC
       placement="bottomRight"
     >
       <Tooltip title={t("Shown columns")}>
-        <Button id={id} icon={<TableOutlined style={{ color: "var(--y-sky-60)" }} />} />
+        <Button
+          id={id}
+          icon={
+            <TableOutlined
+              style={{ color: "var(--y-color-secondary-inline)" }}
+              width={18}
+              height={18}
+            />
+          }
+          color="secondary-linear"
+          shape="square"
+        />
       </Tooltip>
     </Popover>
   )

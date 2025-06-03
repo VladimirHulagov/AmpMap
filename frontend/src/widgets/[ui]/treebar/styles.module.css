@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: row;
   flex-shrink: 0;
-  background-color: var(--y-grey-10);
+  background-color: var(--y-secondary-color-background);
   padding: 24px 0;
   padding-bottom: 0;
   height: 100vh;
@@ -45,7 +45,6 @@
   height: 100%;
   display: flex;
   align-items: flex-start;
-  /* justify-content: center; */
 }
 
 .container {
@@ -92,17 +91,21 @@
   align-items: center;
   justify-content: flex-end;
   font-size: 24px;
-  color: var(--y-sky-50);
+  color: var(--y-color-secondary-inline);
   cursor: pointer;
   border: none;
   background-color: transparent;
   padding: 0;
 }
 
+.backBtn:hover {
+  color: var(--y-color-secondary-inline-hover);
+}
+
 .activeTab {
   font-size: 18px;
   line-height: 24px;
-  color: var(--y-sky-80);
+  color: var(--y-color-text-primary);
   user-select: none;
 }
 
@@ -149,15 +152,16 @@
   flex-direction: row;
   align-items: center;
   min-height: 16px;
+  min-width: fit-content;
+  width: 100%;
   padding: 8px 4px;
-  border-radius: 2px;
-  color: var(--y-grey-50);
+  color: var(--y-color-text-primary);
   font-size: 12px;
   font-weight: 400;
   line-height: 16px;
   cursor: pointer;
-  border-left: 1px solid var(--y-sky-20);
-  border-bottom: 1px solid var(--y-sky-20);
+  border-left: 1px solid var(--y-color-border);
+  border-bottom: 1px solid var(--y-color-border);
 }
 
 .nodeBody:hover .infoIcon {
@@ -191,7 +195,7 @@
 }
 
 .arrowIcon {
-  color: var(--y-sky-50);
+  color: var(--y-color-secondary-inline);
   transition: all 0.2s ease-in;
   min-width: 16px;
   cursor: pointer;
@@ -200,7 +204,7 @@
 }
 
 .arrowIconOpen {
-  color: var(--y-sky-80);
+  color: var(--y-color-secondary-inline);
   transform: rotate(360deg);
 }
 
@@ -222,12 +226,12 @@
 }
 
 .activeNode {
-  color: var(--y-interactive-default);
-  background-color: var(--y-grey-0);
+  color: var(--y-color-accent);
+  background-color: var(--y-color-background-alternative);
 }
 
 .activeContextMenu {
-  color: var(--y-interactive-default);
+  color: var(--y-color-accent);
   background-color: var(--y-grey-20);
 }
 
@@ -241,7 +245,7 @@
 
 .expandIcon {
   visibility: hidden;
-  color: var(--y-sky-50);
+  color: var(--y-grey-30);
   min-width: 16px;
   margin-left: auto;
   margin-bottom: auto;
@@ -254,7 +258,7 @@
 
 .arrowIcon:hover,
 .expandIcon:hover {
-  color: var(--y-pending-hover);
+  color: var(--y-color-secondary-inline-hover);
 }
 
 /* BREADCRUMBS */
@@ -266,38 +270,20 @@
   margin-top: 12px;
 }
 
-.breadcrumbsIcons {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
-  height: 24px;
-}
-
-.breadCrumbsArrowIcon {
-  height: 24px;
-  width: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--y-sky-80);
-  cursor: pointer;
-  transform: rotate(90deg);
-}
-
 .breadCrumbsArrowIconNoActive {
-  color: var(--y-sky-50);
+  color: var(--y-grey-30);
   cursor: default;
 }
 
 .breadcrumbsTitle,
 .breadcrumbsDiv {
   display: flex;
-  color: var(--y-grey-50);
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 24px;
+  color: var(--y-color-text-primary);
   user-select: none;
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0%;
 }
 
 .breadcrumbsDiv {
@@ -305,12 +291,20 @@
 }
 
 .treebarNodeLink {
-  color: var(--y-sky-80);
+  color: var(--y-color-text-primary);
   display: flex;
   flex-direction: row;
   align-items: center;
 }
 
 .activeLink {
-  color: var(--y-interactive-default);
+  color: var(--y-color-accent);
+}
+
+.breadcrumbsLink:hover {
+  color: var(--y-color-link-hover);
+}
+
+.breadcrumbsSimpleText {
+  font-weight: 400;
 }

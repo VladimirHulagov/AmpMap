@@ -1,0 +1,49 @@
+.button {
+  min-width: fit-content;
+  border-width: 1px;
+  border-radius: 2px;
+}
+
+.button:global(.y-button.-y-accent > .ant-btn-icon, .anticon) {
+  color: var(--y-color-on-accent);
+}
+
+.button:hover:global(.y-button.-y-accent > .ant-btn-icon, .anticon) {
+  color: var(--y-color-on-accent-hover);
+}
+
+.danger {
+  border-color: var(--y-error-block);
+  color: var(--y-color-error);
+}
+
+.danger:hover {
+  background-color: var(--y-color-error-container);
+}
+
+.danger:focus-visible {
+  outline-color: var(--y-error-block);
+}
+
+.danger.ghostCustom {
+  border: none;
+}
+
+/* dropdown button */
+.dangerDropdown button {
+  border-width: 1px;
+  color: var(--y-color-error);
+  border-color: var(--y-color-error);
+}
+
+.dangerDropdown button:hover {
+  background-color: var(--y-color-error-container);
+}
+
+.dangerDropdown button:focus-visible {
+  outline-color: var(--y-error-block);
+}
+
+.dangerDropdown button:nth-child(2)::before {
+  background-color: var(--y-color-error) !important;
+}

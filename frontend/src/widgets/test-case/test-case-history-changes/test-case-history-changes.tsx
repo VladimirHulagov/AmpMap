@@ -12,7 +12,13 @@ import { ContainerLoader } from "shared/ui"
 
 import styles from "./styles.module.css"
 
-export const TestCaseHistoryChanges = ({ testCase }: { testCase: TestCase }) => {
+export const TestCaseHistoryChanges = ({
+  testCase,
+  onChangeVersion,
+}: {
+  testCase: TestCase
+  onChangeVersion: (v: number) => Promise<void>
+}) => {
   const { t } = useTranslation()
   const [pagination, setPagination] = useState({
     page: 1,
@@ -47,6 +53,8 @@ export const TestCaseHistoryChanges = ({ testCase }: { testCase: TestCase }) => 
                 <Link
                   to={`/projects/${testCase.project}/suites/${testCase.suite.id}?version=${history.version}&test_case=${testCase.id}`}
                   id={`${history.version}-${index}`}
+                  onClick={() => onChangeVersion(history.version)}
+                  data-testid={`test-case-history-change-version-${history.version}`}
                 >
                   {t("ver.")} {history.version}
                 </Link>

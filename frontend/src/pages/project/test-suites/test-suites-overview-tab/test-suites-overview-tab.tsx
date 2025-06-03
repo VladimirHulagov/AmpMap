@@ -7,7 +7,7 @@ import { Collapse, Markdown } from "shared/ui"
 
 import { TestCaseDetail, TestCasesTable, TestsCasesTree } from "widgets/test-case"
 
-import { useTestSuiteContext } from "../test-suite-layout"
+import { useTestSuiteContext } from "../test-suite-layout/test-suite-layout"
 import styles from "./styles.module.css"
 
 type EntityView = "list" | "tree"
@@ -18,7 +18,7 @@ export const TestSuitesOverviewTab = () => {
     "test-suite-detail-test-cases-view",
     "tree"
   )
-  const { suite, hasTestSuite } = useTestSuiteContext()
+  const { suite, hasTestSuite, isFetching } = useTestSuiteContext()
 
   return (
     <Flex vertical style={{ width: "100%" }}>
@@ -37,7 +37,12 @@ export const TestSuitesOverviewTab = () => {
           <Divider />
         </>
       )}
-      <TestSuiteDataActions dataView={dataView} setDataView={setDataView} suite={suite} />
+      <TestSuiteDataActions
+        dataView={dataView}
+        setDataView={setDataView}
+        suite={suite}
+        isFetching={isFetching}
+      />
       {dataView === "list" && <TestCasesTable />}
       {dataView === "tree" && <TestsCasesTree />}
       <TestCaseDetail />

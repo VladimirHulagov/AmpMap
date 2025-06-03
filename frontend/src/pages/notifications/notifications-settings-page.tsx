@@ -1,4 +1,3 @@
-import { Card } from "antd"
 import { Content } from "antd/es/layout/layout"
 import { useContext, useEffect } from "react"
 import { useTranslation } from "react-i18next"
@@ -16,10 +15,8 @@ export const NotificationSettingsPage = () => {
   }, [])
 
   return (
-    <Card>
-      <Content>
-        <NotificationSettingsTable />
-      </Content>
-    </Card>
+    <Content>
+      <NotificationSettingsTable />
+    </Content>
   )
 }

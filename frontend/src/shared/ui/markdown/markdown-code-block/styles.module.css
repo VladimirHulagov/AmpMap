@@ -1,0 +1,25 @@
+.codeBlockWrapper {
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.codeBlockHeader {
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  display: flex;
+  padding: 6px 1rem;
+}
+
+.darkHeader {
+  background-color: hsl(220, 13%, 16%);
+}
+
+.lightHeader {
+  background-color: hsl(0, 0%, 96%);
+}
+
+.codeBlock {
+  margin-top: 0 !important;
+  border-radius: 0 !important;
+}

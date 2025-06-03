@@ -63,12 +63,19 @@ const initPagination = queryParamsBySchema(paginationSchema)
 const initialState: TestCaseState = {
   drawerTestCase: null,
   editingTestCase: null,
+  test: null,
   settings: {
     table: {
       columns: baseTableColumns,
+      testSuiteId: null,
       visibleColumns: getVisibleColumns("test-cases-visible-cols-table") ?? baseTableColumns,
       page: initPagination.page,
       page_size: initPagination.page_size,
+      hasBulk: false,
+      isAllSelectedTableBulk: false,
+      selectedRows: [],
+      excludedRows: [],
+      count: 0,
       _n: 0,
     },
     tree: {
@@ -93,7 +100,7 @@ export const testCaseSlice = createSlice({
     clearDrawerTestCase: (state) => {
       state.drawerTestCase = null
     },
-    updateSettings: (state, action: PayloadAction<UpdateSettings>) => {
+    updateSettings: (state, action: PayloadAction<UpdateTestCaseSettings>) => {
       // @ts-ignore
       state.settings[action.payload.key] = {
         ...state.settings[action.payload.key],
@@ -122,7 +129,6 @@ export const testCaseSlice = createSlice({
   extraReducers: (builder) => {
     builder.addCase(updateFilter, (state) => {
       state.settings.table.page = 1
-      state.settings.table.page_size = initialState.settings.table.page_size
     })
   },
 })

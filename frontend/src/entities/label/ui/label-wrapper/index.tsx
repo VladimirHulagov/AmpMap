@@ -1,12 +1,11 @@
-import { DownOutlined } from "@ant-design/icons"
-import { Input } from "antd"
-import { useMemo, useRef } from "react"
+import { CloseOutlined } from "@ant-design/icons"
+import { Select } from "antd"
+import { useMemo } from "react"
 import { useTranslation } from "react-i18next"
 
 import { UseFormLabelsProps } from "entities/label/model"
 
 import { colors } from "shared/config"
-import { useOnClickOutside } from "shared/hooks"
 import { HighLighterTesty } from "shared/ui"
 
 import { Label } from "../label"
@@ -14,6 +13,7 @@ import styles from "./styles.module.css"
 
 interface LabelWrapperProps {
   labelProps: UseFormLabelsProps
+  disabled?: boolean
   fieldProps?: { onBlur: () => void }
   noAdding?: boolean
 }
@@ -25,26 +25,15 @@ export const LabelWrapper = ({
     searchValue,
     searchingLabels,
     setSearchValue,
-    isShowPopup,
-    setIsShowPopup,
     handleAddLabel,
     handleDeleteLabel,
-    handleSubmitInput,
+    placeholder,
+    handleClearLabels,
   },
   noAdding,
+  disabled = false,
 }: LabelWrapperProps) => {
   const { t } = useTranslation()
-  const popupRef = useRef(null)
-  useOnClickOutside(popupRef, () => setIsShowPopup(false))
-
-  const handlePopupClick = () => {
-    setIsShowPopup(!isShowPopup)
-  }
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.trimStart()
-    setSearchValue(value)
-  }
 
   const hasSearchingLabel = useMemo(() => {
     if (!searchValue.length) return true
@@ -62,85 +51,65 @@ export const LabelWrapper = ({
     return false
   }, [labels, searchValue])
 
+  const handleSelect = (label: string) => {
+    if (label === "new") {
+      handleAddLabel(searchValue)
+      return
+    }
+
+    handleAddLabel(label)
+  }
+
   return (
     <div className={styles.wrapper} data-testid="label-wrapper">
       <div className={styles.form}>
-        <Input
-          id="label-input"
-          placeholder={t("New label")}
-          suffix={
-            <DownOutlined
-              id="label-input-arrow"
-              style={{ cursor: "pointer" }}
-              onClick={handlePopupClick}
-            />
-          }
-          value={searchValue}
-          onChange={handleInputChange}
-          onKeyDown={(e) => handleSubmitInput(e, searchValue)}
+        <Select
+          mode="multiple"
+          searchValue={searchValue}
+          placeholder={placeholder}
+          disabled={disabled}
+          onSearch={(newValue) => setSearchValue(newValue)}
+          allowClear={{ clearIcon: <CloseOutlined /> }}
+          style={{ width: "100%" }}
+          onSelect={handleSelect}
           onBlur={fieldProps?.onBlur}
+          filterOption={false}
+          onClear={handleClearLabels}
+          value={labels.map(({ name }) => name)}
           data-testid="label-wrapper-input"
-        />
-        {isShowPopup && (
-          <div
-            id="label-popup"
-            className={styles.popup}
-            ref={popupRef}
-            data-testid="label-wrapper-popup"
-          >
-            <ul>
-              {searchingLabels.map((label) => (
-                <li
-                  key={label.id}
-                  onClick={() => handleAddLabel(label.name)}
-                  data-testid={`label-wrapper-label-${label.name}`}
-                >
-                  <HighLighterTesty searchWords={searchValue} textToHighlight={label.name} />
-                </li>
-              ))}
-              {isAlreadyAdded && (
-                <>
-                  <div className={styles.line} />
-                  <span
-                    className={styles.newLabel}
-                    onClick={() => handleAddLabel(searchValue)}
-                    data-testid="label-wrapper-already-added"
-                  >
-                    <HighLighterTesty searchWords={searchValue} textToHighlight={searchValue} />(
-                    {t("Already added")})
-                  </span>
-                </>
-              )}
-              {!hasSearchingLabel && !isAlreadyAdded && !noAdding && (
-                <>
-                  <div className={styles.line} />
-                  <span
-                    className={styles.newLabel}
-                    onClick={() => handleAddLabel(searchValue)}
-                    data-testid="label-wrapper-new-label"
-                  >
-                    <HighLighterTesty searchWords={searchValue} textToHighlight={searchValue} />(
-                    {t("New label")})
-                  </span>
-                </>
-              )}
-            </ul>
-          </div>
-        )}
-      </div>
-      {!!labels.length && (
-        <ul id="label-list" className={styles.list}>
-          {labels.map((label) => (
-            <li key={label.id}>
-              <Label
-                content={label.name}
-                onDelete={() => handleDeleteLabel(label.name)}
-                color={colors.accent}
-              />
-            </li>
+          tagRender={({ label }) => (
+            <Label
+              color={colors.accent}
+              className={styles.tag}
+              content={String(label)}
+              onDelete={() => {
+                handleDeleteLabel(String(label))
+              }}
+            />
+          )}
+        >
+          {!hasSearchingLabel && !isAlreadyAdded && !noAdding && (
+            <Select.Option value="new" key="new" data-testid="label-wrapper-new-value">
+              {`${searchValue} (${t("New label")})`}
+            </Select.Option>
+          )}
+          {isAlreadyAdded && (
+            <Select.Option
+              value="isAdded"
+              key="isAdded"
+              data-testid="label-wrapper-value-is-added"
+              disabled
+            >
+              {`${searchValue} (${t("Already added")})`}
+            </Select.Option>
+          )}
+          {searchingLabels?.map(({ id, name }) => (
+            <Select.Option value={name} key={id} data-testid={`label-wrapper-value-${name}`}>
+              <HighLighterTesty searchWords={searchValue} textToHighlight={name} />
+            </Select.Option>
           ))}
-        </ul>
-      )}
+        </Select>
+      </div>
     </div>
   )
 }

@@ -11,7 +11,7 @@
 }
 
 .arrowIcon {
-  color: var(--y-sky-50);
+  color: var(--y-color-secondary-inline);
   transition: all 0.2s ease-in;
   min-width: 24px;
   cursor: pointer;
@@ -20,7 +20,7 @@
 }
 
 .arrowIconOpen {
-  color: var(--y-sky-80);
+  color: var(--y-color-secondary-inline);
   transform: rotate(360deg);
 }
 
@@ -37,7 +37,7 @@
   line-height: 24px;
   font-size: 14px;
   font-weight: 600;
-  color: var(--y-sky-80);
+  color: var(--y-color-text-primary);
 }
 
 .containerItem {
@@ -46,12 +46,12 @@
 }
 
 .active {
-  background-color: var(--y-grey-10);
+  background-color: var(--y-color-background-alternative);
 }
 
 .activeLink {
   font-weight: 600;
-  color: var(--y-interactive-hover);
+  color: var(--y-color-accent-hover);
 }
 
 .list {

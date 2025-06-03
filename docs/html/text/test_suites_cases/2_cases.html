@@ -1,0 +1,515 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="ru" data-content_root="../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Тест-кейсы &mdash; документация Testy </title>
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
+
+  
+    <link rel="shortcut icon" href="../../_static/favicon.ico"/>
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../_static/documentation_options.js?v=372fde1a"></script>
+      <script src="../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="../../_static/translations.js?v=cd1d70c9"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Алфавитный указатель" href="../../genindex.html" />
+    <link rel="search" title="Поиск" href="../../search.html" />
+    <link rel="next" title="Раздел Test Plans &amp; Results" href="../../index_test_plans_results.html" />
+    <link rel="prev" title="Тестовые наборы" href="1_suites.html" />
+    <div class="rst-versions" data-toggle="rst-versions">
+        <span class="rst-current-version" data-toggle="rst-current-version">
+            <span class="fa fa-book"> Версия:</span>
+            2.1.0
+        </span>
+    </div>
+ 
+
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Testy
+              <img src="../../_static/testy.svg" class="logo" alt="Логотип"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Поиск в документации" aria-label="Поиск в документации" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Меню навигации">
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../index_system_overview.html">Обзор системы</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../index_installation.html">Инсталляция</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../index_project_creation.html">Cоздание проекта</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../index_roles.html">Роли в проекте</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../index_project_administration.html">Администрирование проектов</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../../index_test_suites_cases.html">Раздел Test Suites &amp; Cases</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="1_suites.html">Тестовые наборы</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Тест-кейсы</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id2">Создание тест-кейса</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3">Создание тест-кейса в рамках тестового набора.</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id4">Создание тест-кейса на стартовой странице</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id5">Работа с тест-кейсом</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6">Просмотр тест-кейса</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id7">Копирование тест-кейса</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id8">Изменение тест-кейса</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id9">Редактирование версии</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id10">Архивация и удаление тест-кейса</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id11">Фильтрация тест-кейсов</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id12">Массовые операции с тест-кейсами</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#id13">Перенос тест-кейсов</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id14">Изменение лейблов</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../index_test_plans_results.html">Раздел Test Plans &amp; Results</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Меню навигации для мобильных устройств" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Testy</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Навигация по страницам">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index_test_suites_cases.html">Раздел Test Suites &amp; Cases</a></li>
+      <li class="breadcrumb-item active">Тест-кейсы</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../_sources/text/test_suites_cases/2_cases.rst.txt" rel="nofollow"> Просмотреть исходный код страницы</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="id1">
+<h1>Тест-кейсы<a class="headerlink" href="#id1" title="Ссылка на этот заголовок"></a></h1>
+<section id="id2">
+<h2>Создание тест-кейса<a class="headerlink" href="#id2" title="Ссылка на этот заголовок"></a></h2>
+<blockquote>
+<div><div class="confluence-information-macro-body docutils container">
+<p>Тест-кейс может быть создан только в рамках тестового набора.</p>
+</div>
+</div></blockquote>
+</section>
+<section id="id3">
+<h2>Создание тест-кейса в рамках тестового набора.<a class="headerlink" href="#id3" title="Ссылка на этот заголовок"></a></h2>
+<p>Создание тест-кейса также доступно на странице тестового набора в меню,
+открывающемся при нажатии на название тестового набора:</p>
+<p><a class="confluence-embedded-image reference internal" href="../../_images/image40.png"><img alt="image40" class="confluence-embedded-image" src="../../_images/image40.png" style="width: 1000px;" /></a></p>
+<p>При таком способе создания тест-кейса в поле <strong>Suite</strong> автоматически
+выбран тестовый набор, в котором была открыта форма создания:</p>
+<p><a class="confluence-embedded-image reference internal" href="../../_images/image41.png"><img alt="image41" class="confluence-embedded-image" src="../../_images/image41.png" style="width: 1000px;" /></a></p>
+<p>При необходимости пользователь может выбрать другой тестовый набор.</p>
+</section>
+<section id="id4">
+<h2>Создание тест-кейса на стартовой странице<a class="headerlink" href="#id4" title="Ссылка на этот заголовок"></a></h2>
+<p>Создание тест-кейса также доступно на стартовой странице раздела Test
+Suites &amp; Cases :</p>
+<p><a class="confluence-embedded-image reference internal" href="../../_images/image42.png"><img alt="image42" class="confluence-embedded-image" src="../../_images/image42.png" style="width: 1000px;" /></a></p>
+<p>При таком способе создания тест-кейса поле Suite по умолчанию не
+заполнено, но обязательно к заполнению.</p>
+<p>Тест-кейс может быть сценарным или пошаговым:</p>
+<ul>
+<li><p>Для сценарного тест-кейса заполняется поле Scenario и общий ожидаемый
+результат в поле Expected .</p></li>
+<li><p>Для пошагового тест-кейса в поле Scenario установите флажок Steps,
+введите название шагов и ожидаемый результат для каждого шага:</p>
+<p><a class="confluence-embedded-image reference internal" href="../../_images/image43.png"><img alt="image43" class="confluence-embedded-image" src="../../_images/image43.png" style="width: 500px;" /></a></p>
+</li>
+</ul>
+<p>Вне зависимости от типа тест-кейса по умолчанию необходимо заполнить
+следующие параметры:</p>
+<blockquote>
+<div><table class="docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><strong>Параметр</strong></p></td>
+<td><p><strong>Применимость</strong></p></td>
+<td><p><strong>Комментарий</strong></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Name</strong></p></td>
+<td><p>Обязательное поле</p></td>
+<td><p>Название тест-кейса.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Setup</strong></p></td>
+<td><p>Опциональное поле</p></td>
+<td><p>Условия, которые
+необходимо выполнить
+перед прохождением
+тест-кейса.</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Scenario/Steps</strong></p></td>
+<td><p>Обязательное поле</p></td>
+<td><p>Тестовый сценарий. В
+пошаговом тест-кейсе
+сценарий заполняется для
+каждого шага.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Expected</strong></p></td>
+<td><p>Опциональное поле</p></td>
+<td><p>Ожидаемый результат.
+Доступно для заполнения в
+сценарном тест-кейсе. В
+пошаговом тест-кейсе
+поле заполняется отдельно
+для каждого шага.</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Teardown</strong></p></td>
+<td><p>Опциональное поле</p></td>
+<td><p>Условия, которые
+необходимо выполнить по
+окончании выполнения
+тест-кейса.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Estimate</strong></p></td>
+<td><p>Опциональное поле</p></td>
+<td><p>Временная оценка
+выполнения тест-кейса.</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Labels</strong></p></td>
+<td><p>Опциональное поле</p></td>
+<td><p>Метки тест-кейса.
+Пользователь может
+выбрать лейбл из уже
+существующих в проекте
+или <a class="reference internal" href="../project_administration/3_tab_labels.html#labels"><span class="std std-ref">создать
+новый</span></a></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Description</strong></p></td>
+<td><p>Опциональное поле</p></td>
+<td><p>Описание тест-кейса.</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Suite</strong></p></td>
+<td><p>Обязательное поле</p></td>
+<td><p>Тестовый набор, в котором
+находится тест-кейс.</p></td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<p>Набор полей может быть расширен за счет создания пользовательских
+атрибутов в момент создания тест-кейса. Такие атрибуты будут доступны
+для заполнения только в создаваемом тест-кейсе.</p>
+<p>Все текстовые поля поддерживают добавление вложений.</p>
+</section>
+<section id="id5">
+<h2>Работа с тест-кейсом<a class="headerlink" href="#id5" title="Ссылка на этот заголовок"></a></h2>
+<p>Доступные действия с тест-кейсами:</p>
+<ul class="simple">
+<li><p>просмотр,</p></li>
+<li><p>копирование,</p></li>
+<li><p>изменение,</p></li>
+<li><p>фильтрация,</p></li>
+<li><p>массовые операции</p></li>
+</ul>
+</section>
+<section id="id6">
+<h2>Просмотр тест-кейса<a class="headerlink" href="#id6" title="Ссылка на этот заголовок"></a></h2>
+<p>В приложении поддерживается два варианта представления тест-кейсов:</p>
+<ul class="simple">
+<li><p>Древовидное — представление, аналогичное навигации по тестовым</p></li>
+</ul>
+<p>наборам:</p>
+<blockquote>
+<div><p><a class="confluence-embedded-image reference internal" href="../../_images/image44.png"><img alt="image44" class="confluence-embedded-image" src="../../_images/image44.png" style="width: 1000px;" /></a></p>
+<p>Столбцы в древовидном представлении:</p>
+<p><a class="confluence-embedded-image reference internal" href="../../_images/image45.png"><img alt="image45" class="confluence-embedded-image" src="../../_images/image45.png" style="width: 1000px;" /></a></p>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<div class="table-wrap docutils container">
+<table class="docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><strong>Столбец</strong></p></td>
+<td><p><strong>Описание</strong></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>ID</strong></p></td>
+<td><p>Идентификатор тест-кейса.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Name</strong></p></td>
+<td><p>Имя тестового набора или тест-кейса в нем.</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Labels</strong></p></td>
+<td><p>Метки, добавленные к тест-кейсу.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Estimate</strong></p></td>
+<td><p>Временная оценка тест-кейса.</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Created At</strong></p></td>
+<td><p>Дата создания тестового набора или тест-кейса в нем.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div></blockquote>
+<ul>
+<li><p>Табличное — все тест-кейсы отображаются в плоской структуре. В таблице
+представлены все тест-кейсы от выбранного тестового набора и вниз до
+последнего дочернего тестового набора включительно. Если родительский
+тестовый набор не выбран, отображаются все тестовые кейсы, созданные в
+проекте.</p>
+<p>Табличное представление дополнено пагинацией, количество элементов для
+показа 10-50-100:</p>
+<p><a class="confluence-embedded-image reference internal" href="../../_images/image46.png"><img alt="image46" class="confluence-embedded-image" src="../../_images/image46.png" style="width: 1000px;" /></a></p>
+<p>Столбцы в табличном представлении:</p>
+<p><a class="confluence-embedded-image reference internal" href="../../_images/image47.png"><img alt="image47" class="confluence-embedded-image" src="../../_images/image47.png" style="width: 1000px;" /></a></p>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<div class="table-wrap docutils container">
+<table class="docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><strong>Столбец</strong></p></td>
+<td><p><strong>Описание</strong></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>ID</strong></p></td>
+<td><p>Идентификатор тест-кейса.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Name</strong></p></td>
+<td><p>Имя тест-кейса.</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Test Suite</strong></p></td>
+<td><p>Тестовый набор, в котором расположен тест-кейс.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Labels</strong></p></td>
+<td><p>Метки, добавленные к тест-кейсу.</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Estimate</strong></p></td>
+<td><p>Временная оценка тест-кейса.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Created At</strong></p></td>
+<td><p>Дата создания тест-кейса.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</li>
+</ul>
+<p>Набор столбцов для табличного и древовидного представления можно
+изменять с помощью меню, расположенного над представлением в правой
+части экрана. В меню доступна сортировка элементов представления, фильтр
+и переключение представлений:</p>
+<p><a class="confluence-embedded-image reference internal" href="../../_images/image48.png"><img alt="image48" class="confluence-embedded-image" src="../../_images/image48.png" style="width: 1000px;" /></a></p>
+<p>При нажатии на название тест-кейса открывается правая боковая панель с
+детальной информацией:</p>
+<ul class="simple">
+<li><p>Информация, заполненная при создании тестового кейса.</p></li>
+<li><p>Кнопки изменения/копирования/архивации/удаления/восстановления версии,
+если открыта не последняя версия тест-кейса.</p></li>
+<li><p>Выпадающий список версий тест-кейса.</p></li>
+<li><p>В нижней части правой боковой панели:</p>
+<ul>
+<li><p>Вкладка <strong>Comments</strong>, содержащая комментарии к тест-кейсу.</p></li>
+<li><p>Вкладка <strong>Tests</strong>, содержащая информацию о тестовых планах, в
+которые добавлен тест-кейс, а также информацию о последнем статусе
+тестового результата в конкретном тест-плане.</p></li>
+<li><p>Вкладка <strong>History</strong>, содержащая историю изменений.</p></li>
+</ul>
+</li>
+</ul>
+<p><a class="confluence-embedded-image reference internal" href="../../_images/image49.png"><img alt="image49" class="confluence-embedded-image" src="../../_images/image49.png" style="width: 700px;" /></a> <a class="confluence-embedded-image reference internal" href="../../_images/image50.png"><img alt="image50" class="confluence-embedded-image" src="../../_images/image50.png" style="width: 200px;" /></a></p>
+</section>
+<section id="id7">
+<h2>Копирование тест-кейса<a class="headerlink" href="#id7" title="Ссылка на этот заголовок"></a></h2>
+<p>Тест-кейс можно скопировать внутри проекта. При копировании необходимо
+выбрать название нового тест-кейса и тестовый набор:</p>
+<p><a class="confluence-embedded-image reference internal" href="../../_images/image51.png"><img alt="image51" class="confluence-embedded-image" src="../../_images/image51.png" style="width: 500px;" /></a></p>
+</section>
+<section id="id8">
+<h2>Изменение тест-кейса<a class="headerlink" href="#id8" title="Ссылка на этот заголовок"></a></h2>
+<p>При редактировании тест-кейса открывается вкладка, аналогичная вкладке
+создания тест-кейса.</p>
+<p>Редактирование атрибутов</p>
+<p>На этапе редактирования пользователь может добавить дополнительные
+пользовательские атрибуты, как и во время создания тест-кейса.</p>
+<p>Если в течение жизни тест-кейса на уровне проекта были добавлены новые
+атрибуты, при редактировании тестового кейса они будут добавлены в
+соответствии с настройками, установленными при их создании —
+обязательные атрибуты останутся обязательными. Если какие-либо атрибуты
+были удалены, они останутся в тест-кейсе, но появится возможность их
+удалить.</p>
+<p>Если атрибут был ранее добавлен как пользовательский, но в течение жизни
+тест-кейса стал обязательным на уровне проекта, значение атрибута будет
+изменено из пользовательского атрибута в проектный. Если тип атрибута,
+созданного на уровне проекта, отличается от изначального типа атрибута,
+будет использоваться тип проектного атрибута.</p>
+</section>
+<section id="id9">
+<h2>Редактирование версии<a class="headerlink" href="#id9" title="Ссылка на этот заголовок"></a></h2>
+<p>Результаты изменения тест-кейса можно сохранить с увеличением версии
+тест-кейса, либо без увеличения версии. Сохранение без увеличения версии
+доступно только автору редактируемой версии тест-кейса.</p>
+<p>После успешного сохранения изменений новая версия тест-кейса
+заменит собой тесты во всех тест-планах, в которые был ранее
+добавлен тест-кейс. Результаты, добавленные к предыдущим версиям
+изменены не будут.</p>
+<p>Доступно восстановление версии тестового кейса. Восстановление версии
+осуществляется созданием новой версии, идентичной восстанавливаемой.
+(Т.е. пользователю нужно создать новую версию?)</p>
+</section>
+<section id="id10">
+<h2>Архивация и удаление тест-кейса<a class="headerlink" href="#id10" title="Ссылка на этот заголовок"></a></h2>
+<p>Архивация и удаление осуществляются нажатием на соответствующие кнопки,
+расположенные в верхней части правой боковой панели:</p>
+<p>При архивации либо удалении тест-кейса все связанные с ним объекты
+будут также удалены/архивированы.</p>
+<p><a class="confluence-embedded-image reference internal" href="../../_images/image52.png"><img alt="image52" class="confluence-embedded-image" src="../../_images/image52.png" style="height: 250px;" /></a></p>
+</section>
+<section id="id11">
+<h2>Фильтрация тест-кейсов<a class="headerlink" href="#id11" title="Ссылка на этот заголовок"></a></h2>
+<p>Фильтр расположен над списком тест-кейсов в правой части экрана:</p>
+<p><a class="confluence-embedded-image reference internal" href="../../_images/image53.png"><img alt="image53" class="confluence-embedded-image" src="../../_images/image53.png" style="width: 800px;" /></a></p>
+<p>При нажатии на кнопку <strong>FILTER</strong> открывается правая боковая панель:</p>
+<p><a class="confluence-embedded-image reference internal" href="../../_images/image54.png"><img alt="image54" class="confluence-embedded-image" src="../../_images/image54.png" style="width: 800px;" /></a></p>
+<p>Строка поиска интегрирована в фильтр и является одним из его сегментов.
+Тест-кейсы можно фильтровать по сочетанию условий, не зависящих друг от
+друга.</p>
+<p>Фильтр в разделе <strong>Test Suites &amp; Cases</strong> не является иерархическим
+и включает в себя следующие сегменты:</p>
+<ul class="simple">
+<li><p><strong>Name or ID</strong> — строка поиска по имени и ID. Если открыть фильтр,не переходя в конкретный тестовый набор, поиск будет осуществлятьсяпо всему проекту.</p></li>
+<li><p><strong>Test Suite</strong> — селектор наборов. При выборе селектора наборовдоступен переключатель <strong>Show full tree</strong>, который отображает всенаборы вне зависимости от места, в котором открыт фильтр. Даже еслифильтр открыт в конкретном тестовом наборе, в селекторе будутдоступны все наборы проекта.</p></li>
+<li><p><strong>Label</strong> — метки тест-кейсов. Доступен выбор нескольких меток с применением условий OR/AND.</p></li>
+<li><p><strong>Test Suite Created At</strong> — временной интервал от даты создания тестового набора.</p></li>
+<li><p><strong>Test Case Created At</strong> — временной интервал от даты создания тест-кейса.</p></li>
+<li><p><strong>Show Archived</strong> — архивные тест-кейсы и тестовые наборы.</p></li>
+</ul>
+<p>Фильтры можно сохранять/редактировать/удалять. Сохраненные фильтры
+доступны в рамках проекта. Пользователю доступно создание
+неограниченного количества фильтров.</p>
+</section>
+<section id="id12">
+<h2>Массовые операции с тест-кейсами<a class="headerlink" href="#id12" title="Ссылка на этот заголовок"></a></h2>
+<p>В табличном представлении Test Cases доступно выполнение массовых операций.
+Выбор тест-кейсов для осуществления массовой операции производится с помощью чек-боксов, расположенных в самой левой колонке представления.
+При отметке чек-бокса, который находится в заголовке таблицы, выбираются все элементы вне зависимости от пагинации.
+После выбора хотя бы одного теста-кейса, справа от заголовка Test Cases появляется выпадающее меню Actions, в выпадающем меню представлены доступные операции:</p>
+<ul class="simple">
+<li><p>Move Cases (перенос тест-кейсов)</p></li>
+<li><p>Change Labels (изменение лейблов)</p></li>
+</ul>
+<section id="id13">
+<h3>Перенос тест-кейсов<a class="headerlink" href="#id13" title="Ссылка на этот заголовок"></a></h3>
+<p>Массовая операция Move Cases осуществляет перенос выбранных тест-кейсов из текущего тестового набора в целевой.
+Для переноса тест-кейсов отметьте тест-кейсы, которые необходимо перенести. Затем выберете соответствующую опцию в выпадающем меню Actions.</p>
+<p><a class="confluence-embedded-image reference internal" href="../../_images/bulkMoveCasesStep1.png"><img alt="bulkMoveCasesStep1" class="confluence-embedded-image" src="../../_images/bulkMoveCasesStep1.png" style="width: 600px;" /></a></p>
+<p>В открывшемся окне выберете тестовый набор, в который необходимо перенести тест-кейсы, и нажмите на кнопку Save.</p>
+<p><a class="confluence-embedded-image reference internal" href="../../_images/bulkMoveCasesStep2.png"><img alt="bulkMoveCasesStep2" class="confluence-embedded-image" src="../../_images/bulkMoveCasesStep2.png" style="width: 600px;" /></a></p>
+<blockquote>
+<div></div></blockquote>
+</section>
+<section id="id14">
+<h3>Изменение лейблов<a class="headerlink" href="#id14" title="Ссылка на этот заголовок"></a></h3>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Действие</p></th>
+<th class="head"><p>Описание</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Add to existing</p></td>
+<td><p>Добавляет лейбл/лейблы к существующим лейблам в выбранных тест-кейсах.</p></td>
+</tr>
+<tr class="row-odd"><td><p>Replace all with new</p></td>
+<td><p>Заменяет в выбранных тест-кейсах существующие лейблы на выбранные.</p></td>
+</tr>
+<tr class="row-even"><td><p>Find and remove label</p></td>
+<td><p>Осуществляет поиск по существующим лейблам в тест-кейсах и удаляет выбранные лейблы.</p></td>
+</tr>
+<tr class="row-odd"><td><p>Remove all labels</p></td>
+<td><p>Удаляет все существующие лейблы в выбранных тест-кейсах.</p></td>
+</tr>
+</tbody>
+</table>
+<p>Для изменения лейблов в тест-кейсах отметьте тест-кейсы, для которых нужно выполнить операцию. Затем выберете соответствующую опцию в выпадающем меню Actions.</p>
+<p><a class="confluence-embedded-image reference internal" href="../../_images/bulkChangeLabelsStep1.png"><img alt="bulkChangeLabelsStep1" class="confluence-embedded-image" src="../../_images/bulkChangeLabelsStep1.png" style="width: 600px;" /></a></p>
+<p>В открывшемся окне с помощью выпадающего списка Action выберете одно из доступных действий (действия описаны выше).</p>
+<p><a class="confluence-embedded-image reference internal" href="../../_images/bulkChangeLabelsStep2.png"><img alt="bulkChangeLabelsStep2" class="confluence-embedded-image" src="../../_images/bulkChangeLabelsStep2.png" style="width: 600px;" /></a></p>
+<p>В поле Labels выберете необходимые лейблы (доступен множественный выбор из существующих лейблов, а также создание новых лейблов).</p>
+<p><a class="confluence-embedded-image reference internal" href="../../_images/bulkChangeLabelsStep3.png"><img alt="bulkChangeLabelsStep3" class="confluence-embedded-image" src="../../_images/bulkChangeLabelsStep3.png" style="width: 600px;" /></a></p>
+<p>Нажмите на кнопку Submit.</p>
+<blockquote>
+<div></div></blockquote>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+    <div class="rst-footer-buttons" role="navigation" aria-label="Footer navigation">
+        
+        <a href="1_suites.html" class="btn btn-neutral float-left" title="Тестовые наборы" accesskey="p" rel="prev">
+            <span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Предыдущая
+        </a>
+        
+        
+        <a href="../../index_test_plans_results.html" class="btn btn-neutral float-right" title="Раздел Test Plans &amp; Results" accesskey="n" rel="next">
+            Следующая <span class="fa fa-arrow-circle-right" aria-hidden="true"></span>
+        </a>
+        
+    </div>
+
+    <hr/>
+
+    <div role="contentinfo">
+        <p>© 2025, KNS Group LLC (YADRO)</p>
+    </div>
+
+    
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

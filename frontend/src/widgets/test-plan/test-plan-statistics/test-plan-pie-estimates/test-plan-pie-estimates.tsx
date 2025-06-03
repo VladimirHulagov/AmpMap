@@ -1,81 +1,59 @@
 import { Flex, Spin } from "antd"
-import { MeContext } from "processes"
-import { useContext, useEffect, useMemo, useState } from "react"
+import { useMeContext } from "processes"
+import { useEffect, useMemo } from "react"
 import { useTranslation } from "react-i18next"
-import { useParams } from "react-router-dom"
-import { Label, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts"
+import { Label, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts"
 
-import { useAppDispatch, useAppSelector } from "app/hooks"
+import { useAppSelector } from "app/hooks"
 
-import { selectFilter, updateFilter } from "entities/test/model"
+import { selectFilter } from "entities/test/model"
 
-import { useGetTestPlanStatisticsQuery } from "entities/test-plan/api"
+import { useTestPlanContext } from "pages/project"
 
-import { PieCellList } from "shared/ui"
+import { DEFAULT_ESTIMATE_PERIOD } from "shared/constants"
+import { StatisticLegend } from "shared/ui"
 import { usePie } from "shared/ui/pie/model/use-pie"
 
 import styles from "../styles.module.css"
 import { TestPlanPieEstimatesFilters } from "./test-plan-pie-estimates-filters"
 
 interface Props {
-  testPlanId?: number
+  data: TestPlanStatistics[]
+  isLoading: boolean
   height: number
+  period: EstimatePeriod
   onHeightChange: (height: number) => void
+  onPeriodChange: (period: EstimatePeriod) => void
 }
 
-const DEFAULT_ESTIMATE: EstimatePeriod = "minutes"
-
-export const TestPlanPieEstimates = ({ testPlanId, height, onHeightChange }: Props) => {
+export const TestPlanPieEstimates = ({
+  data,
+  isLoading,
+  height,
+  period,
+  onPeriodChange,
+  onHeightChange,
+}: Props) => {
   const { t } = useTranslation()
-  const { projectId } = useParams<ParamProjectId>()
   const testsFilter = useAppSelector(selectFilter)
-  const dispatch = useAppDispatch()
+  const { testPlan } = useTestPlanContext()
 
-  const { userConfig, updateConfig } = useContext(MeContext)
-  const [period, setPeriod] = useState<EstimatePeriod>(
-    userConfig?.ui?.test_plan_estimate_everywhere_period ?? DEFAULT_ESTIMATE
-  )
+  const { userConfig, updateConfig } = useMeContext()
 
-  const { data: pieData, isFetching } = useGetTestPlanStatisticsQuery(
-    {
-      parent: testPlanId ? Number(testPlanId) : null,
-      labels: testsFilter.labels?.length ? testsFilter.labels : undefined,
-      not_labels: testsFilter.not_labels?.length ? testsFilter.not_labels : undefined,
-      labels_condition: testsFilter.labels_condition ?? undefined,
-      is_archive: testsFilter.is_archive,
-      project: Number(projectId),
-      estimate_period: period,
-    },
-    { skip: !projectId }
-  )
-
-  const handleStatusesUpdate = (statuses: string[]) => {
-    dispatch(updateFilter({ statuses }))
-  }
-
-  const {
-    formatData,
-    total,
-    legendFormatter,
-    tooltipFormatter,
-    handleCellClick,
-    checkActive,
-    chartRef,
-  } = usePie({
-    data: pieData ?? [],
+  const { formatData, total, legendFormatter, tooltipFormatter, chartRef } = usePie({
+    data,
     type: "estimates",
     period,
     statuses: testsFilter.statuses,
-    updateStatuses: handleStatusesUpdate,
     onHeightChange,
   })
 
   const estimatesStats = useMemo(() => {
-    const empty = (pieData ?? []).reduce(
+    const empty = (data ?? []).reduce(
       (acc, item) => (item.label === "UNTESTED" ? acc : acc + item.empty_estimates),
       0
     ) // left number
-    const newTotal = (pieData ?? []).reduce((acc, item) => acc + item.empty_estimates, 0) // right number
+    const newTotal = (data ?? []).reduce((acc, item) => acc + item.empty_estimates, 0) // right number
     return {
       empty,
       total: newTotal,
@@ -83,7 +61,7 @@ export const TestPlanPieEstimates = ({ testPlanId, height, onHeightChange }: Pro
   }, [formatData])
 
   const handlePeriodChange = async (newPeriod: EstimatePeriod) => {
-    setPeriod(newPeriod)
+    onPeriodChange(newPeriod)
     await updateConfig({
       ...userConfig,
       ui: {
@@ -94,62 +72,70 @@ export const TestPlanPieEstimates = ({ testPlanId, height, onHeightChange }: Pro
   }
 
   useEffect(() => {
-    setPeriod(userConfig?.ui?.test_plan_estimate_everywhere_period ?? DEFAULT_ESTIMATE)
-  }, [testPlanId])
+    onPeriodChange(userConfig?.ui?.test_plan_estimate_everywhere_period ?? DEFAULT_ESTIMATE_PERIOD)
+  }, [testPlan?.id])
 
   return (
-    <div className={styles.pieWrapper}>
+    <div className={styles.pieWrapper} id="test-plan-pie-estimates-wrapper">
       <div className={styles.pieHeader}>
         <h3 className={styles.graphsTitle}>{t("Tests Estimates")}</h3>
         <TestPlanPieEstimatesFilters setPeriod={handlePeriodChange} value={period} />
       </div>
-      {isFetching && (
+      {isLoading && (
         <Flex align="center" justify="center" style={{ height: "100%" }}>
           <Spin size="large" />
         </Flex>
       )}
-      {!isFetching && (
-        <>
-          <ResponsiveContainer width="100%" height={height} ref={chartRef}>
-            <PieChart margin={{ left: 0 }}>
-              <Pie
-                data={formatData}
-                dataKey="estimates"
-                nameKey="label"
-                cx="50%"
-                cy="50%"
-                innerRadius={80}
-                outerRadius={94}
-                fill="#a0a0a0"
+      {!isLoading && (
+        <Flex vertical style={{ width: "100%" }}>
+          <Flex gap={32} justify="space-between" style={{ width: "100%" }}>
+            <Flex align="center" justify="center" style={{ margin: "0 auto" }}>
+              <ResponsiveContainer
+                width={200}
+                height={height}
+                ref={chartRef}
+                id="test-plan-pie-estimates-container"
               >
-                <PieCellList
-                  data={formatData}
-                  checkActive={checkActive}
-                  handleCellClick={handleCellClick}
-                />
-                <Label position="centerBottom" fontSize={26} value={t("Total")} />
-                <Label
-                  value={parseFloat(total.toFixed(2))}
-                  position="centerTop"
-                  offset={20}
-                  fontSize={28}
-                  style={{ marginTop: 20 }}
-                  dy={12}
-                  fill="#000"
-                  fontWeight="bold"
-                />
-              </Pie>
-              <Legend
-                iconSize={10}
-                layout="vertical"
-                verticalAlign="middle"
-                align="right"
-                iconType="circle"
-                formatter={legendFormatter}
+                <PieChart>
+                  <Pie
+                    data={formatData}
+                    dataKey="estimates"
+                    nameKey="label"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={84}
+                    outerRadius={94}
+                    stroke="var(--y-color-background)"
+                  >
+                    <Label
+                      value={parseFloat(total.toFixed(2))}
+                      position="centerBottom"
+                      fontSize={26}
+                      fill="var(--y-color-control-text)"
+                      style={{ lineHeight: 24, fontWeight: 400 }}
+                      dy={0}
+                    />
+                    <Label
+                      position="centerTop"
+                      fontSize={16}
+                      offset={20}
+                      value={t("Total")}
+                      style={{ marginTop: 20, lineHeight: 24, fontWeight: 400 }}
+                      dy={10}
+                    />
+                  </Pie>
+                  <Tooltip wrapperClassName="recharts-tooltip" formatter={tooltipFormatter} />
+                </PieChart>
+              </ResponsiveContainer>
+            </Flex>
+            <Flex style={{ paddingTop: 16, paddingBottom: 16 }}>
+              <StatisticLegend
+                data={formatData}
+                renderStatus={legendFormatter}
+                testid="test-plan-pie-estimates"
               />
-              <Tooltip formatter={tooltipFormatter} />
-            </PieChart>
-          </ResponsiveContainer>
+            </Flex>
+          </Flex>
           <div
             className={styles.notEstimatedBlock}
             data-testid="test-plan-pie-estimates-not-estimated-block"
@@ -159,7 +145,7 @@ export const TestPlanPieEstimates = ({ testPlanId, height, onHeightChange }: Pro
               {`${estimatesStats.empty}/${estimatesStats.total}`}
             </span>
           </div>
-        </>
+        </Flex>
       )}
     </div>
   )

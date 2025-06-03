@@ -1,11 +1,12 @@
-import { Flex, Modal, notification } from "antd"
-import { MeContext } from "processes"
-import { useContext, useEffect } from "react"
+import { Flex } from "antd"
+import equal from "fast-deep-equal"
+import { useMeContext } from "processes"
+import { useEffect } from "react"
 import { useTranslation } from "react-i18next"
 
-import { ProjectContext } from "pages/project"
+import { useProjectContext } from "pages/project"
 
-import { deepEqualObjects } from "shared/libs"
+import { antdModalConfirm, antdNotification } from "shared/libs/antd-modals"
 import { QuryParamsSchema, queryParamsBySchema } from "shared/libs/query-params"
 
 import { ActionButtonsFilter } from "./ui/action-buttons-filter/action-buttons-filter"
@@ -34,8 +35,8 @@ export const FilterControl = ({
 }: Props) => {
   const { t } = useTranslation()
 
-  const { userConfig, updateConfig } = useContext(MeContext)
-  const { project } = useContext(ProjectContext)!
+  const { userConfig, updateConfig } = useMeContext()
+  const project = useProjectContext()
 
   const configFilters =
     type === "plans"
@@ -43,10 +44,9 @@ export const FilterControl = ({
       : userConfig?.test_suites?.filters?.[project.id]
 
   const handleDelete = (name: string) => {
-    Modal.confirm({
+    antdModalConfirm("delete-filter", {
       title: t("Do you want to delete this filter?"),
       okText: t("Delete"),
-      cancelText: t("Cancel"),
       onOk: async () => {
         const filtersData = { ...(configFilters ?? {}) }
         delete filtersData[name]
@@ -69,14 +69,10 @@ export const FilterControl = ({
           clearFilter()
         }
 
-        notification.success({
-          message: t("Success"),
-          closable: true,
+        antdNotification.success("delete-filter", {
           description: t("Filter deleted successfully"),
         })
       },
-      okButtonProps: { "data-testid": "delete-filter-button-confirm" },
-      cancelButtonProps: { "data-testid": "delete-filter-button-cancel" },
     })
   }
 
@@ -103,7 +99,7 @@ export const FilterControl = ({
     const urlParse = queryParamsBySchema(filterSchema)
     for (const [filterName, filterValue] of Object.entries(configFilters)) {
       const filterParse = queryParamsBySchema(filterSchema, { url: filterValue })
-      const isEqualUrlFilter = deepEqualObjects(urlParse, filterParse)
+      const isEqualUrlFilter = equal(urlParse, filterParse)
       if (isEqualUrlFilter) {
         updateSettings({ selected: filterName })
         return
@@ -112,7 +108,7 @@ export const FilterControl = ({
   }, [hasSomeFilter, configFilters, filterSettings.selected])
 
   return (
-    <Flex align="center" justify="space-between" style={{ width: "100%" }}>
+    <Flex align="center" justify="space-between">
       <SelectFilter
         type={type}
         filterData={filterData}

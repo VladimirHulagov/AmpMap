@@ -1,4 +1,3 @@
-import { notification } from "antd"
 import { useTranslation } from "react-i18next"
 import { useSearchParams } from "react-router-dom"
 
@@ -8,6 +7,7 @@ import { useDeleteTestCaseMutation, useGetTestCaseDeletePreviewQuery } from "ent
 import { clearDrawerTestCase } from "entities/test-case/model"
 
 import { initInternalError } from "shared/libs"
+import { antdNotification } from "shared/libs/antd-modals"
 import { AlertSuccessChange } from "shared/ui"
 
 import { ModalConfirmDeleteArchive } from "widgets/[ui]/modal-confirm-delete-archive"
@@ -41,11 +41,14 @@ export const DeleteTestCaseModal = ({ isShow, setIsShow, testCase, onSubmit }: P
         return searchParams
       })
       await deleteTestCase(testCase.id).unwrap()
-      notification.success({
-        message: t("Success"),
-        closable: true,
+      antdNotification.success("delete-test-case", {
         description: (
-          <AlertSuccessChange id={String(testCase.id)} action="deleted" title={t("Test Case")} />
+          <AlertSuccessChange
+            id={String(testCase.id)}
+            action="deleted"
+            title={t("Test Case")}
+            data-testid="delete-test-case-success-notification-description"
+          />
         ),
       })
       onSubmit?.(testCase)

@@ -1,4 +1,3 @@
-import { notification } from "antd"
 import { useEffect, useState } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
 import { useTranslation } from "react-i18next"
@@ -13,7 +12,8 @@ import {
   selectUserModal,
 } from "entities/user/model"
 
-import { useErrors, useShowModalCloseConfirm } from "shared/hooks"
+import { useErrors } from "shared/hooks"
+import { antdModalCloseConfirm, antdNotification } from "shared/libs/antd-modals"
 
 interface Inputs {
   username: string
@@ -39,7 +39,6 @@ interface ErrorData {
 
 export const useUserModal = () => {
   const { t } = useTranslation()
-  const { showModal } = useShowModalCloseConfirm()
   const dispatch = useAppDispatch()
   const isShow = useAppSelector(selectModalIsShow)
   const isEditMode = useAppSelector(selectModalIsEditMode)
@@ -142,9 +141,7 @@ export const useUserModal = () => {
             ...data,
           }).unwrap()
       onCloseModal()
-      notification.success({
-        message: t("Success"),
-        closable: true,
+      antdNotification.success("create-user", {
         description: isEditMode ? t("User updated successfully") : t("User created successfully"),
       })
     } catch (err) {
@@ -162,7 +159,7 @@ export const useUserModal = () => {
     if (isLoading) return
 
     if (isDirty) {
-      showModal(onCloseModal)
+      antdModalCloseConfirm(onCloseModal)
       return
     }
 

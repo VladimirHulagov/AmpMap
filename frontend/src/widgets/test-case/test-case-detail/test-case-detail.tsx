@@ -28,33 +28,18 @@ export const TestCaseDetail = () => {
   } = useTestCaseDetail()
 
   const isLastVersion = testCase?.versions[0] === showVersion
+  const hasVersion = !!testCase?.versions && testCase?.versions.length > 1
 
   return (
     <Drawer
       id="drawer-test-case-details"
-      title={
-        testCase && (
-          <Flex align="flex-start" style={{ width: "fit-content", marginRight: "auto" }}>
-            <Flex gap={8}>
-              {testCase.source_archived && (
-                <Flex justify="center" align="center" style={{ height: 32 }}>
-                  <ArchivedTag />
-                </Flex>
-              )}
-              <Typography.Title level={3} className={styles.title}>
-                {testCase.name}
-              </Typography.Title>
-            </Flex>
-          </Flex>
-        )
-      }
       onClose={handleClose}
       isOpen={!!testCase}
       isLoading={isFetching}
-      extra={
+      header={
         testCase && (
-          <Flex wrap gap={8} justify="flex-end">
-            {!!testCase.versions && testCase.versions.length > 1 && (
+          <>
+            {hasVersion && (
               <Controller
                 name="select"
                 control={control}
@@ -63,7 +48,7 @@ export const TestCaseDetail = () => {
                   <Select
                     {...field}
                     placeholder={t("Version")}
-                    style={{ minWidth: "100px" }}
+                    style={{ minWidth: "100px", marginRight: "auto" }}
                     options={versionData}
                     defaultValue={Number(testCase.current_version)}
                     onChange={handleChangeVersion}
@@ -73,37 +58,47 @@ export const TestCaseDetail = () => {
                 )}
               />
             )}
-            <CopyTestCase testCase={testCase} onSubmit={handleRefetch} />
-            <EditTestCase testCase={testCase} />
-            {!testCase.source_archived ? (
-              <ArchiveTestCase testCase={testCase} onSubmit={handleRefetch} />
-            ) : (
-              <DeleteTestCase testCase={testCase} onSubmit={handleRefetch} />
-            )}
-          </Flex>
+            <Flex gap={8} style={{ marginLeft: !hasVersion ? "auto" : undefined }}>
+              <CopyTestCase testCase={testCase} onSubmit={handleRefetch} />
+              <EditTestCase testCase={testCase} />
+              {!testCase.source_archived ? (
+                <ArchiveTestCase testCase={testCase} onSubmit={handleRefetch} />
+              ) : (
+                <DeleteTestCase testCase={testCase} onSubmit={handleRefetch} />
+              )}
+            </Flex>
+            <Flex gap={8} align="center" style={{ width: "100%" }}>
+              {testCase.is_archive && <ArchivedTag className={styles.archiveIcon} />}
+              <Typography.Title
+                level={3}
+                className={styles.title}
+                data-testid="test-case-detail-title"
+              >
+                {testCase.name}
+              </Typography.Title>
+            </Flex>
+          </>
         )
       }
     >
       <>
         {testCase && !isLastVersion && (
           <Alert
-            showIcon
-            closable
-            type="warning"
-            description={
+            banner
+            className={styles.versionAlert}
+            data-testid="test-case-detail-version-warning"
+            message={
               <span>
-                {t("Attention! This isn't the latest version.")}{" "}
+                {t("This isn't the latest version.")}{" "}
                 <a onClick={handleRestoreVersion}>{t("Restore")}</a>
               </span>
             }
-            data-testid="test-case-detail-version-warning"
-            style={{ marginBottom: 20 }}
           />
         )}
         {testCase && (
           <>
             <TestCaseFields testCase={testCase} />
-            <TestCaseDetailTabs testCase={testCase} />
+            <TestCaseDetailTabs testCase={testCase} onChangeVersion={handleChangeVersion} />
           </>
         )}
       </>

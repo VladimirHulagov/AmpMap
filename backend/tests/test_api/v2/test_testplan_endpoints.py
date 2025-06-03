@@ -79,6 +79,7 @@ class TestPlanEndpoints:
     view_name_copy = 'api:v2:testplan-copy'
     view_name_labels = 'api:v2:testplan-labels'
     view_name_union = 'api:v2:testplan-union'
+    view_name_assignee_progress = 'api:v2:testplan-assignee-progress'
 
     @allure.title('Test list display')
     def test_list(self, superuser_client, several_test_plans_from_api, project):
@@ -309,6 +310,7 @@ class TestPlanEndpoints:
                     query_params={
                         'project': project.id,
                         'parameters': ','.join([str(elem.id) for elem in group]),
+                        'ordering': 'id',
                     },
                 )
                 actual_data = [elem['id'] for elem in response.json_strip()]
@@ -461,7 +463,7 @@ class TestPlanEndpoints:
         'root_only, parent_count',
         [(True, 0), (False, 1)],
     )
-    def test_root_only_statistics(
+    def test_statistic_root_only(
         self,
         api_client,
         authorized_superuser,
@@ -665,6 +667,90 @@ class TestPlanEndpoints:
         if number_of_items or content:
             assert content[0]['value'] == number_of_items
 
+    @allure.title('Test plans statics with filters')
+    @pytest.mark.parametrize(
+        'filter_parameter',
+        ['assignee', 'unassigned', 'suite', 'plan', 'last_status', 'case'],
+    )
+    def test_statistics_filter(
+        self,
+        superuser_client,
+        project,
+        test_plan_factory,
+        test_factory,
+        test_suite_factory,
+        test_case_factory,
+        test_result_factory,
+        result_status_factory,
+        user_factory,
+        filter_parameter,
+    ):
+        expected_count = 1
+        with allure.step('Generate objects for statistic'):
+            test_plan = test_plan_factory(project=project)
+            invalid_test_plan = test_plan_factory()
+            test_suite = test_suite_factory(project=project)
+            invalid_test_suite = test_suite_factory()
+            test_case = test_case_factory(project=project, suite=test_suite)
+            invalid_test_case = test_case_factory()
+            status = result_status_factory(project=project, id=9999)
+            invalid_status = result_status_factory(id=9998)
+            assignee = user_factory()
+            invalid_assignee = user_factory()
+            test_result_factory(
+                test=test_factory(plan=test_plan, case=test_case, project=project, assignee=assignee),
+                status=status,
+                project=project,
+            )
+        possible_query_params = {
+            'assignee': {
+                'valid': assignee.id,
+                'invalid': invalid_assignee.id,
+            },
+            'unassigned': {
+                'valid': False,
+                'invalid': True,
+            },
+            'suite': {
+                'valid': test_suite.id,
+                'invalid': invalid_test_suite.id,
+            },
+            'plan': {
+                'valid': test_plan.id,
+                'invalid': invalid_test_plan.id,
+            },
+            'last_status': {
+                'valid': status.id,
+                'invalid': invalid_status.id,
+            },
+            'case': {
+                'valid': test_case.id,
+                'invalid': invalid_test_case.id,
+            },
+        }
+        with allure.step('Test filters with valid parameters'):
+            response_body = superuser_client.send_request(
+                self.view_name_statistics,
+                reverse_kwargs={'pk': test_plan.id},
+                query_params={filter_parameter: possible_query_params[filter_parameter]['valid']},
+            ).json()
+            status_statistic = next(
+                (statistic for statistic in response_body if statistic['id'] == status.id), None,
+            )
+            assert status_statistic is not None
+            assert status_statistic['value'] == expected_count
+        with allure.step('Test filters with invalid parameters'):
+            response_body = superuser_client.send_request(
+                self.view_name_statistics,
+                reverse_kwargs={'pk': test_plan.id},
+                query_params={filter_parameter: possible_query_params[filter_parameter]['invalid']},
+            ).json()
+            status_statistic = next(
+                (statistic for statistic in response_body if statistic['id'] == status.id), None,
+            )
+            assert status_statistic is not None
+            assert not status_statistic['value']
+
     @pytest.mark.parametrize('is_query_param', [True, False], ids=['pk in query', 'pk in url'])
     @pytest.mark.parametrize(
         'attribute, attr_values',
@@ -864,6 +950,87 @@ class TestPlanEndpoints:
                 query_params=query_params,
             ).json()[0]
             assert content[str(result_status.id)]['count'] == count
+
+    @allure.title('Test plans statics with filters')
+    @pytest.mark.parametrize(
+        'filter_parameter',
+        ['assignee', 'unassigned', 'suite', 'plan', 'last_status', 'case'],
+    )
+    def test_histogram_filter(
+        self,
+        superuser_client,
+        project,
+        test_plan_factory,
+        test_factory,
+        test_suite_factory,
+        test_case_factory,
+        test_result_factory,
+        result_status_factory,
+        user_factory,
+        filter_parameter,
+    ):
+        expected_count = 1
+        with allure.step('Generate objects for histogram'):
+            test_plan = test_plan_factory(project=project)
+            invalid_test_plan = test_plan_factory()
+            test_suite = test_suite_factory(project=project)
+            invalid_test_suite = test_suite_factory()
+            test_case = test_case_factory(project=project, suite=test_suite)
+            invalid_test_case = test_case_factory()
+            status = result_status_factory(project=project)
+            invalid_status = result_status_factory()
+            assignee = user_factory()
+            invalid_assignee = user_factory()
+            test_result_factory(
+                test=test_factory(plan=test_plan, case=test_case, project=project, assignee=assignee),
+                status=status,
+                project=project,
+            )
+        possible_query_params = {
+            'assignee': {
+                'valid': assignee.id,
+                'invalid': invalid_assignee.id,
+            },
+            'unassigned': {
+                'valid': False,
+                'invalid': True,
+            },
+            'suite': {
+                'valid': test_suite.id,
+                'invalid': invalid_test_suite.id,
+            },
+            'plan': {
+                'valid': test_plan.id,
+                'invalid': invalid_test_plan.id,
+            },
+            'last_status': {
+                'valid': status.id,
+                'invalid': invalid_status.id,
+            },
+            'case': {
+                'valid': test_case.id,
+                'invalid': invalid_test_case.id,
+            },
+        }
+        query_params = {
+            'start_date': timezone.now().date(),
+            'end_date': timezone.now().date(),
+        }
+        with allure.step('Test filters with valid parameters'):
+            response_body = superuser_client.send_request(
+                self.view_name_histogram,
+                reverse_kwargs={'pk': test_plan.id},
+                query_params={filter_parameter: possible_query_params[filter_parameter]['valid'], **query_params},
+            ).json()[0]
+            assert response_body[str(status.id)]['count'] == expected_count
+
+        with allure.step('Test filters with invalid parameters'):
+            response_body = superuser_client.send_request(
+                self.view_name_histogram,
+                reverse_kwargs={'pk': test_plan.id},
+                query_params={filter_parameter: possible_query_params[filter_parameter]['invalid'], **query_params},
+            ).json()[0]
+            assert not response_body[str(status.id)]['count']
 
     @allure.title('Test plan cannot be parent to itself')
     def test_child_parent_logic(self, superuser_client, test_plan_factory):
@@ -1763,6 +1930,63 @@ class TestPlanEndpoints:
         ).json_strip()
         assert expected_data == content
 
+    def test_union_filter_by_unassigned(
+        self,
+        authorized_superuser_client,
+        test_plan_factory,
+        project,
+        test_factory,
+        user_factory,
+    ):
+        root_plan = test_plan_factory(project=project)
+
+        found_plan = test_plan_factory(project=project, parent=root_plan)
+        test_plan_factory(project=project, parent=root_plan)
+        test_factory(project=project, plan=found_plan, assignee=None)
+
+        expected_data = [
+            model_to_dict_via_serializer(
+                found_plan,
+                TestPlanUnionMockSerializer,
+                refresh_instances=True,
+            ),
+        ]
+        for _ in range(3):
+            test_factory(project=project, plan=root_plan, assignee=user_factory())
+
+        content = authorized_superuser_client.send_request(
+            self.view_name_union,
+            query_params={'project': project.pk, 'parent': root_plan.pk, 'unassigned': True},
+        ).json_strip()
+        assert expected_data == content
+
+    def test_plan_statistic_by_user(
+        self,
+        authorized_superuser_client,
+        user,
+        test_plan_factory,
+        project,
+        test_factory,
+        test_result_factory,
+        user_factory,
+    ):
+        root_plan = test_plan_factory(project=project)
+
+        child_plan = test_plan_factory(project=project, parent=root_plan)
+        test_plan_factory(project=project, parent=root_plan)
+        for idx in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
+            test = test_factory(project=project, plan=child_plan, assignee=user)
+            test_factory(project=project, plan=child_plan, assignee=None)
+            if idx % 2:
+                test_result_factory(project=project, test=test)
+
+        content = authorized_superuser_client.send_request(
+            self.view_name_assignee_progress,
+            query_params={'project': project.pk, 'parent': 'null', 'assignee': user.pk},
+        ).json()
+        assert content['results'][0]['total_tests'] == constants.NUMBER_OF_OBJECTS_TO_CREATE
+        assert content['results'][0]['tests_progress_total'] == constants.NUMBER_OF_OBJECTS_TO_CREATE // 2
+
     @allure.title('Test plans statistic for whole project')
     def test_whole_project_statistics(
         self,
@@ -1944,6 +2168,26 @@ class TestPlanEndpoints:
                     f'{key} = {value}, get value = {value_from_response}'
                 )
 
+    def test_statistic_when_project_is_empty(self, superuser_client, project):
+        statistic = superuser_client.send_request(
+            self.view_name_project_statistics,
+            query_params={'project': project.id},
+        ).json()
+        for counter in statistic:
+            assert counter['value'] == 0
+
+    def test_histogram_when_project_is_empty(self, superuser_client, project):
+        end_date = timezone.now()
+        start_date = end_date - timezone.timedelta(days=1)
+        superuser_client.send_request(
+            self.view_name_project_histogram,
+            query_params={
+                'project': project.id,
+                'start_date': start_date.date(),
+                'end_date': end_date.date(),
+            },
+        ).json()
+
     @pytest.mark.parametrize('search_param', ('search', 'treesearch'), ids=['search param', 'treesearch param'])
     def test_tree_search_and_search(
         self,
@@ -1968,6 +2212,104 @@ class TestPlanEndpoints:
         ).json_strip(as_json=False)
         assert len(actual_test_plans) == 1, 'Found extra plan'
         assert actual_test_plans[0]['id'] == search_id, 'Found incorrect plan'
+
+    def test_copy_test_plans_with_parameters(
+        self,
+        superuser_client,
+        test_plan_factory,
+        test_plan_with_parameters_factory,
+        parameter_factory,
+        project,
+    ):
+        with allure.step('Create root test plan'):
+            root_plan = test_plan_factory(project=project)
+        with allure.step('Create parameters that will be presented in every test plan'):
+            common_group = [parameter_factory(project=project) for _ in range(3)]
+        with allure.step('Create child test plans'):
+            test_plan_with_parameters_factory(parameters=common_group, project=project, parent=root_plan)
+            test_plan_with_parameters_factory(parameters=common_group, project=project, parent=root_plan)
+
+        with allure.step('Copy test plans'):
+            copied_plans_from_resp = superuser_client.send_request(
+                self.view_name_copy,
+                request_type=RequestType.POST,
+                data={
+                    'plans': [{'plan': root_plan.pk}],
+                    'keep_assignee': True,
+                },
+            ).json()
+        copied_plans_ids = [plan['id'] for plan in copied_plans_from_resp]
+        copied_child_plans = TestPlan.objects.filter(Q(pk__in=copied_plans_ids)).filter(parent__isnull=False)
+        with allure.step('Validate copied parameters'):
+            for copied_plan in copied_child_plans:
+                parameters = copied_plan.parameters.all()
+                assert parameters.exists(), 'Parameters was not copied'
+                assert parameters.filter(id__in=[group.id for group in common_group]).count() == len(common_group)
+
+    def test_after_updating_results_deleted(
+        self,
+        superuser_client,
+        project,
+        test_plan_factory,
+        test_factory,
+        test_case_factory,
+        test_result_factory,
+    ):
+        test_plan = test_plan_factory(project=project)
+        test_list = []
+        result_list = []
+        for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
+            test = test_factory(project=project, plan=test_plan)
+            test_list.append(test)
+            result_list.append(test_result_factory(project=project, test=test))
+        update_dict = {
+            'test_cases': [test_case_factory(project=project).id],
+        }
+        superuser_client.send_request(
+            self.view_name_detail,
+            reverse_kwargs={'pk': test_plan.id},
+            request_type=RequestType.PATCH,
+            data=update_dict,
+        )
+
+        for test_object in [*test_list, *result_list]:
+            test_object.refresh_from_db()
+            assert test_object.is_deleted
+
+    def test_plan_child_statistic(
+        self,
+        superuser_client,
+        project,
+        test_plan_factory,
+        test_factory,
+        test_case_factory,
+        test_result_factory,
+        result_status_factory,
+    ):
+        root_plan = test_plan_factory(project=project)
+        child_plan = test_plan_factory(project=project, parent=root_plan)
+        grandchild_plan = test_plan_factory(project=project, parent=child_plan)
+        status = result_status_factory(project=project)
+        plans = [root_plan, child_plan, grandchild_plan]
+        cases_count = 3
+        for plan in plans:
+            for _ in range(cases_count):
+                test_case = test_case_factory(project=project)
+                test_result_factory(
+                    test=test_factory(plan=plan, case=test_case, project=project),
+                    status=status,
+                    project=project,
+                )
+            assert Test.objects.filter(plan=plan).count() == cases_count
+        response_body = superuser_client.send_request(
+            self.view_name_project_statistics,
+            query_params={'project': project.id, 'plan_ids': f'{root_plan.id},{grandchild_plan.id}'},
+        ).json()
+        for idx, plan in enumerate(plans):
+            if plan.id == child_plan.id:
+                continue
+            assert str(plan.id) in response_body
+            assert response_body[str(plan.id)][0]['value'] == cases_count * (len(plans) - idx)
 
     @classmethod
     @allure.step('Validate copied objects')

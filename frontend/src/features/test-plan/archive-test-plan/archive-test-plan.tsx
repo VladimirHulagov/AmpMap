@@ -1,12 +1,10 @@
-import { Button } from "antd"
 import { ReactNode, memo, useState } from "react"
 import { useTranslation } from "react-i18next"
 
-import { icons } from "shared/assets/inner-icons"
+import ArchiveIcon from "shared/assets/yi-icons/archive.svg?react"
+import { Button } from "shared/ui"
 
 import { ArchiveTestPlanModal } from "./archive-test-plan-modal"
-
-const { ArchiveIcon } = icons
 
 interface Props {
   as?: ReactNode
@@ -33,6 +31,7 @@ export const ArchiveTestPlan = memo(({ as, testPlan, onSubmit }: Props) => {
           id="archive-test-plan"
           icon={<ArchiveIcon width={16} height={16} />}
           onClick={handleShow}
+          color="secondary-linear"
         >
           {t("Archive")}
         </Button>

@@ -34,7 +34,7 @@ from copy import deepcopy
 from typing import Any, Callable, Generator, Iterable, TypeAlias
 
 from django.db import transaction
-from django.db.models import Model, QuerySet
+from django.db.models import Model, Q, QuerySet
 from mptt.querysets import TreeQuerySet
 from simple_history.utils import bulk_create_with_history
 
@@ -57,6 +57,7 @@ _NEW_NAME = 'new_name'
 _TEST_CASE_ID = 'test_case_id'
 _SCENARIO = 'scenario'
 _EXPECTED = 'expected'
+_DESCRIPTION = 'description'
 
 
 class CopyService:
@@ -90,13 +91,14 @@ class CopyService:
             mapped_fields['assignee_id'][test.pk] = test.assignee_id if payload.get('keep_assignee') else None
             mapped_fields['last_status'][test.pk] = None
 
+        cls._copy_parameters(plans_mapping)
         cls._copy_objects(tests_to_copy, Test, mapped_fields)
         cls._copy_attachments(
             TestPlan,
             list(plans_mapping.keys()),
             plans_mapping,
             None,
-            ['description'],
+            [_DESCRIPTION],
             TestPlanSelector.plans_by_ids,
         )
         return TestPlanSelector.plans_by_ids(plans_mapping.values())
@@ -121,7 +123,7 @@ class CopyService:
         )
 
         suite_mappings, copied_bulk_suites = cls._copy_suites_bulk(
-            root_suites.get_descendants(include_self=False),
+            root_suites.get_descendants(include_self=False).filter(~Q(id__in=copied_root_suites)),
             **project_data,
         )
         suite_mappings.update(root_suite_mappings)
@@ -149,11 +151,19 @@ class CopyService:
         copied_cases = TestCaseSelector.cases_by_ids(case_mappings.values(), _PK)
         steps_mapping = cls._steps_copy(copied_cases, case_mappings, steps_to_copy, project)
         cls._copy_attachments(
+            TestSuite,
+            list(suite_mappings),
+            suite_mappings,
+            project_data.get(_PROJECT_ID),
+            [_DESCRIPTION],
+            TestSuiteSelector.suites_by_ids,
+        )
+        cls._copy_attachments(
             TestCase,
             cases_to_copy.values_list(_ID, flat=True),
             case_mappings,
             project_data.get(_PROJECT_ID),
-            ['setup', _SCENARIO, _EXPECTED, 'teardown', 'description'],
+            ['setup', _SCENARIO, _EXPECTED, 'teardown', _DESCRIPTION],
             TestCaseSelector.cases_by_ids,
         )
         cls._copy_attachments(
@@ -216,7 +226,7 @@ class CopyService:
             case_ids,
             case_mappings,
             None,
-            ['setup', _SCENARIO, _EXPECTED, 'teardown', 'description'],
+            ['setup', _SCENARIO, _EXPECTED, 'teardown', _DESCRIPTION],
             TestCaseSelector.cases_by_ids,
         )
         cls._copy_attachments(
@@ -304,12 +314,9 @@ class CopyService:
         label_mappings = {}
         for label in labels:
             filter_conditions = {}
-            default = {'name': label.name, 'user_id': label.user_id}
-            if project_id:
-                default[_PROJECT_ID] = project_id
+            default = {'name': label.name, 'user_id': label.user_id, 'type': label.type}
             new_label, _ = Label.objects.get_or_create(
                 name__iexact=label.name,
-                type=label.type,
                 project_id=project_id or label.project_id,
                 defaults=default,
                 **filter_conditions,
@@ -446,3 +453,14 @@ class CopyService:
             TestCaseStep,
             custom_fields=mapped_fields,
         )
+
+    @classmethod
+    def _copy_parameters(cls, plans_mapping: dict[str, Any]):
+        through_parameters = TestPlan.parameters.through.objects.filter(testplan_id__in=list(plans_mapping.keys()))
+        copied_objects = []
+        for through_parameter in through_parameters:
+            new_object = deepcopy(through_parameter)
+            new_object.pk = None
+            new_object.testplan_id = plans_mapping[through_parameter.testplan_id]
+            copied_objects.append(new_object)
+        TestPlan.parameters.through.objects.bulk_create(copied_objects)

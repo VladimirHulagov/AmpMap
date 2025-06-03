@@ -1,0 +1,57 @@
+.resultBody {
+  padding: 8px 8px 8px 16px;
+  border-left: 1px solid #ddd;
+  margin-left: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.divider {
+  flex-grow: 1;
+  height: 1px;
+  background-color: var(--y-grey-25);
+  margin: 0 20px;
+}
+
+.link {
+  color: var(--y-grey-30);
+  text-decoration: underline;
+  margin-right: 16px;
+}
+
+.activeHashResult {
+  background-color: var(--y-color-background);
+  border-color: #c0c0c0;
+}
+
+.arrowIcon {
+  color: var(--y-color-secondary-inline);
+  transition: all 0.2s ease-in;
+  min-width: 16px;
+  height: 24px;
+  margin-top: 10px;
+  margin-right: 8px;
+  cursor: pointer;
+  user-select: none;
+  transform: rotate(-90deg);
+}
+
+.arrowIconOpen {
+  transform: rotate(0deg);
+}
+
+.collapsePanel {
+  padding: 8px 10px 8px 0;
+}
+
+.userName {
+  margin: 0;
+  font-weight: 500;
+  margin-left: 4px;
+}
+
+.stepsLabel {
+  font-weight: 600;
+  margin-right: 8px;
+}

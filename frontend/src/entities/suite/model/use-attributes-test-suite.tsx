@@ -1,12 +1,12 @@
 import { useGetCustomAttributesQuery } from "entities/custom-attribute/api"
 import { convertAttribute } from "entities/custom-attribute/lib"
 import { useAttributes } from "entities/custom-attribute/model"
-import { useContext, useMemo } from "react"
+import { useMemo } from "react"
 import { UseFormSetValue } from "react-hook-form"
 
 import { ChangeTestSuiteForm } from "features/suite/change-suite/use-change-suite"
 
-import { ProjectContext } from "pages/project"
+import { useProjectContext } from "pages/project"
 
 interface UseAttributesProps {
   mode: "create" | "edit"
@@ -14,7 +14,7 @@ interface UseAttributesProps {
 }
 
 export const useAttributesTestSuite = ({ mode, setValue }: UseAttributesProps) => {
-  const { project } = useContext(ProjectContext)!
+  const project = useProjectContext()
 
   const { data, isLoading } = useGetCustomAttributesQuery({ project: String(project.id) })
 

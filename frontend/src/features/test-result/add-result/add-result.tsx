@@ -1,37 +1,25 @@
 import { PlusOutlined } from "@ant-design/icons"
-import { Button } from "antd"
-import { useState } from "react"
 import { useTranslation } from "react-i18next"
 
-import { CreateResultModal } from "./create-result-modal"
+import { Button } from "shared/ui"
 
 interface Props {
   isDisabled: boolean
-  testCase: TestCase
-  onSubmit?: (result: Result) => void
+  onClick?: () => void
 }
 
-export const AddResult = ({ isDisabled, testCase, onSubmit }: Props) => {
+export const AddResult = ({ isDisabled, onClick }: Props) => {
   const { t } = useTranslation()
-  const [isShow, setIsShow] = useState(false)
 
   return (
-    <>
-      <Button
-        id="add-result-btn"
-        type="primary"
-        onClick={() => setIsShow(true)}
-        icon={<PlusOutlined />}
-        disabled={isDisabled}
-      >
-        {t("Add Result")}
-      </Button>
-      <CreateResultModal
-        isShow={isShow}
-        setIsShow={setIsShow}
-        testCase={testCase}
-        onSubmit={onSubmit}
-      />
-    </>
+    <Button
+      id="add-result-btn"
+      onClick={onClick}
+      color="accent"
+      icon={<PlusOutlined />}
+      disabled={isDisabled}
+    >
+      {t("Add Result")}
+    </Button>
   )
 }

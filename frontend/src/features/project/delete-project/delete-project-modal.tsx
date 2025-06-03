@@ -1,10 +1,10 @@
-import { notification } from "antd"
 import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 
 import { useDeleteProjectMutation, useGetProjectDeletePreviewQuery } from "entities/project/api"
 
 import { initInternalError } from "shared/libs"
+import { antdNotification } from "shared/libs/antd-modals"
 import { AlertSuccessChange } from "shared/ui"
 
 import { ModalConfirmDeleteArchive } from "widgets/[ui]/modal-confirm-delete-archive"
@@ -31,18 +31,21 @@ export const DeleteProjectModal = ({ isShow, setIsShow, project }: Props) => {
   const handleDelete = async () => {
     try {
       await deleteProject(Number(project.id)).unwrap()
-      notification.success({
-        message: t("Success"),
-        closable: true,
+      antdNotification.success("delete-project", {
         description: (
-          <AlertSuccessChange id={String(project.id)} action="deleted" title="Project" />
+          <AlertSuccessChange
+            id={String(project.id)}
+            action="deleted"
+            title="Project"
+            data-testid="delete-project-success-notification-description"
+          />
         ),
       })
     } catch (err: unknown) {
       initInternalError(err)
     }
 
-    navigate("/administration/projects")
+    navigate("/")
     handleClose()
   }
 

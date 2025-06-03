@@ -76,7 +76,7 @@ class TestCaseEndpoints:
     def test_list(self, superuser_client, test_case_factory, project):
         ids = [test_case_factory(project=project).id for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE)]
         expected = model_to_dict_via_serializer(
-            TestCase.objects.filter(pk__in=ids),
+            TestCase.objects.filter(pk__in=ids).order_by('name'),
             TestCaseMockSerializer,
             many=True,
             as_json=True,
@@ -947,8 +947,12 @@ class TestCaseEndpoints:
                 test_case = test_case_factory(project=project)
                 labeled_item_factory(content_object=test_case, label=second_label)
                 with_second_label.add(test_case)
+
+        expected_cases = list(operation(with_first_label, with_second_label))
+        expected_cases.sort(key=lambda case: case.name)
+
         expected_output = model_to_dict_via_serializer(
-            list(operation(with_first_label, with_second_label)),
+            expected_cases,
             TestCaseMockSerializer,
             many=True,
             nested_fields_simple_list=['versions', 'labels'],
@@ -1032,6 +1036,51 @@ class TestCaseEndpoints:
             expected_status=HTTPStatus.OK,
         )
 
+    @allure.title('Test restoring test case with labels')
+    def test_restoring_with_labels(self, labeled_item_factory, label_factory, test_case, project, superuser_client):
+        number_of_labels = 3
+        version_to_restore = test_case.history.latest().history_id
+        labels = [label_factory(project=project) for _ in range(number_of_labels)]
+        with allure.step('Create labeled items'):
+            for label in labels:
+                labeled_item_factory(
+                    content_object=test_case,
+                    label=label,
+                    content_object_history_id=version_to_restore,
+                )
+        with allure.step('Get body for request'):
+            body = superuser_client.send_request(
+                self.view_name_detail,
+                reverse_kwargs={'pk': test_case.pk},
+            ).json()
+        with allure.step('Validate labels exist before deletion'):
+            assert self.labels_count_from_api(superuser_client, test_case.pk) == number_of_labels
+        body['name'] = 'new_name'
+        with allure.step('Update test case name via api'):
+            superuser_client.send_request(
+                self.view_name_detail,
+                reverse_kwargs={'pk': test_case.pk},
+                data=body,
+                request_type=RequestType.PUT,
+            ).json()
+        with allure.step('Validate labels removed'):
+            assert self.labels_count_from_api(superuser_client, test_case.pk) == number_of_labels
+        with allure.step('Restore version'):
+            superuser_client.send_request(
+                self.view_restore_version,
+                reverse_kwargs={'pk': test_case.pk},
+                request_type=RequestType.POST,
+                expected_status=HTTPStatus.OK,
+                data={'version': version_to_restore},
+            )
+        with allure.step('Validate labels are restored on case without version provided'):
+            assert self.labels_count_from_api(superuser_client, test_case.pk) == number_of_labels
+        with allure.step('Validate labels count did not change on oldest version'):
+            assert self.labels_count_from_api(superuser_client, test_case.pk, version_to_restore) == number_of_labels
+        with allure.step('Validate labels count did not change on instance'):
+            test_case.refresh_from_db()
+            assert test_case.labeled_items.count() == number_of_labels
+
 
 @pytest.mark.django_db(reset_sequences=True)
 @allure.parent_suite('Test cases with steps')
@@ -1070,8 +1119,10 @@ class TestCaseWithStepsEndpoints:
             nested_fields=['steps'],
             nested_fields_simple_list=['versions'],
         )
-
-        response = superuser_client.send_request(self.view_name_list, query_params={'project': project.id})
+        response = superuser_client.send_request(
+            self.view_name_list,
+            query_params={'project': project.id, 'ordering': 'name'},
+        )
         with allure.step('Validate response body'):
             assert response.json()['results'] == sorted(expected_instances, key=lambda instance: instance['name'])
 

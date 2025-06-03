@@ -1,5 +1,6 @@
-import { Select } from "antd"
-import { useTranslation } from "react-i18next"
+import { Row } from "antd"
+
+import { Button } from "shared/ui"
 
 const PERIODS = [
   { label: "minutes", value: "minutes" },
@@ -13,8 +14,6 @@ interface Props {
 }
 
 export const TestPlanPieEstimatesFilters = ({ setPeriod, value }: Props) => {
-  const { t } = useTranslation()
-
   const handleChange = (newValue: string) => {
     setPeriod(newValue as EstimatePeriod)
   }
@@ -28,15 +27,19 @@ export const TestPlanPieEstimatesFilters = ({ setPeriod, value }: Props) => {
       }}
       data-testid="test-plan-pie-estimates-filters"
     >
-      <Select
-        placeholder={t("Please select")}
-        value={value}
-        style={{ width: "100%", minWidth: 120, height: 32 }}
-        options={PERIODS}
-        size="middle"
-        defaultActiveFirstOption
-        onChange={handleChange}
-      />
+      <Row align="middle" justify="end">
+        {PERIODS.map((period) => (
+          <Button
+            key={period.value}
+            data-testid={`test-plan-pie-estimates-filter-${period.value}`}
+            color={value === period.value ? "secondary-linear" : "ghost"}
+            onClick={() => handleChange(period.value)}
+            type="button"
+          >
+            {period.label}
+          </Button>
+        ))}
+      </Row>
     </div>
   )
 }

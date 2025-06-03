@@ -43,10 +43,12 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from simple_history.utils import get_history_model_for_model
 
+from testy.core.permissions import BASE_PERMISSIONS
 from testy.core.services.copy import CopyService
 from testy.filters import TestyFilterBackend
 from testy.paginations import StandardSetPagination
-from testy.root.mixins import TestyArchiveMixin, TestyModelViewSet
+from testy.permissions import IsAdminOrForbidArchiveUpdate
+from testy.root.mixins import PayloadFiltersMixin, TestyArchiveMixin, TestyModelViewSet
 from testy.swagger.serializers import TestWithBreadcrumbsSerializer
 from testy.swagger.v2.cases import (
     cases_create_schema,
@@ -56,6 +58,7 @@ from testy.swagger.v2.cases import (
 )
 from testy.swagger.v2.suites import suite_copy_schema, suite_list_schema
 from testy.tests_description.api.v2.serializers import (
+    BulkUpdateTestCasesSerializer,
     TestCaseCopySerializer,
     TestCaseHistorySerializer,
     TestCaseInputSerializer,
@@ -83,11 +86,19 @@ from testy.tests_description.filters import (
     TestCaseFilter,
     TestCaseFilterSearch,
     TestCaseHistoryFilter,
+    TestCaseWithoutProjectFilter,
     TestSuiteFilter,
     UnionCaseFilter,
 )
 from testy.tests_description.models import TestCase, TestSuite
-from testy.tests_description.permissions import TestCaseCopyPermission, TestSuiteCopyPermission
+from testy.tests_description.permissions import (
+    TestCaseBulkUpdatePermission,
+    TestCaseCopyPermission,
+    TestCaseDetailChangePermission,
+    TestCaseDetailReadPermission,
+    TestCaseSearchPermission,
+    TestSuiteCopyPermission,
+)
 from testy.tests_description.selectors.cases import TestCaseSelector
 from testy.tests_description.selectors.suites import TestSuiteSelector
 from testy.tests_description.services.cases import TestCaseService
@@ -112,10 +123,19 @@ _ID = 'id'
 logger = logging.getLogger(__name__)
 
 
-class TestCaseViewSet(TestyModelViewSet, TestyArchiveMixin):
+class TestCaseViewSet(TestyModelViewSet, TestyArchiveMixin, PayloadFiltersMixin):
     queryset = TestCaseSelector().case_list()
     serializer_class = TestCaseListSerializer
-    permission_classes = [IsAuthenticated, TestCaseCopyPermission]
+    permission_classes = [
+        IsAuthenticated,
+        TestCaseSearchPermission,
+        TestCaseDetailChangePermission,
+        TestCaseDetailReadPermission,
+        TestCaseCopyPermission,
+        IsAdminOrForbidArchiveUpdate,
+        TestCaseBulkUpdatePermission,
+        *BASE_PERMISSIONS,
+    ]
     filter_backends = [TestyFilterBackend]
     pagination_class = StandardSetPagination
     http_method_names = [_GET, _POST, 'put', 'delete', 'head', 'options', 'trace']
@@ -133,6 +153,8 @@ class TestCaseViewSet(TestyModelViewSet, TestyArchiveMixin):
                 return TestCaseHistoryFilter
             case 'cases_search':
                 return TestCaseFilterSearch
+            case 'bulk_update_cases':
+                return TestCaseWithoutProjectFilter
 
     def get_queryset(self):
         match self.action:
@@ -148,7 +170,7 @@ class TestCaseViewSet(TestyModelViewSet, TestyArchiveMixin):
                 return Test.objects.none()
 
         qs = TestCaseSelector().case_list()
-        return TestSuiteSelector.annotate_suite_path(qs, 'suite__path')
+        return TestSuiteSelector.annotate_suite_path(qs, 'suite')
 
     def get_serializer_class(self):
         match self.action:
@@ -160,16 +182,20 @@ class TestCaseViewSet(TestyModelViewSet, TestyArchiveMixin):
                 return TestCaseInputSerializer
             case 'retrieve':
                 return TestCaseRetrieveSerializer
+            case 'bulk_update_cases':
+                return BulkUpdateTestCasesSerializer
         return TestCaseListSerializer
 
     @cases_create_schema
     def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        if serializer.validated_data.get('is_steps', False):
-            test_case = TestCaseService().case_with_steps_create({_USER: request.user, **serializer.validated_data})
+        serializer_instance = self.get_serializer(data=request.data)
+        serializer_instance.is_valid(raise_exception=True)
+        if serializer_instance.validated_data.get('is_steps', False):
+            test_case = TestCaseService().case_with_steps_create(
+                {_USER: request.user, **serializer_instance.validated_data},
+            )
         else:
-            test_case = TestCaseService().case_create({_USER: request.user, **serializer.validated_data})
+            test_case = TestCaseService().case_create({_USER: request.user, **serializer_instance.validated_data})
         serializer_output = TestCaseRetrieveSerializer(test_case, context=self.get_serializer_context())
         headers = self.get_success_headers(serializer_output.data)
         return Response(serializer_output.data, status=status.HTTP_201_CREATED, headers=headers)
@@ -220,23 +246,31 @@ class TestCaseViewSet(TestyModelViewSet, TestyArchiveMixin):
     @swagger_auto_schema(responses={status.HTTP_200_OK: TestWithBreadcrumbsSerializer(many=True)})
     @action(methods=[_GET], url_path='tests', url_name='tests', detail=True, suffix='List')
     def get_tests(self, request, pk):
+        case = TestCaseSelector.case_by_id(pk)
+        self.check_object_permissions(request, case)
         qs = TestSelector().test_list_with_last_status(filter_condition={'case_id': pk})
-        qs = TestSuiteSelector.annotate_suite_path(qs, 'case__suite__path')
+        qs = TestSuiteSelector.annotate_suite_path(qs, 'case__suite')
         page = self.paginate_queryset(self.filter_queryset(qs))
         serializer = TestSerializer(page, many=True, context=self.get_serializer_context())
         response_tests = []
         plan_ids = {test['plan'] for test in serializer.data}
         ids_to_breadcrumbs = TestPlanSelector().testplan_breadcrumbs_by_ids(plan_ids)
         for test in serializer.data:
-            test['breadcrumbs'] = ids_to_breadcrumbs[test.get('plan')]
+            plan_from_test = test.get('plan')
+            if plan_from_test not in ids_to_breadcrumbs:
+                logger.error(f'Plan {plan_from_test} not found, it was deleted probably')
+                continue
+            test['breadcrumbs'] = ids_to_breadcrumbs[plan_from_test]
             response_tests.append(test)
         return self.get_paginated_response(response_tests)
 
     @swagger_auto_schema(responses={status.HTTP_200_OK: TestCaseHistorySerializer(many=True)})
     @action(methods=[_GET], url_path='history', url_name='history', detail=True, suffix='List')
     def get_history(self, request, pk):
+        case = TestCaseSelector.case_by_id(pk)
+        self.check_object_permissions(request, case)
         pagination = StandardSetPagination()
-        queryset = TestCaseSelector.get_history_by_case_id(pk)
+        queryset = TestCaseSelector.get_history_by_case_id(case.pk)
         queryset = self.filter_queryset(queryset)
         page = pagination.paginate_queryset(queryset, request) or queryset
         serializer = TestCaseHistorySerializer(
@@ -266,31 +300,28 @@ class TestCaseViewSet(TestyModelViewSet, TestyArchiveMixin):
         ).annotate(
             title=F(_NAME),
         ).values(_ID, _NAME, 'title', 'parent_id').order_by('name')
-        suite_map = {}
-        tree = {}
-        for suite in suites:
-            suite['children'] = []
-            suite['test_cases'] = []
-            suite_map[suite['id']] = suite
-            if suite['parent_id'] is None:
-                tree[suite['id']] = suite
-        for suite in suites:
-            if parent_id := suite['parent_id']:
-                parent = suite_map.get(parent_id)
-                parent['children'].append(suite)
-        for case in cases.values(_ID, _NAME, 'suite_id', 'labels', 'is_archive').order_by('name'):
-            suite_id = case['suite_id']
-            if suite_id not in suite_map:
-                logger.error(f'Suite {suite_id} from case {case[_ID]} was not found, probably suite was deleted')
-                continue
-            suite_map[suite_id]['test_cases'].append(case)
+        cases = cases.values(_ID, _NAME, 'suite_id', 'labels', 'is_archive').order_by('name')
+        tree = TestSuiteSelector.build_cases_search_tree(suites, cases)
         data = orjson.dumps(list(tree.values()))
         return HttpResponse(content=data, content_type='application/json')
+
+    @action(methods=['put'], url_path='bulk-update', url_name='bulk-update', detail=False)
+    def bulk_update_cases(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        suite = serializer.validated_data.pop('current_suite', None)
+        project = serializer.validated_data.get('project')
+        queryset = TestCaseSelector.list_cases_by_parent_suite_and_project(project, suite)
+        filter_conditions = serializer.validated_data.pop('filter_conditions', {})
+        if filter_conditions:
+            queryset = self._filter_queryset_from_request_payload(queryset, filter_conditions)
+        test_cases = TestCaseService.bulk_update_cases(queryset, serializer.validated_data, request.user)
+        return Response(TestCaseListSerializer(test_cases, many=True, context=self.get_serializer_context()).data)
 
 
 @suite_list_schema
 class TestSuiteViewSet(TestyModelViewSet):
-    permission_classes = [IsAuthenticated, TestSuiteCopyPermission]
+    permission_classes = [IsAuthenticated, TestSuiteCopyPermission, *BASE_PERMISSIONS]
     queryset = TestSuite.objects.none()
     serializer_class = TestSuiteSerializer
     filter_backends = [DjangoFilterBackend]
@@ -384,7 +415,7 @@ class TestSuiteViewSet(TestyModelViewSet):
         if get_boolean(request, 'show_descendants'):
             suite_ids = suite.get_descendants(include_self=True).values_list('id', flat=True)
         cases = TestCaseSelector.case_list_by_suite_ids(suite_ids)
-        cases = TestSuiteSelector.annotate_suite_path(cases, 'suite__path')
+        cases = TestSuiteSelector.annotate_suite_path(cases, 'suite')
         cases = CasesBySuiteFilter(request.query_params, request=request, queryset=cases).qs
         page = self.paginate_queryset(cases)
         serializer = self.get_serializer(page, many=True)
@@ -431,7 +462,7 @@ class TestSuiteViewSet(TestyModelViewSet):
             ).get_ancestors(include_self=True)
             suites = SuiteUnionFilterNoSearch(request.query_params, request=request, queryset=suites).qs
 
-        if has_common_filters:
+        if has_common_filters and cases_filter.is_filtered({'project'}):
             suites = suites | self.filter_queryset(self.get_queryset())
 
         suites_union = TestSuiteSelector.suites_cases_union(

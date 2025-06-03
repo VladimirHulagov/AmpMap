@@ -41,6 +41,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from simple_history.utils import get_history_model_for_model
 
+from testy.core.permissions import BASE_PERMISSIONS
 from testy.core.services.copy import CopyService
 from testy.paginations import StandardSetPagination
 from testy.root.mixins import TestyArchiveMixin, TestyModelViewSet
@@ -77,7 +78,13 @@ from testy.tests_description.filters import (
     TestSuiteSearchFilter,
 )
 from testy.tests_description.models import TestCase, TestSuite
-from testy.tests_description.permissions import TestCaseCopyPermission, TestSuiteCopyPermission
+from testy.tests_description.permissions import (
+    TestCaseCopyPermission,
+    TestCaseDetailChangePermission,
+    TestCaseDetailReadPermission,
+    TestCaseSearchPermission,
+    TestSuiteCopyPermission,
+)
 from testy.tests_description.selectors.cases import TestCaseSelector
 from testy.tests_description.selectors.suites import TestSuiteSelector
 from testy.tests_description.services.cases import TestCaseService
@@ -103,7 +110,14 @@ _ID = 'id'
 class TestCaseViewSet(TestyModelViewSet, TestyArchiveMixin):
     queryset = TestCaseSelector().case_list()
     serializer_class = TestCaseListSerializer
-    permission_classes = [IsAuthenticated, TestCaseCopyPermission]
+    permission_classes = [
+        IsAuthenticated,
+        TestCaseSearchPermission,
+        TestCaseDetailChangePermission,
+        TestCaseDetailReadPermission,
+        TestCaseCopyPermission,
+        *BASE_PERMISSIONS,
+    ]
     filter_backends = [DjangoFilterBackend, SearchFilter]
     pagination_class = StandardSetPagination
     http_method_names = [_GET, _POST, 'put', 'delete', 'head', 'options', 'trace']
@@ -200,8 +214,9 @@ class TestCaseViewSet(TestyModelViewSet, TestyArchiveMixin):
     @cases_tests_schema
     @action(methods=[_GET], url_path='tests', url_name='tests', detail=True)
     def get_tests(self, request, pk):
-        qs = TestSelector.test_list_raw()
-        queryset = TestSelector().test_list_with_last_status(qs, {'case_id': pk})
+        case = TestCaseSelector.case_by_id(pk)
+        self.check_object_permissions(request, case)
+        queryset = TestSelector().test_list_with_last_status(filter_condition={'case_id': case.pk})
         queryset = self.filter_queryset(queryset)
         page = self.paginate_queryset(queryset)
         serializer = TestSerializer(page, many=True, context=self.get_serializer_context())
@@ -216,8 +231,10 @@ class TestCaseViewSet(TestyModelViewSet, TestyArchiveMixin):
     @cases_history_schema
     @action(methods=[_GET], url_path='history', url_name='history', detail=True)
     def get_history(self, request, pk):
+        case = TestCaseSelector.case_by_id(pk)
+        self.check_object_permissions(request, case)
         pagination = StandardSetPagination()
-        queryset = TestCaseSelector.get_history_by_case_id(pk)
+        queryset = TestCaseSelector.get_history_by_case_id(case.pk)
         queryset = self.filter_queryset(queryset)
         page = pagination.paginate_queryset(queryset, request) or queryset
         serializer = TestCaseHistorySerializer(
@@ -269,11 +286,11 @@ class TestCaseViewSet(TestyModelViewSet, TestyArchiveMixin):
 @suite_list_schema
 @suite_retrieve_schema
 class TestSuiteViewSet(TestyModelViewSet):
-    permission_classes = [IsAuthenticated, TestSuiteCopyPermission]
     queryset = TestSuite.objects.none()
     serializer_class = TestSuiteSerializer
     filter_backends = [DjangoFilterBackend, TestSuiteSearchFilter]
     pagination_class = StandardSetPagination
+    permission_classes = [IsAuthenticated, TestSuiteCopyPermission, *BASE_PERMISSIONS]
     search_fields = [_NAME]
     schema_tags = ['Test suites']
 

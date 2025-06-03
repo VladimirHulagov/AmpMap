@@ -1,12 +1,13 @@
 import { ClockCircleOutlined, UndoOutlined } from "@ant-design/icons"
-import { Button, DatePicker, Flex, Input, Segmented } from "antd"
+import { DatePicker, Flex, Input } from "antd"
 import { SegmentedValue } from "antd/lib/segmented"
 import dayjs, { Dayjs } from "dayjs"
-import { MeContext } from "processes"
+import { useMeContext } from "processes"
 import { NoUndefinedRangeValueType } from "rc-picker/lib/PickerInput/RangePicker"
-import { ChangeEvent, useContext, useState } from "react"
+import { ChangeEvent, useState } from "react"
 import { useTranslation } from "react-i18next"
 
+import { Button } from "shared/ui"
 import { BracesIcon } from "shared/ui/icons"
 
 import styles from "./styles.module.css"
@@ -32,7 +33,7 @@ export const TestPlanHistogramFilters = ({
   setBarType,
 }: Props) => {
   const { t } = useTranslation()
-  const { userConfig, updateConfig } = useContext(MeContext)
+  const { userConfig, updateConfig } = useMeContext()
   const [attributeValue, setAttributeValue] = useState(
     userConfig?.ui?.graph_base_bar_attribute_input ?? ""
   )
@@ -158,7 +159,11 @@ export const TestPlanHistogramFilters = ({
           data-testid="test-plan-histogram-end-date-picker"
         />
         {hasUserDataConfig && (
-          <Button onClick={handleResetUserDateConfig} id="reset-date-user-config">
+          <Button
+            onClick={handleResetUserDateConfig}
+            id="reset-date-user-config"
+            color="secondary-linear"
+          >
             <UndoOutlined />
           </Button>
         )}
@@ -168,7 +173,6 @@ export const TestPlanHistogramFilters = ({
           style={{ display: "flex", flexDirection: "column", position: "relative" }}
           data-testid="test-plan-histogram-filters-by-attr"
         >
-          <span className={styles.byAttrLabel}>{t("Filter by test result attribute")}</span>
           <Input.Search
             style={{ width: 240 }}
             allowClear
@@ -177,26 +181,26 @@ export const TestPlanHistogramFilters = ({
             loading={false}
             onSearch={handleSearchByAttribute}
             placeholder={t("Search by attribute")}
+            data-testid="test-plan-histogram-filters-by-attr-input"
           />
         </div>
       )}
-      <Segmented
-        id="test-plan-statistic-histogram-tabs"
-        options={[
-          {
-            value: "by_time",
-            icon: <ClockCircleOutlined data-testid="histogram-by-time-icon" />,
-          },
-          {
-            value: "by_attr",
-            icon: <BracesIcon data-testid="histogram-by-attr-icon" />,
-          },
-        ]}
-        onChange={handleBarTypeChange}
-        size="middle"
-        defaultValue={barType}
-        value={barType}
-      />
+      <Flex gap={8} id="test-plan-statistic-histogram-tabs">
+        <Button
+          onClick={() => handleBarTypeChange("by_time")}
+          icon={<ClockCircleOutlined data-testid="histogram-by-time-icon" />}
+          data-testid="btn-pie-chart"
+          color={barType !== "by_time" ? "ghost" : "secondary-linear"}
+          shape="square"
+        />
+        <Button
+          onClick={() => handleBarTypeChange("by_attr")}
+          icon={<BracesIcon data-testid="histogram-by-attr-icon" />}
+          data-testid="btn-bar-chart"
+          color={barType !== "by_attr" ? "ghost" : "secondary-linear"}
+          shape="square"
+        />
+      </Flex>
     </div>
   )
 }

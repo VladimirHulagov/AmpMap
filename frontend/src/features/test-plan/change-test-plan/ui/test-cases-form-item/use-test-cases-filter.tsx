@@ -1,12 +1,10 @@
-import { FilterFilled, FilterOutlined } from "@ant-design/icons"
-import { Switch, Typography } from "antd"
-import Search from "antd/lib/input/Search"
-import cn from "classnames"
-import { useState } from "react"
+import { Input, Switch, Typography } from "antd"
 import { useTranslation } from "react-i18next"
 
 import { UseFormLabelsProps } from "entities/label/model"
 import { LabelWrapper } from "entities/label/ui"
+
+import SearchIcon from "shared/assets/yi-icons/search.svg?react"
 
 import styles from "./styles.module.css"
 
@@ -32,61 +30,40 @@ export const useTestCasesFilter = ({
   handleToggleArchived,
 }: TestCasesFilterProps) => {
   const { t } = useTranslation()
-  const [isShow, setIsShow] = useState(false)
 
-  const handleClick = () => {
-    setIsShow(!isShow)
-  }
-
-  const FilterBtn = (
-    <div id="test-cases-filter-btn" onClick={handleClick} className={styles.filterBtn}>
-      {isShow ? <FilterFilled /> : <FilterOutlined />}
-    </div>
-  )
-
-  const Form = isShow && (
+  return (
     <div className={styles.form}>
       <div className={styles.row}>
-        <Typography.Text>{t("Name")}</Typography.Text>
-        <Search
+        <Input
           placeholder={t("Search")}
           onChange={(e) => handleSearch(e.target.value, selectedLables, lableCondition)}
           value={searchText}
-          className={styles.search}
           data-testid="test-cases-filter-search"
+          suffix={<SearchIcon width={16} height={16} style={{ transform: "scaleX(-1)" }} />}
         />
-      </div>
-      <div className={cn(styles.row, styles.rowWithThree)}>
-        <Typography.Text>{t("Labels")}</Typography.Text>
-        <LabelWrapper labelProps={labelProps} noAdding />
         <Switch
-          checkedChildren={t("or")}
-          unCheckedChildren={t("and")}
-          defaultChecked
-          className={styles.switcher}
-          checked={lableCondition === "or"}
-          onChange={handleConditionClick}
-          disabled={selectedLables.length < 2}
-          data-testid="test-cases-filter-switcher"
-        />
-      </div>
-      <div className={styles.archivedRow}>
-        <Typography.Text>{t("Show Archived")}</Typography.Text>
-        <Switch
-          checkedChildren={t("yes")}
-          unCheckedChildren={t("no")}
           defaultChecked
           className={styles.switcher}
           checked={showArchived}
           onChange={handleToggleArchived}
+          style={{ width: 40, margin: 0 }}
           data-testid="test-cases-filter-switcher-archived"
         />
+        <Typography.Text style={{ width: 94 }}>{t("Show Archived")}</Typography.Text>
       </div>
+      <div className={styles.row}>
+        <LabelWrapper labelProps={labelProps} noAdding />
+        <Switch
+          className={styles.switcher}
+          checked={lableCondition === "and"}
+          onChange={handleConditionClick}
+          style={{ margin: 0 }}
+          disabled={selectedLables.length < 2}
+          data-testid="test-cases-filter-switcher"
+        />
+        <Typography.Text style={{ textTransform: "capitalize" }}>{t("and")}</Typography.Text>
+      </div>
+      <div className={styles.archivedRow}></div>
     </div>
   )
-
-  return {
-    FilterButton: FilterBtn,
-    FilterForm: Form,
-  }
 }

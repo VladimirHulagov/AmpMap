@@ -1,9 +1,0 @@
-.disabledRow {
-  cursor: not-allowed;
-  user-select: none;
-}
-
-.disabledRow * {
-  cursor: not-allowed;
-  user-select: none;
-}

@@ -1,0 +1,10 @@
+{% extends "!layout.html" %}
+{% block extrahead %}
+    <div class="rst-versions" data-toggle="rst-versions">
+        <span class="rst-current-version" data-toggle="rst-current-version">
+            <span class="fa fa-book"> Версия:</span>
+            {{ version }}
+        </span>
+    </div>
+{{ super() }}
+{% endblock %}

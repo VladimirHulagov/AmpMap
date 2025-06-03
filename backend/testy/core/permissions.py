@@ -28,129 +28,172 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from operator import attrgetter
-from typing import Protocol
 
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import get_object_or_404
-from rest_framework.permissions import SAFE_METHODS, BasePermission
-from rest_framework.request import Request
+from rest_framework.permissions import BasePermission
 
 from testy.core.models import Attachment, Project
 from testy.core.selectors.projects import ProjectSelector
 from testy.users.choices import UserAllowedPermissionCodenames
 from testy.users.selectors.roles import RoleSelector
 
-
-class ProjectAssignable(Protocol):
-    project: Project
-
-
-getter_to_method = {
-    'GET': attrgetter('query_params'),
-    'POST': attrgetter('data'),
-}
-
-MISSING_PROJECT_CODE = 'missing_project'
 _PROJECT = 'project'
 
 
-class BaseProjectPermission(BasePermission):
-    safe_non_read_methods = {'HEAD', 'OPTIONS'}
+class BaseListPermission(BasePermission):
+    def has_permission(self, request, view):
+        if request.user.is_superuser:
+            return True
+        if view.action not in {'list', 'recovery_list'}:
+            return True
+        project = get_object_or_404(Project, pk=request.query_params.get(_PROJECT))
+        if RoleSelector.public_access(request.user, project):
+            return True
+        return RoleSelector.project_view_allowed(request.user, project)
 
-    def has_permission(self, request, view):  # noqa: WPS212
-        if any([request.method in self.safe_non_read_methods, request.user.is_superuser, view.detail]):
-            return True
-        project = self._get_project_from_request(request)
-        if not project.is_private and not RoleSelector.restricted_project_access(request.user):
-            return True
-        if view.action == 'create':
-            return RoleSelector.create_action_allowed(
-                user=request.user,
-                project=project,
-                model_name=view.queryset.model._meta.model_name,
-            )
-        if request.method in SAFE_METHODS and not view.detail:
-            return RoleSelector.project_view_allowed(
-                user=request.user,
-                project=project,
-            )
-        return True
 
-    def has_object_permission(self, request, view, instance):  # noqa: WPS212
-        if request.user.is_superuser or request.method in self.safe_non_read_methods:
+class BaseRetrievePermission(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        if request.user.is_superuser:
             return True
-        project = self._get_project_from_request(request, instance)
-        if not project.is_private and not RoleSelector.restricted_project_access(request.user):
+        if view.action != 'retrieve':
             return True
-        if request.method in SAFE_METHODS:
-            return RoleSelector.project_view_allowed(
-                user=request.user,
-                project=project,
-            )
-        if request.method in {'PUT', 'PATCH', 'POST'}:
-            return RoleSelector.action_allowed_for_instance(
-                user=request.user,
-                project=project,
-                permission_code=f'change_{type(instance)._meta.model_name}',  # noqa: WPS237
-            )
-        if request.method == 'DELETE':
+        project = getattr(obj, _PROJECT, None)
+        if project is None:
+            raise ValidationError('Could not identify project related to object')
+        if RoleSelector.public_access(request.user, project):
+            return True
+        return RoleSelector.project_view_allowed(
+            user=request.user,
+            project=project,
+        )
+
+
+class BaseCreatePermission(BasePermission):
+    def has_permission(self, request, view):
+        if request.user.is_superuser:
+            return True
+        if view.action != 'create':
+            return True
+        project = get_object_or_404(Project, pk=request.data.get(_PROJECT))
+        if RoleSelector.public_access(request.user, project):
+            return True
+        return RoleSelector.create_action_allowed(
+            user=request.user,
+            project=project,
+            model_name=view.queryset.model._meta.model_name,
+        )
+
+
+class BaseUpdatePermission(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        if request.user.is_superuser:
+            return True
+        if view.action != 'update':
+            return True
+        new_project = ProjectSelector.project_by_id(request.data.get(_PROJECT))
+        current_project = getattr(obj, _PROJECT, None)
+        project = new_project or current_project
+        if project is None:
+            raise ValidationError('No project found to validate permissions')
+        if RoleSelector.public_access(request.user, project):
+            return True
+        return RoleSelector.action_allowed_for_instance(
+            user=request.user,
+            project=project,
+            permission_code=f'change_{type(obj)._meta.model_name}',  # noqa: WPS237
+        )
+
+
+class BasePartialUpdatePermission(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        if request.user.is_superuser:
+            return True
+        if view.action != 'partial_update':
+            return True
+        new_project = ProjectSelector.project_by_id(request.data.get(_PROJECT))
+        current_project = getattr(obj, _PROJECT, None)
+        project = new_project or current_project
+        if project is None:
+            raise ValidationError('No project found to validate permissions')
+        if RoleSelector.public_access(request.user, project):
+            return True
+        return RoleSelector.action_allowed_for_instance(
+            user=request.user,
+            project=project,
+            permission_code=f'change_{type(obj)._meta.model_name}',  # noqa: WPS237
+        )
+
+
+class BaseDestroyPermission(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        if request.user.is_superuser:
+            return True
+        if view.action != 'destroy':
+            return True
+        project = getattr(obj, _PROJECT, None)
+        if project is None:
+            raise ValidationError('No project found to validate permissions')
+        if RoleSelector.public_access(request.user, project):
+            return True
+        return RoleSelector.action_allowed_for_instance(
+            user=request.user,
+            project=project,
+            permission_code=f'delete_{type(obj)._meta.model_name}',  # noqa: WPS237
+        )
+
+
+class ProjectRetrievePermission(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        if request.user.is_superuser:
+            return True
+        if view.action != 'retrieve':
+            return True
+        if RoleSelector.public_access(request.user, obj):
+            return True
+        return RoleSelector.project_view_allowed(
+            user=request.user,
+            project=obj,
+        )
+
+
+class ProjectUpdatePermission(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        if request.user.is_superuser:
+            return True
+        if view.action not in {'update', 'partial_update'}:
+            return True
+        if obj.is_private or request.data.get('is_private'):
             return RoleSelector.action_allowed_for_instance(
                 request.user,
-                project=project,
-                permission_code=f'delete_{type(instance)._meta.model_name}',  # noqa: WPS237
+                obj,
+                UserAllowedPermissionCodenames.CHANGE_PROJECT,
             )
-        return False
-
-    @classmethod
-    def _get_project_from_request(
-        cls,
-        request: Request,
-        instance: ProjectAssignable | None = None,
-    ) -> Project:
-        if instance is not None:
-            return cls._get_project_from_instance(instance)
-        project_pk = getter_to_method[request.method](request).get(_PROJECT, None)
-        if not project_pk:
-            raise ValidationError('Could not get project id from request', code=MISSING_PROJECT_CODE)
-        project = ProjectSelector.project_by_id(project_pk)
-        if project is None:
-            raise ValidationError('Could not get project to validate permissions', code=MISSING_PROJECT_CODE)
-        return project
-
-    @classmethod
-    def _get_project_from_instance(cls, instance) -> Project:
-        if isinstance(instance, Project):
-            return instance
-        if project := getattr(instance, _PROJECT, None):
-            return project
-        raise ValidationError('Could not get project id from instance', code=MISSING_PROJECT_CODE)
-
-
-class ProjectPermission(BaseProjectPermission):
-    def has_permission(self, request, view):
-        return request.user.is_authenticated
-
-
-class ProjectIsPrivatePermission(BasePermission):
-    def has_object_permission(self, request, view, obj):
-        is_private = request.data.get('is_private')
-        if view.action in {'update', 'partial_update'} and is_private is not None:
-            if obj.is_private != is_private:
-                return request.user.is_superuser or RoleSelector.action_allowed_for_instance(
-                    request.user,
-                    obj,
-                    UserAllowedPermissionCodenames.CHANGE_PROJECT,
-                )
         return True
 
 
-class AttachmentReadPermission(BaseProjectPermission):
+class ProjectDetailReadPermission(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        if request.user.is_superuser:
+            return True
+        valid_actions = {'members', 'testplans_by_project', 'parameters_by_project', 'icon', 'project_progress'}
+        if view.action not in valid_actions:
+            return True
+        if RoleSelector.public_access(request.user, obj):
+            return True
+        return RoleSelector.project_view_allowed(
+            user=request.user,
+            project=obj,
+        )
+
+
+class AttachmentReadPermission(BasePermission):
     def has_permission(self, request, view):  # noqa: WPS212
-        if any([request.method in self.safe_non_read_methods, request.user.is_superuser]):
+        if request.user.is_superuser:
             return True
         attachment = get_object_or_404(Attachment, **view.kwargs)
-        if not attachment.project.is_private and not RoleSelector.restricted_project_access(request.user):
+        if RoleSelector.public_access(request.user, attachment.project):
             return True
         return RoleSelector.project_view_allowed(
             user=request.user,
@@ -158,25 +201,11 @@ class AttachmentReadPermission(BaseProjectPermission):
         )
 
 
-class AttachmentPermission(BaseProjectPermission):
-    def has_permission(self, request, view):  # noqa: WPS212
-        if any([request.method in self.safe_non_read_methods, request.user.is_superuser, view.detail]):
-            return True
-        project = self._get_project_from_request(request)
-        if not project.is_private and not RoleSelector.restricted_project_access(request.user):
-            return True
-        return RoleSelector.project_view_allowed(
-            user=request.user,
-            project=project,
-        )
-
-    def has_object_permission(self, request, view, instance):  # noqa: WPS212
-        if request.user.is_superuser or request.method in self.safe_non_read_methods:
-            return True
-        project = self._get_project_from_request(request, instance)
-        if not project.is_private and not RoleSelector.restricted_project_access(request.user):
-            return True
-        return RoleSelector.project_view_allowed(
-            user=request.user,
-            project=project,
-        )
+BASE_PERMISSIONS = (
+    BaseCreatePermission,
+    BaseListPermission,
+    BaseRetrievePermission,
+    BaseUpdatePermission,
+    BasePartialUpdatePermission,
+    BaseDestroyPermission,
+)

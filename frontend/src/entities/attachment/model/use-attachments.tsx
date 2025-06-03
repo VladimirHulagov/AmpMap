@@ -1,13 +1,14 @@
-import { notification } from "antd"
 import { UploadChangeParam, UploadFile } from "antd/lib/upload"
 import { Mutex } from "async-mutex"
 import type { UploadRequestError, UploadRequestOption } from "rc-upload/lib/interface"
 import { useEffect, useState } from "react"
 import { Control, FieldValues, useFieldArray } from "react-hook-form"
+import { useTranslation } from "react-i18next"
 
 import { useCreateAttachmentMutation } from "entities/attachment/api"
 
 import { initInternalError } from "shared/libs"
+import { antdNotification } from "shared/libs/antd-modals"
 
 const mutex = new Mutex()
 
@@ -19,15 +20,17 @@ interface UploadFileExtend<T> extends UploadFile<T> {
 // prettier-ignore
 export const useAttachments = <T, >(
   control: Control<T & FieldValues, unknown>,
-  projectId: number
+  projectId: number,
+  fieldName = "attachments"
 ) => {
+  const { t } = useTranslation()
   const [attachments, setAttachments] = useState<IAttachmentWithUid[]>([])
   const [createAttachment, { isLoading }] = useCreateAttachmentMutation()
   const {
     fields: attachmentsIds,
     append: appendAttachmentIds,
     remove: removeAttachmentIds,
-  } = useFieldArray({ name: "attachments", control: control as Control<FieldValues> })
+  } = useFieldArray({ name: fieldName, control: control as Control<FieldValues> })
 
   useEffect(() => {
     removeAttachmentIds()
@@ -43,9 +46,8 @@ export const useAttachments = <T, >(
     const fileFormat = file as UploadFileExtend<IAttachmentWithUid[]>
 
     if (!projectId || !onSuccess || !onError) {
-      notification.error({
-        message: "Error!",
-        description: "ProjectId is undefined",
+      antdNotification.error("use-attachments", {
+        description: t("ProjectId is undefined"),
       })
       return
     }
@@ -61,7 +63,7 @@ export const useAttachments = <T, >(
       const response = await createAttachment(fmData).unwrap()
       fileFormat.id = response[0].id
       fileFormat.link = response[0].link
-      onSuccess("Ok")
+      onSuccess(t("Ok"))
     } catch (err) {
       const error = err as UploadRequestError
       initInternalError(err)

@@ -101,7 +101,7 @@ class LabelProcessor:
 
 
 class PieChartProcessor:
-    def __init__(self, parameters: dict[str, Any]):
+    def __init__(self, parameters: dict[str, Any], project_id: int):
         seconds = Period.MINUTE.in_seconds(in_workday=True)
         if estimate_period := parameters.get('estimate_period'):
             estimate_period = next(
@@ -110,21 +110,37 @@ class PieChartProcessor:
             )
             seconds = estimate_period.in_seconds(in_workday=True)
         self.seconds = seconds
+        self.all_statuses = []
+        statuses = ResultStatusSelector.status_list_by_project_id(project_id)
+        for status in statuses:
+            self.all_statuses.append(
+                {
+                    _ID: status.pk,
+                    _LABEL: status.name.upper(),
+                    _COLOR: status.color,
+                    _VALUE: 0,
+                    _ESTIMATES: 0,
+                    _EMPTY_ESTIMATES: 0,
+                },
+            )
+        self.all_statuses.append(
+            {
+                _ID: UNTESTED_STATUS.id,
+                _LABEL: UNTESTED_STATUS.name.upper(),
+                _COLOR: UNTESTED_STATUS.color,
+                _VALUE: 0,
+                _ESTIMATES: 0,
+                _EMPTY_ESTIMATES: 0,
+            },
+        )
 
-    def process_statistic(
+    def get_queryset(
         self,
         parent_test_plans: QuerySet[TestPlan],
-        label_processor: LabelProcessor,
-        is_archive_condition: Q,
         project_id: int,
         is_whole_project: bool,
         root_only: bool = False,
     ):
-        results = []
-        total_estimate = Sum(
-            Cast(F('case__estimate'), FloatField()) / self.seconds,
-            output_field=FloatField(),
-        )
         project = Project.objects.filter(id=project_id).first()
         general_filters = Q(project=project)
         if not is_whole_project:
@@ -133,14 +149,30 @@ class PieChartProcessor:
             if not root_only:
                 custom_filter |= Q(plan__path__descendant=parent_test_plan.path)
             general_filters &= custom_filter
-        tests = (
+        return (
             Test
             .objects
-            .filter(
-                general_filters,
-                is_archive_condition,
-                Q(plan__is_deleted=False),
-            )
+            .select_related('plan', 'case', 'project')
+            .prefetch_related('case__labeled_items')
+            .filter(general_filters, Q(plan__is_deleted=False))
+        )
+
+    def generate_statistic(
+        self,
+        tests: QuerySet[dict[str, Any]],
+        plan_ids: list[str] | None = None,
+    ):
+        default_values_list = [_STATUS, 'status_color', 'status_name', _ESTIMATES, _EMPTY_ESTIMATES]
+
+        if plan_ids:
+            default_values_list.append('plan__path')
+
+        total_estimate = Sum(
+            Cast(F('case__estimate'), FloatField()) / self.seconds,
+            output_field=FloatField(),
+        )
+        tests = (
+            tests
             .annotate(
                 status=Coalesce(F('last_status_id'), Value(UNTESTED_STATUS.id)),
                 status_name=Coalesce(F('last_status__name'), Value(UNTESTED_STATUS.name.upper())),
@@ -152,14 +184,52 @@ class PieChartProcessor:
                 ),
                 empty_estimates=Sum('is_empty_estimate'),
             )
-            .values(
-                _STATUS, 'status_color', 'status_name', _ESTIMATES, _EMPTY_ESTIMATES,
-            )
+            .values(*default_values_list)
             .annotate(count=Count(_ID, distinct=True))
             .order_by('-count')
         )
-        if label_processor.labels or label_processor.not_labels:
-            tests = label_processor.process_labels(tests)
+        if plan_ids:
+            return self._group_statistic_by_plan_id(tests, plan_ids)
+        return self._group_statistic_by_result(tests)
+
+    def _group_statistic_by_plan_id(self, tests: QuerySet[dict[str, Any]], plan_ids: list[str]):  # noqa: WPS231
+        results = {}
+        for test in tests:
+            plan_path = test.pop('plan__path')
+            plan_path_ids = plan_path.split('.')
+            for path_id in plan_path_ids:
+                statuses = results.get(path_id, [])
+                status_object = next(
+                    (status for status in statuses if status[_ID] == test[_STATUS]),
+                    None,
+                )
+                if status_object is None and path_id in plan_ids:
+                    statuses.append(
+                        {
+                            _ID: test[_STATUS],
+                            _LABEL: test['status_name'].upper(),
+                            _COLOR: test['status_color'],
+                            _VALUE: test[_COUNT],
+                            'estimates': round(test[_ESTIMATES], 2),
+                            'empty_estimates': test[_EMPTY_ESTIMATES],
+                        },
+                    )
+                    results[path_id] = statuses
+                elif status_object is not None:
+                    status_object[_VALUE] += test[_COUNT]
+                    status_object[_ESTIMATES] += test[_ESTIMATES]
+                    status_object[_EMPTY_ESTIMATES] += test[_EMPTY_ESTIMATES]
+
+        for plan_id, tests in results.items():
+            presented_statuses = [status[_ID] for status in tests]
+            results[plan_id].extend(self._set_empty_statuses(presented_statuses))
+        for plan_id in plan_ids:
+            if plan_id not in results:
+                results[plan_id] = self.all_statuses
+        return results
+
+    def _group_statistic_by_result(self, tests: QuerySet[dict[str, Any]]):
+        results = []
         presented_statuses = set()
         for test in tests:
             results.append(
@@ -173,30 +243,15 @@ class PieChartProcessor:
                 },
             )
             presented_statuses.add(test[_STATUS])
-        statuses = ResultStatusSelector.status_list(project=project).exclude(pk__in=presented_statuses)
-        for status in statuses:
-            results.append(
-                {
-                    _ID: status.pk,
-                    _LABEL: status.name.upper(),
-                    _COLOR: status.color,
-                    _VALUE: 0,
-                    _ESTIMATES: 0,
-                    _EMPTY_ESTIMATES: 0,
-                },
-            )
-        if None not in presented_statuses:
-            results.append(
-                {
-                    _ID: UNTESTED_STATUS.id,
-                    _LABEL: UNTESTED_STATUS.name.upper(),
-                    _COLOR: UNTESTED_STATUS.color,
-                    _VALUE: 0,
-                    _ESTIMATES: 0,
-                    _EMPTY_ESTIMATES: 0,
-                },
-            )
+        results.extend(self._set_empty_statuses(list(presented_statuses)))
         return results
+
+    def _set_empty_statuses(self, status_ids: list[int]):
+        not_presented_statuses = []
+        for status in self.all_statuses:
+            if status[_ID] not in status_ids:
+                not_presented_statuses.append(status)
+        return not_presented_statuses
 
 
 class HistogramProcessor:
@@ -243,11 +298,9 @@ class HistogramProcessor:
         key_name = f'attributes__{self.attribute}'
         return instance.get(key_name, None)
 
-    def process_statistic(  # noqa: WPS231
+    def get_queryset(  # noqa: WPS231
         self,
         parent_test_plans: QuerySet[TestPlan],
-        label_processor: LabelProcessor,
-        is_archive_condition: Q,
         project_id: int,
         is_whole_project: bool,
         root_only: bool = False,
@@ -262,31 +315,35 @@ class HistogramProcessor:
                 custom_filter |= Q(test__plan__path__descendant=parent_test_plan.path)
             general_filters &= custom_filter
 
-        test_results_formatted = (
+        return (
             TestResult
             .objects
+            .select_related('test', 'test__plan')
             .filter(
                 general_filters,
-                is_archive_condition,
                 Q(test__plan__is_deleted=False),
                 Q(created_at__range=self.period),
                 *query_kwargs.get('filter_condition', []),
             )
+        )
+
+    def generate_statistic(self, test_results: QuerySet[dict[str, Any]], project_id: int):
+        query_kwargs = self._get_query_kwargs()
+        test_results = (
+            test_results
             .annotate(**query_kwargs.get('annotate_condition', {}))
             .values(*query_kwargs.get('values_list', []))
             .annotate(status_count=Count(_ID))
             .order_by(query_kwargs.get('order_condition', _ID))
             .distinct()
         )
-        if label_processor.labels or label_processor.not_labels:
-            test_results_formatted = label_processor.process_labels(test_results_formatted)
 
         group_func = self.group_by_attribute if self.attribute else self.group_by_date
-        grouped_data = groupby(test_results_formatted, group_func)
+        grouped_data = groupby(test_results, group_func)
         result = []
         test_plan_statuses = (
             ResultStatusSelector()
-            .status_list(project=project)
+            .status_list_by_project_id(project_id=project_id)
             .annotate(status=F(_ID), status__name=F('name'), status__color=F(_COLOR))
             .values(_STATUS, _RESULT_STATUS_NAME, _RESULT_STATUS_COLOR)
         )

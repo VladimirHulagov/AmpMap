@@ -3,8 +3,9 @@
   flex-direction: column;
   align-items: center;
   padding-top: 20px;
+  padding-bottom: 10px;
   min-width: 72px;
-  background-color: var(--y-grey-80);
+  background-color: var(--y-color-menu-background);
   height: 100vh;
   position: sticky;
   left: 0;
@@ -35,13 +36,12 @@
 }
 
 .link:hover {
-  background-color: var(--y-grey-70);
-  color: var(--y-grey-10);
+  background-color: var(--y-color-menu-background-active);
+  color: var(--y-color-menu-primary-text);
 }
 
 .icon {
-  width: fit-content;
-  font-size: 32px;
+  width: 40px;
 }
 
 .badge {
@@ -55,13 +55,13 @@
 }
 
 .active {
-  background-color: var(--y-grey-70);
-  color: var(--y-grey-10);
+  background-color: var(--y-color-menu-background-active);
+  color: var(--y-color-menu-primary-text);
 }
 
 .divider {
   margin: 10px 0;
   width: 100%;
   height: 2px;
-  background-color: var(--y-grey-70);
+  background-color: var(--y-color-menu-background-active);
 }

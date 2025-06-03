@@ -28,19 +28,55 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
+from django.utils.decorators import method_decorator
+from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
 
-from testy.core.api.v2.serializers import ContentTypeSerializer, CustomAttributeOutputSerializer
+from testy.core.api.v2.serializers import ContentTypeSerializer, CustomAttributeBaseSerializer
+from testy.swagger.custom_schema_generation import TestyPaginatorInspector
+from testy.swagger.serializers import CustomAttributesTestResultSerializer
 
 custom_attributes_create_schema = swagger_auto_schema(
-    responses={status.HTTP_201_CREATED: CustomAttributeOutputSerializer()},
+    responses={status.HTTP_201_CREATED: CustomAttributeBaseSerializer()},
 )
 
 custom_attributes_update_schema = swagger_auto_schema(
-    responses={status.HTTP_200_OK: CustomAttributeOutputSerializer()},
+    responses={status.HTTP_200_OK: CustomAttributeBaseSerializer()},
 )
 
 custom_attributes_allowed_content_types = swagger_auto_schema(
     responses={status.HTTP_200_OK: ContentTypeSerializer(many=True)},
+)
+
+custom_attributes_for_test_results = method_decorator(
+    name='model-filter',
+    decorator=swagger_auto_schema(
+        manual_parameters=[
+            openapi.Parameter(
+                'included_tests',
+                openapi.IN_QUERY,
+                type=openapi.TYPE_STRING,
+                description='Included test ids separated by comma',
+            ),
+            openapi.Parameter(
+                'excluded_tests',
+                openapi.IN_QUERY,
+                type=openapi.TYPE_STRING,
+                description='Excluded test ids separated by comma',
+            ),
+            openapi.Parameter(
+                'status_id',
+                openapi.IN_QUERY,
+                type=openapi.TYPE_INTEGER,
+            ),
+            openapi.Parameter(
+                'current_plan',
+                openapi.IN_QUERY,
+                type=openapi.TYPE_INTEGER,
+            ),
+        ],
+        paginator_inspectors=[TestyPaginatorInspector],
+        responses={status.HTTP_200_OK: CustomAttributesTestResultSerializer()},
+    ),
 )

@@ -1,7 +1,8 @@
 import { PlusOutlined } from "@ant-design/icons"
-import { Button } from "antd"
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
+
+import { Button } from "shared/ui"
 
 import { CreateProjectModal } from "./create-project-modal"
 
@@ -15,7 +16,12 @@ export const CreateProject = () => {
 
   return (
     <>
-      <Button id="create-project" icon={<PlusOutlined />} type="primary" onClick={handleClick}>
+      <Button
+        id="create-project"
+        icon={<PlusOutlined />}
+        color="secondary-linear"
+        onClick={handleClick}
+      >
         {t("Create")} {t("Project")}
       </Button>
       <CreateProjectModal isShow={isShow} setIsShow={setIsShow} />

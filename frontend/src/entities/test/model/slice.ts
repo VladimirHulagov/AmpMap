@@ -90,9 +90,12 @@ const initPagination = queryParamsBySchema(paginationSchema)
 
 const initialState: TestState = {
   test: null,
+  drawer: {
+    view: "test",
+    shouldClose: false,
+  },
   settings: {
     table: {
-      testPlanId: null,
       columns: baseTableColumns,
       visibleColumns: getVisibleColumns("tests-visible-cols-table") ?? baseTableColumns,
       page: initPagination.page,
@@ -101,6 +104,7 @@ const initialState: TestState = {
       isAllSelectedTableBulk: false,
       selectedRows: [],
       excludedRows: [],
+      count: 0,
       _n: 0,
     },
     tree: {
@@ -117,7 +121,10 @@ export const testSlice = createSlice({
     setDrawerTest: (state, action: PayloadAction<Test | null>) => {
       state.test = action.payload
     },
-    updateSettings: (state, action: PayloadAction<UpdateSettings>) => {
+    setDrawerView: (state, action: PayloadAction<DrawerData>) => {
+      state.drawer = action.payload
+    },
+    updateSettings: (state, action: PayloadAction<UpdateTestSettings>) => {
       // @ts-ignore
       state.settings[action.payload.key] = {
         ...state.settings[action.payload.key],
@@ -150,15 +157,21 @@ export const testSlice = createSlice({
   extraReducers: (builder) => {
     builder.addCase(updateFilter, (state) => {
       state.settings.table.page = 1
-      state.settings.table.page_size = initialState.settings.table.page_size
     })
   },
 })
 
-export const { setDrawerTest, updateSettings, setSettings, setPagination, clearSettings } =
-  testSlice.actions
+export const {
+  setDrawerTest,
+  setDrawerView,
+  updateSettings,
+  setSettings,
+  setPagination,
+  clearSettings,
+} = testSlice.actions
 
 export const selectDrawerTest = (state: RootState) => state.test.test
+export const selectDrawerData = (state: RootState) => state.test.drawer
 export const selectSettings =
   <T>(settingsKey: keyof TestState["settings"]) =>
   (state: RootState): T =>

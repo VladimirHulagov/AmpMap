@@ -1,29 +1,32 @@
-import { useTranslation } from "react-i18next"
+import cn from "classnames"
+import { Trans as Translate, withTranslation } from "react-i18next"
 
 import { config } from "shared/config"
 
 import packageJson from "../../../../package.json"
+import styles from "./styles.module.css"
 
-export const Copyright = () => {
-  const { t } = useTranslation()
-
+export const Copyright = withTranslation()((props: { className?: string }) => {
   return (
-    <p style={{ textAlign: "center", marginBottom: 0, fontSize: 12 }}>
-      <a target="_blank" href={config.repoUrl} rel="noreferrer">
-        TestY TMS {t("version")} {packageJson.version}
-      </a>
-      . {t("Released under the AGPL-v3 License")}.
-      <br />
-      {t("Found a bug or have a comment?")}&nbsp; {t("Please report an")}{" "}
-      <a target="_blank" rel="noreferrer" href={config.bugReportUrl}>
-        {t("issue")}
-      </a>{" "}
-      {t("or")} <a href="mailto:testy@yadro.com">{t("email us")}</a> .
-      <br />
-      {t("Copyright")} © {new Date().getFullYear()}{" "}
-      <a target="_blank" href="https://yadro.com" rel="noreferrer">
-        KNS Group LLC (YADRO).
-      </a>
+    <p className={cn(styles.text, props.className)}>
+      <Translate
+        ns="common"
+        i18nKey="copyright"
+        values={{ version: packageJson.version, year: new Date().getFullYear() }}
+        components={{
+          linkRepoUrl: <a target="_blank" href={config.repoUrl} rel="noreferrer /"></a>,
+          linkIssue: (
+            <a
+              target="_blank"
+              rel="noreferrer"
+              href={config.bugReportUrl}
+              className={styles.underlined}
+            ></a>
+          ),
+          linkEmail: <a href="mailto:testy@yadro.com" className={styles.underlined}></a>,
+          linkKns: <a target="_blank" href="https://yadro.com" rel="noreferrer"></a>,
+        }}
+      />
     </p>
   )
-}
+})

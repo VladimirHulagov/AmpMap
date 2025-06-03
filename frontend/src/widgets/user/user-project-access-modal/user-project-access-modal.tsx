@@ -1,13 +1,15 @@
-import { Button, Form, Modal, Select } from "antd"
+import { Form, Modal, Select } from "antd"
 import { Controller } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 
 import { UserSearchInput } from "entities/user/ui"
 
 import { ErrorObj } from "shared/hooks"
-import { AlertError } from "shared/ui"
+import { AlertError, Button } from "shared/ui"
 
 import { useUserProjectAccessModal } from "./use-user-project-access-modal"
+
+const TEST_ID = "user-project-access"
 
 export const UserProjectAccessModal = () => {
   const { t } = useTranslation()
@@ -29,22 +31,28 @@ export const UserProjectAccessModal = () => {
 
   return (
     <Modal
-      className="user-project-access-modal"
-      title={title}
+      bodyProps={{ "data-testid": `${TEST_ID}-modal-body` }}
+      wrapProps={{ "data-testid": `${TEST_ID}-modal-wrapper` }}
+      title={<span data-testid={`${TEST_ID}-modal-title`}>{title}</span>}
       open={isOpenned}
       onCancel={handleClose}
       width="600px"
       centered
       footer={[
-        <Button id="close-create-edit-user" key="back" onClick={handleClose}>
+        <Button
+          id="close-create-edit-user"
+          key="back"
+          onClick={handleClose}
+          color="secondary-linear"
+        >
           {t("Close")}
         </Button>,
         <Button
-          id="user-project-access-submit"
+          id={`${TEST_ID}-submit`}
           loading={isLoading}
           key="submit"
           onClick={handleSubmitForm}
-          type="primary"
+          color="accent"
           disabled={!isDirty}
         >
           {isEditMode ? t("Update") : t("Create")}

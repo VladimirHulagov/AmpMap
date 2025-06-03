@@ -1,10 +1,4 @@
-import {
-  CopyOutlined,
-  DeleteOutlined,
-  EditOutlined,
-  HistoryOutlined,
-  PlusOutlined,
-} from "@ant-design/icons"
+import { CopyOutlined, EditOutlined, HistoryOutlined, PlusOutlined } from "@ant-design/icons"
 import { Flex } from "antd"
 import { MenuProps } from "antd/lib"
 import { useTranslation } from "react-i18next"
@@ -14,16 +8,16 @@ import { ChangeTestSuite, CopySuite, DeleteSuite } from "features/suite"
 import { CreateTestCase } from "features/test-case"
 import { ArchiveTestPlan, ChangeTestPlan, CopyTestPlan, DeleteTestPlan } from "features/test-plan"
 
-import { icons } from "shared/assets/inner-icons"
+import ArchiveIcon from "shared/assets/yi-icons/archive.svg?react"
+import DeleteIcon from "shared/assets/yi-icons/delete.svg?react"
 import { LazyNodeProps, LazyTreeApi } from "shared/libs/tree"
+import { CopyLinkContextMenu } from "shared/ui"
 
 import {
   refetchNodeAfterArchive,
   refetchNodeAfterCreateOrCopy,
   refetchNodeAfterDelete,
 } from "./utils"
-
-const { ArchiveIcon } = icons
 
 export interface TestPlanProps {
   data: TestPlan
@@ -86,6 +80,14 @@ export function useTreebarNodeContextMenu(
         ),
         key: "copy_plan",
       },
+      {
+        label: (
+          <CopyLinkContextMenu
+            link={`${window.location.origin}/projects/${props.data.project}/plans/${props.data.id}`}
+          />
+        ),
+        key: "copy_link_plan",
+      },
       !props.data.is_archive && {
         label: (
           <ChangeTestPlan
@@ -120,7 +122,7 @@ export function useTreebarNodeContextMenu(
           <DeleteTestPlan
             as={
               <Flex gap={6} align="center">
-                <DeleteOutlined style={{ fontSize: 14 }} />
+                <DeleteIcon width={14} height={14} />
                 {t("Delete")}
               </Flex>
             }
@@ -180,6 +182,14 @@ export function useTreebarNodeContextMenu(
     },
     {
       label: (
+        <CopyLinkContextMenu
+          link={`${window.location.origin}/projects/${props.data.project}/suites/${props.data.id}`}
+        />
+      ),
+      key: "copy_link_suite",
+    },
+    {
+      label: (
         <ChangeTestSuite
           type="edit"
           as={
@@ -198,7 +208,7 @@ export function useTreebarNodeContextMenu(
         <DeleteSuite
           as={
             <Flex gap={6} align="center">
-              <DeleteOutlined style={{ fontSize: 14 }} />
+              <DeleteIcon width={14} height={14} />
               {t("Delete")}
             </Flex>
           }
@@ -220,7 +230,7 @@ export function useTreebarNodeContextMenu(
               {t("Create Test Case")}
             </Flex>
           }
-          parentSuiteId={props.data.id}
+          parentSuite={props.data}
         />
       ),
       key: "create_test_case",

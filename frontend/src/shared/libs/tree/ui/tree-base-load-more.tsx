@@ -1,6 +1,8 @@
-import { Button, Spin } from "antd"
+import { Spin } from "antd"
 import classNames from "classnames"
 import { useTranslation } from "react-i18next"
+
+import { Button } from "shared/ui"
 
 import { LazyNodeProps, LazyTreeNodeApi } from "../api"
 import styles from "./styles.module.css"
@@ -55,7 +57,7 @@ export const TreeBaseLoadMore = <TData, TProps extends LazyNodeProps>({
       style={{ paddingLeft: offset, ...style }}
     >
       <div className={classNames(styles.loadMore, { [styles.isRoot]: isRoot })}>
-        <Button id={`node-${nodeTitle}-more-btn`} size="small" type="link" onClick={onMore}>
+        <Button id={`node-${nodeTitle}-more-btn`} size="s" onClick={onMore} color="ghost">
           {t("Load more")}
         </Button>
       </div>

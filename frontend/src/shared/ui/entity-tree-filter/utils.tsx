@@ -36,7 +36,11 @@ export const treeFilterFormat = <T extends BaseTreeFilterNode>({
     key: String(node.id),
     value: String(node.id),
     title: (
-      <HighLighterTesty searchWords={searchValue ?? ""} textToHighlight={node[titleKey] ?? ""} />
+      <HighLighterTesty
+        searchWords={searchValue ?? ""}
+        textToHighlight={node[titleKey] ?? ""}
+        id={`tree-filter-node-${node[titleKey]}`}
+      />
     ),
     titleText: node[titleKey] ?? "",
     name: node[titleKey] ?? "",

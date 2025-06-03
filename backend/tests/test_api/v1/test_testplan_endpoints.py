@@ -309,6 +309,7 @@ class TestPlanEndpoints:
                     query_params={
                         'project': project.id,
                         'parameters': ','.join([str(elem.id) for elem in group]),
+                        'ordering': 'id',
                     },
                 )
                 actual_data = [elem['id'] for elem in response.json_strip()]
@@ -1542,6 +1543,36 @@ class TestPlanEndpoints:
             suite_ids=[suite.id for suite in suites],
         ).data
         assert expected_data == response_data, 'Expected data does not match with actual data'
+
+    def test_after_updating_results_deleted(
+        self,
+        superuser_client,
+        project,
+        test_plan_factory,
+        test_factory,
+        test_case_factory,
+        test_result_factory,
+    ):
+        test_plan = test_plan_factory(project=project)
+        test_list = []
+        result_list = []
+        for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
+            test = test_factory(project=project, plan=test_plan)
+            test_list.append(test)
+            result_list.append(test_result_factory(project=project, test=test))
+        update_dict = {
+            'test_cases': [test_case_factory(project=project).id],
+        }
+        superuser_client.send_request(
+            self.view_name_detail,
+            reverse_kwargs={'pk': test_plan.id},
+            request_type=RequestType.PATCH,
+            data=update_dict,
+        )
+
+        for test_object in [*test_list, *result_list]:
+            test_object.refresh_from_db()
+            assert test_object.is_deleted
 
     @classmethod
     @allure.step('Validate copied objects')

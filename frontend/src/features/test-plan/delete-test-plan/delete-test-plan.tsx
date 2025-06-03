@@ -1,7 +1,8 @@
-import { DeleteOutlined } from "@ant-design/icons"
-import { Button } from "antd"
 import { ReactNode, memo, useState } from "react"
 import { useTranslation } from "react-i18next"
+
+import DeleteIcon from "shared/assets/yi-icons/delete.svg?react"
+import { Button } from "shared/ui"
 
 import { DeleteTestPlanModal } from "./delete-test-plan-modal"
 
@@ -26,7 +27,12 @@ export const DeleteTestPlan = memo(({ as, testPlan, onSubmit }: Props) => {
           {as}
         </div>
       ) : (
-        <Button id="delete-test-plan" icon={<DeleteOutlined />} onClick={handleShow}>
+        <Button
+          id="delete-test-plan"
+          icon={<DeleteIcon width={18} height={18} />}
+          onClick={handleShow}
+          color="secondary-linear"
+        >
           {t("Delete")}
         </Button>
       )}

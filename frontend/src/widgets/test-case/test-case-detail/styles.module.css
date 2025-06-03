@@ -5,3 +5,11 @@
   width: fit-content;
   line-height: 32px !important;
 }
+
+.archiveIcon {
+  height: 32px;
+}
+
+.versionAlert > span {
+  color: var(--y-color-warning);
+}

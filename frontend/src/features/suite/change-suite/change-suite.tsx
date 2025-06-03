@@ -1,20 +1,20 @@
 import { EditOutlined, PlusOutlined } from "@ant-design/icons"
-import { Button } from "antd"
-import { BaseButtonProps } from "antd/es/button/button"
 import { ReactNode, memo } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate, useParams } from "react-router-dom"
+
+import { Button, ButtonProps } from "shared/ui"
 
 interface Props {
   type: "create" | "edit"
   as?: ReactNode
   suite?: Suite
   size?: "small" | "default"
-  colorType?: BaseButtonProps["type"]
+  colorType?: ButtonProps["color"]
 }
 
 export const ChangeTestSuite = memo(
-  ({ type, as, suite, size = "default", colorType = "default" }: Props) => {
+  ({ type, as, suite, size = "default", colorType = "secondary-linear" }: Props) => {
     const { t } = useTranslation()
     const { projectId, testSuiteId } = useParams<ParamProjectId | ParamTestSuiteId>()
 
@@ -75,8 +75,8 @@ export const ChangeTestSuite = memo(
         id={getButtonId()}
         icon={type === "create" ? <PlusOutlined /> : <EditOutlined />}
         onClick={handleClick}
-        type={colorType}
-        shape={size === "default" ? "default" : "circle"}
+        color={colorType}
+        shape={size === "default" ? "rect" : "circle"}
       >
         {getButtonTitle()}
       </Button>

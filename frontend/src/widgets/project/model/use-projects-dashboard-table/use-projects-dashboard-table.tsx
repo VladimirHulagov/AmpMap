@@ -2,8 +2,8 @@ import { Flex, Space, Tooltip, Typography } from "antd"
 import { TableProps } from "antd/es/table"
 import { ColumnsType, TablePaginationConfig } from "antd/lib/table"
 import { FilterValue } from "antd/lib/table/interface"
-import { MeContext } from "processes"
-import { useContext, useState } from "react"
+import { useMeContext } from "processes"
+import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 
@@ -12,7 +12,9 @@ import { ProjectIcon } from "entities/project/ui"
 
 import { FolowProject, RequestProjectAccess } from "features/project"
 
-import { icons } from "shared/assets/inner-icons"
+import DashboardIcon from "shared/assets/yi-icons/dashboard.svg?react"
+import TestPlansIcon from "shared/assets/yi-icons/test-plans.svg?react"
+import TestSuitesIcon from "shared/assets/yi-icons/test-suites.svg?react"
 import { config } from "shared/config"
 import { antdSorterToTestySort } from "shared/libs"
 import { ArchivedTag, HighLighterTesty } from "shared/ui"
@@ -20,14 +22,12 @@ import { CheckedIcon } from "shared/ui/icons"
 
 import styles from "./styles.module.css"
 
-const { DashboardIcon, TestPlansIcon, TestSuitesIcon } = icons
-
 const { Link } = Typography
 
 export const useProjectsDashboardTable = ({ searchName }: { searchName: string }) => {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { userConfig } = useContext(MeContext)
+  const { userConfig } = useMeContext()
   const [filteredInfo, setFilteredInfo] = useState<Record<string, FilterValue | null>>({})
   const [paginationParams, setPaginationParams] = useState({
     page: 1,

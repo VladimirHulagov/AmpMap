@@ -3,17 +3,18 @@ import { QueryDefinition } from "@reduxjs/toolkit/query"
 import { BaseQueryFn } from "@reduxjs/toolkit/query"
 import { FetchArgs } from "@reduxjs/toolkit/query"
 import { Tabs, TabsProps } from "antd"
-import { MeContext } from "processes"
+import { useMeContext } from "processes"
 import React, { useContext, useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Outlet, useLocation, useNavigate, useParams } from "react-router-dom"
-import { TestPlanHeader } from "widgets"
+import { FooterView, TestPlanHeader } from "widgets"
 
 import { useGetTestPlanQuery } from "entities/test-plan/api"
 
 import { TestsTreeProvider } from "widgets/tests"
 
-import { useProjectContext } from "../../project-layout"
+import { useProjectContext } from "../../project-provider"
+import styles from "./styles.module.css"
 
 export interface TestPlanContextType {
   testPlan?: TestPlan
@@ -40,7 +41,7 @@ export const TestPlanLayout = () => {
   const { t } = useTranslation()
   const project = useProjectContext()
   const { testPlanId } = useParams<ParamTestPlanId>()
-  const { userConfig } = useContext(MeContext)
+  const { userConfig } = useMeContext()
   const navigate = useNavigate()
   const location = useLocation()
   const [tab, setTab] = useState<TestPlanTabs>("overview")
@@ -91,28 +92,36 @@ export const TestPlanLayout = () => {
       key: "custom-attributes",
       label: t("Custom Attributes"),
     },
-    // {
-    //   key: "attachments",
-    //   label: t("Attachments"),
-    // },
+    {
+      key: "attachments",
+      label: t("Attachments"),
+    },
   ]
 
   return (
     <TestPlanContext.Provider
-      value={{ testPlan, isFetching, refetch, hasTestPlan: !!testPlanId && !!testPlan }}
+      value={{
+        testPlan: testPlanId ? testPlan : undefined,
+        isFetching,
+        refetch,
+        hasTestPlan: !!testPlanId && !!testPlan,
+      }}
     >
       <TestsTreeProvider>
-        <TestPlanHeader />
-        {testPlanId && (
-          <Tabs
-            defaultActiveKey="overview"
-            activeKey={tab}
-            items={tabItems}
-            onChange={handleTabChange}
-            style={{ marginBottom: 24 }}
-          />
-        )}
-        <Outlet />
+        <div className={styles.wrapper}>
+          <TestPlanHeader />
+          {testPlanId && (
+            <Tabs
+              defaultActiveKey="overview"
+              activeKey={tab}
+              items={tabItems}
+              onChange={handleTabChange}
+              style={{ marginBottom: 24 }}
+            />
+          )}
+          <Outlet />
+        </div>
+        <FooterView />
       </TestsTreeProvider>
     </TestPlanContext.Provider>
   )

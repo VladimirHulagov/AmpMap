@@ -156,11 +156,10 @@ class SearchFilterMixin(filters.FilterSet):
     search_fields: list[str] | None = None
 
     def filter_by_search(self, qs, field_name, value):
-        if not self.search_fields:
+        if not self.search_fields or not value:
             return qs
         search_filter = SearchFilter()
-        if self.request.query_params.get('treesearch'):
-            search_filter.search_param = 'treesearch'
+        search_filter.search_param = field_name
         return search_filter.filter_queryset(self.request, qs, SearchView(*self.search_fields))
 
 

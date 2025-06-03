@@ -1,31 +1,44 @@
-import { Dropdown, MenuProps } from "antd"
-import { useState } from "react"
+import { Button, Tooltip } from "antd"
+import { ReactNode, useState } from "react"
 import { useTranslation } from "react-i18next"
 
-import { DeleteProject } from "../delete-project/delete-project"
+import ArchiveIcon from "shared/assets/yi-icons/archive.svg?react"
+
 import { ArchiveProjectModal } from "./archive-project-modal"
 
-export const ArchiveProject = ({ project }: { project: Project }) => {
+interface Props {
+  project: Project
+  as?: ReactNode
+  asProps?: React.ComponentProps<"div">
+}
+
+const TEST_ID = "archive-project"
+
+export const ArchiveProject = ({ project, as, asProps }: Props) => {
   const { t } = useTranslation()
   const [isShow, setIsShow] = useState(false)
 
-  const items: MenuProps["items"] = [
-    {
-      key: "1",
-      label: <DeleteProject project={project} />,
-    },
-  ]
+  const handleClick = () => {
+    setIsShow(true)
+  }
 
   return (
     <>
-      <Dropdown.Button
-        className="archive-project"
-        menu={{ items }}
-        danger
-        onClick={() => setIsShow(true)}
-      >
-        {t("Archive")}
-      </Dropdown.Button>
+      {as ? (
+        <div onClick={handleClick} data-testid={TEST_ID} {...asProps}>
+          {as}
+        </div>
+      ) : (
+        <Tooltip title={t("Archive project")}>
+          <Button
+            id={TEST_ID}
+            style={{ color: "var(--y-grey-30)" }}
+            icon={<ArchiveIcon width={24} height={24} />}
+            type="text"
+            onClick={handleClick}
+          />
+        </Tooltip>
+      )}
       <ArchiveProjectModal isShow={isShow} setIsShow={setIsShow} project={project} />
     </>
   )

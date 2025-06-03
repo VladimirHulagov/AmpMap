@@ -1,4 +1,3 @@
-import { Modal, notification } from "antd"
 import { useContext, useEffect, useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
 import { useTranslation } from "react-i18next"
@@ -10,6 +9,7 @@ import { useLazyGetTestCaseByIdQuery, useRestoreTestCaseMutation } from "entitie
 import { selectDrawerTestCase, setDrawerTestCase } from "entities/test-case/model"
 
 import { initInternalError } from "shared/libs"
+import { antdModalConfirm, antdNotification } from "shared/libs/antd-modals"
 import { AlertSuccessChange } from "shared/ui"
 
 import { TestCasesTreeContext } from "../test-cases-tree"
@@ -91,10 +91,10 @@ export const useTestCaseDetail = () => {
 
   const handleRestoreVersion = () => {
     if (!showVersion || !drawerTestCase) return
-    Modal.confirm({
+
+    antdModalConfirm("restore-test-case", {
       title: t("Do you want to restore this version of test case?"),
       okText: t("Restore"),
-      cancelText: t("Cancel"),
       onOk: async () => {
         try {
           const res = await restoreTestCase({
@@ -105,15 +105,14 @@ export const useTestCaseDetail = () => {
             version: String(res.versions[0]),
             test_case: String(drawerTestCase.id),
           })
-          notification.success({
-            message: t("Success"),
-            closable: true,
+          antdNotification.success("restore-test-case", {
             description: (
               <AlertSuccessChange
                 id={String(drawerTestCase.id)}
                 action="restore"
                 title={t("Test Case")}
                 link={`/projects/${drawerTestCase.project}/suites/${drawerTestCase.suite.id}?version=${res.versions[0]}&test_case=${drawerTestCase.id}`}
+                data-testid="restore-test-case-success-notification-description"
               />
             ),
           })
@@ -121,8 +120,6 @@ export const useTestCaseDetail = () => {
           initInternalError(err)
         }
       },
-      okButtonProps: { "data-testid": "restore-test-case-button-confirm" },
-      cancelButtonProps: { "data-testid": "restore-test-case-button-cancel" },
     })
   }
 

@@ -1,6 +1,8 @@
 import { EyeInvisibleOutlined, EyeOutlined } from "@ant-design/icons"
-import { Button, Table } from "antd"
+import { Table } from "antd"
 import { useTranslation } from "react-i18next"
+
+import { Button } from "shared/ui"
 
 import styles from "./notifications-table.module.css"
 import { useNotificationsTable } from "./use-noitifications-table"
@@ -28,6 +30,7 @@ export const NotificationsTable = () => {
             onClick={handleRead}
             icon={<EyeOutlined />}
             disabled={!selectedRowKeys.length}
+            color="secondary-linear"
           >
             {t("Mark as read")}
           </Button>
@@ -37,6 +40,7 @@ export const NotificationsTable = () => {
             icon={<EyeInvisibleOutlined />}
             disabled={!selectedRowKeys.length}
             style={{ marginLeft: 8 }}
+            color="secondary-linear"
           >
             {t("Mark as unread")}
           </Button>
@@ -59,6 +63,7 @@ export const NotificationsTable = () => {
           onChange: handleSelectRows,
           selectedRowKeys,
         }}
+        data-testid="notifications-table"
       />
     </>
   )

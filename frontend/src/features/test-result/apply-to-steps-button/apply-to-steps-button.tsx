@@ -1,13 +1,16 @@
 import { Button } from "antd"
 import { useTranslation } from "react-i18next"
 
+import ArrowText from "shared/assets/yi-icons/arrow-in-text.svg?react"
+
 interface Props {
   steps: (Step | StepResult)[]
   status: number | null
   onApply: (stepsData: Record<string, number>) => void
+  id?: string
 }
 
-export const ApplyToStepsButton = ({ steps, status, onApply }: Props) => {
+export const ApplyToStepsButton = ({ steps, status, onApply, id }: Props) => {
   const { t } = useTranslation()
 
   const handleApply = () => {
@@ -27,7 +30,12 @@ export const ApplyToStepsButton = ({ steps, status, onApply }: Props) => {
   }
 
   return (
-    <Button disabled={!status} onClick={handleApply}>
+    <Button
+      disabled={!status}
+      onClick={handleApply}
+      icon={<ArrowText />}
+      data-testid={`${id}-apply-to-steps-button`}
+    >
       {t("Apply to steps")}
     </Button>
   )

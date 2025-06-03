@@ -1,0 +1,63 @@
+.header {
+  padding: 24px 36px 12px 36px;
+  border-bottom: 1px solid rgba(5, 5, 5, 0.06);
+}
+
+.arrowIcon {
+  color: var(--y-color-secondary-inline);
+  transition: transform 0.2s ease-in;
+  height: 24px;
+  width: 24px;
+  margin-top: 0;
+  margin-right: 8px;
+  cursor: pointer;
+  user-select: none;
+  transform: rotate(-90deg);
+}
+
+.arrowIconOpen {
+  transform: rotate(0deg);
+}
+
+.closeIcon {
+  color: var(--y-color-secondary-inline);
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+}
+
+.title {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.formBody {
+  overflow-y: scroll;
+  height: 100%;
+  padding: 12px 36px 24px 36px;
+  overscroll-behavior: none;
+}
+
+.scenarioLabel {
+  font-weight: 600;
+  font-size: 16px;
+  margin-right: 16px;
+  color: var(--y-color-text-secondary);
+}
+
+.stepsLabel {
+  font-weight: 600;
+  font-size: 16px;
+  margin-right: 8px;
+}
+
+.addResultTitle {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.statusWrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

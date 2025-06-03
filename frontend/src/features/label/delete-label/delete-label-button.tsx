@@ -1,10 +1,11 @@
 import { DeleteOutlined } from "@ant-design/icons"
-import { Button, Modal, notification } from "antd"
 import { useTranslation } from "react-i18next"
 
 import { useDeleteLabelMutation } from "entities/label/api"
 
 import { initInternalError } from "shared/libs"
+import { antdModalConfirm, antdNotification } from "shared/libs/antd-modals"
+import { Button } from "shared/ui"
 
 interface Props {
   label: Label
@@ -15,24 +16,19 @@ export const DeleteLabelButton = ({ label }: Props) => {
   const [deleteLabel] = useDeleteLabelMutation()
 
   const handleDeleteLabel = () => {
-    Modal.confirm({
+    antdModalConfirm("delete-label", {
       title: t("Do you want to delete these label?"),
       okText: t("Delete"),
-      cancelText: t("Cancel"),
       onOk: async () => {
         try {
           await deleteLabel(Number(label.id)).unwrap()
-          notification.success({
-            message: t("Success"),
-            closable: true,
+          antdNotification.success("delete-label", {
             description: t("Label deleted successfully"),
           })
         } catch (err: unknown) {
           initInternalError(err)
         }
       },
-      okButtonProps: { "data-testid": "delete-label-button-confirm" },
-      cancelButtonProps: { "data-testid": "delete-label-button-cancel" },
     })
   }
 
@@ -42,6 +38,7 @@ export const DeleteLabelButton = ({ label }: Props) => {
       icon={<DeleteOutlined />}
       shape="circle"
       danger
+      color="secondary-linear"
       onClick={handleDeleteLabel}
     />
   )

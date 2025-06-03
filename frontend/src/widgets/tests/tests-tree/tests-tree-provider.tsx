@@ -1,13 +1,5 @@
 import { makeNode } from "processes/treebar-provider/utils"
-import {
-  PropsWithChildren,
-  RefObject,
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useRef,
-} from "react"
+import { PropsWithChildren, RefObject, createContext, useCallback, useMemo, useRef } from "react"
 
 import { useAppSelector } from "app/hooks"
 
@@ -18,9 +10,10 @@ import {
   useLazyGetTestPlansWithTestsQuery,
 } from "entities/test-plan/api"
 
-import { ProjectContext } from "pages/project"
+import { useProjectContext } from "pages/project"
 
 import { config } from "shared/config"
+import { NOT_ASSIGNED_FILTER_VALUE } from "shared/constants"
 import {
   LazyNodeProps,
   LazyTreeApi,
@@ -47,7 +40,7 @@ export interface TestsTreeContextType {
 export const TestsTreeContext = createContext<TestsTreeContextType | null>(null)
 
 export const TestsTreeProvider = ({ children }: PropsWithChildren) => {
-  const { project } = useContext(ProjectContext)!
+  const project = useProjectContext()
 
   const testsTree = useRef<LazyTreeApi<Test | TestPlan, LazyNodeProps>>(null)
   const testsFilter = useAppSelector(selectFilter)
@@ -74,7 +67,10 @@ export const TestsTreeProvider = ({ children }: PropsWithChildren) => {
           search: testsFilter.name_or_id,
           plan: testsFilter.plans,
           suite: testsFilter.suites,
-          assignee: testsFilter.assignee,
+          assignee: testsFilter.assignee.filter(
+            (assignee) => assignee !== NOT_ASSIGNED_FILTER_VALUE
+          ),
+          unassigned: testsFilter.assignee.includes("null") ? true : undefined,
           test_plan_started_after: testsFilter.test_plan_started_after,
           test_plan_started_before: testsFilter.test_plan_started_before,
           test_plan_created_after: testsFilter.test_plan_created_after,

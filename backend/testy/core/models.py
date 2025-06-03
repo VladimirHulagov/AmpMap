@@ -183,6 +183,7 @@ class Label(BaseModel):
     name = models.CharField(max_length=100)
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
     user = models.ForeignKey(UserModel, on_delete=models.SET_NULL, null=True, blank=True)
+    # TODO: delete type field
     type = models.IntegerField(choices=LabelTypes.choices, default=LabelTypes.CUSTOM)
 
     class Meta:

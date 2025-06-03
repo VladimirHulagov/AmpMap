@@ -9,37 +9,33 @@ export interface UseFormLabelsProps {
   searchValue: string
   setLabels: React.Dispatch<React.SetStateAction<LabelInForm[]>>
   setSearchValue: React.Dispatch<React.SetStateAction<string>>
-  isShowPopup: boolean
-  setIsShowPopup: React.Dispatch<React.SetStateAction<boolean>>
   searchingLabels: Label[]
+  placeholder?: string
   handleAddLabel: (label: string) => void
   handleDeleteLabel: (label: string) => void
   handleSubmitInput: (e: React.KeyboardEvent<HTMLInputElement>, label: string) => void
+  handleClearLabels: () => void
 }
 
 interface UseTestCaseFormLabelsParams {
   setValue: UseFormSetValue<TestCaseFormData>
   testCase: TestCase | null
-  isShow: boolean
   isEditMode: boolean
   defaultLabels?: number[]
+  placeholder?: string
 }
 
 export const useTestCaseFormLabels = ({
   setValue,
   testCase,
-  isShow,
   isEditMode,
   defaultLabels = [],
+  placeholder,
 }: UseTestCaseFormLabelsParams): UseFormLabelsProps => {
   const { projectId } = useParams<ParamProjectId>()
   const [labels, setLabels] = useState<LabelInForm[]>([])
   const [searchValue, setSearchValue] = useState("")
-  const [isShowPopup, setIsShowPopup] = useState(false)
-  const { data: labelsData } = useGetLabelsQuery(
-    { project: projectId ?? "" },
-    { skip: !projectId || !isShow }
-  )
+  const { data: labelsData } = useGetLabelsQuery({ project: projectId ?? "" }, { skip: !projectId })
   const handleAddLabel = (label: string) => {
     const filtered = labels.filter((item) => item.name.toLowerCase() !== label.toLowerCase())
     const labelData = labelsData?.find((item) => item.name.toLowerCase() === label.toLowerCase())
@@ -47,14 +43,19 @@ export const useTestCaseFormLabels = ({
     const newLabels = [...filtered, { name: label, id: labelData?.id }]
     setLabels(newLabels)
     setSearchValue("")
-    setIsShowPopup(false)
     setValue("labels", newLabels, { shouldDirty: true })
   }
 
   const handleDeleteLabel = (label: string) => {
-    const filtered = labels.filter((item) => item.name !== label)
-    setLabels(filtered)
-    setValue("labels", filtered, { shouldDirty: true })
+    setLabels((prev) => {
+      const filtered = prev.filter((item) => item.name !== label)
+      setValue("labels", filtered, { shouldDirty: true })
+      return filtered
+    })
+  }
+
+  const handleClearLabels = () => {
+    setLabels([])
   }
 
   const handleSubmitInput = (e: React.KeyboardEvent<HTMLInputElement>, label: string) => {
@@ -63,14 +64,10 @@ export const useTestCaseFormLabels = ({
   }
 
   useEffect(() => {
-    setIsShowPopup(!!searchValue.length)
-  }, [searchValue])
-
-  useEffect(() => {
     if (!testCase || !isEditMode) return
     setLabels(testCase.labels)
     setValue("labels", testCase.labels)
-  }, [testCase, isShow, isEditMode])
+  }, [testCase, isEditMode])
 
   const withoutDublicateLabels = useMemo(() => {
     if (!labelsData) return []
@@ -103,12 +100,12 @@ export const useTestCaseFormLabels = ({
     labels,
     searchingLabels,
     searchValue,
-    isShowPopup,
     setLabels,
     setSearchValue,
-    setIsShowPopup,
     handleAddLabel,
     handleDeleteLabel,
     handleSubmitInput,
+    handleClearLabels,
+    placeholder,
   }
 }

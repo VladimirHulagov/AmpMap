@@ -1,4 +1,4 @@
-import { Button, Space, Table, TableProps } from "antd"
+import { Space, Table, TableProps } from "antd"
 import { ColumnsType } from "antd/es/table"
 import type { FilterValue, TablePaginationConfig } from "antd/es/table/interface"
 import { useState } from "react"
@@ -11,6 +11,7 @@ import { getLabelTypeTextByNumber } from "entities/label/lib"
 import { DeleteLabelButton, EditLabelButton } from "features/label"
 
 import { useTableSearch } from "shared/hooks"
+import { Button } from "shared/ui"
 
 export const LabelsTable = () => {
   const { t } = useTranslation()
@@ -87,7 +88,7 @@ export const LabelsTable = () => {
   return (
     <>
       <Space style={{ marginBottom: 16, display: "flex", justifyContent: "right" }}>
-        <Button id="clear-filters-and-sorters" onClick={clearAll}>
+        <Button id="clear-filters-and-sorters" onClick={clearAll} color="secondary-linear">
           {t("Clear filters and sorters")}
         </Button>
       </Space>
@@ -100,6 +101,7 @@ export const LabelsTable = () => {
         onChange={handleChange}
         id="administration-projects-labels"
         rowClassName="administration-projects-labels-row"
+        data-testid="labels-table"
       />
     </>
   )

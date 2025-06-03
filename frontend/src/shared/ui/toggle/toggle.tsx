@@ -32,7 +32,11 @@ export const Toggle = ({ id, label, labelFontSize = 16, size = "sm", ...props }:
       {typeof label === "string" ? (
         <label htmlFor={id} style={{ cursor: "pointer" }}>
           <Typography.Text
-            style={{ fontSize: labelFontSize, lineHeight: "24px", color: "var(--y-sky-80)" }}
+            style={{
+              fontSize: labelFontSize,
+              lineHeight: "24px",
+              color: "var(--y-color-control-text)",
+            }}
           >
             {label}
           </Typography.Text>

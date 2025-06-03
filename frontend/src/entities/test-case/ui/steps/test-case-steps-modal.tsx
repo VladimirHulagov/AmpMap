@@ -1,4 +1,4 @@
-import { Button, Form, Input, Modal } from "antd"
+import { Form, Input, Modal } from "antd"
 import { Controller } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 
@@ -7,7 +7,9 @@ import {
   useTestCaseStepsModal,
 } from "entities/test-case/model/use-test-case-steps-modal"
 
-import { Attachment, TextAreaWithAttach } from "shared/ui"
+import { Attachment, Button, TextAreaWithAttach } from "shared/ui"
+
+const TEST_ID = "test-case-steps"
 
 export const TestCaseStepsModal = ({
   step,
@@ -36,19 +38,29 @@ export const TestCaseStepsModal = ({
 
   return (
     <Modal
-      className="test-case-steps-modal"
-      title={`${isEdit ? t("Edit") : t("Create")} ${t("step")}`}
+      bodyProps={{ "data-testid": `${TEST_ID}-modal-body` }}
+      wrapProps={{ "data-testid": `${TEST_ID}-modal-wrapper` }}
+      title={
+        <span data-testid={`${TEST_ID}-modal-title`}>
+          {isEdit ? t("Edit") : t("Create")} ${t("step")}
+        </span>
+      }
       open={!!step}
       onCancel={handleClose}
       centered
       footer={[
-        <Button id="modal-steps-cancel-btn" key="back" onClick={handleClose}>
+        <Button
+          id="modal-steps-cancel-btn"
+          key="back"
+          onClick={handleClose}
+          color="secondary-linear"
+        >
           {t("Cancel")}
         </Button>,
         <Button
           id={isEdit ? "modal-steps-edit-btn" : "modal-steps-create-btn"}
           key="submit"
-          type="primary"
+          color="accent"
           onClick={handleSubmit(onSubmitForm)}
           loading={isLoading}
           disabled={!isDirty}
@@ -93,10 +105,12 @@ export const TestCaseStepsModal = ({
                 render={({ field }) => (
                   <TextAreaWithAttach
                     uploadId="step-scenario"
+                    textAreaId="step-scenario"
                     fieldProps={field}
                     stateAttachments={{ attachments, setAttachments }}
                     customRequest={onLoad}
                     setValue={setValue}
+                    style={{ width: "auto" }}
                   />
                 )}
               />
@@ -114,10 +128,12 @@ export const TestCaseStepsModal = ({
             render={({ field }) => (
               <TextAreaWithAttach
                 uploadId="step-expected"
+                textAreaId="step-expected"
                 fieldProps={field}
                 stateAttachments={{ attachments, setAttachments }}
                 customRequest={onLoad}
                 setValue={setValue}
+                style={{ width: "auto" }}
               />
             )}
           />
@@ -129,7 +145,7 @@ export const TestCaseStepsModal = ({
           onLoad={onLoad}
           onRemove={onRemove}
           register={register}
-          idInput="test-case-steps-attachments-input"
+          id="test-case-steps-attachments"
         />
       </Form>
     </Modal>

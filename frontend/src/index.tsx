@@ -6,11 +6,11 @@ import { initReactI18next } from "react-i18next"
 import { Provider } from "react-redux"
 import { PersistGate } from "redux-persist/integration/react"
 
-import "shared/assets/fonts/proxima-nova-semibold.ttf"
-import "shared/assets/fonts/proxima.ttf"
+import "shared/styles/uikit.css"
+import "shared/assets/fonts/Inter-VariableFont.ttf"
 import { i18nConfig } from "shared/config/i18n-config"
-import { getLang } from "shared/libs/local-storage"
 
+import { getLang } from "shared/libs/local-storage"
 import App from "./App"
 import { persistor, store } from "./app/store"
 

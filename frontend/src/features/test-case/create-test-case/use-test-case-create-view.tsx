@@ -1,25 +1,33 @@
-import { notification } from "antd"
-import { useContext, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
 import { useTranslation } from "react-i18next"
-import { useNavigate, useParams, useSearchParams } from "react-router-dom"
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom"
 
 import { useAttachments } from "entities/attachment/model"
 
 import { useTestCaseFormLabels } from "entities/label/model"
 
+import { useLazyGetSuiteQuery } from "entities/suite/api"
+
 import { useCreateTestCaseMutation } from "entities/test-case/api"
 import { useAttributesTestCase } from "entities/test-case/model"
 
-import { ProjectContext } from "pages/project"
+import { useProjectContext } from "pages/project"
 
-import { useConfirmBeforeRedirect, useErrors, useShowModalCloseConfirm } from "shared/hooks"
-import { getPrevPageSearch, makeAttributesJson } from "shared/libs"
+import { useConfirmBeforeRedirect, useErrors } from "shared/hooks"
+import { makeAttributesJson } from "shared/libs"
+import { antdModalCloseConfirm, antdNotification } from "shared/libs/antd-modals"
 import { AlertSuccessChange } from "shared/ui"
+
+import { formattingAttachmentForSteps, sortingSteps } from "../utils"
 
 interface SubmitData extends Omit<TestCaseFormData, "steps"> {
   steps?: StepAttachNumber[]
   is_steps: boolean
+}
+
+interface LocationState {
+  suite?: Suite
 }
 
 interface ErrorData {
@@ -56,31 +64,33 @@ const getDefaultValues = (projectId: number) => ({
 
 export const useTestCaseCreateView = () => {
   const { t } = useTranslation()
-  const { project } = useContext(ProjectContext)!
-  const { showModal } = useShowModalCloseConfirm()
-  const { testSuiteId } = useParams<ParamTestSuiteId>()
+  const project = useProjectContext()
+  const location = useLocation()
+  const navigate = useNavigate()
   const [tab, setTab] = useState<TabType>("general")
   const [searchParams] = useSearchParams()
 
-  const navigate = useNavigate()
-
+  const state = location.state as LocationState | null
+  const [selectedSuite, setSelectedSuite] = useState<SelectData | null>(null)
   const [errors, setErrors] = useState<ErrorData | null>(null)
-  const {
-    handleSubmit,
-    reset,
-    control,
-    setValue,
-    register,
-    setError: setFormError,
-    formState: { isDirty, errors: formErrors },
-    watch,
-  } = useForm<TestCaseFormData>({
+  const createForm = useForm<TestCaseFormData>({
     defaultValues: getDefaultValues(project.id),
   })
+  const {
+    control,
+    formState: { errors: formErrors, isDirty },
+    watch,
+    setValue,
+    reset,
+    setError: setFormError,
+    register,
+    handleSubmit,
+  } = createForm
 
-  const isSteps = watch("is_steps")
-  const steps = watch("steps")
+  const isSteps = watch("is_steps") ?? false
+  const steps = watch("steps") ?? []
 
+  const [getTestSuite, { isLoading: isLoadingGetTestSuite }] = useLazyGetSuiteQuery()
   const [createTestCase, { isLoading }] = useCreateTestCaseMutation()
   const { onHandleError } = useErrors<ErrorData>(setErrors)
   const {
@@ -96,7 +106,6 @@ export const useTestCaseCreateView = () => {
   const labelProps = useTestCaseFormLabels({
     setValue,
     testCase: null,
-    isShow: true,
     isEditMode: false,
   })
 
@@ -109,36 +118,36 @@ export const useTestCaseCreateView = () => {
     onAttributeChangeType,
     onAttributeChangeValue,
     onAttributeRemove,
-  } = useAttributesTestCase({ mode: "create", setValue })
+    isLoading: isLoadingAttributes,
+  } = useAttributesTestCase({
+    mode: "create",
+    setValue,
+    testSuiteId: selectedSuite ? String(selectedSuite.value) : null,
+  })
 
   const { setIsRedirectByUser } = useConfirmBeforeRedirect({
     isDirty,
     pathname: "new-test-case",
   })
 
-  const redirectToTestCase = (id?: number) => {
-    const prevSearchKey = searchParams.get("prevSearch")
-    let url = `/projects/${project.id}/suites/${testSuiteId}`
-    if (id !== undefined) {
-      url += `?test_case=${id}`
-    }
-    if (!prevSearchKey) {
-      navigate(url)
-      return
-    }
+  const redirectToPrev = () => {
+    const prevUrl = searchParams.get("prevUrl")
 
-    const prevSearchResult = getPrevPageSearch(prevSearchKey)
-    if (id !== undefined) {
-      url += `&${prevSearchResult}`
+    if (prevUrl) {
+      const url = new URL(prevUrl, window.location.origin)
+      navigate(url.pathname + url.search)
     } else {
-      url += `?${prevSearchResult}`
+      navigate(`/projects/${project.id}/suites/${selectedSuite?.value}`)
     }
-    navigate(url)
+  }
+
+  const redirectToCase = (id: number) => {
+    navigate(`/projects/${project.id}/suites/${selectedSuite?.value}?test_case=${id}`)
   }
 
   const handleClose = (id?: number) => {
     setIsRedirectByUser()
-    redirectToTestCase(id)
+    id ? redirectToCase(id) : redirectToPrev()
     setErrors(null)
     setTab("general")
     reset()
@@ -151,25 +160,6 @@ export const useTestCaseCreateView = () => {
   const handleTabChange = (activeKey: string) => {
     setTab(activeKey as TabType)
   }
-
-  const formattingAttachmentForSteps = ({
-    id,
-    name,
-    scenario,
-    expected,
-    sort_order,
-    attachments: attachmentsArgs,
-  }: StepAttachNumber) => ({
-    id: typeof id === "string" ? undefined : id,
-    name,
-    scenario,
-    expected,
-    sort_order,
-    attachments: attachmentsArgs.map((x: number | IAttachment) => {
-      if (typeof x === "object") return x.id
-      return x
-    }),
-  })
 
   const onSubmit: SubmitHandler<TestCaseFormData> = async (data) => {
     const dataForm = data as SubmitData
@@ -196,27 +186,27 @@ export const useTestCaseCreateView = () => {
       const stepsFormat = dataForm.steps
         ? dataForm.steps.map((step) => formattingAttachmentForSteps(step))
         : []
+      const sortSteps = sortingSteps(stepsFormat)
 
       const newTestCase = await createTestCase({
         ...dataForm,
         project: project.id,
         is_steps: !!dataForm.is_steps,
         scenario: dataForm.is_steps ? undefined : dataForm.scenario,
-        steps: dataForm.is_steps ? stepsFormat : undefined,
+        steps: dataForm.is_steps ? sortSteps : undefined,
         estimate: dataForm.estimate?.length ? dataForm.estimate : undefined,
-        suite: Number(testSuiteId),
+        suite: Number(selectedSuite?.value),
         attributes: attributesJson,
       }).unwrap()
       handleClose(newTestCase.id)
-      notification.success({
-        message: t("Success"),
-        closable: true,
+      antdNotification.success("create-test-case", {
         description: (
           <AlertSuccessChange
             id={String(newTestCase.id)}
             action="created"
             title={t("Test Case")}
-            link={`/projects/${project.id}/suites/${testSuiteId}?test_case=${newTestCase.id}`}
+            link={`/projects/${project.id}/suites/${selectedSuite?.value}?test_case=${newTestCase.id}`}
+            data-testid="create-test-case-success-notification-description"
           />
         ),
       })
@@ -229,21 +219,45 @@ export const useTestCaseCreateView = () => {
     if (isLoading) return
 
     if (isDirty) {
-      showModal(handleClose)
+      antdModalCloseConfirm(handleClose)
       return
     }
 
     handleClose()
   }
 
+  const handleSelectSuite = (selectedData: SelectData) => {
+    setValue("suite", selectedData.value, { shouldDirty: true })
+    setSelectedSuite(selectedData)
+  }
+
   useEffect(() => {
-    if (initAttributes.length) {
-      reset({ ...getDefaultValues(project.id), attributes: initAttributes })
-    }
+    setValue("attributes", initAttributes)
   }, [initAttributes])
 
+  useEffect(() => {
+    const suiteId = searchParams.get("suiteId")
+    if (!suiteId || (suiteId && selectedSuite)) {
+      return
+    }
+
+    const fetchSuite = async () => {
+      const suite = await getTestSuite({ suiteId }).unwrap()
+      setSelectedSuite({ label: suite.name, value: suite.id })
+    }
+
+    fetchSuite()
+  }, [selectedSuite, searchParams.get("suiteId")])
+
+  useEffect(() => {
+    if (state?.suite) {
+      setSelectedSuite({ label: state.suite.name, value: state.suite.id })
+    }
+  }, [state?.suite])
+
   return {
-    isLoading: isLoading || isLoadingAttachments,
+    createForm,
+    isLoading: isLoading || isLoadingAttachments || isLoadingGetTestSuite || isLoadingAttributes,
     errors,
     formErrors,
     control,
@@ -254,6 +268,8 @@ export const useTestCaseCreateView = () => {
     isDirty,
     tab,
     attributes,
+    selectedSuite,
+    labelProps,
     onLoad,
     onRemove,
     onChange,
@@ -262,12 +278,12 @@ export const useTestCaseCreateView = () => {
     handleCancel,
     handleSubmitForm: handleSubmit(onSubmit),
     register,
-    labelProps,
     handleTabChange,
     addAttribute,
     onAttributeChangeName,
     onAttributeChangeType,
     onAttributeChangeValue,
     onAttributeRemove,
+    handleSelectSuite,
   }
 }

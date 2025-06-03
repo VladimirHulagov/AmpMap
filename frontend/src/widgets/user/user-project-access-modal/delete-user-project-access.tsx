@@ -1,5 +1,4 @@
 import { DeleteOutlined } from "@ant-design/icons"
-import { Button, Modal, notification } from "antd"
 import { useUnassignRoleMutation } from "entities/roles/api"
 import { selectRoleOnSuccess } from "entities/roles/model"
 import { useTranslation } from "react-i18next"
@@ -8,6 +7,8 @@ import { useParams } from "react-router-dom"
 import { useAppSelector } from "app/hooks"
 
 import { initInternalError } from "shared/libs"
+import { antdModalConfirm, antdNotification } from "shared/libs/antd-modals"
+import { Button } from "shared/ui"
 
 interface Props {
   user: User
@@ -25,9 +26,7 @@ export const DeleteUsetProjectAccess = ({ user }: Props) => {
         project: Number(projectId),
       }).unwrap()
 
-      notification.success({
-        message: t("Success"),
-        closable: true,
+      antdNotification.success("delete-user-project-access", {
         description: t("User access deleted successfully"),
       })
 
@@ -43,14 +42,12 @@ export const DeleteUsetProjectAccess = ({ user }: Props) => {
       icon={<DeleteOutlined />}
       shape="circle"
       danger
+      color="secondary-linear"
       onClick={() => {
-        Modal.confirm({
+        antdModalConfirm("delete-user-project-access", {
           title: t("Do you want to delete user from project?"),
           okText: t("Delete"),
-          cancelText: t("Cancel"),
           onOk: handleModalConfirm,
-          okButtonProps: { "data-testid": "delete-user-button-confirm" },
-          cancelButtonProps: { "data-testid": "delete-user-button-cancel" },
         })
       }}
     />

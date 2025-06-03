@@ -35,6 +35,7 @@ from http import HTTPStatus
 
 import allure
 import pytest
+from core.choices import LabelsActionChoices
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Model
 
@@ -72,6 +73,7 @@ class TestCaseEndpoints:
     view_restore_version = 'api:v2:testcase-restore-version'
     view_name_search = 'api:v2:testcase-search'
     view_name_delete_preview = 'api:v2:testcase-delete-preview'
+    view_name_bulk_update = 'api:v2:testcase-bulk-update'
 
     @allure.title('Test list display')
     def test_list(self, superuser_client, test_case_factory, project):
@@ -923,7 +925,7 @@ class TestCaseEndpoints:
                 many=True,
                 refresh_instances=True,
             )
-
+            expected_output.sort(key=lambda case: case['id'])
             actual_data = api_client.send_request(
                 self.view_name_list,
                 query_params={'project': project.id, 'labels': label.id},
@@ -1041,6 +1043,438 @@ class TestCaseEndpoints:
             expected_status=HTTPStatus.OK,
         )
 
+    @allure.title('Test updating archive test case is allowed for superuser only')
+    def test_update_archive_is_forbidden(self, api_client, test_case_factory, user, superuser):
+        test_case = test_case_factory(is_archive=True)
+        api_client.force_login(superuser)
+        new_name = 'new_expected_test_case_name'
+        case_dict = {
+            'id': test_case.id,
+            'name': new_name,
+            'project': test_case.project.id,
+            'suite': test_case.suite.id,
+            'scenario': test_case.scenario,
+        }
+        expected_count_versions = TestCase.objects.get(pk=test_case.id).history.count() + 1
+        with allure.step('Test updating archive test case is allowed for superuser'):
+            api_client.send_request(
+                self.view_name_detail,
+                case_dict,
+                request_type=RequestType.PUT,
+                reverse_kwargs={'pk': test_case.pk},
+            )
+        actual_name = TestCase.objects.get(pk=test_case.id).name
+        with allure.step('Validate version created'):
+            assert TestCase.objects.get(pk=test_case.id).history.count() == expected_count_versions
+        with allure.step('Validate name was updated'):
+            assert actual_name == new_name, f'Names do not match. Expected name "{actual_name}", actual: "{new_name}"'
+        api_client.force_login(user)
+        with allure.step('Test updating archive test case is allowed for superuser'):
+            api_client.send_request(
+                self.view_name_detail,
+                case_dict,
+                request_type=RequestType.PUT,
+                expected_status=HTTPStatus.FORBIDDEN,
+                reverse_kwargs={'pk': test_case.pk},
+            )
+
+    @allure.title('Test restoring test case with labels')
+    def test_restoring_with_labels(self, labeled_item_factory, label_factory, test_case, project, superuser_client):
+        number_of_labels = 3
+        version_to_restore = test_case.history.latest().history_id
+        labels = [label_factory(project=project) for _ in range(number_of_labels)]
+        with allure.step('Create labeled items'):
+            for label in labels:
+                labeled_item_factory(
+                    content_object=test_case,
+                    label=label,
+                    content_object_history_id=version_to_restore,
+                )
+        with allure.step('Get body for request'):
+            body = superuser_client.send_request(
+                self.view_name_detail,
+                reverse_kwargs={'pk': test_case.pk},
+            ).json()
+        with allure.step('Validate labels exist before deletion'):
+            assert self.labels_count_from_api(superuser_client, test_case.pk) == number_of_labels
+        body['name'] = 'new_name'
+        body['suite'] = test_case.suite_id
+        with allure.step('Update test case name via api'):
+            superuser_client.send_request(
+                self.view_name_detail,
+                reverse_kwargs={'pk': test_case.pk},
+                data=body,
+                request_type=RequestType.PUT,
+            ).json()
+        with allure.step('Validate labels removed'):
+            assert self.labels_count_from_api(superuser_client, test_case.pk) == number_of_labels
+        with allure.step('Restore version'):
+            superuser_client.send_request(
+                self.view_restore_version,
+                reverse_kwargs={'pk': test_case.pk},
+                request_type=RequestType.POST,
+                expected_status=HTTPStatus.OK,
+                data={'version': version_to_restore},
+            )
+        with allure.step('Validate labels are restored on case without version provided'):
+            assert self.labels_count_from_api(superuser_client, test_case.pk) == number_of_labels
+        with allure.step('Validate labels count did not change on oldest version'):
+            assert self.labels_count_from_api(superuser_client, test_case.pk, version_to_restore) == number_of_labels
+        with allure.step('Validate labels count did not change on instance'):
+            test_case.refresh_from_db()
+            assert test_case.labeled_items.count() == number_of_labels
+
+    @pytest.mark.parametrize('payload_key', ['included_cases', 'excluded_cases'])
+    def test_bulk_update_labels(
+        self,
+        api_client,
+        authorized_superuser,
+        test_case_factory,
+        test_suite_factory,
+        project,
+        payload_key,
+    ):
+        labels_number = 3
+        case_number = 3
+        suite = test_suite_factory(project=project)
+        cases_pk = []
+        with allure.step('Create test cases'):
+            for _ in range(case_number):
+                case = test_case_factory(project=project, suite=suite)
+                cases_pk.append(case.id)
+        cases_in_payload = cases_pk[:case_number // 2]
+        labels_to_create = [{'name': f'label_{idx}'} for idx in range(labels_number)]
+        with allure.step('Send request to create labels'):
+            api_client.send_request(
+                self.view_name_bulk_update,
+                {
+                    payload_key: cases_in_payload,
+                    'labels': labels_to_create,
+                    'current_suite': suite.id,
+                    'project': project.id,
+                    'labels_action': LabelsActionChoices.UPDATE.value,
+                },
+                HTTPStatus.OK,
+                RequestType.PUT,
+            )
+        if payload_key == 'included_cases':
+            affected_cases_pks = cases_pk[:case_number // 2]
+        else:
+            affected_cases_pks = cases_pk[case_number // 2:]
+        cases = TestCase.objects.filter(pk__in=affected_cases_pks)
+        with allure.step('Validate labels number'):
+            for case in cases:
+                assert case.labeled_items.count() == labels_number
+        label = Label.objects.first()
+        label_to_save = {'id': label.id, 'name': label.name}
+        new_label_name = 'new_label_name'
+        with allure.step('Send requset to delete one label and create new label'):
+            api_client.send_request(
+                self.view_name_bulk_update,
+                {
+                    payload_key: cases_in_payload,
+                    'labels': [label_to_save, {'name': new_label_name}],
+                    'current_suite': suite.id,
+                    'project': project.id,
+                    'labels_action': LabelsActionChoices.UPDATE.value,
+                },
+                HTTPStatus.OK,
+                RequestType.PUT,
+            )
+        with allure.step('Validate labels after update'):
+            for case in cases:
+                case.refresh_from_db()
+                labeled_items = case.labeled_items.all()
+                assert labeled_items.count() == 2, 'Expected labels number is wrong'
+                assert labeled_items.filter(label__id=label_to_save['id']).count() == 1, 'Saved label is not found'
+                assert labeled_items.filter(label__name=new_label_name).count() == 1, 'New label is not found'
+
+    def test_bulk_update_labels_with_filters(
+        self,
+        api_client,
+        authorized_superuser,
+        test_case_factory,
+        test_suite_factory,
+        project,
+    ):
+        suite = test_suite_factory(project=project)
+        cases_pk = []
+        name_for_search = 'case_for_search'
+        with allure.step('Create test cases'):
+            for idx in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
+                if idx % 2:
+                    case = test_case_factory(project=project, suite=suite, name=name_for_search)
+                    cases_pk.append(case.id)
+                else:
+                    test_case_factory(project=project, suite=suite)
+        labels_to_create = [{'name': f'label_{idx}'} for idx in range(constants.NUMBER_OF_OBJECTS_TO_CREATE)]
+        with allure.step('Send request to create labels'):
+            api_client.send_request(
+                self.view_name_bulk_update,
+                {
+                    'labels': labels_to_create,
+                    'current_suite': suite.id,
+                    'filter_conditions': {'name': name_for_search},
+                    'project': project.id,
+                    'labels_action': LabelsActionChoices.UPDATE.value,
+                },
+                HTTPStatus.OK,
+                RequestType.PUT,
+            )
+        cases = TestCase.objects.filter(pk__in=cases_pk)
+        not_affected_cases = TestCase.objects.exclude(pk__in=cases_pk)
+        with allure.step('Validate labels number'):
+            for case in cases:
+                assert case.labeled_items.count() == constants.NUMBER_OF_OBJECTS_TO_CREATE, 'Labels number is wrong'
+        with allure.step('Validate labels dont exists'):
+            for case in not_affected_cases:
+                assert not case.labeled_items.count(), 'Labels were created'
+
+    def test_bulk_add_labels(
+        self,
+        api_client,
+        authorized_superuser,
+        test_case_factory,
+        test_suite_factory,
+        project,
+        labeled_item_factory,
+        label_factory,
+    ):
+        labels_number = 3
+        case_number = 3
+        suite = test_suite_factory(project=project)
+        existed_label = label_factory(project=project)
+        existed_label_to_append = label_factory(project=project)
+        cases_pk = []
+        with allure.step('Create test cases'):
+            for _ in range(case_number):
+                case = test_case_factory(project=project, suite=suite)
+                cases_pk.append(case.id)
+                labeled_item_factory(label=existed_label, content_object=case)
+
+        labels_to_add = [{'name': f'label_{idx}'} for idx in range(labels_number)]
+        labels_to_add.append({'name': existed_label_to_append.name, 'id': existed_label_to_append.id})
+        label_names = [label['name'] for label in labels_to_add]
+        label_names.append(existed_label.name)
+        label_names.sort()
+        with allure.step('Send request to create labels'):
+            api_client.send_request(
+                self.view_name_bulk_update,
+                {
+                    'included_cases': cases_pk,
+                    'labels': labels_to_add,
+                    'current_suite': suite.id,
+                    'project': project.id,
+                    'labels_action': LabelsActionChoices.ADD.value,
+                },
+                HTTPStatus.OK,
+                RequestType.PUT,
+            )
+        cases = TestCase.objects.filter(pk__in=cases_pk)
+        with allure.step('Validate labels after append'):
+            for case in cases:
+                actual_label_names = list(
+                    case
+                    .labeled_items
+                    .select_related('label')
+                    .values_list('label__name', flat=True)
+                    .order_by('label__name'),
+                )
+                assert actual_label_names == label_names, 'Label names do not match'
+
+    def test_bulk_add_existing_labels(
+        self,
+        api_client,
+        authorized_superuser,
+        test_case_factory,
+        test_suite_factory,
+        project,
+        labeled_item_factory,
+        label_factory,
+    ):
+        case_number = 3
+        suite = test_suite_factory(project=project)
+        existed_label = label_factory(project=project)
+        cases_pk = []
+        with allure.step('Create test cases'):
+            for _ in range(case_number):
+                case = test_case_factory(project=project, suite=suite)
+                cases_pk.append(case.id)
+                labeled_item_factory(label=existed_label, content_object=case)
+
+        labels_to_add = [{'name': existed_label.name, 'id': existed_label.id}]
+        with allure.step('Send request to create labels'):
+            api_client.send_request(
+                self.view_name_bulk_update,
+                {
+                    'included_cases': cases_pk,
+                    'labels': labels_to_add,
+                    'current_suite': suite.id,
+                    'project': project.id,
+                    'labels_action': LabelsActionChoices.ADD.value,
+                },
+                HTTPStatus.OK,
+                RequestType.PUT,
+            )
+        cases = TestCase.objects.filter(pk__in=cases_pk)
+        with allure.step('Validate labels after append'):
+            for case in cases:
+                assert case.labeled_items.count() == 1, 'Label was duplicated'
+
+    def test_bulk_delete_labels(
+        self,
+        api_client,
+        authorized_superuser,
+        test_case_factory,
+        test_suite_factory,
+        project,
+        labeled_item_factory,
+        label_factory,
+    ):
+        case_number = 3
+        label_number = 3
+        suite = test_suite_factory(project=project)
+        existed_labels = [label_factory(project=project) for _ in range(label_number)]
+        labels_to_delete = [{'id': label.id, 'name': label.name} for label in existed_labels[1:]]
+        not_deleted_labels = [existed_labels[0].name]
+        cases_pk = []
+        with allure.step('Create test cases'):
+            for _ in range(case_number):
+                case = test_case_factory(project=project, suite=suite)
+                cases_pk.append(case.id)
+                for label in existed_labels:
+                    labeled_item_factory(label=label, content_object=case)
+
+        with allure.step('Send request to delete labels'):
+            api_client.send_request(
+                self.view_name_bulk_update,
+                {
+                    'included_cases': cases_pk,
+                    'labels': labels_to_delete,
+                    'current_suite': suite.id,
+                    'project': project.id,
+                    'labels_action': LabelsActionChoices.DELETE.value,
+                },
+                HTTPStatus.OK,
+                RequestType.PUT,
+            )
+        cases = TestCase.objects.filter(pk__in=cases_pk)
+        with allure.step('Validate labels after delete'):
+            for case in cases:
+                actual_not_deleted_labels = list(case.labeled_items.values_list('label__name', flat=True))
+                assert actual_not_deleted_labels == not_deleted_labels, 'Labels were not deleted'
+
+    def test_clear_labels(
+        self,
+        api_client,
+        authorized_superuser,
+        test_case_factory,
+        test_suite_factory,
+        project,
+        labeled_item_factory,
+        label_factory,
+    ):
+        case_number = 3
+        label_number = 3
+        suite = test_suite_factory(project=project)
+        existed_labels = [label_factory(project=project) for _ in range(label_number)]
+        cases_pk = []
+        with allure.step('Create test cases'):
+            for _ in range(case_number):
+                case = test_case_factory(project=project, suite=suite)
+                cases_pk.append(case.id)
+                for label in existed_labels:
+                    labeled_item_factory(label=label, content_object=case)
+
+        with allure.step('Send request to delete labels'):
+            api_client.send_request(
+                self.view_name_bulk_update,
+                {
+                    'included_cases': cases_pk,
+                    'labels': [],
+                    'current_suite': suite.id,
+                    'project': project.id,
+                    'labels_action': LabelsActionChoices.CLEAR.value,
+                },
+                HTTPStatus.OK,
+                RequestType.PUT,
+            )
+        cases = TestCase.objects.filter(pk__in=cases_pk)
+        with allure.step('Validate labels after delete'):
+            for case in cases:
+                assert not case.labeled_items.exists()
+
+    @pytest.mark.parametrize('included', [True, False])
+    def test_bulk_update_suite(
+        self,
+        authorized_client,
+        test_case_factory,
+        test_suite_factory,
+        project,
+        included,
+    ):
+        title = f'Test moving cases to another suite with {"included" if included else "excluded"} parameter'
+        allure.dynamic.title(title)
+        case_number = 3
+        source_suite = test_suite_factory(project=project)
+        destination_suite = test_suite_factory(project=project)
+        case_pks = []
+        with allure.step('Create test cases'):
+            for _ in range(case_number):
+                case = test_case_factory(project=project, suite=source_suite)
+                case_pks.append(case.id)
+        with allure.step('Move cases to another suite'):
+            payload_key = 'included_cases' if included else 'excluded_cases'
+            authorized_client.send_request(
+                self.view_name_bulk_update,
+                {
+                    payload_key: case_pks[1:],
+                    'current_suite': source_suite.pk,
+                    'suite': destination_suite.pk,
+                    'project': project.pk,
+                },
+                HTTPStatus.OK,
+                RequestType.PUT,
+            )
+        source_suite_expected = [case_pks[0]] if included else case_pks[1:]
+        dst_suite_expected = case_pks[1:] if included else [case_pks[0]]
+        with allure.step('Validate cases removed from source suite'):
+            assert list(source_suite.test_cases.values_list('pk', flat=True)) == source_suite_expected
+        with allure.step('Validate cases added to destination suite'):
+            assert list(destination_suite.test_cases.values_list('pk', flat=True)) == dst_suite_expected
+
+    @allure.title('Test moving cases to another suite with invalid project')
+    def test_bulk_update_suite_to_another_project(
+        self,
+        authorized_client,
+        test_case_factory,
+        test_suite_factory,
+        project_factory,
+    ):
+        current_project = project_factory()
+        dst_project = project_factory()
+        case_number = 3
+        source_suite = test_suite_factory(project=current_project)
+        destination_suite = test_suite_factory(project=dst_project)
+        case_pks = []
+        with allure.step('Create test cases'):
+            for _ in range(case_number):
+                case = test_case_factory(project=current_project, suite=source_suite)
+                case_pks.append(case.id)
+        with allure.step('Move cases to another suite in another project'):
+            payload_key = 'included_cases'
+            authorized_client.send_request(
+                self.view_name_bulk_update,
+                {
+                    payload_key: case_pks[1:],
+                    'current_suite': source_suite.pk,
+                    'suite': destination_suite.pk,
+                    'project': dst_project.pk,
+                },
+                HTTPStatus.BAD_REQUEST,
+                RequestType.PUT,
+            )
+
 
 @pytest.mark.django_db(reset_sequences=True)
 @allure.parent_suite('Test cases with steps')
@@ -1072,14 +1506,17 @@ class TestCaseWithStepsEndpoints:
         expected_instances = []
         for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
             expected_instances.append(test_case_with_steps_factory(project=project))
+        expected_instances.sort(key=lambda instance: instance.name)
         expected_instances = model_to_dict_via_serializer(
             expected_instances,
             TestCaseListMockSerializer,
             many=True,
             refresh_instances=True,
         )
-
-        response = superuser_client.send_request(self.view_name_list, query_params={'project': project.id})
+        response = superuser_client.send_request(
+            self.view_name_list,
+            query_params={'project': project.id, 'ordering': 'name'},
+        )
         with allure.step('Validate response body'):
             assert response.json()['results'] == expected_instances
 
@@ -1619,12 +2056,13 @@ class TestCaseFilter:
         assert expected_total == response['count']
 
     def test_search_filter(self, superuser_client, test_case_factory, project):
+        not_found_name = 'not_found'
         case_found_by_id = test_case_factory(project=project)
         search_cond = str(case_found_by_id.id)
         with allure.step('Create case that will be found by name'):
             test_case_factory(project=project, name=search_cond)
         with allure.step('Create case that will not be found'):
-            test_case_factory(project=project)
+            test_case_factory(project=project, name=not_found_name)
         response = superuser_client.send_request(
             self.view_name_list,
             query_params={
