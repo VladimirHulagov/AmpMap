@@ -1,10 +1,18 @@
 interface TestState {
   test: Test | null
+  drawer: DrawerData
   settings: {
     table: TestTableParams
     tree: TestTreeParams
   }
 }
+
+interface DrawerData {
+  view: DrawerViewType
+  shouldClose?: boolean
+}
+
+type DrawerViewType = "test" | "addResult" | "editResult" | "cloneResult"
 
 type TestStateSettings = TestState["settings"][keyof TestState["settings"]]
 
@@ -13,7 +21,7 @@ interface SetSettings {
   settings: TestStateSettings
 }
 
-interface UpdateSettings extends SetSettings {
+interface UpdateTestSettings extends SetSettings {
   settings: Partial<TestStateSettings>
 }
 
@@ -67,7 +75,6 @@ interface TestGetFilters extends TestGet {
   is_archive?: boolean
   suite?: number[]
   plan?: number[]
-  nested_search?: boolean
   assignee?: string[]
   unassigned?: boolean
   show_descendants?: boolean
@@ -83,7 +90,6 @@ interface TestGetFilters extends TestGet {
 interface TestTableParams {
   page: number
   page_size: number
-  testPlanId: number | null
   visibleColumns: ColumnParam[]
   columns: ColumnParam[]
   sorter?: SorterResult<string>
@@ -91,6 +97,7 @@ interface TestTableParams {
   isAllSelectedTableBulk: boolean
   selectedRows: number[]
   excludedRows: number[]
+  count: number
   _n?: number
 }
 
@@ -125,14 +132,37 @@ interface TestUpdate {
 }
 
 interface TestBulkUpdate {
+  project: number
   included_tests: number[]
   excluded_tests: number[]
-  current_plan: number
-  plan?: number
-  assignee?: string
+  current_plan?: number
+  plan_id?: number
+  assignee_id?: number | null
+  is_deleted?: boolean
   filter_conditions?: Partial<TestGetFilters>
+  result?: TestBulkStatusUpdate
+  is_async?: boolean
+}
+
+interface TestBulkStatusUpdate {
+  comment?: string
+  status: number | null
+  attachments?: number[]
+  attributes?: {
+    non_suite_specific?: Record<string, string>
+    suite_specific?: {
+      suite_id: number
+      values: Record<string, string>
+    }[]
+  }
 }
 
 interface TestsWithPlanBreadcrumbs extends Test {
   breadcrumbs: BreadCrumbsActivityResult
+}
+
+interface GetTestRelatedEntitiesParams {
+  test_id: number
+  type?: "result" | "comment"
+  ordering?: "created_at" | "-created_at"
 }

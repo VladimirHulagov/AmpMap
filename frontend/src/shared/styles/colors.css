@@ -1,0 +1,86 @@
+:root {
+  /* Grey */
+  --y-grey-90: #1f1f1f;
+  --y-grey-85: #262626;
+  --y-grey-80: #2c2c2c;
+  --y-grey-75: #373737;
+  --y-grey-70: #404040;
+  --y-grey-60: #484848;
+  --y-grey-50: #555555;
+  --y-grey-40: #777777;
+  --y-grey-35: #999999;
+  --y-grey-30: #b8b8b8;
+  --y-grey-25: #cdcdcd;
+  --y-grey-20: #dfdfdf;
+  --y-grey-15: #eeeeee;
+  --y-grey-10: #f6f6f6;
+  --y-grey-0: #fff;
+
+  /* Blue */
+  --y-blue-80: #2c3149;
+  --y-blue-50: #425cd7;
+  --y-blue-30: #4e6bf3;
+  --y-blue-20: #637eff;
+  --y-blue-15: #7a9dff;
+  --y-blue-10: #eceffb;
+
+  /* Green */
+  --y-green-80: #2e4137;
+  --y-green-50: #3bb073;
+  --y-green-30: #5fd296;
+  --y-green-10: #eef7f2;
+
+  /* Red */
+  --y-red-80: #462e30;
+  --y-red-50: #c9454f;
+  --y-red-30: #d68289;
+  --y-red-10: #faeeef;
+
+  /* Yellow */
+  --y-yellow-80: #4e4325;
+  --y-yellow-50: #f5b40a;
+  --y-yellow-30: #f4cc64;
+  --y-yellow-10: #fef8e9;
+
+  /* Raspberry */
+  --y-raspberry-5: #7a0633;
+  --y-raspberry-4: #92073d;
+  --y-raspberry-3: #db0a5b;
+  --y-raspberry-2: #fcb6d1;
+  --y-raspberry-1: #fdcee0;
+
+  /* Gold */
+  --y-gold-5: #995c00;
+  --y-gold-4: #b26b00;
+  --y-gold-3: #ffac30;
+  --y-gold-2: #ffd666;
+  --y-gold-1: #ffe58f;
+
+  /* Aquamarine */
+  --y-aquamarine-5: #2b8878;
+  --y-aquamarine-4: #33a38f;
+  --y-aquamarine-3: #59cbb7;
+  --y-aquamarine-2: #a9efe4;
+  --y-aquamarine-1: #b8f7ec;
+
+  /* Cyan */
+  --y-cyan-5: #006080;
+  --y-cyan-4: #007aa3;
+  --y-cyan-3: #00bfff;
+  --y-cyan-2: #99e5ff;
+  --y-cyan-1: #bbeeff;
+
+  /* Azure */
+  --y-azure-5: #195567;
+  --y-azure-4: #1d667c;
+  --y-azure-3: #288ba8;
+  --y-azure-2: #adddeb;
+  --y-azure-1: #c1e6f0;
+
+  /* Violet */
+  --y-violet-5: #5d03d9;
+  --y-violet-4: #6c03fc;
+  --y-violet-3: #9f5afd;
+  --y-violet-2: #d3b3fe;
+  --y-violet-1: #e2cdfe;
+}

@@ -80,3 +80,24 @@ interface CustomAttributeContentType {
   model: CustomAttributeModelType
   name: string
 }
+
+interface CustomAttributeBulkAddResult {
+  name: string
+  is_required: boolean
+}
+
+interface CustomAttributesBulkAddResultResponse {
+  non_suite_specific: CustomAttributeBulkAddResult[]
+  suite_specific: {
+    suite_id: number
+    suite_name: string
+    values: CustomAttributeBulkAddResult[]
+  }[]
+}
+
+interface GetCustomAttributeBulkAddResultParams
+  extends Omit<TestBulkUpdate, "filter_conditions" | "plan" | "assignee">,
+    Partial<TestGetFilters> {
+  project_id: number
+  status_id: number
+}

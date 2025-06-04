@@ -18,7 +18,6 @@ interface Props<T extends FieldValues> {
   id: string
   control: Control<T>
   name: Path<T>
-  projectId: string
   getData: LazyGetTriggerType<T>
   getAncestors: LazyGetTriggerType<T>
   onSelect: (value: SelectData | null) => void
@@ -27,6 +26,7 @@ interface Props<T extends FieldValues> {
   formErrors?: FieldErrors<T>
   externalErrors?: FieldValues | null
   required?: boolean
+  valueKey?: string
   dataParams?: Record<string, unknown>
   skipInit?: boolean
   selected?: SelectData | null
@@ -51,6 +51,7 @@ export const LazyTreeSearchFormItem = <T extends FieldValues>({
   dataParams,
   skipInit = false,
   selected,
+  valueKey,
   rules = {},
 }: Props<T>) => {
   const errors = (formErrors?.[name]?.message ?? externalErrors?.[name]) as string | undefined
@@ -74,6 +75,7 @@ export const LazyTreeSearchFormItem = <T extends FieldValues>({
             getData={getData}
             // @ts-ignore
             getAncestors={getAncestors}
+            valueKey={valueKey}
             skipInit={skipInit}
             dataParams={dataParams}
             placeholder={placeholder}

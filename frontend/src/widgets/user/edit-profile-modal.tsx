@@ -1,4 +1,4 @@
-import { Button, Form, Input, Modal, notification } from "antd"
+import { Form, Input, Modal } from "antd"
 import { useEffect, useState } from "react"
 import { Controller, SubmitHandler, useForm } from "react-hook-form"
 import { useTranslation } from "react-i18next"
@@ -11,8 +11,9 @@ import { selectUser } from "entities/auth/model"
 import { useUpdateMeMutation } from "entities/user/api"
 import { hideEditProfileModal, selectProfileModalIsShow } from "entities/user/model"
 
-import { ErrorObj, useErrors, useShowModalCloseConfirm } from "shared/hooks"
-import { AlertError } from "shared/ui"
+import { ErrorObj, useErrors } from "shared/hooks"
+import { antdModalCloseConfirm, antdNotification } from "shared/libs/antd-modals"
+import { AlertError, Button } from "shared/ui"
 
 interface Inputs {
   first_name: string
@@ -24,9 +25,10 @@ interface ErrorData {
   last_name?: string
 }
 
+const TEST_ID = "edit-profile"
+
 export const EditProfileModal = () => {
   const { t } = useTranslation()
-  const { showModal } = useShowModalCloseConfirm()
   const dispatch = useDispatch()
   const isShow = useAppSelector(selectProfileModalIsShow)
   const user = useSelector(selectUser)
@@ -58,7 +60,7 @@ export const EditProfileModal = () => {
     if (isLoading) return
 
     if (isDirty) {
-      showModal(onCloseModal)
+      antdModalCloseConfirm(onCloseModal)
       return
     }
 
@@ -70,9 +72,7 @@ export const EditProfileModal = () => {
     try {
       await updateProfile(data).unwrap()
       onCloseModal()
-      notification.success({
-        message: t("Success"),
-        closable: true,
+      antdNotification.success("edit-profile", {
         description: t("Profile updated successfully"),
       })
     } catch (err: unknown) {
@@ -82,22 +82,23 @@ export const EditProfileModal = () => {
 
   return (
     <Modal
-      className="edit-profile-modal"
-      title={t("Edit Profile")}
+      bodyProps={{ "data-testid": `${TEST_ID}-modal-body` }}
+      wrapProps={{ "data-testid": `${TEST_ID}-modal-wrapper` }}
+      title={<span data-testid={`${TEST_ID}-modal-title`}>{t("Edit Profile")}</span>}
       open={isShow}
       onCancel={handleCancel}
       width="600px"
       centered
       footer={[
-        <Button id="close-edit-profile" key="back" onClick={handleCancel}>
+        <Button id={`close-${TEST_ID}`} key="back" onClick={handleCancel} color="secondary-linear">
           {t("Close")}
         </Button>,
         <Button
-          id="update-edit-profile"
+          id={`update-${TEST_ID}`}
           loading={isLoading}
           key="submit"
           onClick={handleSubmit(onSubmit)}
-          type="primary"
+          color="accent"
           disabled={!isDirty}
         >
           {t("Update")}

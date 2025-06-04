@@ -1,9 +1,9 @@
 import { Select } from "antd"
 import { useStatuses } from "entities/status/model/use-statuses"
-import { useContext, useState } from "react"
+import { useState } from "react"
 import { useTranslation } from "react-i18next"
 
-import { ProjectContext } from "pages/project"
+import { useProjectContext } from "pages/project"
 
 import { Status } from "shared/ui"
 import { UntestedStatus } from "shared/ui/status"
@@ -20,7 +20,7 @@ interface Props extends HTMLDataAttribute {
 export const StatusFilter = ({ value, onChange, onClose, onClear, ...props }: Props) => {
   const { t } = useTranslation()
 
-  const { project } = useContext(ProjectContext)!
+  const project = useProjectContext()
   const { statuses, isLoading } = useStatuses({ project: project.id })
   const [isOpen, setIsOpen] = useState(false)
 

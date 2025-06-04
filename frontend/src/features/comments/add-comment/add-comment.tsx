@@ -1,8 +1,8 @@
 import { UploadOutlined } from "@ant-design/icons"
-import { Alert, Button, Upload } from "antd"
+import { Alert, Upload } from "antd"
 import { useTranslation } from "react-i18next"
 
-import { Attachment, TextArea } from "shared/ui"
+import { Attachment, Button, TextArea } from "shared/ui"
 
 import { useAddComment } from "./use-add-comment"
 
@@ -42,6 +42,7 @@ export const AddComment = ({ model, object_id, setIsShowAdd }: Props) => {
         handleAttachmentRemove={handleAttachmentRemove}
         attachments={attachments}
         isShowNoAttachment={false}
+        id="add-comment"
       />
       <div style={{ display: "flex", alignItems: "center" }}>
         <Upload
@@ -49,19 +50,25 @@ export const AddComment = ({ model, object_id, setIsShowAdd }: Props) => {
           onChange={handleLoadAttachmentChange}
           customRequest={handleAttachmentLoad}
         >
-          <Button icon={<UploadOutlined />}>{t("Upload file")}</Button>
+          <Button color="secondary-linear" icon={<UploadOutlined />}>
+            {t("Upload file")}
+          </Button>
         </Upload>
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginLeft: "auto" }}>
           <Button
             id="add-comment-btn"
-            type="primary"
+            color="accent"
             onClick={handleAddClick}
             loading={isLoadingAddComment || isLoadingCreateAttachment}
             disabled={!comment.length && !attachments.length}
           >
             {t("Add")}
           </Button>
-          <Button id="cancel-comment-btn" onClick={() => setIsShowAdd(false)} type="text">
+          <Button
+            id="cancel-comment-btn"
+            onClick={() => setIsShowAdd(false)}
+            color="secondary-linear"
+          >
             {t("Cancel")}
           </Button>
         </div>

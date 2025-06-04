@@ -1,0 +1,19 @@
+.formFooter {
+  font-size: 16px;
+  display: flex;
+  column-gap: 8px;
+  padding: 16px 32px 0;
+  justify-content: end;
+  border-top: 1px solid var(--y-color-border);
+}
+
+.title {
+  font-size: 26px;
+  font-weight: 400;
+  color: var(--y-color-bulk-result-modal-title);
+}
+
+.subTitle {
+  font-size: 14px;
+  color: var(--y-color-bulk-result-modal-subtitle);
+}

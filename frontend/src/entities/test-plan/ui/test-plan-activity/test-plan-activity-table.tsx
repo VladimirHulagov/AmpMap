@@ -10,9 +10,9 @@ export const TestPlanActivityTable = ({
 }: {
   testPlanActivity: ReturnType<typeof useTestPlanActivity>
 }) => {
-  if (!testPlanActivity.data || testPlanActivity.isLoading) return <ContainerLoader />
+  if (testPlanActivity.isLoading) return <ContainerLoader />
 
-  if (!testPlanActivity.data.count) return <Empty />
+  if (!testPlanActivity.data?.count) return <Empty />
 
   return (
     <ul style={{ paddingLeft: 0 }}>

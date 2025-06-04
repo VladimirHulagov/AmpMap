@@ -11,7 +11,9 @@ interface TestPlansQuery {
   treesearch?: string
   ordering?: string
   assignee?: string[]
+  unassigned?: boolean
   parent?: number | null
+  progress_assignee?: number
   labels?: number[]
   not_labels?: number[]
   labels_condition?: string
@@ -24,7 +26,7 @@ interface TestPlansQuery {
   test_created_before?: string
 }
 
-type TestPlansUnionQuery = Omit<TestPlansQuery, "treesearch"> & { search?: string }
+type TestPlansUnionQuery = TestPlansQuery & { search?: string }
 
 interface TestPlanQuery extends TestPlansQuery {
   testPlanId: string
@@ -49,6 +51,8 @@ interface TestPlan {
   labels?: string[]
   plan_path: string
   attributes: AttributesObject
+  tests_progress_total?: number
+  total_tests?: number
   started_at: string | null
   created_at: string
 }
@@ -97,6 +101,18 @@ interface TestPlanStatisticsParams {
   labels_condition?: string
   estimate_period?: EstimatePeriod
   is_archive?: boolean
+  search?: string
+  last_status?: string[]
+  assignee?: string[]
+  unassigned?: boolean
+  suite?: number[]
+  plan?: number[]
+  test_plan_started_before?: string
+  test_plan_started_after?: string
+  test_plan_created_before?: string
+  test_plan_created_after?: string
+  test_created_before?: string
+  test_created_after?: string
 }
 
 interface TestPlanActivityPagination {
@@ -160,6 +176,18 @@ interface TestPlanHistogramParams {
   not_labels?: number[]
   labels_condition?: string
   is_archive?: boolean
+  search?: string
+  last_status?: string[]
+  assignee?: string[]
+  unassigned?: boolean
+  suite?: number[]
+  plan?: number[]
+  test_plan_started_before?: string
+  test_plan_started_after?: string
+  test_plan_created_before?: string
+  test_plan_created_after?: string
+  test_created_before?: string
+  test_created_after?: string
 }
 
 interface TestPlanHistogramDataPoint {
@@ -194,4 +222,34 @@ interface GetAncestors {
 interface GetTestPlanLabelsParams {
   project: number
   parent: number | string | null
+}
+
+interface CountData {
+  all: number
+  notUntested: number
+}
+
+interface ChildStatisticData {
+  statistics: TestPlanStatistics[]
+  id: number
+  title: string
+  total: {
+    estimates: CountData
+    count: CountData
+  }
+  order: number
+  isRoot: boolean
+}
+
+type EntityView = "list" | "tree"
+
+interface TestPlanAssigneeProgressQuery {
+  project: number
+  parent: number | null
+  page_size: number
+  page: number
+  assignee?: number
+  treesearch?: string
+  ordering?: string
+  _n?: string | number
 }

@@ -1,10 +1,10 @@
-import { Button, Form, Input, Modal, Select } from "antd"
+import { Form, Input, Modal, Select } from "antd"
 import { Controller } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 
 import { labelTypes } from "shared/config/label-types"
 import { ErrorObj } from "shared/hooks"
-import { AlertError } from "shared/ui"
+import { AlertError, Button } from "shared/ui"
 
 import {
   UseCreateEditLabelModalProps,
@@ -18,14 +18,20 @@ export const CreateEditLabelModal = (props: UseCreateEditLabelModalProps) => {
 
   return (
     <Modal
-      className={`${props.mode}-label-modal`}
-      title={title}
+      bodyProps={{ "data-testid": `${props.mode}-label-modal-body` }}
+      wrapProps={{ "data-testid": `${props.mode}-label-modal-wrapper` }}
+      title={<span data-testid={`${props.mode}-label-modal-title`}>{title}</span>}
       open={props.isShow}
       onCancel={handleCancel}
       width="600px"
       centered
       footer={[
-        <Button id={`${props.mode}-label-close`} key="back" onClick={handleCancel}>
+        <Button
+          id={`${props.mode}-label-close`}
+          key="back"
+          onClick={handleCancel}
+          color="secondary-linear"
+        >
           {t("Close")}
         </Button>,
         <Button
@@ -33,7 +39,7 @@ export const CreateEditLabelModal = (props: UseCreateEditLabelModalProps) => {
           loading={isLoading}
           key="submit"
           onClick={handleSubmitForm}
-          type="primary"
+          color="accent"
           disabled={!isDirty}
         >
           {props.mode === "edit" ? t("Update") : t("Create")}

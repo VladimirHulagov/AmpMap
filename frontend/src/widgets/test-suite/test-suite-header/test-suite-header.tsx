@@ -49,7 +49,12 @@ export const TestSuiteHeader = () => {
   return (
     <>
       <Flex gap={8}>
-        <Typography.Title id="test-suite-title" level={2} className={styles.title}>
+        <Typography.Title
+          id="test-suite-title"
+          level={2}
+          className={styles.title}
+          data-testid="test-suite-title"
+        >
           {suite.name}
         </Typography.Title>
       </Flex>

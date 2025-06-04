@@ -1,4 +1,3 @@
-import { notification } from "antd"
 import { useEffect, useMemo, useState } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
 import { useTranslation } from "react-i18next"
@@ -7,6 +6,7 @@ import { useParams } from "react-router-dom"
 import { useCreateLabelMutation, useUpdateLabelMutation } from "entities/label/api"
 
 import { useErrors } from "shared/hooks"
+import { antdNotification } from "shared/libs/antd-modals"
 
 interface ErrorData {
   name?: string
@@ -59,9 +59,7 @@ export const useCreateEditLabelModal = ({
       } else {
         await createLabel({ ...data, project: Number(projectId) }).unwrap()
       }
-      notification.success({
-        message: t("Success"),
-        closable: true,
+      antdNotification.success(mode === "edit" ? "update-label" : "create-label", {
         description:
           mode === "edit" ? t("Label updated successfully") : t("Label created successfully"),
       })

@@ -103,6 +103,15 @@ class RoleSelector:
         return Membership.objects.filter(lookup).exists()
 
     @classmethod
+    def create_action_allowed_by_id(cls, user: User, project_id: int, model_name: str) -> bool:
+        lookup = (
+            Q(user__pk=user.pk)
+            & Q(role__permissions__codename=f'add_{model_name}')
+            & Q(project_id=project_id)
+        )
+        return Membership.objects.filter(lookup).exists()
+
+    @classmethod
     def project_view_allowed(cls, user: User, project: Project) -> bool:
         lookup = (
             Q(user__pk=user.pk)
@@ -118,6 +127,11 @@ class RoleSelector:
             & Q(role__permissions__codename=UserAllowedPermissionCodenames.VIEW_PROJECT_RESTRICTION)
         )
         return Membership.objects.filter(lookup).exists()
+
+    @classmethod
+    def public_access(cls, user: User, project: Project) -> bool:
+        is_restricted = cls.restricted_project_access(user)
+        return not project.is_private and not is_restricted
 
     @classmethod
     def admin_user_role(cls) -> Role | None:

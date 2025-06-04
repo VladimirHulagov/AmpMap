@@ -67,6 +67,16 @@ class ResultStatusSelector:
         return queryset
 
     @classmethod
+    def status_list_by_project_id(cls, project_id: int) -> QuerySet[ResultStatus]:
+        return (
+            ResultStatusSelector
+            .status_list_raw()
+            .filter(
+                Q(type=ResultStatusType.SYSTEM) | Q(project_id=project_id),
+            )
+        )
+
+    @classmethod
     def status_list_by_project_and_name(cls, project: Project | None, name: str) -> QuerySet[ResultStatus]:
         return ResultStatusSelector.status_list(project=project).filter(name__iexact=name)
 

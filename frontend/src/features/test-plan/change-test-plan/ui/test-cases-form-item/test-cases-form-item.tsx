@@ -1,4 +1,5 @@
-import { Flex, Form, Tree, Typography } from "antd"
+import { Flex, Form, Tree } from "antd"
+import classNames from "classnames"
 import { useEffect, useState } from "react"
 import { Control, Controller } from "react-hook-form"
 import { useTranslation } from "react-i18next"
@@ -11,6 +12,7 @@ import { getTestCaseChangeResult } from "entities/test-plan/lib"
 
 import { TestCaseLabels } from "features/test-plan/change-test-plan/ui/test-cases-form-item/ui/test-case-labels/test-case-labels"
 
+import ArrowIcon from "shared/assets/yi-icons/arrow.svg?react"
 import { TreeUtils } from "shared/libs"
 import { ArchivedTag, ContainerLoader } from "shared/ui"
 
@@ -28,6 +30,7 @@ export const TestCasesFormItem = ({ errors, control }: Props) => {
   const [selectedLables, setSelectedLabels] = useState<number[]>([])
   const [lableCondition, setLableCondition] = useState<"and" | "or">("and")
   const [showArchived, setShowArchived] = useState(false)
+  const [selectedCount, setSelectedCount] = useState<number>()
 
   const handleConditionClick = () => {
     setLableCondition(lableCondition === "and" ? "or" : "and")
@@ -55,12 +58,12 @@ export const TestCasesFormItem = ({ errors, control }: Props) => {
   const labelProps = useTestCaseFormLabels({
     setValue: setLables,
     testCase: null,
-    isShow: true,
     isEditMode: false,
     defaultLabels: selectedLables,
+    placeholder: t("Select label"),
   })
 
-  const { FilterButton, FilterForm } = useTestCasesFilter({
+  const FilterForm = useTestCasesFilter({
     labelProps,
     searchText,
     handleSearch: onSearch,
@@ -78,11 +81,20 @@ export const TestCasesFormItem = ({ errors, control }: Props) => {
   return (
     <Form.Item
       label={
-        <div style={{ display: "flex", height: 22 }}>
-          <Typography.Paragraph style={{ margin: 0 }}>{t("Test Cases")}</Typography.Paragraph>
-          {FilterButton}
-        </div>
+        <Flex align="center" style={{ width: "100%", whiteSpace: "nowrap" }}>
+          <span className={styles.fieldName} style={{ marginRight: 8 }}>
+            {t("Test Cases")}
+          </span>
+          <span className={styles.selectedInfo}>
+            {t("Selected")}:
+            <span data-testid="create-test-plan-tree-selected" style={{ marginLeft: 4 }}>
+              {selectedCount}
+            </span>
+          </span>
+          <div style={{ width: "100%", height: 1, backgroundColor: "var(--y-color-border)" }} />
+        </Flex>
       }
+      labelCol={{ className: styles.labelWrapper }}
       validateStatus={errors?.test_cases ? "error" : ""}
       help={errors?.test_cases ? errors.test_cases : ""}
     >
@@ -90,19 +102,13 @@ export const TestCasesFormItem = ({ errors, control }: Props) => {
         name="test_cases"
         control={control}
         render={({ field }) => {
-          const testCases = field.value.filter((item: string) => !item.startsWith("TS"))
+          setSelectedCount(field.value.filter((item: string) => !item.startsWith("TS")).length)
           return (
             <>
               {FilterForm}
               {isLoadingTreeData && <ContainerLoader />}
               {!isLoadingTreeData && (
                 <>
-                  <span
-                    data-testid="create-test-plan-tree-selected"
-                    style={{ display: "block", opacity: 0.7, marginBottom: 8 }}
-                  >
-                    {t("Selected")}: {testCases.length} {t("Test Cases").toLowerCase()}
-                  </span>
                   <Tree
                     data-testid="create-test-plan-tree"
                     {...field}
@@ -124,8 +130,16 @@ export const TestCasesFormItem = ({ errors, control }: Props) => {
                       )
                     }}
                     virtual={false}
-                    showIcon
                     checkable
+                    switcherIcon={(node) => {
+                      return (
+                        <ArrowIcon
+                          className={classNames(styles.arrow, {
+                            [styles.expanded]: node.expanded,
+                          })}
+                        />
+                      )
+                    }}
                     selectable={false}
                     //@ts-ignore
                     treeData={TreeUtils.deleteChildren<Suite>(treeData)}

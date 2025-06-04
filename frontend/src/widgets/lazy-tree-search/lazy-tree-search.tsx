@@ -1,10 +1,10 @@
 import Search from "antd/es/input/Search"
 import { makeNode } from "processes/treebar-provider/utils"
-import { ChangeEvent, useContext, useEffect, useRef, useState } from "react"
+import { ChangeEvent, useEffect, useRef, useState } from "react"
 
 import { LazyGetTriggerType } from "app/export-types"
 
-import { ProjectContext } from "pages/project"
+import { useProjectContext } from "pages/project"
 
 import { config } from "shared/config"
 import { useDebounce, useOnClickOutside } from "shared/hooks"
@@ -30,7 +30,6 @@ interface Props<T> {
   getData: LazyGetTriggerType<T>
   getAncestors: LazyGetTriggerType<T>
   onSelect: (node: LazyTreeNodeApi<unknown, LazyNodeProps> | null) => void
-  projectId: string
   searchValue?: string
   skipInit?: boolean
   selectedId?: NodeId | null
@@ -53,7 +52,7 @@ export const LazyTreeSearch = <T extends BaseSearchEntity>({
   searchValue = "",
   dataParams,
 }: Props<T>) => {
-  const { project } = useContext(ProjectContext)!
+  const project = useProjectContext()
   const [searchInputText, setSearchInputText] = useState(searchValue)
   const [searchText, setSearchText] = useState(searchValue)
   const [isShowDropdown, setIsShowDropdown] = useState(false)

@@ -30,6 +30,7 @@
 # <http://www.gnu.org/licenses/>.
 
 import logging
+import uuid
 import warnings
 from typing import TYPE_CHECKING, Any, Iterable, Mapping, TypeVar
 
@@ -50,15 +51,17 @@ from django.db.models import (
     When,
 )
 from django.db.models.functions import Concat
+from django.db.models.sql.constants import LOUTER
 from django.shortcuts import get_object_or_404
+from django_cte import With
 from mptt.querysets import TreeQuerySet
 
 from testy.root.querysets import SoftDeleteTreeQuerySet
 from testy.tests_description.selectors.suites import TestSuiteSelector
-from testy.tests_representation.models import Parameter, Test, TestPlan
+from testy.tests_representation.models import Parameter, Test, TestPlan, TestResult
 from testy.tests_representation.selectors.results import TestResultSelector
 from testy.tests_representation.selectors.tests import TestSelector
-from testy.tests_representation.services.statistics import HistogramProcessor, LabelProcessor, PieChartProcessor
+from testy.tests_representation.services.statistics import HistogramProcessor, PieChartProcessor
 from testy.utilities.request import PeriodDateTime
 from testy.utilities.sql import ConcatSubquery, SubCount, get_max_level
 from testy.utilities.string import parse_bool_from_str
@@ -89,6 +92,7 @@ _PLAN = 'plan'
 _OUTER_REF_PK = OuterRef('pk')
 _MT = TypeVar('_MT', bound=Model)
 _IS_LEAF = 'is_leaf'
+_PATH = 'path'
 
 
 class TestPlanSelector:  # noqa: WPS214
@@ -222,37 +226,32 @@ class TestPlanSelector:  # noqa: WPS214
     def get_testplan_descendants_ids_by_testplan(cls, test_plan: TestPlan, include_self: bool = True):
         return test_plan.get_descendants(include_self=include_self).values_list(_PK, flat=True)
 
-    def testplan_statistics(
+    def testplan_statistic_queryset(
         self,
         test_plans: SoftDeleteTreeQuerySet[TestPlan],
         parameters: dict[str, Any],
         is_whole_project: bool,
-        is_archive: bool = False,
         project_id: int | None = None,
     ):
-        label_processor = LabelProcessor(parameters)
-        pie_chart_processor = PieChartProcessor(parameters)
+        pie_chart_processor = PieChartProcessor(parameters, project_id)
         if not test_plans.exists():
-            return []
+            return Test.objects.none()
         root_only = parse_bool_from_str(parameters.get('root_only', None))
 
-        is_archive_condition = Q() if is_archive else Q(is_archive=False)
-        return pie_chart_processor.process_statistic(
+        return pie_chart_processor.get_queryset(
             test_plans,
-            label_processor,
-            is_archive_condition,
             project_id,
             is_whole_project,
             root_only,
         )
 
-    def get_plan_progress(self, plan_id: int, period: PeriodDateTime):
+    def get_plan_progress(self, plan: TestPlan, period: PeriodDateTime):
         last_status_period = TestResultSelector.get_last_status_subquery(
             filters=[Q(created_at__gte=period.start) & Q(created_at__lte=period.end)],
         )
         last_status_total = TestResultSelector.get_last_status_subquery()
         descendants_include_self_lookup = Q(
-            plan__path__descendant=OuterRef('path'),
+            plan__path__descendant=OuterRef(_PATH),
             plan__is_archive=False,
         )
         tests_total_query = Test.objects.filter(descendants_include_self_lookup).values(_PK)
@@ -260,7 +259,7 @@ class TestPlanSelector:  # noqa: WPS214
         tests_progress_total = self._get_tests_subquery(last_status_total, descendants_include_self_lookup)
         return (
             TestPlan.objects
-            .filter(parent=plan_id, is_archive=False)
+            .filter(parent=plan, is_archive=False)
             .prefetch_related(_PARAMETERS)
             .annotate(
                 tests_total=SubCount(tests_total_query),
@@ -269,24 +268,19 @@ class TestPlanSelector:  # noqa: WPS214
             )
         )
 
-    def testplan_histogram(
+    def testplan_histogram_queryset(
         self,
         test_plans: SoftDeleteTreeQuerySet[TestPlan],
         parameters: dict[str, Any],
         is_whole_project: bool,
-        is_archive: bool = False,
         project_id: int | None = None,
     ):
         histogram_processor = HistogramProcessor(parameters)
-        label_processor = LabelProcessor(parameters, 'test__case')
         if not test_plans.exists():
-            return []
+            return TestResult.objects.none()
         root_only = parse_bool_from_str(parameters.get('root_only', None))
-        is_archive_condition = Q() if is_archive else Q(is_archive=False)
-        return histogram_processor.process_statistic(
+        return histogram_processor.get_queryset(
             test_plans,
-            label_processor,
-            is_archive_condition,
             project_id,
             is_whole_project,
             root_only,
@@ -341,14 +335,51 @@ class TestPlanSelector:  # noqa: WPS214
     def plan_annotated_by_ids(self, ids: Iterable[int]) -> QuerySet[TestPlan]:
         child_subq = Subquery(TestPlan.objects.filter(parent_id=_OUTER_REF_PK))
         tests_subq = Subquery(Test.objects.filter(plan_id=_OUTER_REF_PK))
+        case_condition = [
+            When(Exists(child_subq), then=_DB_TRUE),
+            When(Exists(tests_subq), then=_DB_TRUE),
+        ]
+
         qs = TestPlan.objects.filter(pk__in=ids).prefetch_related(_PARAMETERS).select_related(_PARENT)
         return self.annotate_title(qs).annotate(
-            has_children=Case(
-                When(Exists(child_subq), then=_DB_TRUE),
-                When(Exists(tests_subq), then=_DB_TRUE),
-                default=Value(False),
-            ),
+            has_children=Case(*case_condition, default=Value(False)),
             is_leaf=Value(False),
+        ).order_by(_CREATED_AT_DESC)
+
+    @classmethod
+    def progress_assignee_queryset(
+        cls,
+        queryset: QuerySet[TestPlan],
+        assignee_id: int,
+        search_name: str,
+    ) -> QuerySet[TestPlan]:
+        child_assignee_subq = Subquery(
+            TestPlan
+            .objects
+            .prefetch_related('tests')
+            .filter(
+                path__descendant=OuterRef(_PATH),
+                tests__assignee_id=assignee_id,
+                name__icontains=search_name,
+            )
+            .exclude(pk=_OUTER_REF_PK),
+        )
+        case_condition = [When(Exists(child_assignee_subq), then=_DB_TRUE)]
+        tests_lookup = Q(
+            plan__path__descendant=OuterRef(_PATH),
+            plan__is_archive=False,
+            assignee_id=assignee_id,
+        )
+        test_with_result_lookup = tests_lookup & Q(last_status_id__isnull=False)
+        test_count_subq = SubCount(Test.objects.filter(tests_lookup))
+        test_with_result_count_subq = SubCount(Test.objects.filter(test_with_result_lookup))
+        return cls.annotate_title(queryset).annotate(
+            has_children=Case(*case_condition, default=Value(False)),
+            is_leaf=Value(False),
+            total_tests=test_count_subq,
+            tests_progress_total=test_with_result_count_subq,
+        ).filter(
+            total_tests__gt=0,
         ).order_by(_CREATED_AT_DESC)
 
     @classmethod
@@ -374,7 +405,7 @@ class TestPlanSelector:  # noqa: WPS214
         tests = TestSelector().test_list_with_last_status(
             filter_condition={'pk__in': test_ids},
         ).annotate(is_leaf=Value(True))
-        tests = TestSuiteSelector.annotate_suite_path(tests, 'case__suite__path')
+        tests = TestSuiteSelector.annotate_suite_path(tests, 'case__suite')
         tests = {test.pk: test for test in tests}
 
         result_data = []
@@ -391,12 +422,27 @@ class TestPlanSelector:  # noqa: WPS214
         return TestPlan.objects.filter(**{f'{field_name}__in': ids})
 
     @classmethod
-    def annotate_plan_path(cls, qs: QuerySet[_MT], outer_ref_key: str = 'path') -> QuerySet[_MT]:
+    def annotate_plan_path(cls, qs: QuerySet[_MT], outer_ref_key: str = _ID) -> QuerySet[_MT]:
         ancestor_paths = TestPlan.objects.filter(
-            Q(path__ancestor=OuterRef(outer_ref_key)),
-        ).order_by('path')
+            Q(path__ancestor=OuterRef(_PATH)),
+        ).order_by(_PATH).values(_NAME)
         ancestor_paths = cls.annotate_title(ancestor_paths).values('title')
-        return qs.annotate(plan_path=ConcatSubquery(ancestor_paths, separator='/')).order_by('case__name')
+
+        plan_path_cte = With(
+            TestPlan.objects.all()
+            .annotate(plan_path=ConcatSubquery(ancestor_paths, separator='/'))
+            .values('plan_path', _ID),
+            name=uuid.uuid4().hex,
+        )
+        return (
+            plan_path_cte.join(
+                qs,
+                **{outer_ref_key: plan_path_cte.col.id},
+                _join_type=LOUTER,
+            )
+            .with_cte(plan_path_cte)
+            .annotate(plan_path=plan_path_cte.col.plan_path)
+        )
 
     @classmethod
     def plans_breadcrumbs_by_root(
@@ -411,7 +457,7 @@ class TestPlanSelector:  # noqa: WPS214
         qs = cls.annotate_title(plans)
         qs = cls.annotate_has_children_with_tests(qs, Subquery(qs.filter(parent_id=_OUTER_REF_PK)))
         return build_tree(
-            qs.values('id', 'title', 'has_children', 'parent'),
+            qs.values(_ID, 'title', 'has_children', 'parent'),
             title_key='title',
             omitted_ids={parent_id} if parent_id else None,
         )

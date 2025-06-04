@@ -74,3 +74,8 @@ class NotificationConsumer(SyncConsumer):
         event.pop('type')
         event['action_code'] = ActionCode.TEST_UNASSIGNED
         notify_user.delay(event)
+
+    def bulk_tests(self, event):
+        event.pop('type')
+        event['action_code'] = ActionCode.TEST_BULK_UPDATE
+        notify_user.delay(event)

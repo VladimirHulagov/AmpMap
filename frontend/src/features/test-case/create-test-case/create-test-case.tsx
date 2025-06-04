@@ -1,36 +1,37 @@
 import { PlusOutlined } from "@ant-design/icons"
-import { Button } from "antd"
 import { ReactNode } from "react"
 import { useTranslation } from "react-i18next"
-import { useLocation, useNavigate, useParams } from "react-router-dom"
-import { v4 as uuidv4 } from "uuid"
+import { useNavigate, useParams } from "react-router-dom"
 
-import { savePrevPageSearch } from "shared/libs"
+import { Button } from "shared/ui"
 
 interface Props {
   as?: ReactNode
-  parentSuiteId?: number
+  loading?: boolean
+  parentSuite?: Suite
 }
 
-export const CreateTestCase = ({ as, parentSuiteId: initParentSuiteId }: Props) => {
+export const CreateTestCase = ({ as, loading = false, parentSuite }: Props) => {
   const { t } = useTranslation()
-  const { projectId, testSuiteId } = useParams<ParamProjectId | ParamTestSuiteId>()
-  const parentSuiteId = initParentSuiteId ?? testSuiteId
+  const { projectId } = useParams<ParamProjectId | ParamTestSuiteId>()
   const navigate = useNavigate()
-  const location = useLocation()
 
   const handleClick = () => {
-    const searchParams = new URLSearchParams(location.search)
-    const uniqId = uuidv4()
-    if (searchParams.size) {
-      savePrevPageSearch(uniqId, location.search.slice(1))
+    const url = new URL(`${window.location.origin}/projects/${projectId}/suites/new-test-case`)
+    const currentSearchParams = new URLSearchParams(window.location.search)
+
+    if (parentSuite && !loading) {
+      url.searchParams.append("suiteId", String(parentSuite.id))
     }
 
-    let url = `/projects/${projectId}/suites/${parentSuiteId}/new-test-case`
-    if (searchParams.size) {
-      url += `?prevSearch=${uniqId}`
-    }
-    navigate(url)
+    url.searchParams.append(
+      "prevUrl",
+      !currentSearchParams.get("prevUrl")
+        ? `${window.location.pathname}${window.location.search}`
+        : (currentSearchParams.get("prevUrl") ?? "")
+    )
+
+    navigate(`${url.pathname}${url.search}`, { state: { suite: parentSuite } })
   }
 
   if (as) {
@@ -42,7 +43,13 @@ export const CreateTestCase = ({ as, parentSuiteId: initParentSuiteId }: Props) 
   }
 
   return (
-    <Button id="create-test-case" type="primary" icon={<PlusOutlined />} onClick={handleClick}>
+    <Button
+      id="create-test-case"
+      icon={<PlusOutlined />}
+      onClick={handleClick}
+      disabled={loading}
+      loading={loading}
+    >
       {t("Create")} {t("Test Case")}
     </Button>
   )

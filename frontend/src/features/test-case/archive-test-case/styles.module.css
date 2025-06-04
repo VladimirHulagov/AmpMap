@@ -1,0 +1,9 @@
+.archiveMenuArrow {
+  transition: transform 0.1s;
+  width: 16px;
+  height: 16px;
+}
+
+:global(.ant-dropdown-open) .archiveMenuArrow {
+  transform: scaleY(-1);
+}

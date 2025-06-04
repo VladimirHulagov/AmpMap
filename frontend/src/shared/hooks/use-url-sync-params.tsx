@@ -1,7 +1,7 @@
+import equal from "fast-deep-equal"
 import { useEffect, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 
-import { deepEqualObjects } from "shared/libs"
 import { QuryParamsSchema, queryParamsBySchema } from "shared/libs/query-params"
 
 interface Props<T extends Record<string, unknown>> {
@@ -21,7 +21,7 @@ export const useUrlSyncParams = <T extends Record<string, unknown>>({
   useEffect(() => {
     if (!skipInit) {
       const urlParseBySchema = queryParamsBySchema(queryParamsSchema)
-      const isEqualObject = deepEqualObjects(urlParseBySchema, params)
+      const isEqualObject = equal(urlParseBySchema, params)
       if (isEqualObject) {
         return
       }
@@ -50,7 +50,7 @@ export const useUrlSyncParams = <T extends Record<string, unknown>>({
     }
 
     const urlParseBySchema = queryParamsBySchema(queryParamsSchema)
-    const isEqualObject = deepEqualObjects(urlParseBySchema, params)
+    const isEqualObject = equal(urlParseBySchema, params)
     if (isEqualObject) {
       return
     }

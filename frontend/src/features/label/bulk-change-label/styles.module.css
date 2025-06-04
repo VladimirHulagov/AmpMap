@@ -1,0 +1,42 @@
+.formFooter {
+  font-size: 16px;
+  display: flex;
+  column-gap: 8px;
+  padding: 16px 32px 0;
+  justify-content: end;
+  border-top: 1px solid var(--y-color-border);
+}
+
+.header {
+  padding-left: 32px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--y-color-border);
+}
+
+.title {
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--y-color-text-primary);
+}
+
+.subTitle {
+  font-size: 14px;
+  color: var(--y-color-text-tertiary);
+  font-weight: 400;
+}
+
+.label {
+  font-size: 14px;
+}
+
+.label:hover {
+  background-color: var(--y-color-secondary-hover);
+}
+
+.selectedLabel {
+  font-size: 14px;
+}
+
+.tag {
+  margin: 4px;
+}

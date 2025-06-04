@@ -70,6 +70,7 @@ class AttachmentService(MediaService):
         return attachments_instances
 
     def attachment_set_content_object(self, attachment: Attachment, content_object) -> Attachment:
+        attachment.refresh_from_db()
         if attachment.content_object:
             attachment = self.copy_attachment(attachment)
         attachment.content_object = content_object

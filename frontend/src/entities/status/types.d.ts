@@ -15,6 +15,13 @@ interface Status {
   color: string
 }
 
+interface StatusOption {
+  color: string
+  label: string
+  value: number
+  id: number
+}
+
 interface StatusInForm {
   id?: string | number
   name: string

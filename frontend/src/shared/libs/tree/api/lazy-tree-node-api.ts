@@ -27,12 +27,14 @@ export class LazyTreeNodeApi<TData, TProps extends LazyNodeProps> extends TreeNo
   public fetcher: LazyTreeApi<TData, TProps>["fetcher"]
   public props: TProps
   public children: LazyTreeNodeApi<TData, TProps>[] = []
+  public onUpdateNodes: LazyTreeApi<TData, TProps>["onBranchesChange"]
 
   constructor(params: LazyTreeNodeApiParams<TData, TProps>) {
     super(params)
     this.tree = params.tree
     this.fetcher = params.tree.fetcher
     this.props = params.props
+    this.onUpdateNodes = params.tree.onBranchesChange
   }
 
   public async open() {
@@ -52,6 +54,7 @@ export class LazyTreeNodeApi<TData, TProps extends LazyNodeProps> extends TreeNo
       })
       this.updateChildren(() => data)
       this.updateProps({ isLoading: false, hasMore: nextInfo.next !== null })
+      this.onUpdateNodes?.()
     }
     super.open()
   }
@@ -76,6 +79,7 @@ export class LazyTreeNodeApi<TData, TProps extends LazyNodeProps> extends TreeNo
       this.parent.addChildren(data)
       this.parent.updateProps({ isLoading: false, hasMore: nextInfo.next !== null })
       this.updateProps({ isMoreLoading: false })
+      this.onUpdateNodes?.()
     }
   }
 
@@ -88,6 +92,7 @@ export class LazyTreeNodeApi<TData, TProps extends LazyNodeProps> extends TreeNo
     })
     this.updateChildren(() => data)
     this.updateProps({ isLoading: false, hasMore: nextInfo.next !== null })
+    this.onUpdateNodes?.()
   }
 
   public updateProps(target: Partial<LazyNodeProps>, isTriggerRerender = true) {

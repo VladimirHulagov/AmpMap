@@ -25,6 +25,17 @@ export const useAttributes = ({
     }
   }, [mode, initAttributes])
 
+  const generateAttributeCopy = (attribute: Attribute) => {
+    return {
+      ...addAttributeAdditionalParams,
+      id: attribute.is_init ? makeRandomId() : attribute.id,
+      name: attribute.name,
+      value: attribute.value,
+      type: attribute.type,
+      is_init: false,
+    }
+  }
+
   const addAttribute = () => {
     const newAttributes = [
       ...attributes,
@@ -149,5 +160,6 @@ export const useAttributes = ({
     onAttributeChangeName,
     onAttributeRemove,
     getAttributeJson,
+    generateAttributeCopy,
   }
 }

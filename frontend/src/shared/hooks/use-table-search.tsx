@@ -1,11 +1,11 @@
 import { SearchOutlined } from "@ant-design/icons"
-import { Button, Input, Space } from "antd"
+import { Input, Space } from "antd"
 import type { FilterConfirmProps, FilterDropdownProps } from "antd/es/table/interface"
 import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 
 import { colors } from "shared/config"
-import { HighLighterTesty } from "shared/ui"
+import { Button, HighLighterTesty } from "shared/ui"
 
 import { useDebounce } from "./use-debounce"
 
@@ -34,7 +34,11 @@ export const useTableSearch = (debounceTime = 300, defaultValue?: string) => {
 
   const getColumnSearch = (dataIndex: string) => ({
     filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, close }: FilterDropdownProps) => (
-      <div style={{ padding: 8 }} onKeyDown={(e) => e.stopPropagation()}>
+      <div
+        style={{ padding: 8 }}
+        onKeyDown={(e) => e.stopPropagation()}
+        data-testid={`${dataIndex}-search-dropdown`}
+      >
         <Input
           placeholder={t("Search")}
           value={selectedKeys[0] as string}
@@ -47,19 +51,19 @@ export const useTableSearch = (debounceTime = 300, defaultValue?: string) => {
         <Space style={{ display: "flex", justifyContent: "right" }}>
           <Button
             id="close-search"
-            size="small"
-            type="text"
+            size="s"
             onClick={() => {
               close()
             }}
+            color="ghost"
             data-testid={`${dataIndex}-search-close`}
           >
             {t("Close")}
           </Button>
           <Button
             id="submit-search"
-            size="small"
-            type="primary"
+            size="s"
+            color="accent"
             onClick={() => handleSearch(selectedKeys as string[], confirm, dataIndex)}
             data-testid={`${dataIndex}-search-submit`}
           >

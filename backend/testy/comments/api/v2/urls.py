@@ -35,6 +35,6 @@ from testy.comments.api.v2 import views
 
 router = routers.SimpleRouter()
 
-router.register('comments', views.CommentsViewSet)
+router.register('comments', views.CommentViewSet)
 
 urlpatterns = router.urls

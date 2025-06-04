@@ -28,16 +28,14 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import ObjectDoesNotExist
-from django.shortcuts import get_object_or_404
-from django_filters.rest_framework.backends import DjangoFilterBackend
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, status, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from testy.comments.api.v1.serializers import CommentSerializer, InputCommentSerializer
-from testy.comments.exceptions import ContentTypeDoesntExist, WrongObjectId
+from testy.comments.api.v1.serializers import CommentCreateSerializer, CommentSerializer, InputBaseCommentSerializer
+from testy.comments.exceptions import CommentParameterNotProvided
+from testy.comments.filters import CommentFilter
 from testy.comments.models import Comment
 from testy.comments.paginations import CommentSetPagination
 from testy.comments.selectors.comments import CommentSelector
@@ -46,65 +44,46 @@ from testy.swagger.v1.comments import comment_create_schema, comment_list_schema
 
 
 @comment_list_schema
-class CommentsViewSet(viewsets.ModelViewSet):
+class CommentViewSet(viewsets.ModelViewSet):
     queryset = Comment.objects.none()
     serializer_class = CommentSerializer
     pagination_class = CommentSetPagination
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_class = CommentFilter
     permission_classes = [IsAuthenticated]
     schema_tags = ['Comments']
 
     ordering = ('-created_at',)
 
     def get_serializer_class(self):
-        if self.action in {'create', 'update'}:
-            return InputCommentSerializer
-        return super().get_serializer_class()
-
-    def get_object_with_content_type(self):
-        request_data = self.request.query_params if self.action == 'list' else self.request.data
-        model_name = request_data.get('model')
-        try:
-            model_id = int(request_data.get('object_id'))
-        except (ValueError, TypeError):
-            raise WrongObjectId()
-        try:
-            ct_object = ContentType.objects.get(model=model_name)
-        except ObjectDoesNotExist:
-            raise ContentTypeDoesntExist()
-
-        model_class = ct_object.model_class()
-        obj = get_object_or_404(model_class, id=model_id)
-        return obj, ct_object
+        if self.action == 'create':
+            return CommentCreateSerializer
+        if self.action == 'update':
+            return InputBaseCommentSerializer
+        return CommentSerializer
 
     def get_queryset(self):
+        if self.action == 'list' and self.request.query_params.get('comment_id') is None:
+            object_id = self.request.query_params.get('object_id')
+            model_name = self.request.query_params.get('model')
+            if object_id is None or model_name is None:
+                raise CommentParameterNotProvided
         if self.action not in {'list', 'create'}:
-            return Comment.objects.filter(user=self.request.user)
-        if comment_id := self.request.query_params.get('comment_id'):
-            return CommentSelector.get_same_comments(comment_id)
-        obj, ct_object = self.get_object_with_content_type()
-        return Comment.objects.filter(content_type=ct_object, object_id=obj.id)
+            return CommentSelector.comment_list_by_user_id(self.request.user.pk)
+        return CommentSelector.comment_list()
 
     @comment_create_schema
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        obj, ct_object = self.get_object_with_content_type()
-        data = {
-            'content_type': ct_object,
-            'object_id': obj.id,
-            **serializer.validated_data,
-        }
-        comment = CommentService().comment_create(
-            data=data,
+        comment = CommentService.comment_create(
+            data=serializer.validated_data,
             user=request.user,
         )
         return Response(
-            CommentSerializer(comment, context={'request': request}).data,
+            CommentSerializer(comment, context=self.get_serializer_context()).data,
             status=status.HTTP_201_CREATED,
         )
 
     def perform_update(self, serializer):
-        serializer.instance = CommentService().comment_update(
-            serializer.instance, serializer.validated_data,
-        )
+        serializer.instance = CommentService.comment_update(serializer.instance, serializer.validated_data)

@@ -1,10 +1,10 @@
-import { notification } from "antd"
 import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 
 import { useDeleteTestSuiteMutation, useGetSuiteDeletePreviewQuery } from "entities/suite/api"
 
 import { initInternalError } from "shared/libs"
+import { antdNotification } from "shared/libs/antd-modals"
 import { AlertSuccessChange } from "shared/ui"
 
 import { ModalConfirmDeleteArchive } from "widgets/[ui]/modal-confirm-delete-archive"
@@ -32,11 +32,14 @@ export const DeleteTestSuiteModal = ({ isShow, setIsShow, testSuite, onSubmit }:
     try {
       await deleteTestSuite(testSuite.id).unwrap()
       navigate(`/projects/${testSuite.project}/suites`)
-      notification.success({
-        message: t("Success"),
-        closable: true,
+      antdNotification.success("delete-test-suite", {
         description: (
-          <AlertSuccessChange id={String(testSuite.id)} action="deleted" title={t("Test Suite")} />
+          <AlertSuccessChange
+            id={String(testSuite.id)}
+            action="deleted"
+            title={t("Test Suite")}
+            data-testid="delete-test-suite-success-notification-description"
+          />
         ),
       })
       onSubmit?.(testSuite)

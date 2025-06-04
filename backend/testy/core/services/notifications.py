@@ -60,14 +60,16 @@ class NotificationService:
         action = NotificationSetting.objects.filter(subscribers=receiver, action_code=action_code).first()
         if action is None:
             return
+        placeholder_text = kwargs.pop('placeholder_text', action.placeholder_text) or ''
+        placeholder_link = kwargs.pop('placeholder_link', action.placeholder_link) or ''
         notify.send(
             actor,
             target=instance,
             recipient=receiver,
             verb=action.message.format(**kwargs),
             template=action.message.format(**kwargs),
-            placeholder_text=action.placeholder_text.format(**kwargs),
-            placeholder_link=action.placeholder_link.format(**kwargs),
+            placeholder_text=placeholder_text.format(**kwargs),
+            placeholder_link=placeholder_link.format(**kwargs),
         )
 
     @classmethod

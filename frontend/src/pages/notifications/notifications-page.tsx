@@ -33,7 +33,14 @@ export const NotificationsPage = () => {
         footer={<NotificationsTabs />}
         style={{ paddingBottom: 0 }}
       ></PageHeader>
-      <Content style={{ margin: "24px" }}>
+      <Content
+        style={{
+          padding: "24px",
+          backgroundColor: "var(--y-color-background)",
+          display: "flex",
+          flexGrow: 1,
+        }}
+      >
         <Outlet />
       </Content>
     </NotificationsActiveTabContext.Provider>

@@ -20,7 +20,7 @@
 }
 
 .assigneeToMe {
-  color: var(--y-interactive-default);
+  color: var(--y-color-accent);
   cursor: pointer;
   border-color: transparent;
   background-color: transparent;

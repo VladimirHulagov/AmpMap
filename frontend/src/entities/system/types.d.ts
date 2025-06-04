@@ -1,7 +1,6 @@
 interface SystemState {
   messages: SystemMessage[]
   hiddenMessageIds: number[]
-  theme: ThemeType
 }
 
 interface SystemMessage {
@@ -22,4 +21,9 @@ interface SystemStatistic {
   tests_count: number
 }
 
-type ThemeType = "dark" | "light"
+interface ThemeState {
+  themeType: ThemeType
+  themeValue: ThemeValue
+}
+type ThemeType = "dark" | "light" | "system"
+type ThemeValue = "dark" | "light"

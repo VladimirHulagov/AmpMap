@@ -22,7 +22,7 @@
 }
 
 .arrowIcon {
-  color: var(--y-sky-50);
+  color: var(--y-color-secondary-inline);
   transition: all 0.2s ease-in;
   min-width: 24px;
   cursor: pointer;
@@ -31,7 +31,7 @@
 }
 
 .arrowIconOpen {
-  color: var(--y-sky-80);
+  color: var(--y-color-secondary-inline);
   transform: rotate(360deg);
 }
 
@@ -39,7 +39,7 @@
   line-height: 24px;
   font-size: 14px;
   font-weight: 600;
-  color: var(--y-sky-80);
+  color: var(--y-color-text-primary);
 }
 
 .name {
@@ -58,11 +58,11 @@
 
 .activeLink {
   font-weight: 600;
-  color: var(--y-interactive-hover);
+  color: var(--y-color-accent-hover);
 }
 
 .active {
-  background-color: var(--y-grey-10);
+  background-color: var(--y-color-background-alternative);
 }
 
 .list {
@@ -78,4 +78,16 @@
   flex-direction: row;
   align-items: center;
   gap: 6px;
+}
+
+.addResultText {
+  color: inherit !important;
+  white-space: nowrap;
+}
+
+.addResultIcon {
+  margin-right: 4px;
+  color: var(--y-color-secondary-inline);
+  height: 16px;
+  width: 16px;
 }

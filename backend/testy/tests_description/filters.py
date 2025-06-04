@@ -125,6 +125,10 @@ class TestCaseHistoryFilter(filters.FilterSet):
         fields = ('id',)
 
 
+class TestCaseWithoutProjectFilter(TestCaseFilter):
+    project = None
+
+
 class TestSuiteFilter(SearchFilterMixin):
     project = project_filter()
     parent = filters.CharFilter(
@@ -230,13 +234,13 @@ class TestSuiteSearchFilter(TreeSearchBaseFilter):
         qs = super().get_ancestors(valid_options)
         qs = TestSuiteSelector.annotate_cases_count(qs)
         qs = TestSuiteSelector.annotate_descendants_count(qs)
-        qs = TestSuiteSelector.annotate_suite_path(qs)
+        qs = TestSuiteSelector.annotate_suite_path_v1(qs)
         return TestSuiteSelector.annotate_estimates(qs)
 
     def custom_filter(self, queryset, filter_conditions, request):
         valid_options = self.get_valid_options(filter_conditions, request)
         if get_boolean(request, 'is_flat'):
-            return TestSuiteSelector.annotate_suite_path(valid_options)
+            return TestSuiteSelector.annotate_suite_path_v1(valid_options)
         max_level = self.max_level_method()
         ancestors = self.get_ancestors(valid_options)
         parent_id = parse_int(request.query_params.get('parent', ''))

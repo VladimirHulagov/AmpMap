@@ -1,0 +1,6 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+<line x1="23.5541" y1="12.968" x2="15.2933" y2="4.7071" stroke="currentColor" stroke-width="2"/>
+<line y1="-1" x2="11.6826" y2="-1" transform="matrix(0.707107 -0.707107 -0.707107 -0.707107 7.73926 12.2609)" stroke="currentColor" stroke-width="2"/>
+<line y1="-1" x2="11.6826" y2="-1" transform="matrix(-0.707107 0.707107 0.707107 0.707107 24.2612 19.7391)" stroke="currentColor" stroke-width="2"/>
+<line x1="8.44636" y1="19.032" x2="16.7072" y2="27.2929" stroke="currentColor" stroke-width="2"/>
+</svg>

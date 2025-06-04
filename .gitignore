@@ -4,6 +4,7 @@ __pycache__/
 */venv/
 */.venv/
 static/
+!docs/source/static
 testy-static/
 media/
 /pg-data/

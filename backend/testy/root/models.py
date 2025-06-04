@@ -194,12 +194,12 @@ class SoftDeleteTreeManager(LtreeManager):
 
 class DeletedTreeManager(LtreeManager):
     def get_queryset(self):
-        return DeletedTreeQuerySet(self.model, using=self._db).filter(is_deleted=True)
+        return DeletedTreeQuerySet(self.model, using=self._db).filter(is_deleted=True).order_by('pk')
 
 
 class DeletedManager(models.Manager):
     def get_queryset(self):
-        return DeletedQuerySet(self.model, using=self._db).filter(is_deleted=True)
+        return DeletedQuerySet(self.model, using=self._db).filter(is_deleted=True).order_by('pk')
 
 
 class SoftDeleteMixin(models.Model):

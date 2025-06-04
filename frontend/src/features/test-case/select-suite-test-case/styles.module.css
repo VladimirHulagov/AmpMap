@@ -14,14 +14,13 @@
   align-items: center;
   min-height: 16px;
   padding: 8px 4px;
-  border-radius: 2px;
-  color: var(--y-grey-50);
+  color: var(--y-color-text-primary);
   font-size: 12px;
   font-weight: 400;
   line-height: 16px;
   cursor: pointer;
-  border-bottom: 1px solid var(--y-grey-20);
-  border-left: 1px solid var(--y-sky-20);
+  border-bottom: 1px solid var(--y-color-border);
+  border-left: 1px solid var(--y-color-border);
 }
 
 .nodeBody:hover .infoIcon {
@@ -48,7 +47,7 @@
 }
 
 .arrowIcon {
-  color: var(--y-sky-50);
+  color: var(--y-color-secondary-inline);
   transition: all 0.2s ease-in;
   width: 16px;
   height: 16px;
@@ -58,7 +57,7 @@
 }
 
 .arrowIconOpen {
-  color: var(--y-sky-80);
+  color: var(--y-color-secondary-inline);
   transform: rotate(360deg);
 }
 
@@ -72,8 +71,8 @@
 }
 
 .activeNode {
-  color: var(--y-interactive-default);
-  background-color: var(--y-grey-10);
+  color: var(--y-color-accent);
+  background-color: var(--y-color-background-alternative);
 }
 
 .isRoot {
@@ -89,16 +88,16 @@
 }
 
 .arrowIcon:hover {
-  color: var(--y-pending-hover);
+  color: var(--y-color-secondary-inline-hover);
 }
 
 .name {
-  color: var(--y-sky-80);
+  color: var(--y-color-text-primary);
   display: flex;
   flex-direction: row;
   align-items: center;
 }
 
 .activeLink {
-  color: var(--y-interactive-default);
+  color: var(--y-color-accent);
 }

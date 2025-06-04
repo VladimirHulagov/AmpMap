@@ -3,7 +3,7 @@ import { TreeApi } from "./tree-api"
 import { TreeNodeApi } from "./tree-node-api"
 import { NodeId, OptsInitRoot, TreeFetcherAncestors, TreeNodeData, TreeNodeFetcher } from "./types"
 
-interface Params<TData, TProps> {
+interface Params<TData, TProps extends LazyNodeProps> {
   initData: TreeNodeData<TData, TProps>[]
   forceRerender: () => void
   fetcher: TreeNodeFetcher<TData, TProps>
@@ -13,7 +13,13 @@ interface Params<TData, TProps> {
   rootId?: NodeId | null
   skipInit?: boolean
   cacheKey?: string
+  onUpdate?: (data: TreeNodeUpdate<TData, TProps>[]) => void
 }
+
+export type TreeNodeUpdate<TData, TProps extends LazyNodeProps> = Pick<
+  LazyTreeNodeApi<TData, TProps>,
+  "data" | "id" | "props"
+>
 
 export class LazyTreeApi<TData, TProps extends LazyNodeProps = LazyNodeProps> extends TreeApi<
   TData,
@@ -34,6 +40,7 @@ export class LazyTreeApi<TData, TProps extends LazyNodeProps = LazyNodeProps> ex
   public fetcher: Params<TData, TProps>["fetcher"]
   public fetcherAncestors: Params<TData, TProps>["fetcherAncestors"] | undefined
   private currentRequestId: string | undefined
+  onUpdate: ((data: TreeNodeUpdate<TData, TProps>[]) => void) | undefined
 
   constructor({
     initData,
@@ -44,6 +51,7 @@ export class LazyTreeApi<TData, TProps extends LazyNodeProps = LazyNodeProps> ex
     cacheKey,
     selectedId = initParent,
     rootId = null,
+    onUpdate,
   }: Params<TData, TProps>) {
     super(initData, forceRerender)
     this.fetcher = fetcher
@@ -58,6 +66,7 @@ export class LazyTreeApi<TData, TProps extends LazyNodeProps = LazyNodeProps> ex
     this.initLoading = true
     this.hasMore = true
     this.initStoreOpenId()
+    this.onUpdate = onUpdate
   }
 
   // @ts-ignore
@@ -80,6 +89,26 @@ export class LazyTreeApi<TData, TProps extends LazyNodeProps = LazyNodeProps> ex
       node.addChildren(nodeData.children)
     }
     return node
+  }
+
+  public onBranchesChange = () => {
+    const result: TreeNodeUpdate<TData, TProps>[] = []
+    const collectData = (nodes: LazyTreeNodeApi<TData, TProps>[]) => {
+      nodes.forEach((node) => {
+        result.push({
+          data: node.data,
+          id: node.id,
+          props: node.props,
+        })
+        if (node.children.length) {
+          collectData(node.children)
+        }
+      })
+    }
+
+    collectData(this.nodes)
+
+    this.onUpdate?.(result)
   }
 
   public async refetchNodeBy(predicate: (node: LazyTreeNodeApi<TData, TProps>) => boolean) {
@@ -106,6 +135,7 @@ export class LazyTreeApi<TData, TProps extends LazyNodeProps = LazyNodeProps> ex
     )
     findedNode.updateProps({ isLoading: false, isOpen: true, hasMore: nextInfo.next !== null })
     await this.loadChildrenRecursively(findedNode.children)
+    this.onBranchesChange()
   }
 
   private getReqid() {
@@ -187,6 +217,7 @@ export class LazyTreeApi<TData, TProps extends LazyNodeProps = LazyNodeProps> ex
     }
 
     await this.loadChildrenRecursively(this.nodes)
+    this.onBranchesChange()
   }
 
   public async loadMoreRootPage() {
@@ -223,6 +254,7 @@ export class LazyTreeApi<TData, TProps extends LazyNodeProps = LazyNodeProps> ex
 
     this.hasMore = nextInfo.next !== null
     this.isMoreLoading = false
+    this.onBranchesChange()
   }
 
   public setOpenIds(openedIds: Set<NodeId>) {
@@ -276,6 +308,7 @@ export class LazyTreeApi<TData, TProps extends LazyNodeProps = LazyNodeProps> ex
         await this.refetchNodeBy((node) => node.id === openId)
       }
     }
+    this.onBranchesChange()
   }
 
   protected initStoreOpenId() {
@@ -312,6 +345,7 @@ export class LazyTreeApi<TData, TProps extends LazyNodeProps = LazyNodeProps> ex
       )
       node.updateProps({ isLoading: false, isOpen: true, hasMore: nextInfo.next !== null })
       await this.loadChildrenRecursively(node.children)
+      this.onBranchesChange()
     }
   }
 }

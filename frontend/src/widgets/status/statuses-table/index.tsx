@@ -12,11 +12,11 @@ import { Space, Table } from "antd"
 import { ColumnsType } from "antd/es/table"
 import { useGetStatusesQuery } from "entities/status/api"
 import { getStatusTypeTextByNumber } from "entities/status/lib"
-import { useContext, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 
 import { DeleteStatusButton, EditStatusButton, SetDefaultStatusButton } from "features/status"
 
-import { ProjectContext } from "pages/project"
+import { useProjectContext } from "pages/project"
 
 import { SYSTEM_TYPE } from "shared/config/status-types"
 import { Status } from "shared/ui"
@@ -47,7 +47,7 @@ interface Props {
 
 export const StatusesTable = ({ onChangeOrder }: Props) => {
   const [isDisabled, setIsDisabled] = useState(false)
-  const { project } = useContext(ProjectContext)!
+  const project = useProjectContext()
   const { data, isFetching } = useGetStatusesQuery({ project: project.id })
 
   const statuses =
@@ -157,6 +157,7 @@ export const StatusesTable = ({ onChangeOrder }: Props) => {
           id="administration-projects-statuses"
           rowClassName="administration-projects-statuses-row"
           pagination={false}
+          data-testid="statuses-table"
         />
       </SortableContext>
     </DndContext>

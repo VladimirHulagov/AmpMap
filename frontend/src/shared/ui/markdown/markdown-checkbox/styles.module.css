@@ -1,0 +1,11 @@
+.checkbox {
+  top: 2px;
+}
+
+.checkboxInput {
+  margin-bottom: 0;
+}
+
+.checkboxInput:hover {
+  cursor: default;
+}

@@ -1,3 +1,5 @@
+import { useState } from "react"
+
 import { useCacheState } from "./use-cache-state"
 
 interface Props {
@@ -8,6 +10,7 @@ interface Props {
   maxWidth: number
   direction?: "left" | "right"
   maxAsPercent?: boolean
+  containerRef?: React.RefObject<HTMLDivElement>
   updater?: (width: number) => void
 }
 
@@ -20,8 +23,11 @@ export const useResizebleBlock = ({
   maxAsPercent = false,
   direction = "right",
   updater,
+  containerRef,
 }: Props) => {
   const [value, update] = useCacheState(`${key}-width`, defaultWidth, Number)
+  const [focus, setFocus] = useState(false)
+
   const updateCursor = () => {
     document.body.style.cursor = "ew-resize"
     document.body.style.userSelect = "none"
@@ -38,6 +44,8 @@ export const useResizebleBlock = ({
       return
     }
 
+    setFocus(true)
+
     const startPosX = e.clientX
     const styles = window.getComputedStyle(element)
     const w = parseInt(styles.width, 10)
@@ -47,7 +55,9 @@ export const useResizebleBlock = ({
         direction === "right" ? moveEvent.clientX - startPosX : startPosX - moveEvent.clientX
       const calcNewWidth = w + offset
 
-      const calcMaxWidth = maxAsPercent ? (document.body.clientWidth / 100) * maxWidth : maxWidth
+      const containerWidth = containerRef?.current?.clientWidth ?? document.body.clientWidth
+
+      const calcMaxWidth = maxAsPercent ? (containerWidth / 100) * maxWidth : maxWidth
       const newWidth = Math.min(Math.max(calcNewWidth, minWidth), calcMaxWidth)
       updater?.(newWidth)
       update(newWidth)
@@ -55,6 +65,7 @@ export const useResizebleBlock = ({
     }
 
     const handleMouseUp = () => {
+      setFocus(false)
       // @ts-ignore
       document.removeEventListener("mousemove", handleMouseMove)
       document.removeEventListener("mouseup", handleMouseUp)
@@ -78,5 +89,6 @@ export const useResizebleBlock = ({
     handleMouseDown,
     setWidth,
     width: value,
+    focus,
   }
 }

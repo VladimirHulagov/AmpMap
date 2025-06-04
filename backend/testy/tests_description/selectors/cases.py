@@ -37,9 +37,11 @@ from django.db.models import F, OuterRef, Q, QuerySet, Subquery, Value
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import ValidationError
 
+from testy.core.models import Project
 from testy.core.selectors.attachments import AttachmentSelector
 from testy.root.ltree.querysets import LtreeQuerySet
 from testy.root.models import DeletedQuerySet
+from testy.root.selectors import BulkUpdateSelector
 from testy.tests_description.models import TestCase, TestCaseStep, TestSuite
 from testy.tests_representation.models import TestPlan, TestStepResult
 from testy.tests_representation.selectors.tests import TestSelector
@@ -53,7 +55,7 @@ _STEPS = 'steps'
 _SUITE = 'suite'
 
 
-class TestCaseSelector:  # noqa: WPS214
+class TestCaseSelector(BulkUpdateSelector):  # noqa: WPS214
     def case_list(self, filter_condition: dict[str, Any] | None = None) -> QuerySet[TestCase]:
         if not filter_condition:
             filter_condition = {}
@@ -88,15 +90,14 @@ class TestCaseSelector:  # noqa: WPS214
         return case.steps.values_list(_ID, flat=True)
 
     @classmethod
-    def case_ids_by_testplan_id(cls, plan_id: int, include_children: bool) -> QuerySet[TestCase]:
+    def case_ids_by_testplan(cls, plan: TestPlan, include_children: bool) -> QuerySet[TestCase]:
         if not include_children:
-            return TestSelector.test_list_by_testplan_ids([plan_id]).values_list('case__id', flat=True)
+            return TestSelector.test_list_by_testplan_ids([plan.pk]).values_list('case__id', flat=True)
         plan_ids = (
-            get_object_or_404(TestPlan, pk=plan_id)
+            plan
             .get_descendants(include_self=True)
             .values_list('pk', flat=True)
         )
-
         return TestSelector.test_list_by_testplan_ids(plan_ids).values_list('case__id', flat=True)
 
     @classmethod
@@ -198,6 +199,18 @@ class TestCaseSelector:  # noqa: WPS214
         ).select_related(_SUITE)
         cases = cls.annotate_versions(cases)
         return cases.order_by('name')
+
+    @classmethod
+    def list_cases_by_parent_suite_and_project(
+        cls,
+        project: Project,
+        parent_suite: TestSuite | None = None,
+    ) -> QuerySet[TestCase]:
+        queryset = TestCase.objects.filter(project=project)
+        if parent_suite:
+            suite_ids = parent_suite.get_descendants(include_self=True).values_list('id', flat=True)
+            queryset = queryset.filter(suite_id__in=suite_ids)
+        return queryset
 
     @classmethod
     def _current_version_subquery(cls):

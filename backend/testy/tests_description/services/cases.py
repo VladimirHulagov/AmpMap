@@ -32,24 +32,30 @@ from logging import getLogger
 from typing import Any
 
 from django.db import transaction
+from django.db.models import QuerySet
+from simple_history.utils import bulk_update_with_history
 
+from testy.core.choices import LabelsActionChoices
+from testy.core.models import Project
 from testy.core.services.attachments import AttachmentService
 from testy.core.services.labels import LabelService
 from testy.tests_description.models import TestCase, TestCaseStep
 from testy.tests_description.selectors.cases import TestCaseSelector, TestCaseStepSelector
 from testy.tests_description.signals import pre_create_case
+from testy.users.models import User
 
 _ATTACHMENTS = 'attachments'
 _USER = 'user'
 _ID = 'id'
 _SKIP_HISTORY = 'skip_history'
 _TEST_CASE_HISTORY_ID = 'test_case_history_id'
+_PROJECT = 'project'
 
 logger = getLogger(__name__)
 
 
 class TestCaseService:
-    non_side_effect_fields = ['name', 'project', 'scenario', 'expected']
+    non_side_effect_fields = ['name', _PROJECT, 'scenario', 'expected']
 
     case_non_side_effect_fields = [
         'suite', 'setup', 'teardown', 'estimate', 'description', 'is_steps', 'attributes',
@@ -60,9 +66,10 @@ class TestCaseService:
         *non_side_effect_fields,
     ]
 
-    def step_create(self, data: dict[str, Any]) -> TestCaseStep:
+    @classmethod
+    def step_create(cls, data: dict[str, Any]) -> TestCaseStep:
         step: TestCaseStep = TestCaseStep.model_create(
-            fields=self.step_non_side_effect_fields,
+            fields=cls.step_non_side_effect_fields,
             data=data,
         )
         latest_history_id = TestCaseStepSelector.get_latest_version_by_id(step.id)
@@ -72,14 +79,15 @@ class TestCaseService:
 
         return step
 
+    @classmethod
     def step_update(
-        self,
+        cls,
         step: TestCaseStep,
         data: dict[str, Any],
     ) -> TestCaseStep:
         skip_history = data.pop(_SKIP_HISTORY, False)
         step, _ = step.model_update(
-            fields=self.step_non_side_effect_fields,
+            fields=cls.step_non_side_effect_fields,
             data=data,
             skip_history=skip_history,
             force=True,
@@ -92,24 +100,26 @@ class TestCaseService:
         )
         return step
 
+    @classmethod
     @transaction.atomic
-    def case_with_steps_create(self, data: dict[str, Any]) -> TestCase:
-        case = self.case_create(data)
+    def case_with_steps_create(cls, data: dict[str, Any]) -> TestCase:
+        case = cls.case_create(data)
 
         for step in data.pop('steps', []):
             step['test_case'] = case
-            step['project'] = case.project
+            step[_PROJECT] = case.project
             step[_TEST_CASE_HISTORY_ID] = case.history.first().history_id
-            self.step_create(step)
+            cls.step_create(step)
 
         return case
 
+    @classmethod
     @transaction.atomic
-    def case_create(self, data: dict[str, Any]) -> TestCase:
-        pre_create_case.send(sender=self.case_create, data=data)
+    def case_create(cls, data: dict[str, Any]) -> TestCase:
+        pre_create_case.send(sender=cls.case_create, data=data)
         user = data.pop(_USER)
         case: TestCase = TestCase.model_create(
-            fields=self.case_non_side_effect_fields,
+            fields=cls.case_non_side_effect_fields,
             data=data,
         )
 
@@ -118,16 +128,15 @@ class TestCaseService:
             AttachmentService().attachment_set_content_object(attachment, case)
             AttachmentService().add_history_to_attachment(attachment, latest_history_id)
 
-        label_kwargs = {_USER: user}
-        labeled_item_kwargs = {'content_object_history_id': case.history.first().history_id}
-        LabelService().add(data.get('labels', []), case, label_kwargs, labeled_item_kwargs)
+        LabelService().set(data.get('labels', []), case, user)
 
         return case
 
+    @classmethod
     @transaction.atomic
-    def case_with_steps_update(self, case: TestCase, data: dict[str, Any]) -> TestCase:
+    def case_with_steps_update(cls, case: TestCase, data: dict[str, Any]) -> TestCase:
         case_steps = data.pop('steps', [])
-        case = self.case_update(case, data)
+        case = cls.case_update(case, data)
         steps_id_pool: list[int] = []
 
         for step in case_steps:
@@ -135,7 +144,7 @@ class TestCaseService:
                 if TestCaseStepSelector().step_exists(step[_ID]):
                     step_instance = TestCaseStep.objects.get(id=step[_ID])
 
-                    step_instance = self.step_update(
+                    step_instance = cls.step_update(
                         step=step_instance,
                         data={
                             _TEST_CASE_HISTORY_ID: case.history.first().history_id,
@@ -149,9 +158,9 @@ class TestCaseService:
                     continue
             else:
                 step['test_case'] = case
-                step['project'] = case.project
+                step[_PROJECT] = case.project
                 step[_TEST_CASE_HISTORY_ID] = case.history.first().history_id
-                step_instance = self.step_create(step)
+                step_instance = cls.step_create(step)
                 steps_id_pool.append(step_instance.id)
 
         for step_id in TestCaseSelector().get_steps_ids_by_testcase(case):
@@ -161,12 +170,13 @@ class TestCaseService:
 
         return case
 
+    @classmethod
     @transaction.atomic
-    def case_update(self, case: TestCase, data: dict[str, Any]) -> TestCase:
+    def case_update(cls, case: TestCase, data: dict[str, Any]) -> TestCase:
         user = data.pop(_USER)
         skip_history = data.get(_SKIP_HISTORY, False)
         case, _ = case.model_update(
-            fields=self.case_non_side_effect_fields,
+            fields=cls.case_non_side_effect_fields,
             data=data,
             force=True,
             skip_history=skip_history,
@@ -182,9 +192,7 @@ class TestCaseService:
         AttachmentService().attachments_update_content_object(attachments, case)
         AttachmentService().bulk_add_history_to_attachment(attachments, latest_history_id)
 
-        label_kwargs = {_USER: user}
-        labeled_item_kwargs = {'content_object_history_id': case.history.first().history_id}
-        LabelService().set(data.get('labels', []), case, label_kwargs, labeled_item_kwargs)
+        LabelService().set(data.get('labels', []), case, user)
 
         return case
 
@@ -228,3 +236,71 @@ class TestCaseService:
         AttachmentService().restore_by_version(history.instance, version)
         cls.restore_test_case_steps_versions(history)
         return history.instance
+
+    @classmethod
+    @transaction.atomic
+    def bulk_update_cases(
+        cls,
+        queryset: QuerySet[TestCase],
+        payload: dict[str, Any],
+        user: User,
+    ) -> QuerySet[TestCase]:
+        project = payload[_PROJECT]
+        test_cases = TestCaseSelector.list_for_bulk_operation(
+            queryset=queryset,
+            included_objects=payload.pop('included_cases', None),
+            excluded_objects=payload.pop('excluded_cases', None),
+        )
+        labels = payload.pop('labels', None)
+        labels_action = payload.pop('labels_action', None)
+        if labels is not None:
+            cls._process_labels(test_cases, labels, labels_action, project, user)
+
+        for test_case in test_cases:
+            for field_name, field_value in payload.items():
+                setattr(test_case, field_name, field_value)
+
+        bulk_update_with_history(
+            test_cases,
+            model=TestCase,
+            fields=payload.keys(),
+            default_user=user,
+            default_change_reason='Bulk update test cases',
+        )
+        return TestCaseSelector().case_list({'pk__in': [case.pk for case in test_cases]})
+
+    @classmethod
+    def _process_labels(
+        cls,
+        test_cases: QuerySet[TestCase],
+        labels: list[dict[str, Any]],
+        labels_action: str,
+        project: Project,
+        user: User,
+    ) -> None:
+        match labels_action:
+            case LabelsActionChoices.ADD.value:
+                LabelService.bulk_add(
+                    labels=labels,
+                    content_objects=list(test_cases),
+                    content_model=TestCase,
+                    project=project,
+                    user=user,
+                )
+            case LabelsActionChoices.UPDATE.value | LabelsActionChoices.CLEAR.value:
+                LabelService.bulk_set(
+                    labels=labels,
+                    content_objects=list(test_cases),
+                    content_model=TestCase,
+                    project=project,
+                    user=user,
+                )
+            case LabelsActionChoices.DELETE.value:
+                LabelService.bulk_delete(
+                    labels=labels,
+                    content_model=TestCase,
+                    content_objects=list(test_cases),
+                    user=user,
+                )
+            case _:
+                return

@@ -138,4 +138,4 @@ interface BaseEntity {
   parent: Parent | null
 }
 
-type HTMLDataAttribute = Record<`data-${string}`, unknown>
+type HTMLDataAttribute = Record<`data-${string}`, string>

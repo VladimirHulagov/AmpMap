@@ -1,17 +1,18 @@
-import { useContext, useEffect } from "react"
+import { useEffect } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
 
 import { useAttachments } from "entities/attachment/model"
 
-import { ProjectContext } from "pages/project"
+import { useProjectContext } from "pages/project"
 
-import { useShowModalCloseConfirm } from "shared/hooks"
+import { antdModalCloseConfirm } from "shared/libs/antd-modals"
 
 interface FormData {
   name: string
   scenario: string
   expected?: string
   attachments?: IAttachment[]
+  isNew?: boolean
 }
 
 export interface TestCaseStepsModalProps {
@@ -26,8 +27,7 @@ export const useTestCaseStepsModal = ({
   onSubmit,
   onCloseModal,
 }: TestCaseStepsModalProps) => {
-  const { project } = useContext(ProjectContext)!
-  const { showModal } = useShowModalCloseConfirm()
+  const project = useProjectContext()
   const {
     handleSubmit,
     control,
@@ -41,6 +41,7 @@ export const useTestCaseStepsModal = ({
       scenario: "",
       expected: "",
       attachments: [],
+      isNew: true,
     },
   })
 
@@ -54,14 +55,14 @@ export const useTestCaseStepsModal = ({
 
   const handleClose = () => {
     if (isDirty) {
-      showModal(onCloseModalSteps)
+      antdModalCloseConfirm(onCloseModalSteps)
       return
     }
 
     onCloseModalSteps()
   }
 
-  const onSubmitForm: SubmitHandler<FormData> = ({ name, scenario, expected }) => {
+  const onSubmitForm: SubmitHandler<FormData> = ({ name, scenario, expected, isNew }) => {
     if (!step) return
 
     onSubmit({
@@ -71,6 +72,7 @@ export const useTestCaseStepsModal = ({
       expected,
       sort_order: step.sort_order,
       attachments,
+      isNew: !!isNew,
     })
   }
 
@@ -84,6 +86,7 @@ export const useTestCaseStepsModal = ({
     setValue("name", step.name)
     setValue("scenario", step.scenario)
     setValue("expected", step.expected)
+    setValue("isNew", step.isNew)
     setAttachments(testResultAttachesWithUid)
     clearErrors()
   }, [step])

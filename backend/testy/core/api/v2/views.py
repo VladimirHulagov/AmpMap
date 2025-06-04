@@ -34,18 +34,20 @@ from django.db.models import Prefetch
 from django.shortcuts import get_object_or_404
 from drf_yasg.utils import swagger_auto_schema
 from notifications.models import Notification
+from permissions import IsAdminOrForbidArchiveUpdate
 from rest_framework import mixins, status
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
+from utilities.request import get_list
 
-from testy import permissions
 from testy.core.api.v2.serializers import (
     AccessRequestSerializer,
     AllProjectsStatisticSerializer,
     AttachmentSerializer,
+    BulkUpdateTestsResultsSerializer,
     ContentTypeSerializer,
     CustomAttributeBaseSerializer,
     LabelSerializer,
@@ -70,10 +72,10 @@ from testy.core.filters import (
 from testy.core.mixins import MediaViewMixin
 from testy.core.models import Project, SystemMessage
 from testy.core.permissions import (
-    AttachmentPermission,
-    BaseProjectPermission,
-    ProjectIsPrivatePermission,
-    ProjectPermission,
+    BASE_PERMISSIONS,
+    ProjectDetailReadPermission,
+    ProjectRetrievePermission,
+    ProjectUpdatePermission,
 )
 from testy.core.selectors.attachments import AttachmentSelector
 from testy.core.selectors.custom_attribute import CustomAttributeSelector
@@ -91,13 +93,16 @@ from testy.root.mixins import TestyArchiveMixin, TestyDestroyModelMixin, TestyMo
 from testy.swagger.common_query_parameters import is_archive_parameter
 from testy.swagger.v1.notifications import notification_mark_as_schema
 from testy.swagger.v1.projects import project_progress_schema
+from testy.swagger.v2.custom_attributes import custom_attributes_for_test_results
 from testy.tests_representation.api.v2.serializers import (
     ParameterSerializer,
     TestPlanOutputSerializer,
     TestPlanProgressSerializer,
 )
+from testy.tests_representation.filters import TestFilter
 from testy.tests_representation.selectors.parameters import ParameterSelector
 from testy.tests_representation.selectors.testplan import TestPlanSelector
+from testy.tests_representation.selectors.tests import TestSelector
 from testy.users.api.v2.serializers import UserRoleSerializer
 from testy.users.filters import UserFilter
 from testy.users.models import Membership, User
@@ -116,7 +121,13 @@ class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin, MediaViewMixin):
     queryset = ProjectSelector.project_list_raw()
     serializer_class = ProjectSerializer
     filter_backends = [TestyFilterBackend, ProjectOrderingFilter]
-    permission_classes = [permissions.IsAdminOrForbidArchiveUpdate, ProjectPermission, ProjectIsPrivatePermission]
+    permission_classes = [
+        IsAuthenticated,
+        IsAdminOrForbidArchiveUpdate,
+        ProjectUpdatePermission,
+        ProjectRetrievePermission,
+        ProjectDetailReadPermission,
+    ]
     ordering_fields = ['name', 'is_archive', 'is_private']
     pagination_class = StandardSetPagination
     lookup_value_regex = r'\d+'
@@ -173,7 +184,8 @@ class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin, MediaViewMixin):
 
     @action(methods=[_GET], url_path='testplans', url_name='testplans', detail=True, suffix='List')
     def testplans_by_project(self, request, pk):
-        qs = TestPlanSelector().testplan_project_root_list(project_id=pk)
+        project = self.get_object()
+        qs = TestPlanSelector().testplan_project_root_list(project_id=project.pk)
         serializer = self.get_serializer(qs, many=True, context=self.get_serializer_context())
         return Response(serializer.data)
 
@@ -192,13 +204,14 @@ class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin, MediaViewMixin):
 
     @action(methods=[_GET], url_path='parameters', url_name='parameters', detail=True)
     def parameters_by_project(self, request, pk):
-        qs = ParameterSelector().parameter_project_list(project_id=pk)
+        project = self.get_object()
+        qs = ParameterSelector().parameter_project_list(project_id=project.pk)
         serializer = self.get_serializer(qs, many=True, context=self.get_serializer_context())
         return Response(serializer.data)
 
     @action(methods=[_GET], url_path='icon', url_name='icon', detail=True)
     def icon(self, request, pk, *args, **kwargs):
-        project = get_object_or_404(Project, pk=pk)
+        project = self.get_object()
         if not project.icon or not project.icon.storage.exists(project.icon.path):
             return Response(status=status.HTTP_404_NOT_FOUND)
         return self.format_response(project.icon, request)
@@ -206,8 +219,9 @@ class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin, MediaViewMixin):
     @project_progress_schema
     @action(methods=[_GET], url_path='progress', url_name='progress', detail=True)
     def project_progress(self, request, pk):
+        project = self.get_object()
         period = PeriodDateTime(request, 'start_date', 'end_date')
-        plans = ProjectSelector().project_progress(pk, period=period)
+        plans = ProjectSelector().project_progress(project.pk, period=period)
         return Response(TestPlanProgressSerializer(plans, many=True).data)
 
     @swagger_auto_schema(manual_parameters=[is_archive_parameter])
@@ -242,9 +256,9 @@ class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin, MediaViewMixin):
         return self.update(request, *args, **kwargs)
 
     def destroy(self, request, pk, *args, **kwargs):
-        instance = self.get_object()
-        if instance.icon:
-            ProjectService().remove_media(Path(instance.icon.path))
+        project = self.get_object()
+        if project.icon:
+            ProjectService().remove_media(Path(project.icon.path))
         return super().destroy(request, pk, *args, **kwargs)
 
 
@@ -257,7 +271,7 @@ class AttachmentViewSet(
 ):
     queryset = AttachmentSelector().attachment_list()
     serializer_class = AttachmentSerializer
-    permission_classes = [IsAuthenticated, AttachmentPermission]
+    permission_classes = [IsAuthenticated, *BASE_PERMISSIONS]
     filter_backends = [TestyFilterBackend]
     schema_tags = ['Attachments']
 
@@ -283,7 +297,7 @@ class LabelViewSet(TestyModelViewSet):
     queryset = LabelSelector.label_list()
     serializer_class = LabelSerializer
     filter_backends = [TestyFilterBackend]
-    permission_classes = [IsAuthenticated, BaseProjectPermission]
+    permission_classes = [IsAuthenticated, *BASE_PERMISSIONS]
     schema_tags = ['Labels']
 
     @property
@@ -319,6 +333,7 @@ class SystemStatisticViewSet(mixins.ListModelMixin, GenericViewSet):
 
 class CustomAttributeViewSet(TestyModelViewSet):
     queryset = CustomAttributeSelector.custom_attribute_list()
+    permission_classes = [IsAuthenticated, *BASE_PERMISSIONS]
     serializer_class = CustomAttributeBaseSerializer
     filter_backends = [TestyFilterBackend]
     schema_tags = ['Custom attributes']
@@ -327,12 +342,21 @@ class CustomAttributeViewSet(TestyModelViewSet):
     def filterset_class(self):
         if self.action == _LIST:
             return CustomAttributeFilter
+        if self.action == 'get_model_filter':
+            return TestFilter
 
     def get_serializer_class(self):
         match self.action:
             case 'get_allowed_content_types':
                 return ContentTypeSerializer
+            case 'get_model_filter':
+                return BulkUpdateTestsResultsSerializer
         return CustomAttributeBaseSerializer
+
+    def get_queryset(self):
+        if self.action == 'get_model_filter':
+            return TestSelector.test_list().none()
+        return CustomAttributeSelector.custom_attribute_list()
 
     @action(methods=[_GET], url_path='content-types', url_name='content-types', detail=False)
     def get_allowed_content_types(self, request):
@@ -357,6 +381,49 @@ class CustomAttributeViewSet(TestyModelViewSet):
         serializer.is_valid(raise_exception=True)
         new_instance = CustomAttributeService().custom_attribute_update(instance, serializer.validated_data)
         return Response(CustomAttributeBaseSerializer(new_instance, context=self.get_serializer_context()).data)
+
+    @custom_attributes_for_test_results
+    @action(
+        methods=['get'],
+        url_path='testresult',
+        url_name='model-filter',
+        detail=False,
+    )
+    def get_model_filter(self, request, *args, **kwargs):
+        data = {
+            'included_tests': get_list(request, 'included_tests'),
+            'excluded_tests': get_list(request, 'excluded_tests'),
+            'project': request.query_params.get('project'),
+            'status_id': request.query_params.get('status_id'),
+            'current_plan': request.query_params.get('current_plan'),
+        }
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        plan = serializer.validated_data.pop('current_plan', None)
+        project = serializer.validated_data.pop('project')
+        queryset = TestSelector.test_list_by_parent_plan_and_project(project, plan)
+        queryset = self.filter_queryset(queryset)
+        queryset = TestSelector.list_for_bulk_operation(
+            queryset=queryset,
+            included_objects=serializer.validated_data.get('included_tests'),
+            excluded_objects=serializer.validated_data.get('excluded_tests'),
+        )
+        suite_ids = list(
+            queryset
+            .values_list('case__suite_id', flat=True)
+            .distinct('case__suite_id')
+            .order_by('case__suite_id'),
+        )
+        result_status = serializer.validated_data.get('status_id')
+
+        custom_attributes = CustomAttributeSelector.separated_attributes(
+            project.pk,
+            'testresult',
+            result_status.pk,
+            suite_ids,
+        )
+
+        return Response(custom_attributes, status=status.HTTP_200_OK)
 
 
 class NotificationViewSet(

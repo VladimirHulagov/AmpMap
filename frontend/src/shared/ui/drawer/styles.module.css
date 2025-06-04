@@ -3,18 +3,14 @@
   right: 0;
   top: 0;
   height: 100vh;
-  background-color: #fff;
+  background-color: var(--y-color-background);
   z-index: 999;
   transform: translateX(100%);
-  transition: transform 0.2s ease-out;
+  transition: transform 0.1s ease-out;
   display: flex;
+  overflow-x: hidden;
   flex-direction: column;
-}
-
-.fixedRight {
-  display: none;
-  position: sticky;
-  border: none;
+  overscroll-behavior: none;
 }
 
 .isOpen {
@@ -22,20 +18,50 @@
   transform: translateX(0);
 }
 
+.drawerContent {
+  transition: transform 0.15s ease-out;
+  transform: translateX(0);
+  height: 100%;
+}
+
+.drawerContent.showSecondary {
+  transform: translateX(-100%);
+}
+
+.primaryElement {
+  display: flex;
+  flex-direction: column;
+  min-width: 100%;
+}
+
+.secondaryElement {
+  min-width: 100%;
+  overscroll-behavior: auto;
+}
+
 .header {
-  padding: 24px 24px 24px 36px;
+  padding: 24px 24px 12px 36px;
+  flex-wrap: wrap;
+  row-gap: 16px;
   border-bottom: 1px solid rgba(5, 5, 5, 0.06);
+}
+
+.headerIcons {
+  display: flex;
+  gap: 8px;
+  margin-right: 16px;
 }
 
 .body {
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
+  overflow-y: scroll;
   overflow-x: hidden;
-  padding: 24px 24px 24px 36px;
+  padding: 12px 24px 24px 36px;
   height: 100%;
-  overscroll-behavior: contain;
+  overscroll-behavior: none;
   overflow-wrap: break-word;
+  align-items: stretch;
 }
 
 .loaderBlock {
@@ -45,16 +71,17 @@
   justify-content: center;
 }
 
-.closeIcon {
+.icon {
   cursor: pointer;
-  color: var(--y-sky-50);
+  color: var(--y-color-secondary-inline);
   transition: all 0.1s ease-in;
 }
 
 .closeIcon:hover {
-  color: var(--y-pending-hover);
+  color: var(--y-color-secondary-inline-hover);
 }
 
-.iconActive {
-  color: var(--y-interactive-default);
+.iconActive,
+.iconActive:hover {
+  color: var(--y-color-accent);
 }

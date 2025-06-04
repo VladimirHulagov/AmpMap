@@ -5,20 +5,21 @@ import {
   DeleteOutlined,
   EditOutlined,
 } from "@ant-design/icons"
-import { Flex, Popover, Tooltip, notification } from "antd"
+import { Flex, Popover, Tooltip } from "antd"
 import classNames from "classnames"
-import { MeContext } from "processes"
-import { useContext, useState } from "react"
+import { useMeContext } from "processes"
+import { useState } from "react"
 import { useTranslation } from "react-i18next"
 
-import { ProjectContext } from "pages/project"
+import { useProjectContext } from "pages/project"
 
-import { icons } from "shared/assets/inner-icons"
+import ContextMenuIcon from "shared/assets/yi-icons/context-menu.svg?react"
+import ResetIcon from "shared/assets/yi-icons/reset.svg?react"
+import SaveIcon from "shared/assets/yi-icons/save.svg?react"
 import { clearObject } from "shared/libs"
+import { antdNotification } from "shared/libs/antd-modals"
 
 import styles from "./styles.module.css"
-
-const { ContextMenuIcon, ResetIcon, SaveIcon } = icons
 
 interface Props {
   type: "plans" | "suites"
@@ -41,8 +42,8 @@ export const ActionButtonsFilter = ({
 }: Props) => {
   const { t } = useTranslation()
 
-  const { userConfig, updateConfig } = useContext(MeContext)
-  const { project } = useContext(ProjectContext)!
+  const { userConfig, updateConfig } = useMeContext()
+  const project = useProjectContext()
   const filtersKey = type === "plans" ? "test_plans" : "test_suites"
   const [isOpen, setIsOpen] = useState(false)
 
@@ -67,9 +68,7 @@ export const ActionButtonsFilter = ({
       },
     })
     setIsOpen(false)
-    notification.success({
-      message: t("Success"),
-      closable: true,
+    antdNotification.success("update-filter", {
       description: t("Filter updated successfully"),
     })
   }
@@ -84,8 +83,7 @@ export const ActionButtonsFilter = ({
 
   const handleNewNameAccept = () => {
     if (!filterSettings.editingValue.length) {
-      notification.error({
-        message: t("Error!"),
+      antdNotification.error("action-buttons-filter", {
         description: t("Name filter cant be empty!"),
       })
       return
@@ -98,9 +96,7 @@ export const ActionButtonsFilter = ({
       renameFilter()
     }
 
-    notification.success({
-      message: t("Success"),
-      closable: true,
+    antdNotification.success(isNew ? "create-filter" : "update-filter", {
       description: isNew ? t("Filter created successfully") : t("Filter updated successfully"),
     })
 
@@ -198,7 +194,7 @@ export const ActionButtonsFilter = ({
           <Tooltip title={t("Reset filter")}>
             <button
               type="button"
-              className={classNames("link-button", styles.actionBtn)}
+              className={styles.actionBtn}
               onClick={resetFilterToSelected}
               data-testid="action-buttons-filter-reset"
             >
@@ -266,7 +262,7 @@ export const ActionButtonsFilter = ({
         >
           <button
             type="button"
-            className={classNames("link-button", styles.actionBtn)}
+            className={styles.actionBtn}
             data-testid="action-buttons-filter-context-menu"
           >
             <ContextMenuIcon />
@@ -282,7 +278,7 @@ export const ActionButtonsFilter = ({
         <Tooltip title="Reset filter">
           <button
             type="button"
-            className={classNames("link-button", styles.actionBtn)}
+            className={styles.actionBtn}
             onClick={clearFilter}
             data-testid="action-buttons-filter-reset"
           >
@@ -293,7 +289,7 @@ export const ActionButtonsFilter = ({
       <Tooltip title="Save filter" placement="bottomRight">
         <button
           type="button"
-          className={classNames("link-button", styles.actionBtn)}
+          className={styles.actionBtn}
           onClick={handleShowEdit}
           data-testid="action-buttons-filter-save"
         >

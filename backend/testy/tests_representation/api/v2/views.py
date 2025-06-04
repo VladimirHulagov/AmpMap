@@ -29,10 +29,9 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 from functools import partial
-from typing import Any, Iterable
+from typing import Iterable
 
 import orjson
-from django.db.models import QuerySet
 from django.http import HttpResponse
 from django_filters import CharFilter
 from drf_yasg.utils import swagger_auto_schema
@@ -42,15 +41,27 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, ViewSet
 from simple_history.utils import get_history_model_for_model
+from tests_representation.filters import PlanAssigneeProgressFilter
 
+from testy.comments.api.v2.serializers import CommentUnionSerializer
+from testy.comments.selectors.comments import CommentSelector
 from testy.core.api.v2.serializers import LabelSerializer, UnionSerializer
+from testy.core.permissions import (
+    BASE_PERMISSIONS,
+    BaseCreatePermission,
+    BaseDestroyPermission,
+    BaseListPermission,
+    BasePartialUpdatePermission,
+    BaseRetrievePermission,
+    BaseUpdatePermission,
+)
 from testy.core.selectors.labels import LabelSelector
 from testy.core.selectors.projects import ProjectSelector
 from testy.core.services.copy import CopyService
-from testy.filters import NumberInFilter, TestyBaseSearchFilter, TestyFilterBackend
+from testy.filters import NumberInFilter, TestyFilterBackend
 from testy.paginations import StandardSetPagination
 from testy.permissions import ForbidChangesOnArchivedProject, IsAdminOrForbidArchiveUpdate
-from testy.root.mixins import TestyArchiveMixin, TestyModelViewSet
+from testy.root.mixins import PayloadFiltersMixin, TestyArchiveMixin, TestyModelViewSet
 from testy.root.querysets import SoftDeleteTreeQuerySet
 from testy.swagger.common_query_parameters import is_archive_parameter
 from testy.swagger.v1.results import result_list_schema
@@ -72,6 +83,7 @@ from testy.tests_representation.api.v2.serializers import (
     BulkUpdateTestsSerializer,
     ParameterSerializer,
     ResultStatusSerializer,
+    TestInputSerializer,
     TestPlanCopySerializer,
     TestPlanInputSerializer,
     TestPlanMinSerializer,
@@ -83,6 +95,7 @@ from testy.tests_representation.api.v2.serializers import (
     TestResultActivitySerializer,
     TestResultInputSerializer,
     TestResultSerializer,
+    TestResultUnionSerializer,
     TestSerializer,
     TestUnionSerializer,
 )
@@ -96,13 +109,24 @@ from testy.tests_representation.filters import (
     PlanUnionFilterNoSearch,
     PlanUnionOrderingFilter,
     ResultStatusFilter,
+    ResultUnionOrderingFilter,
     TestFilter,
+    TestResultByPlanFilter,
     TestResultFilter,
     TestsByPlanFilter,
+    TestWithoutProjectFilter,
     UnionTestFilter,
 )
 from testy.tests_representation.models import Test, TestPlan, TestResult
-from testy.tests_representation.permissions import ResultStatusPermission, TestPlanPermission, TestResultPermission
+from testy.tests_representation.permissions import (
+    BulkUpdateTestsPermission,
+    ResultStatusPermission,
+    ResultUnionByTestPermission,
+    TestPlanCopyPermission,
+    TestPlanDetailReadPermission,
+    TestResultCreatePermission,
+    TestResultUpdatePermission,
+)
 from testy.tests_representation.selectors.parameters import ParameterSelector
 from testy.tests_representation.selectors.results import TestResultSelector
 from testy.tests_representation.selectors.status import ResultStatusSelector
@@ -110,16 +134,12 @@ from testy.tests_representation.selectors.testplan import TestPlanSelector
 from testy.tests_representation.selectors.tests import TestSelector
 from testy.tests_representation.services.parameters import ParameterService
 from testy.tests_representation.services.results import TestResultService
+from testy.tests_representation.services.statistics import HistogramProcessor, PieChartProcessor
 from testy.tests_representation.services.status import ResultStatusService
 from testy.tests_representation.services.testplans import TestPlanService
 from testy.tests_representation.services.tests import TestService
-from testy.utilities.request import (
-    PeriodDateTime,
-    get_boolean,
-    get_integer,
-    mock_request_with_query_params,
-    validate_query_params_data,
-)
+from testy.tests_representation.tasks import bulk_update_tests
+from testy.utilities.request import PeriodDateTime, get_boolean, get_integer, get_list, validate_query_params_data
 from testy.utilities.tree import get_breadcrumbs_treeview
 
 _LABELS = 'labels'
@@ -161,55 +181,68 @@ class TestPlanStatisticsView(ViewSet):
         self,
         pk: int | None = None,
         project_id: int | None = None,
+        plan_ids: list[str | int] | None = None,
     ) -> SoftDeleteTreeQuerySet[TestPlan]:
         if pk:
-            return TestPlanSelector.plans_by_ids(ids=[pk])
-        elif project_id:
-            return TestPlanSelector.testplan_project_root_list(project_id=project_id)
-        raise InvalidStatisticQueryParam
+            queryset = TestPlanSelector.plans_by_ids(ids=[pk])
+        elif project_id and not pk:
+            queryset = TestPlanSelector.testplan_project_root_list(project_id=project_id)
+        else:
+            raise InvalidStatisticQueryParam
+        if plan_ids:
+            queryset = queryset.get_descendants(include_self=True).filter(id__in=[*plan_ids, pk])
+        return queryset
 
     @get_project_plan_statistic_schema
     def project_statistic(self, request):
         project_id = get_integer(request, 'project')
         parent_id = get_integer(request, 'parent')
-        test_plans = self.get_statistic_objects(parent_id, project_id)
+        plan_ids = get_list(request, 'plan_ids')
+        test_plans = self.get_statistic_objects(pk=parent_id, project_id=project_id, plan_ids=plan_ids)
         is_whole_project = project_id is not None and parent_id is None
-        is_archive = get_boolean(request, _IS_ARCHIVE)
         params = validate_query_params_data(
             request.query_params,
             labels=NumberInFilter(),
             not_labels=NumberInFilter(),
         )
         project_id = project_id if is_whole_project else getattr(test_plans.first(), 'project_id', None)
+        queryset = TestPlanSelector().testplan_statistic_queryset(
+            test_plans=test_plans,
+            parameters=params,
+            is_whole_project=is_whole_project,
+            project_id=project_id,
+        )
+        queryset = TestsByPlanFilter(request.query_params, queryset=queryset, request=request).qs
         return Response(
-            TestPlanSelector().testplan_statistics(
-                test_plans,
-                params,
-                is_whole_project,
-                is_archive,
-                project_id,
-            ),
+            PieChartProcessor(
+                parameters=params,
+                project_id=project_id,
+            ).generate_statistic(queryset, plan_ids),
         )
 
     @get_plan_statistic_schema
     def plan_statistic(self, request, pk):
-        test_plans = self.get_statistic_objects(pk)
+        plan_ids = get_list(request, 'plan_ids')
+        test_plans = self.get_statistic_objects(pk=pk, plan_ids=plan_ids)
         is_whole_project = False
-        is_archive = get_boolean(request, _IS_ARCHIVE)
         params = validate_query_params_data(
             request.query_params,
             labels=NumberInFilter(),
             not_labels=NumberInFilter(),
         )
         project_id = getattr(test_plans.first(), 'project_id', None)
+        queryset = TestPlanSelector().testplan_statistic_queryset(
+            test_plans=test_plans,
+            parameters=params,
+            is_whole_project=is_whole_project,
+            project_id=project_id,
+        )
+        queryset = TestsByPlanFilter(request.query_params, queryset=queryset, request=request).qs
         return Response(
-            TestPlanSelector().testplan_statistics(
-                test_plans,
-                params,
-                is_whole_project,
-                is_archive,
-                project_id,
-            ),
+            PieChartProcessor(
+                parameters=params,
+                project_id=project_id,
+            ).generate_statistic(queryset, plan_ids),
         )
 
     @get_project_plan_histogram_schema
@@ -219,7 +252,6 @@ class TestPlanStatisticsView(ViewSet):
         parent_id = get_integer(request, 'parent')
         test_plans = self.get_statistic_objects(parent_id, project_id)
         is_whole_project = project_id is not None and parent_id is None
-        is_archive = get_boolean(request, _IS_ARCHIVE)
         project_id = project_id if is_whole_project else getattr(test_plans.first(), 'project_id', None)
         params = validate_query_params_data(
             request.query_params,
@@ -227,15 +259,14 @@ class TestPlanStatisticsView(ViewSet):
             not_labels=NumberInFilter(),
         )
 
-        return Response(
-            TestPlanSelector().testplan_histogram(
-                test_plans,
-                params,
-                is_whole_project,
-                is_archive,
-                project_id,
-            ),
+        queryset = TestPlanSelector().testplan_histogram_queryset(
+            test_plans=test_plans,
+            parameters=params,
+            is_whole_project=is_whole_project,
+            project_id=project_id,
         )
+        queryset = TestResultByPlanFilter(request.query_params, queryset=queryset, request=request).qs
+        return Response(HistogramProcessor(parameters=params).generate_statistic(queryset, project_id))
 
     @get_plan_histogram_schema
     @action(detail=True)
@@ -243,28 +274,32 @@ class TestPlanStatisticsView(ViewSet):
         test_plans = self.get_statistic_objects(pk)
         is_whole_project = False
         project_id = getattr(test_plans.first(), 'project_id', None)
-        is_archive = get_boolean(request, _IS_ARCHIVE)
         params = validate_query_params_data(
             request.query_params,
             labels=NumberInFilter(),
             not_labels=NumberInFilter(),
         )
-        return Response(
-            TestPlanSelector().testplan_histogram(
-                test_plans,
-                params,
-                is_whole_project,
-                is_archive,
-                project_id,
-            ),
+        queryset = TestPlanSelector().testplan_histogram_queryset(
+            test_plans=test_plans,
+            parameters=params,
+            is_whole_project=is_whole_project,
+            project_id=project_id,
         )
+        queryset = TestResultByPlanFilter(request.query_params, queryset=queryset, request=request).qs
+        return Response(HistogramProcessor(parameters=params).generate_statistic(queryset, project_id))
 
 
 class TestPlanViewSet(TestyModelViewSet, TestyArchiveMixin):
     serializer_class = TestPlanOutputSerializer
     queryset = TestPlan.objects.none()
     filter_backends = [TestyFilterBackend]
-    permission_classes = [IsAuthenticated, IsAdminOrForbidArchiveUpdate, TestPlanPermission]
+    permission_classes = [
+        IsAuthenticated,
+        IsAdminOrForbidArchiveUpdate,
+        TestPlanCopyPermission,
+        *BASE_PERMISSIONS,
+        TestPlanDetailReadPermission,
+    ]
     pagination_class = StandardSetPagination
     lookup_value_regex = r'\d+'
     schema_tags = ['Test plans']
@@ -280,13 +315,15 @@ class TestPlanViewSet(TestyModelViewSet, TestyArchiveMixin):
                 return ActivityFilter
             case 'descendants_tree_by_root' | 'suites_by_root' | 'labels_root_view':
                 return PlanProjectParentFilter
+            case 'assignee_progress':
+                return PlanAssigneeProgressFilter
 
     def get_queryset(self):
         queryset = TestPlanSelector.testplan_list()
         match self.action:
             case 'recovery_list' | 'restore' | 'delete_permanently':
                 queryset = TestPlanSelector.testplan_deleted_list()
-            case 'list_union' | 'list':
+            case 'list_union' | 'list' | 'assignee_progress':
                 queryset = TestPlanSelector.testplan_list_titled()
             case 'activity':
                 return get_history_model_for_model(TestResult).objects.none()
@@ -304,7 +341,7 @@ class TestPlanViewSet(TestyModelViewSet, TestyArchiveMixin):
                 return TestPlanCopySerializer
             case 'suites_by_plan' | 'suites_by_root':
                 return TestSuiteTreeBreadcrumbsSerializer
-            case 'list_union':
+            case 'list_union' | 'assignee_progress':
                 return UnionSerializer
             case 'tests':
                 return TestSerializer
@@ -339,7 +376,8 @@ class TestPlanViewSet(TestyModelViewSet, TestyArchiveMixin):
         parent_id = get_integer(request, 'parent')
         plans = self.filter_queryset(self.get_queryset())
         params = validate_query_params_data(request.query_params, omit_empty=True, search=CharFilter())
-        has_common_filters = bool(set(params.keys()).intersection(common_filters))
+        non_empty_params = {param_key for param_key, param_value in params.items() if param_value}
+        has_common_filters = bool(non_empty_params.intersection(common_filters))
         tests = TestSelector.test_list_union(plans, parent_id, TestSuiteSelector, has_common_filters)
 
         tests_filter = UnionTestFilter(request.query_params, request=request, queryset=tests)
@@ -372,11 +410,27 @@ class TestPlanViewSet(TestyModelViewSet, TestyArchiveMixin):
         )
         return self.get_paginated_response(data)
 
+    @action(methods=[_GET], url_name='assignee-progress', url_path='assignee-progress', detail=False)
+    def assignee_progress(self, request):
+        plans = self.filter_queryset(self.get_queryset())
+        search_name = request.query_params.get('search', '') or request.query_params.get('treesearch', '')
+        assignee_id = request.query_params.get('assignee')
+        plans = TestPlanSelector.progress_assignee_queryset(
+            queryset=plans,
+            search_name=search_name,
+            assignee_id=assignee_id,
+        )
+        plans = PlanUnionOrderingFilter(request.query_params, queryset=plans).qs
+        page = self.paginate_queryset(plans)
+        serializer = TestPlanUnionSerializer(page, many=True)
+        return self.get_paginated_response(serializer.data)
+
     @plan_activity_schema
     @action(methods=[_GET], url_path=_ACTIVITY, url_name=_ACTIVITY, detail=True, suffix='List')
     def activity(self, request, pk, *args, **kwargs):
-        instance = TestPlan.objects.get(pk=pk)
-        history_records = TestResultSelector.result_cascade_history_list_by_test_plan(instance)
+        plan = TestPlan.objects.get(pk=pk)
+        self.check_object_permissions(request, plan)
+        history_records = TestResultSelector.result_cascade_history_list_by_test_plan(plan)
         history_records = self.filter_queryset(queryset=history_records)
         paginator = StandardSetPagination()
         result_page = paginator.paginate_queryset(history_records, request)
@@ -401,8 +455,8 @@ class TestPlanViewSet(TestyModelViewSet, TestyArchiveMixin):
 
     @action(methods=[_GET], url_path=_LABELS, url_name=_LABELS, detail=True)
     def labels_view(self, request, *args, **kwargs):
-        instance = self.get_object()
-        labels = LabelSelector.label_list_by_testplans([instance.id])
+        plan = self.get_object()
+        labels = LabelSelector.label_list_by_testplans([plan.id])
         return Response(self.get_serializer(labels, many=True).data)
 
     @action(methods=[_GET], url_path=_LABELS, url_name=_LABELS, detail=False)
@@ -451,8 +505,9 @@ class TestPlanViewSet(TestyModelViewSet, TestyArchiveMixin):
     @plan_case_ids_schema
     @action(methods=[_GET], url_path='cases', url_name='cases', detail=True)
     def cases_by_plan(self, request, pk):
-        case_ids = TestCaseSelector().case_ids_by_testplan_id(
-            pk,
+        plan = self.get_object()
+        case_ids = TestCaseSelector().case_ids_by_testplan(
+            plan,
             include_children=get_boolean(request, 'include_children', default=True),
         ).order_by('id')
         return Response(data={'case_ids': case_ids})
@@ -460,8 +515,9 @@ class TestPlanViewSet(TestyModelViewSet, TestyArchiveMixin):
     @plan_progress_schema
     @action(methods=[_GET], url_path='progress', url_name='progress', detail=True)
     def plan_progress(self, request, pk):
+        plan = self.get_object()
         period = PeriodDateTime(request, 'start_date', 'end_date')
-        plans = TestPlanSelector().get_plan_progress(pk, period=period)
+        plans = TestPlanSelector().get_plan_progress(plan, period=period)
         return Response(self.get_serializer(plans, many=True).data)
 
     @plan_create_schema
@@ -540,8 +596,8 @@ class TestPlanViewSet(TestyModelViewSet, TestyArchiveMixin):
         ).qs.values_list('id', flat=True)
         tests = TestSelector.test_list_by_testplan_ids(plan_ids)
         tests = TestSelector().test_list_with_last_status(tests)
-        tests = TestSuiteSelector.annotate_suite_path(tests, 'case__suite__path')
-        tests = TestPlanSelector.annotate_plan_path(tests, 'plan__path').order_by('created_at')
+        tests = TestSuiteSelector.annotate_suite_path(tests, 'case__suite')
+        tests = TestPlanSelector.annotate_plan_path(tests, 'plan').order_by('created_at')
         tests = TestsByPlanFilter(request.query_params, request=request, queryset=tests).qs
         page = self.paginate_queryset(tests)
         serializer = self.get_serializer(page, many=True)
@@ -550,8 +606,9 @@ class TestPlanViewSet(TestyModelViewSet, TestyArchiveMixin):
     @action(methods=['get'], url_path='activity/statuses', url_name='activity-statuses', detail=True)
     def get_activity_statuses(self, request, pk):
         testplan_selector = TestPlanSelector()
-        instance = testplan_selector.testplan_get_by_pk(pk)
-        testplans_ids = testplan_selector.get_testplan_descendants_ids_by_testplan(instance)
+        plan = testplan_selector.testplan_get_by_pk(pk)
+        self.check_object_permissions(request, plan)
+        testplans_ids = testplan_selector.get_testplan_descendants_ids_by_testplan(plan)
         statuses_ids = (
             TestResult.history
             .prefetch_related(_RESULT_STATUS, 'test__plan_id')
@@ -561,17 +618,27 @@ class TestPlanViewSet(TestyModelViewSet, TestyArchiveMixin):
             .values_list(_RESULT_STATUS, flat=True)
         )
         statuses = ResultStatusSelector.sort_status_queryset(
-            ResultStatusSelector.extended_status_list_by_ids(statuses_ids), instance.project,
+            ResultStatusSelector.extended_status_list_by_ids(statuses_ids), plan.project,
         )
         return Response(self.get_serializer(statuses, many=True, context=self.get_serializer_context()).data)
 
 
-class TestViewSet(TestyModelViewSet, TestyArchiveMixin):
+class TestViewSet(TestyModelViewSet, TestyArchiveMixin, PayloadFiltersMixin):
     queryset = Test.objects.none()
     serializer_class = TestSerializer
     filter_backends = [TestyFilterBackend]
     pagination_class = StandardSetPagination
-    permission_classes = [IsAdminOrForbidArchiveUpdate, IsAuthenticated]
+    permission_classes = [
+        IsAdminOrForbidArchiveUpdate,
+        IsAuthenticated,
+        BaseListPermission,
+        BaseUpdatePermission,
+        BasePartialUpdatePermission,
+        BaseRetrievePermission,
+        BaseCreatePermission,
+        BulkUpdateTestsPermission,
+        ResultUnionByTestPermission,
+    ]
     http_method_names = [_GET, 'post', 'put', 'patch', 'head', 'options', 'trace']
     schema_tags = ['Tests']
 
@@ -579,6 +646,8 @@ class TestViewSet(TestyModelViewSet, TestyArchiveMixin):
     def filterset_class(self):
         if self.action == _LIST:
             return TestFilter
+        if self.action == 'bulk_update_tests':
+            return TestWithoutProjectFilter
 
     def perform_update(self, serializer: TestSerializer):
         serializer.instance = TestService().test_update(
@@ -592,12 +661,14 @@ class TestViewSet(TestyModelViewSet, TestyArchiveMixin):
         if self.action in {'archive_preview', 'archive_objects', 'restore_archived'}:
             return TestSelector().test_list()
         qs = TestSelector().test_list_with_last_status(filter_condition=filters)
-        qs = TestSuiteSelector.annotate_suite_path(qs, 'case__suite__path')
-        return TestPlanSelector.annotate_plan_path(qs, 'plan__path')
+        qs = TestSuiteSelector.annotate_suite_path(qs, 'case__suite')
+        return TestPlanSelector.annotate_plan_path(qs, 'plan')
 
     def get_serializer_class(self):
         if self.action == 'bulk_update_tests':
             return BulkUpdateTestsSerializer
+        if self.action == 'create':
+            return TestInputSerializer
         return TestSerializer
 
     @swagger_auto_schema(responses={status.HTTP_200_OK: TestSerializer(many=True)})
@@ -605,27 +676,60 @@ class TestViewSet(TestyModelViewSet, TestyArchiveMixin):
     def bulk_update_tests(self, request):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        plan = serializer.validated_data.pop('current_plan')
-        plan_ids = plan.get_descendants(include_self=True).values_list('id', flat=True)
-        queryset = self.get_queryset(test_plan_ids=plan_ids)
+        plan = serializer.validated_data.pop('current_plan', None)
+        project = serializer.validated_data.pop('project')
+        is_async = serializer.validated_data.pop('is_async', False)
+        queryset = TestSelector.test_list_by_parent_plan_and_project(project, plan)
         filter_conditions = serializer.validated_data.pop('filter_conditions', {})
         if filter_conditions:
             queryset = self._filter_queryset_from_request_payload(queryset, filter_conditions)
-        tests = TestService().bulk_update_tests(queryset, serializer.validated_data, request.user)
-        return Response(TestSerializer(tests, many=True, context=self.get_serializer_context()).data)
+        queryset = TestSelector.list_for_bulk_operation(
+            queryset=queryset,
+            included_objects=serializer.validated_data.pop('included_tests', None),
+            excluded_objects=serializer.validated_data.pop('excluded_tests', None),
+        )
+        test_ids = list(queryset.values_list('id', flat=True))
+        response = Response()
+        if is_async:
+            bulk_update_tests.delay(test_ids=test_ids, payload=serializer.validated_data, user_id=request.user.id)
+            return response
+        tests = TestService().bulk_update_tests(test_ids, serializer.validated_data, request.user.id, is_async=is_async)
+        tests = TestSuiteSelector.annotate_suite_path(tests, 'case__suite')
+        response.data = TestSerializer(tests, many=True, context=self.get_serializer_context()).data
+        return response
 
-    def _filter_queryset_from_request_payload(self, queryset: QuerySet[Test], filter_conditions: dict[str, Any]):
-        mocked_request = mock_request_with_query_params(filter_conditions)
-        queryset = TestyBaseSearchFilter().filter_queryset(mocked_request, queryset, self)
-        test_filter = TestFilter(mocked_request.GET, queryset, request=mocked_request)
-        test_filter.is_valid()
-        return test_filter.filter_queryset(queryset)
+    @action(methods=['get'], url_path='results-union', url_name='results-union', detail=True)
+    def get_results_and_comments(self, request, pk):
+        test = self.get_object()
+        type_union = request.query_params.get('type')
+        test_results = TestResultSelector.get_results_by_test(test)
+        comments = CommentSelector.comments_by_related_object(test)
+        queryset = TestResultSelector.union_results_and_comments(test_results, comments, type_union)
+        queryset = ResultUnionOrderingFilter(request.query_params, queryset=queryset).qs
+        page = self.paginate_queryset(queryset)
+        context = self.get_serializer_context()
+
+        return self.get_paginated_response(
+            TestResultSelector.get_union_data(
+                page,
+                partial(TestResultUnionSerializer, context=context),
+                partial(CommentUnionSerializer, context=context),
+            ),
+        )
 
 
 @result_list_schema
 class TestResultViewSet(ModelViewSet, TestyArchiveMixin):
     queryset = TestResultSelector().result_list()
-    permission_classes = [IsAuthenticated, ForbidChangesOnArchivedProject, TestResultPermission]
+    permission_classes = [
+        IsAuthenticated,
+        ForbidChangesOnArchivedProject,
+        BaseListPermission,
+        BaseRetrievePermission,
+        TestResultCreatePermission,
+        TestResultUpdatePermission,
+        BaseDestroyPermission,
+    ]
     serializer_class = TestResultSerializer
     filter_backends = [TestyFilterBackend]
     schema_tags = ['Test results']
@@ -674,7 +778,7 @@ class ResultStatusViewSet(TestyModelViewSet):
             case 'recovery_list' | 'restore' | 'delete_permanently':
                 return ResultStatusSelector.status_deleted_list()
             case 'list':
-                project = ProjectSelector.project_by_id(self.request.query_params.get('project'))
+                project = ProjectSelector.project_by_id(self.request.query_params.get('project'), raise_not_found=True)
                 return ResultStatusSelector.status_list(
                     project=project,
                     ordering=True,

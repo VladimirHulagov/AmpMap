@@ -5,5 +5,18 @@
   transform: translate(-50%, -50%);
   cursor: pointer;
   width: fit-content;
+  height: auto;
   max-width: 80%;
+  font-size: 15px;
+  padding: 8px 20px;
+  text-wrap: auto;
+}
+
+.minBtn {
+  background-color: var(--y-color-secondary);
+  color: var(--y-color-on-secondary);
+  border: none;
+  width: 40px;
+  height: 40px;
+  padding: 0;
 }

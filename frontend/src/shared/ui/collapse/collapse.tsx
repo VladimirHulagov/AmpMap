@@ -1,60 +1,24 @@
-import { useEffect } from "react"
+import React from "react"
 
-import { icons } from "shared/assets/inner-icons"
-import { useCacheState } from "shared/hooks"
-import { toBool } from "shared/libs"
-
-import { ContainerLoader } from "../container-loader"
-import styles from "./styles.module.css"
-
-const { ArrowIcon } = icons
+import { CollapseCache } from "./collapse-cache"
+import { CollapseDefault } from "./collapse-default"
 
 interface Props extends HTMLDataAttribute {
   children: React.ReactNode
-  cacheKey: string
   collapse?: boolean
   defaultCollapse?: boolean
-  title: React.ReactNode
+  title: React.ReactNode | string
+  titleProps?: React.HTMLAttributes<HTMLDivElement>
   isLoading?: boolean
+  cacheKey?: string
   onOpenChange?: (toggle: boolean) => void
+  style?: React.CSSProperties
 }
 
-export const Collapse = ({
-  children,
-  cacheKey,
-  collapse,
-  defaultCollapse = false,
-  title,
-  isLoading = false,
-  onOpenChange,
-  ...props
-}: Props) => {
-  const [value, update] = useCacheState(`collapse-${cacheKey}`, Boolean(defaultCollapse), toBool)
-
-  const handleOpen = () => {
-    if (onOpenChange) {
-      onOpenChange(!value)
-    }
-    update(!value)
+export const Collapse = ({ cacheKey, ...props }: Props) => {
+  if (cacheKey) {
+    return <CollapseCache cacheKey={cacheKey} {...props} />
   }
 
-  useEffect(() => {
-    if (collapse === undefined) return
-    update(collapse)
-  }, [collapse])
-
-  return (
-    <div className={styles.collapseBlock} {...props}>
-      <div className={styles.collapseBlockTitle} onClick={handleOpen}>
-        <ArrowIcon
-          width={24}
-          height={24}
-          style={{ transform: `rotate(${value ? 270 : 360}deg)` }}
-        />
-        {title}
-      </div>
-      {!value && !isLoading && children}
-      {isLoading && !value && <ContainerLoader />}
-    </div>
-  )
+  return <CollapseDefault {...props} />
 }

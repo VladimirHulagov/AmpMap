@@ -50,6 +50,7 @@ export const UserSearchInput = ({
       page: 1,
       page_size: 10,
       username: newValue,
+      is_active: true,
       ...additionalFilter,
     }).unwrap()
 
@@ -109,7 +110,9 @@ export const UserSearchInput = ({
       filterOption={false}
       onSearch={handleSearch}
       onChange={handleChange}
-      notFoundContent={t("No matches")}
+      notFoundContent={
+        <span style={{ color: "var(--y-color-control-placeholder)" }}>{t("No matches")}</span>
+      }
       allowClear
       style={{ width: "100%" }}
     >

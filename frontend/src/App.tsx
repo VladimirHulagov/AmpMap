@@ -4,22 +4,23 @@ import updateLocale from "dayjs/plugin/updateLocale"
 import { useNotificationWS } from "entities/notifications/model/use-notification-ws"
 import "react-image-crop/dist/ReactCrop.css"
 import {
+  Navigate,
   Route,
   RouterProvider,
   createBrowserRouter,
   createRoutesFromElements,
+  useParams,
 } from "react-router-dom"
-import { Navigate } from "react-router-dom"
 import { Main } from "widgets"
+
+import { ProjectTab } from "entities/project/model/enum"
 
 import { ChangeTestSuiteView } from "features/suite"
 import { CreateTestCaseView } from "features/test-case/create-test-case/create-test-case-view"
 import { EditTestCaseView } from "features/test-case/edit-test-case/edit-test-case-view"
 import { ChangeTestPlanView } from "features/test-plan"
 
-import { ProjectDetailsAccessManagementPage } from "pages/administration/projects/project-details/access-management"
-import { ProjectDetailsSettingsPage } from "pages/administration/projects/project-details/settings"
-import { ProjectDetailsStatusesPage } from "pages/administration/projects/project-details/statuses"
+import { AdministrationUsersPage } from "pages/administration/users/users"
 import { ErrorPage } from "pages/error-page/error-page"
 import { LoginPage } from "pages/login"
 import {
@@ -28,8 +29,15 @@ import {
   NotificationsPage,
 } from "pages/notifications"
 import {
-  ProjectLayout,
+  ProjectAccessManagementTabPage,
+  ProjectCustomAttributesTabPage,
+  ProjectLabelsTabPage,
   ProjectMainPage,
+  ProjectOverviewTabPage,
+  ProjectParametersTabPage,
+  ProjectProvider,
+  ProjectSettingsTabPage,
+  ProjectStatusesTabPage,
   TestPlanActivityTab,
   TestPlanLayout,
   TestPlansAttachmentsTab,
@@ -40,23 +48,20 @@ import {
   TestSuitesCustomAttributesTab,
   TestSuitesOverviewTab,
 } from "pages/project"
+import { ProjectLayout } from "pages/project/tabs/project-layout/project-layout"
 
 import { config } from "shared/config"
 import { getLang } from "shared/libs"
+import "shared/styles/antd-override.css"
+import "shared/styles/colors.css"
 import "shared/styles/global.css"
+import "shared/styles/variables-dark.css"
+import "shared/styles/variables.css"
 
 import { RequireAuth } from "./entities/auth/ui/require-auth"
-import { ProjectsMain } from "./pages/administration/projects"
-import { ProjectDetailsCustomAttributesPage } from "./pages/administration/projects/project-details/custom-attributes"
-import { ProjectDetailsLabelsPage } from "./pages/administration/projects/project-details/labels"
-import { ProjectDetailsOverviewPage } from "./pages/administration/projects/project-details/overview"
-import { ProjectDetailsParametersPage } from "./pages/administration/projects/project-details/parameters"
-import { ProjectDetailsMainPage } from "./pages/administration/projects/project-details/project-details-main"
-import { UsersPage } from "./pages/administration/users"
 import { DashboardPage } from "./pages/dashboard"
 import { LogoutPage } from "./pages/logout/logout"
 import { ProfilePage } from "./pages/profile/profile-page"
-import { ProjectOverviewPage } from "./pages/project/overview/overview"
 
 if (config.debugCss) {
   import("shared/styles/debug.css")
@@ -68,6 +73,11 @@ dayjs.updateLocale(getLang(), {
   weekStart: 1,
 })
 
+const OldUrlProjectRedirect = () => {
+  const { projectId, tab } = useParams()
+  return <Navigate to={`/projects/${projectId}/${tab}`} replace />
+}
+
 const router = createBrowserRouter(
   createRoutesFromElements(
     <Route>
@@ -75,14 +85,33 @@ const router = createBrowserRouter(
       <Route element={<RequireAuth />}>
         <Route path="/" element={<Main />}>
           <Route index element={<DashboardPage />} />
-          <Route path="administration/projects" element={<ProjectsMain />} />
-          <Route path="administration/users" element={<UsersPage />} />
 
-          <Route element={<ProjectLayout />}>
-            {/* projects routes */}
-            <Route path="projects/:projectId">
-              <Route index element={<Navigate to="overview" replace />} />
-              <Route path="overview" element={<ProjectOverviewPage />} />
+          {/* administrations routes */}
+          <Route
+            path="administration/projects/:projectId/:tab"
+            element={<OldUrlProjectRedirect />}
+          />
+          <Route path="administration/users" element={<AdministrationUsersPage />} />
+
+          {/* projects routes */}
+          <Route path="projects/:projectId">
+            <Route element={<ProjectProvider />}>
+              <Route element={<ProjectLayout />}>
+                <Route index element={<Navigate to={ProjectTab.OVERVIEW} replace />} />
+                <Route path={ProjectTab.OVERVIEW} element={<ProjectOverviewTabPage />} />
+                <Route path={ProjectTab.PARAMETERS} element={<ProjectParametersTabPage />} />
+                <Route path={ProjectTab.LABELS} element={<ProjectLabelsTabPage />} />
+                <Route path={ProjectTab.STATUSES} element={<ProjectStatusesTabPage />} />
+                <Route
+                  path={ProjectTab.CUSTOM_ATTRIBUTES}
+                  element={<ProjectCustomAttributesTabPage />}
+                />
+                <Route path={ProjectTab.SETTINGS} element={<ProjectSettingsTabPage />} />
+                <Route
+                  path={ProjectTab.ACCESS_MANAGEMENT}
+                  element={<ProjectAccessManagementTabPage />}
+                />
+              </Route>
 
               <Route element={<ProjectMainPage />}>
                 <Route path="suites">
@@ -100,8 +129,8 @@ const router = createBrowserRouter(
                     path=":testSuiteId/edit-test-suite"
                     element={<ChangeTestSuiteView type="edit" />}
                   />
-                  <Route path=":testSuiteId/new-test-case" element={<CreateTestCaseView />} />
-                  <Route path=":testSuiteId/edit-test-case" element={<EditTestCaseView />} />
+                  <Route path="new-test-case" element={<CreateTestCaseView />} />
+                  <Route path="edit-test-case" element={<EditTestCaseView />} />
                 </Route>
 
                 <Route path="plans">
@@ -123,22 +152,8 @@ const router = createBrowserRouter(
                 </Route>
               </Route>
             </Route>
-
-            {/* administrations routes */}
-            <Route path="administration">
-              <Route path="projects" element={<ProjectsMain />} />
-              <Route path="projects/:projectId" element={<ProjectDetailsMainPage />}>
-                <Route path="overview" element={<ProjectDetailsOverviewPage />} />
-                <Route path="parameters" element={<ProjectDetailsParametersPage />} />
-                <Route path="labels" element={<ProjectDetailsLabelsPage />} />
-                <Route path="statuses" element={<ProjectDetailsStatusesPage />} />
-                <Route path="access-management" element={<ProjectDetailsAccessManagementPage />} />
-                <Route path="attributes" element={<ProjectDetailsCustomAttributesPage />} />
-                <Route path="settings" element={<ProjectDetailsSettingsPage />} />
-              </Route>
-              <Route path="users" element={<UsersPage />} />
-            </Route>
           </Route>
+
           <Route path="profile" element={<ProfilePage />} />
           <Route path="notifications" element={<NotificationsPage />}>
             <Route index element={<NotificationListPage />} />

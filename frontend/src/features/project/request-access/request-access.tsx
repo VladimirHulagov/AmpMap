@@ -1,9 +1,13 @@
 import { UnlockOutlined } from "@ant-design/icons"
-import { Button, Form, Input, Modal, Tooltip, notification } from "antd"
+import { Form, Input, Tooltip } from "antd"
 import { useForm } from "antd/lib/form/Form"
+import classNames from "classnames"
 import { useTranslation } from "react-i18next"
 
 import { useRequestAccessMutation } from "entities/project/api"
+
+import { antdModalConfirm, antdNotification } from "shared/libs/antd-modals"
+import { Button } from "shared/ui"
 
 import styles from "./styles.module.css"
 
@@ -22,15 +26,11 @@ export const RequestProjectAccess = ({ project, type = "default" }: Props) => {
       try {
         const { reason } = values
         await requestAccess({ id: project.id, reason }).unwrap()
-        notification.success({
-          message: t("Success"),
-          closable: true,
+        antdNotification.success("request-access", {
           description: t("Request has been sent"),
         })
       } catch (e) {
-        notification.error({
-          message: t("Error!"),
-          closable: true,
+        antdNotification.error("request-access", {
           description: t("Failed to send a reqeust"),
         })
       }
@@ -40,15 +40,16 @@ export const RequestProjectAccess = ({ project, type = "default" }: Props) => {
   const TEXT = `${t("Request access to")} ${project.name}`
   const BUTTON = (
     <Button
-      type="primary"
+      color="primary"
       block
-      className={styles.requestBtn}
+      className={classNames(styles.requestBtn, { [styles.minBtn]: type === "min" })}
       icon={<UnlockOutlined />}
-      style={{ width: "fit-content", padding: "5px 8px" }}
       onClick={() =>
-        Modal.confirm({
+        antdModalConfirm("request-access", {
           title: t("Request Access"),
           icon: null,
+          okText: t("Send"),
+          onOk: handleRequestAccess,
           content: (
             <Form form={form}>
               <Form.Item name="reason" label={t("Reason")}>
@@ -56,11 +57,6 @@ export const RequestProjectAccess = ({ project, type = "default" }: Props) => {
               </Form.Item>
             </Form>
           ),
-          onOk: handleRequestAccess,
-          cancelText: t("Cancel"),
-          okText: t("Send"),
-          okButtonProps: { "data-testid": "request-access-button-confirm" },
-          cancelButtonProps: { "data-testid": "request-access-button-cancel" },
         })
       }
     >

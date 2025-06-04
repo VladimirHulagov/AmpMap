@@ -5,7 +5,9 @@ import { Link, useSearchParams } from "react-router-dom"
 
 import { TestSuitePopoverInfo } from "entities/suite/ui"
 
-import { icons } from "shared/assets/inner-icons"
+import ArrowIcon from "shared/assets/yi-icons/arrow.svg?react"
+import ExpandIcon from "shared/assets/yi-icons/expand.svg?react"
+import InfoIcon from "shared/assets/yi-icons/info.svg?react"
 import { createConcatIdsFn } from "shared/libs"
 import { LazyNodeProps, LazyTreeNodeApi, NodeId, TreeBaseLoadMore } from "shared/libs/tree"
 import { ArchivedTag, HighLighterTesty } from "shared/ui"
@@ -17,8 +19,6 @@ import {
   useTreebarNodeContextMenu,
 } from "./use-treebar-node-context-menu"
 import { saveUrlParamByKeys } from "./utils"
-
-const { ArrowIcon, ExpandIcon, InfoIcon } = icons
 
 interface Props {
   node: LazyTreeNodeApi<TestPlan | Suite, LazyNodeProps>
@@ -82,7 +82,7 @@ export const TreebarNodeView = ({
   const IS_SELECTED_TREE_ID = String(selectNodeId) === String(node.id)
   const urlParams = saveUrlParamByKeys(["rootId", "ordering", "is_archive"], searchParams)
 
-  if (localStorage.getItem("isDrawerRightFixed") && searchParams.get("test_case")) {
+  if (localStorage.getItem("isDrawerPinned") && searchParams.get("test_case")) {
     urlParams.append("test_case", searchParams.get("test_case") ?? "")
   }
 
@@ -150,6 +150,7 @@ export const TreebarNodeView = ({
             </Link>
             {type === "suites" && (
               <Popover
+                id={getIdWithTitle("treebar-info-popover")}
                 content={
                   <TestSuitePopoverInfo
                     cases_count={(node.data as unknown as Suite).cases_count}
@@ -163,6 +164,8 @@ export const TreebarNodeView = ({
                 <InfoIcon
                   className={styles.infoIcon}
                   data-testid={getIdWithTitle("treebar-info-icon")}
+                  width={16}
+                  height={16}
                 />
               </Popover>
             )}

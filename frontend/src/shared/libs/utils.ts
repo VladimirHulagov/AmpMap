@@ -1,5 +1,7 @@
-import { notification } from "antd"
 import { UploadFile } from "antd/lib/upload"
+import i18n from "i18next"
+
+import { antdNotification } from "./antd-modals/antd-modals"
 
 export const getNumberToFixed = (value: number, fixed: number) => {
   return Number(value.toFixed(fixed))
@@ -20,9 +22,8 @@ export const fileReader = async (file: UploadFile<unknown>) => {
 
 export const initInternalError = (err: unknown) => {
   console.error(err)
-  notification.error({
-    message: "Error!",
-    description: "Internal server error. Showing in console log.",
+  antdNotification.error("init-internal-error", {
+    description: i18n.t("Internal server error. Showing in console log."),
   })
 }
 
@@ -111,23 +112,6 @@ export const clearObjectByKeys = (target: Record<string, unknown>, cachedKeys: s
     }
   })
   return t
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const deepEqualObjects = (obj1: any, obj2: any): boolean => {
-  if (Array.isArray(obj1) && Array.isArray(obj2)) {
-    return obj1.length === obj2.length && obj1.every((item) => obj2.includes(item))
-  } else if (typeof obj1 === "object" && typeof obj2 === "object") {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    const keys1 = Object.keys(obj1)
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    const keys2 = Object.keys(obj2)
-    return (
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      keys1.length === keys2.length && keys1.every((key) => deepEqualObjects(obj1[key], obj2[key]))
-    )
-  }
-  return obj1 === obj2
 }
 
 export const clearObject = (obj: Record<string, unknown>) => {

@@ -1,4 +1,3 @@
-import { notification } from "antd"
 import dayjs from "dayjs"
 import { TreebarContext } from "processes"
 import { useContext, useEffect, useState } from "react"
@@ -19,10 +18,11 @@ import {
 } from "entities/test-plan/api"
 import { useAttributesTestPlan } from "entities/test-plan/model"
 
-import { ProjectContext } from "pages/project"
+import { useProjectContext } from "pages/project"
 
-import { useDatepicker, useErrors, useShowModalCloseConfirm } from "shared/hooks"
+import { useConfirmBeforeRedirect, useDatepicker, useErrors } from "shared/hooks"
 import { makeAttributesJson, makeParametersForTreeView } from "shared/libs"
+import { antdModalCloseConfirm, antdNotification } from "shared/libs/antd-modals"
 import { AlertSuccessChange } from "shared/ui"
 
 import { refetchNodeAfterCreateOrCopy, refetchNodeAfterEdit } from "widgets/[ui]/treebar/utils"
@@ -73,8 +73,7 @@ export const useChangeTestPlan = ({ type }: Props) => {
   const { t } = useTranslation()
   const location = useLocation()
   const [searchParams] = useSearchParams()
-  const { project } = useContext(ProjectContext)!
-  const { showModal } = useShowModalCloseConfirm()
+  const project = useProjectContext()
   const navigate = useNavigate()
   const state = location.state as LocationState | null
   const { treebar } = useContext(TreebarContext)!
@@ -112,6 +111,11 @@ export const useChangeTestPlan = ({ type }: Props) => {
     getAttributeJson,
     setAttributes,
   } = useAttributesTestPlan({ mode: type, setValue })
+
+  const { setIsRedirectByUser } = useConfirmBeforeRedirect({
+    isDirty,
+    pathname: type === "create" ? "new-test-plan" : "edit-test-plan",
+  })
 
   const [stateTestPlan, setStateTestPlan] = useState<TestPlan | null>(state?.testPlan ?? null)
   const [parametersTreeView, setParametersTreeView] = useState<IParameterTreeView[]>([])
@@ -167,10 +171,11 @@ export const useChangeTestPlan = ({ type }: Props) => {
 
   const clear = () => {
     setErrors(null)
-    reset()
+    reset(formDefaultVales)
   }
 
   const redirectToPrev = () => {
+    setIsRedirectByUser()
     clear()
     const prevUrl = searchParams.get("prevUrl")
     navigate(prevUrl ?? `/projects/${project.id}/plans/${stateTestPlan?.id ?? ""}`)
@@ -178,14 +183,14 @@ export const useChangeTestPlan = ({ type }: Props) => {
 
   const handleCancel = () => {
     if (isDirty) {
-      showModal(redirectToPrev)
+      antdModalCloseConfirm(redirectToPrev)
       return
     }
-
     redirectToPrev()
   }
 
   const redirectToPlan = (testPlanId?: number) => {
+    setIsRedirectByUser()
     const prevUrl = searchParams.get("prevUrl")
     if (prevUrl && type === "edit") {
       navigate(prevUrl)
@@ -219,15 +224,14 @@ export const useChangeTestPlan = ({ type }: Props) => {
           attributes: attributesJson,
         },
       }).unwrap()
-      notification.success({
-        message: t("Success"),
-        closable: true,
+      antdNotification.success("edit-test-plan", {
         description: (
           <AlertSuccessChange
             id={String(newPlan.id)}
             action="updated"
             title={t("Test Plan")}
             link={`/projects/${project.id}/plans/${newPlan.id}`}
+            data-testid="edit-test-plan-success-notification-description"
           />
         ),
       })
@@ -255,15 +259,14 @@ export const useChangeTestPlan = ({ type }: Props) => {
         project: project.id,
         attributes: attributesJson,
       }).unwrap()
-      notification.success({
-        message: t("Success"),
-        closable: true,
+      antdNotification.success("create-test-plan", {
         description: (
           <AlertSuccessChange
             id={String(newTestPlan[0].id)}
             action="created"
             title={t("Test Plan")}
             link={`/projects/${project.id}/plans/${newTestPlan[0].id}`}
+            data-testid="create-test-plan-success-notification-description"
           />
         ),
       })
@@ -303,6 +306,8 @@ export const useChangeTestPlan = ({ type }: Props) => {
         project: project.id,
         testPlanId: parentTestPlanId,
       }).unwrap()
+      setStateTestPlan(plan)
+      setValue("parent", plan.id)
       setSelectedParent({ value: plan.id, label: plan.name })
     }
 
@@ -313,7 +318,13 @@ export const useChangeTestPlan = ({ type }: Props) => {
     if (!stateTestPlan || isLoadingAttributes) return
 
     if (type === "create") {
-      reset(formDefaultVales)
+      reset({
+        ...formDefaultVales,
+        started_at: dayjs(stateTestPlan.started_at),
+        due_date: dayjs(stateTestPlan.due_date),
+      })
+      setDateFrom(dayjs(stateTestPlan.started_at))
+      setDateTo(dayjs(stateTestPlan.due_date))
       setSelectedParent({ value: stateTestPlan.id, label: stateTestPlan.name })
       setValue("parent", stateTestPlan.id, { shouldDirty: false })
     } else if (type === "edit" && tests) {
@@ -337,6 +348,9 @@ export const useChangeTestPlan = ({ type }: Props) => {
         due_date: stateTestPlan.due_date ? dayjs(stateTestPlan.due_date) : undefined,
         attributes: attrs,
       })
+
+      setDateFrom(dayjs(stateTestPlan.started_at))
+      setDateTo(stateTestPlan.due_date ? dayjs(stateTestPlan.due_date) : dayjs())
 
       setSelectedParent(
         stateTestPlan.parent

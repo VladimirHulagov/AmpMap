@@ -62,3 +62,19 @@ class TestPlanStatisticsSerializer(serializers.Serializer):
     value = serializers.IntegerField()
     estimates = serializers.FloatField()
     empty_estimate = serializers.IntegerField()
+
+
+class NonSuiteSpecificAttributesSerializer(serializers.Serializer):
+    name = serializers.CharField()
+    is_required = serializers.BooleanField()
+
+
+class SuiteSpecificAttributesSerializer(serializers.Serializer):
+    suite_name = serializers.CharField()
+    suite_id = serializers.ListField(child=serializers.IntegerField())
+    values = NonSuiteSpecificAttributesSerializer(many=True)
+
+
+class CustomAttributesTestResultSerializer(serializers.Serializer):
+    non_suite_specific = NonSuiteSpecificAttributesSerializer(many=True)
+    suite_specific = SuiteSpecificAttributesSerializer(many=True)

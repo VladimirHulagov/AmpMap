@@ -1,5 +1,4 @@
-import { notification } from "antd"
-import { useContext, useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useForm } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 
@@ -7,9 +6,10 @@ import { useGetProjectsQuery } from "entities/project/api"
 
 import { useCopySuiteMutation } from "entities/suite/api"
 
-import { ProjectContext } from "pages/project"
+import { useProjectContext } from "pages/project"
 
 import { initInternalError, isFetchBaseQueryError } from "shared/libs"
+import { antdNotification } from "shared/libs/antd-modals"
 import { AlertSuccessChange } from "shared/ui"
 
 interface FormSuiteCopy {
@@ -32,7 +32,7 @@ export const useSuiteCopyModal = (
   const { t } = useTranslation()
   const [errors, setErrors] = useState<string[]>([])
   const [isShow, setIsShow] = useState(false)
-  const { project } = useContext(ProjectContext)!
+  const project = useProjectContext()
   const [selectedSuite, setSelectedSuite] = useState<SelectData | null>(null)
 
   const [copySuite, { isLoading }] = useCopySuiteMutation()
@@ -99,15 +99,14 @@ export const useSuiteCopyModal = (
         dst_project_id: projectData.value.toString(),
         dst_suite_id: suite ? suite.value.toString() : undefined,
       }).unwrap()
-      notification.success({
-        message: t("Success"),
-        closable: true,
+      antdNotification.success("copy-suite", {
         description: (
           <AlertSuccessChange
             id={newSuite[0].id.toString()}
             link={`/projects/${newSuite[0].project}/suites/${newSuite[0].id}/`}
             action="copied"
             title={t("Suite")}
+            data-testid="copy-suite-success-notification-description"
           />
         ),
       })

@@ -49,3 +49,7 @@ class UserSelector:
     @classmethod
     def user_by_id(cls, user_id: int) -> User | None:
         return UserModel.objects.filter(id=user_id).first()
+
+    @classmethod
+    def list_active(cls) -> QuerySet[User]:
+        return UserModel.objects.filter(is_active=True)

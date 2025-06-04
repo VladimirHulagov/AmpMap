@@ -39,8 +39,9 @@ from tests import constants
 from tests.commons import RequestType, model_to_dict_via_serializer
 from tests.error_messages import PERMISSION_ERR_MSG, REQUIRED_FIELD_MSG
 from tests.mock_serializers.v1 import TestMockSerializer
-from testy.tests_representation.models import Test
-from testy.tests_representation.validators import BulkUpdateExcludeIncludeValidator, MoveTestsSameProjectValidator
+from testy.core.validators import BulkUpdateExcludeIncludeValidator
+from testy.tests_representation.models import Test, TestResult
+from testy.tests_representation.validators import MoveTestsSameProjectValidator
 
 
 @pytest.mark.django_db
@@ -80,6 +81,25 @@ class TestTestEndpoints:
         result_user = Test.objects.get(pk=test.id).assignee
         assert result_user == user, f'Test user does not match. Expected user "{user}", ' \
                                     f'actual: "{result_user}"'
+
+    def test_create(self, superuser_client, test_case, project, test_plan, user):
+        payload = {
+            'project': project.id,
+            'case': test_case.id,
+            'plan': test_plan.id,
+            'assignee': user.id,
+        }
+        superuser_client.send_request(
+            self.view_name_list,
+            request_type=RequestType.POST,
+            expected_status=HTTPStatus.CREATED,
+            data=payload,
+        )
+        test = Test.objects.last()
+        assert test, 'Test was not created.'
+        for field_name, field_value in payload.items():
+            field_id = getattr(test, f'{field_name}_id', None)
+            assert field_id == field_value, f'Field "{field_name}" is incorrect'
 
     @pytest.mark.parametrize('expected_status', [HTTPStatus.OK, HTTPStatus.BAD_REQUEST])
     def test_update(self, api_client, authorized_superuser, expected_status, test, user, test_case, test_plan):
@@ -284,7 +304,7 @@ class TestTestEndpoints:
         assert content.get('count') == number_of_items
 
     @pytest.mark.parametrize('payload_key', ['included_tests', 'excluded_tests'])
-    @pytest.mark.parametrize('update_key', ['plan', 'assignee'])
+    @pytest.mark.parametrize('update_key', ['plan_id', 'assignee_id', 'is_deleted'])
     @mock.patch('testy.root.celery.app.send_task', new=Mock())
     def test_bulk_update_tests(
         self,
@@ -293,20 +313,23 @@ class TestTestEndpoints:
         project,
         test_plan_factory,
         test_factory,
+        test_result_factory,
         user,
         update_key,
         payload_key,
     ):
-
         first_plan = test_plan_factory(project=project)
-        if update_key == 'plan':
+        if update_key == 'plan_id':
             update_value = test_plan_factory(project=project).pk
-        elif update_key == 'assignee':
+        elif update_key == 'assignee_id':
             update_value = user.pk
+        elif update_key == 'is_deleted':
+            update_value = True
         payload = {update_key: update_value}
         tests_pk = []
         for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
             test = test_factory(project=project, plan=first_plan)
+            test_result_factory(test=test, project=project)
             tests_pk.append(test.pk)
         tests_in_payload = tests_pk[:constants.NUMBER_OF_OBJECTS_TO_CREATE // 2]
         api_client.send_request(
@@ -320,7 +343,10 @@ class TestTestEndpoints:
         else:
             affected_tests_pks = tests_pk[constants.NUMBER_OF_OBJECTS_TO_CREATE // 2:]
         expected_count = constants.NUMBER_OF_OBJECTS_TO_CREATE // 2
-        actual_count = Test.objects.filter(pk__in=affected_tests_pks, **payload).count()
+        manager = Test.deleted_objects if update_key == 'is_deleted' else Test.objects
+        actual_count = manager.filter(pk__in=affected_tests_pks, **payload).count()
+        if update_key == 'is_deleted':
+            assert not TestResult.objects.filter(test_id__in=affected_tests_pks).count()
         assert actual_count == expected_count
 
     @mock.patch('testy.root.celery.app.send_task', new=Mock())
@@ -341,7 +367,7 @@ class TestTestEndpoints:
         assert test_plan.project != second_plan.project
         response = api_client.send_request(
             self.view_name_bulk_update,
-            {'plan': second_plan.pk, 'included_tests': tests_pk, 'current_plan': test_plan.pk},
+            {'plan_id': second_plan.pk, 'included_tests': tests_pk, 'current_plan': test_plan.pk},
             HTTPStatus.BAD_REQUEST,
             RequestType.PUT,
         )
@@ -441,8 +467,8 @@ class TestTestEndpoints:
             {
                 'current_plan': first_plan.pk,
                 'filter_conditions': {filter_key: filter_parameters[filter_key] for filter_key in filter_keys},
-                'include_tests': tests_pk + negative_tests_pk,
-                'assignee': new_assignee_id,
+                'included_tests': tests_pk + negative_tests_pk,
+                'assignee_id': new_assignee_id,
             },
             HTTPStatus.OK,
             RequestType.PUT,
@@ -454,3 +480,17 @@ class TestTestEndpoints:
         for actual_test in response_body:
             assert actual_test['id'] in affected_tests_pks, f'Missing test {actual_test["id"]}'
             assert actual_test['assignee'] == new_assignee_id, f'Assignee was not changed: {actual_test["assignee"]}'
+
+    def test_assignee_is_inactive(self, api_client, authorized_superuser, test, user_factory):
+        user = user_factory(is_active=False)
+        result_dict = {
+            'id': test.id,
+            'assignee': user.id,
+        }
+        api_client.send_request(
+            self.view_name_detail,
+            result_dict,
+            request_type=RequestType.PATCH,
+            expected_status=HTTPStatus.BAD_REQUEST,
+            reverse_kwargs={'pk': test.pk},
+        )

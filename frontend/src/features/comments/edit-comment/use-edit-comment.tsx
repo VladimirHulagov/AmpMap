@@ -1,18 +1,16 @@
-import { notification } from "antd"
 import { useUpdateCommentMutation } from "entities/comments/api"
-import { useContext, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
-import { useTranslation } from "react-i18next"
 
 import { useAttachments } from "entities/attachment/model"
 
-import { ProjectContext } from "pages/project"
+import { useProjectContext } from "pages/project"
 
 import { initInternalError } from "shared/libs"
+import { antdNotification } from "shared/libs/antd-modals"
 
 export const useEditComment = (comment: CommentType) => {
-  const { t } = useTranslation()
-  const { project } = useContext(ProjectContext)!
+  const project = useProjectContext()
   const [isShow, setIsShow] = useState(false)
   const [commentValue, setCommentValue] = useState(comment.content)
 
@@ -41,9 +39,8 @@ export const useEditComment = (comment: CommentType) => {
         content: commentValue,
         attachments: attachmentsIds,
       })
-      notification.success({
-        message: t("Success"),
-        closable: true,
+      antdNotification.success("edit-comment", {
+        description: "Success",
       })
       handleClose()
     } catch (err: unknown) {

@@ -32,7 +32,6 @@
 import logging
 import os
 
-from allure_uploader_v2.models import ServiceType
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
@@ -50,6 +49,9 @@ logger = logging.getLogger(__name__)
 UserModel = get_user_model()
 _ACTION_CODE = 'action_code'
 _VERBOSE_NAME = 'verbose_name'
+_PLACEHOLDER_TEXT = 'placeholder_text'
+_PLACEHOLDER_LINK = 'placeholder_link'
+_MESSAGE = 'message'
 
 
 class Command(BaseCommand):
@@ -60,25 +62,29 @@ class Command(BaseCommand):
         self.create_custom_permissions()
         self.create_default_roles()
         self.create_default_notification_settings()
-        self.create_default_uploader_services()
 
     @classmethod
     def create_default_notification_settings(cls):
-        fields = [_ACTION_CODE, 'message', _VERBOSE_NAME, 'placeholder_link', 'placeholder_text']
+        fields = [_ACTION_CODE, _MESSAGE, _VERBOSE_NAME, _PLACEHOLDER_LINK, _PLACEHOLDER_TEXT]
         settings_data = [
             {
                 _ACTION_CODE: ActionCode.TEST_ASSIGNED,
-                'message': '{{{{placeholder}}}} was assigned to you by {actor}',
+                _MESSAGE: '{{{{placeholder}}}} was assigned to you by {actor}',
                 _VERBOSE_NAME: 'Test assigned',
-                'placeholder_link': '/projects/{project_id}/plans/{plan_id}?test={object_id}',
-                'placeholder_text': 'Test {name}',
+                _PLACEHOLDER_LINK: '/projects/{project_id}/plans/{plan_id}?test={object_id}',
+                _PLACEHOLDER_TEXT: 'Test {name}',
             },
             {
                 _ACTION_CODE: ActionCode.TEST_UNASSIGNED,
-                'message': '{{{{placeholder}}}} was unassigned by {actor}',
+                _MESSAGE: '{{{{placeholder}}}} was unassigned by {actor}',
                 _VERBOSE_NAME: 'Test unassigned',
-                'placeholder_link': '/projects/{project_id}/plans/{plan_id}?test={object_id}',
-                'placeholder_text': 'Test {name}',
+                _PLACEHOLDER_LINK: '/projects/{project_id}/plans/{plan_id}?test={object_id}',
+                _PLACEHOLDER_TEXT: 'Test {name}',
+            },
+            {
+                _ACTION_CODE: ActionCode.TEST_BULK_UPDATE,
+                _MESSAGE: 'Bulk update was ended {{{{placeholder}}}}',
+                _VERBOSE_NAME: 'Bulk update',
             },
         ]
         for data in settings_data:
@@ -153,6 +159,15 @@ class Command(BaseCommand):
                     UserAllowedPermissionCodenames.ADD_STATUS,
                     UserAllowedPermissionCodenames.CHANGE_STATUS,
                     UserAllowedPermissionCodenames.DELETE_STATUS,
+                    UserAllowedPermissionCodenames.ADD_ATTACHMENT,
+                    UserAllowedPermissionCodenames.CHANGE_ATTACHMENT,
+                    UserAllowedPermissionCodenames.DELETE_ATTACHMENT,
+                    UserAllowedPermissionCodenames.ADD_TEST,
+                    UserAllowedPermissionCodenames.CHANGE_TEST,
+                    UserAllowedPermissionCodenames.DELETE_TEST,
+                    UserAllowedPermissionCodenames.ADD_ATTRIBUTE,
+                    UserAllowedPermissionCodenames.CHANGE_ATTRIBUTE,
+                    UserAllowedPermissionCodenames.DELETE_ATTRIBUTE,
                 ],
             ),
             (
@@ -180,6 +195,15 @@ class Command(BaseCommand):
                     UserAllowedPermissionCodenames.ADD_STATUS,
                     UserAllowedPermissionCodenames.CHANGE_STATUS,
                     UserAllowedPermissionCodenames.DELETE_STATUS,
+                    UserAllowedPermissionCodenames.ADD_ATTACHMENT,
+                    UserAllowedPermissionCodenames.CHANGE_ATTACHMENT,
+                    UserAllowedPermissionCodenames.DELETE_ATTACHMENT,
+                    UserAllowedPermissionCodenames.ADD_TEST,
+                    UserAllowedPermissionCodenames.CHANGE_TEST,
+                    UserAllowedPermissionCodenames.DELETE_TEST,
+                    UserAllowedPermissionCodenames.ADD_ATTRIBUTE,
+                    UserAllowedPermissionCodenames.CHANGE_ATTRIBUTE,
+                    UserAllowedPermissionCodenames.DELETE_ATTRIBUTE,
                 ],
             ),
             (
@@ -202,23 +226,3 @@ class Command(BaseCommand):
                 continue
             created_role.permissions.set(permissions)
             logger.info(f'Successfully created role: {created_role.name}')
-
-    @classmethod
-    def create_default_uploader_services(cls):
-        data = [
-            ('Default', 1, 'Default service for parsing reports, does not take into account suites hierarchy'),
-            ('Hierarchy service', 2, 'Creates hierarchy based on allure suites'),
-            ('Unique cases', 3, 'As default but takes into account history_id from allure'),
-            ('Hierarchy unique cases', 4, 'As Hierarchy service but takes into account history_id from allure'),
-            ('Performance service', 5, 'As hierarchy unique cases but for parsing large amount of data'),
-        ]
-        for verbose_name, service_code, description in data:
-            if ServiceType.objects.filter(service_code=service_code).first() is not None:
-                logger.info('Skipping creating service')
-                continue
-            service = ServiceType.objects.create(
-                verbose_name=verbose_name,
-                service_code=service_code,
-                description=description,
-            )
-            logger.info(f'Created allure-uploader-service with name "{service.verbose_name}"')

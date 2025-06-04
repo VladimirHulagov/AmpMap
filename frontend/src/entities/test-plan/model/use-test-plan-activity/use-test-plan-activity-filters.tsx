@@ -1,11 +1,10 @@
 import Search from "antd/lib/input/Search"
 import { ColumnsType } from "antd/lib/table"
 import { useStatuses } from "entities/status/model/use-statuses"
-import { useContext } from "react"
 import { useTranslation } from "react-i18next"
 import { useParams } from "react-router-dom"
 
-import { ProjectContext } from "pages/project"
+import { useProjectContext } from "pages/project"
 
 import { useTestPlanActivity } from "./use-test-plan-activity"
 
@@ -13,7 +12,7 @@ export const useTestPlanActivityFilters = (
   testPlanActivity: ReturnType<typeof useTestPlanActivity>
 ) => {
   const { t } = useTranslation()
-  const { project } = useContext(ProjectContext)!
+  const project = useProjectContext()
   const { testPlanId } = useParams<ParamTestPlanId & ParamProjectId>()
   const { statusesFilters } = useStatuses({
     project: project.id,

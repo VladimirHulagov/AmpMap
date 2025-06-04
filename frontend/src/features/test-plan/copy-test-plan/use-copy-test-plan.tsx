@@ -1,4 +1,3 @@
-import { notification } from "antd"
 import dayjs, { Dayjs } from "dayjs"
 import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
@@ -8,6 +7,7 @@ import { useСopyTestPlanMutation } from "entities/test-plan/api"
 
 import { useDatepicker } from "shared/hooks"
 import { initInternalError, isFetchBaseQueryError } from "shared/libs"
+import { antdNotification } from "shared/libs/antd-modals"
 import { AlertSuccessChange } from "shared/ui"
 
 interface FormPlanCopy {
@@ -96,15 +96,14 @@ export const useTestPlanCopyModal = ({ testPlan, onSubmit }: Props) => {
         dst_plan: plan?.value,
         keep_assignee: keepAssignee,
       }).unwrap()
-      notification.success({
-        message: t("Success"),
-        closable: true,
+      antdNotification.success("copy-test-plan", {
         description: (
           <AlertSuccessChange
             id={newPlan[0].id.toString()}
             link={`/projects/${newPlan[0].project}/plans/${newPlan[0].id}/`}
             action="copied"
             title={t("Test Plan")}
+            data-testid="copy-test-plan-success-notification-description"
           />
         ),
       })

@@ -1,0 +1,60 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.headerContainer {
+  display: flex;
+  flex-direction: column;
+}
+
+.topHeader {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px;
+}
+
+.actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  height: 100%;
+}
+
+.projectHeder {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+}
+
+.projectTitle {
+  display: flex;
+  flex-direction: row;
+  gap: 16px;
+  font-weight: 600;
+  font-size: 26px;
+  line-height: 32px;
+  color: var(--y-color-text-primary);
+}
+
+.actionContextBtn {
+  justify-content: flex-start;
+  width: 100%;
+  color: var(--y-color-control-text);
+}
+
+.actionContextBtn svg {
+  color: var(--y-color-menu-tertiary-text);
+}
+
+.tabBody {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  padding: 24px;
+  background-color: var(--y-color-background);
+}

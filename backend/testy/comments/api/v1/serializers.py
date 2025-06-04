@@ -28,10 +28,13 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from rest_framework.relations import PrimaryKeyRelatedField
+from django.contrib.contenttypes.models import ContentType
+from rest_framework.fields import IntegerField
+from rest_framework.relations import PrimaryKeyRelatedField, SlugRelatedField
 from rest_framework.serializers import ModelSerializer, SerializerMethodField, ValidationError
 
 from testy.comments.models import Comment
+from testy.comments.validators import GenericInstanceValidator
 from testy.core.api.v1.serializers import AttachmentSerializer
 from testy.core.selectors.attachments import AttachmentSelector
 from testy.users.api.v1.serializers import UserSerializer
@@ -58,9 +61,9 @@ class CommentSerializer(ModelSerializer):
         return AttachmentSerializer(instance.attachments, many=True, context=self.context).data
 
 
-class InputCommentSerializer(ModelSerializer):
+class InputBaseCommentSerializer(ModelSerializer):
     attachments = PrimaryKeyRelatedField(
-        many=True, queryset=AttachmentSelector().attachment_list(), required=False,
+        many=True, queryset=AttachmentSelector.attachment_list(), required=False,
     )
 
     class Meta:
@@ -72,3 +75,17 @@ class InputCommentSerializer(ModelSerializer):
         if not attrs.get('content') and not attrs.get('attachments'):
             raise ValidationError('Comment cannot be empty')
         return super().validate(attrs)
+
+
+class CommentCreateSerializer(InputBaseCommentSerializer):
+    object_id = IntegerField(required=True, write_only=True)
+    model = SlugRelatedField(
+        slug_field='model',
+        queryset=ContentType.objects.all(),
+        required=True,
+        write_only=True,
+    )
+
+    class Meta(InputBaseCommentSerializer.Meta):
+        fields = InputBaseCommentSerializer.Meta.fields + ('object_id', 'model')
+        validators = [GenericInstanceValidator()]

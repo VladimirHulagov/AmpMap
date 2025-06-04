@@ -1,9 +1,9 @@
-import { useCallback, useContext, useMemo } from "react"
+import { useCallback, useMemo } from "react"
 import { useParams, useSearchParams } from "react-router-dom"
 
 import { useLazyGetTestSuiteAncestorsQuery, useLazyGetTestSuitesQuery } from "entities/suite/api"
 
-import { ProjectContext } from "pages/project"
+import { useProjectContext } from "pages/project"
 
 import { config } from "shared/config"
 import { LazyNodeProps, NodeId, TreeNodeFetcher } from "shared/libs/tree"
@@ -18,7 +18,7 @@ interface Props {
 }
 
 export const useTreebarSuite = ({ treeSettings, searchDebounce }: Props) => {
-  const { project } = useContext(ProjectContext)!
+  const project = useProjectContext()
   const { testSuiteId } = useParams<ParamTestSuiteId>()
   const [searchParams] = useSearchParams()
 

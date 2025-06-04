@@ -2,8 +2,12 @@ import { Dropdown, MenuProps } from "antd"
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
 
+import ArrowIcon from "shared/assets/yi-icons/arrow.svg?react"
+import { Button } from "shared/ui"
+
 import { DeleteTestCase } from "../delete-test-case/delete-test-case"
 import { ArchiveTestCaseModal } from "./archive-test-case-modal"
+import styles from "./styles.module.css"
 
 interface Props {
   testCase: TestCase
@@ -23,16 +27,17 @@ export const ArchiveTestCase = ({ testCase, onSubmit }: Props) => {
 
   return (
     <>
-      <Dropdown.Button
-        className="archive-test-case"
-        menu={{ items }}
-        danger
-        style={{ width: "fit-content" }}
-        onClick={() => setIsShow(true)}
-        data-testid="archive-test-case-btn"
-      >
-        {t("Archive")}
-      </Dropdown.Button>
+      <Dropdown menu={{ items }} trigger={["hover"]}>
+        <Button style={{ gap: 4 }} color="secondary-linear">
+          <span data-testid="archive-test-case-btn" onClick={() => setIsShow(true)}>
+            {t("Archive")}
+          </span>
+          <ArrowIcon
+            className={styles.archiveMenuArrow}
+            data-testid="archive-test-case-dropdown-arrow"
+          />
+        </Button>
+      </Dropdown>
       <ArchiveTestCaseModal
         isShow={isShow}
         setIsShow={setIsShow}

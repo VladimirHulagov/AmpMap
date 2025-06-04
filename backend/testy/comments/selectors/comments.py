@@ -28,24 +28,26 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from django.contrib.auth.models import AnonymousUser
-from django.db.models import QuerySet
-from rest_framework.exceptions import NotFound
+from django.db.models import Model, QuerySet
 
 from testy.comments.models import Comment
-from testy.users.models import User
 
 
 class CommentSelector:
     @classmethod
-    def get_same_comments(cls, comment_id) -> QuerySet[Comment]:
-        comment = Comment.objects.filter(pk=comment_id).first()
-        if not comment:
-            raise NotFound
-        return Comment.objects.filter(content_type=comment.content_type, object_id=comment.object_id)
+    def comment_list(cls):
+        return Comment.objects.all().select_related('content_type')
 
     @classmethod
-    def list_comments_by_user(cls, user: User | AnonymousUser) -> QuerySet[Comment]:
-        if not user.is_authenticated:
+    def comment_list_by_user_id(cls, user_id: int) -> QuerySet[Comment]:
+        return Comment.objects.filter(user__pk=user_id).select_related('content_type')
+
+    @classmethod
+    def comment_list_by_ids(cls, comment_ids: list[int]) -> QuerySet[Comment]:
+        return cls.comment_list().filter(id__in=comment_ids)
+
+    @classmethod
+    def comments_by_related_object(cls, instance: Model) -> QuerySet[Comment]:
+        if not hasattr(instance, 'comments'):
             return Comment.objects.none()
-        return Comment.objects.filter(user=user)
+        return instance.comments.all()

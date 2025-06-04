@@ -53,7 +53,8 @@ class GroupAdmin(admin.ModelAdmin):
 @admin.register(User)
 class UserAdmin(UserAdmin):
     list_display = [
-        'username', 'email', 'first_name', 'last_name', 'is_superuser', 'is_staff', 'is_active', 'avatar',
+        'username', 'email', 'first_name', 'last_name', 'is_superuser', 'is_staff', 'is_active',
+        'avatar', 'date_joined', 'last_login',
     ]
     fieldsets = (
         (None, {'fields': ('username', 'password', 'first_name', 'last_name', 'email')}),

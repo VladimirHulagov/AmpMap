@@ -1,6 +1,6 @@
 .searchBlock {
   height: 36px;
-  border-bottom: 1px solid #d9d9d9;
+  border-bottom: 1px solid var(--y-grey-20);
 }
 
 .input {
@@ -9,4 +9,12 @@
 
 .tree :global(.ant-tree-switcher) {
   height: fit-content;
+}
+
+.arrow {
+  transition: transform 0.3s;
+}
+
+.arrow.expanded {
+  transform: rotate(0deg);
 }

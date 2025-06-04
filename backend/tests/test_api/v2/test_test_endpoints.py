@@ -36,14 +36,16 @@ from unittest.mock import Mock
 
 import allure
 import pytest
+from django.utils import timezone
 
 from tests import constants
 from tests.commons import RequestType, model_to_dict_via_serializer
-from tests.error_messages import PERMISSION_ERR_MSG, REQUIRED_FIELD_MSG
-from tests.mock_serializers.v2 import TestMockSerializer
+from tests.error_messages import MISSING_REQUIRED_CUSTOM_ATTRIBUTES_ERR_MSG, PERMISSION_ERR_MSG, REQUIRED_FIELD_MSG
+from tests.mock_serializers.v2 import CommentUnionMockSerializer, TestMockSerializer, TestResultUnionMockSerializer
 from testy.core.models import Project
-from testy.tests_representation.models import Test
-from testy.tests_representation.validators import BulkUpdateExcludeIncludeValidator, MoveTestsSameProjectValidator
+from testy.core.validators import BulkUpdateExcludeIncludeValidator
+from testy.tests_representation.models import Test, TestResult
+from testy.tests_representation.validators import MoveTestsSameProjectValidator
 from testy.users.models import Membership, Role, User
 
 
@@ -53,6 +55,7 @@ class TestTestEndpoints:
     view_name_list = 'api:v2:test-list'
     view_name_detail = 'api:v2:test-detail'
     view_name_bulk_update = 'api:v2:test-bulk-update'
+    view_name_results_union = 'api:v2:test-results-union'
 
     def test_list(self, api_client, authorized_superuser, test_factory, project):
         expected_instances = model_to_dict_via_serializer(
@@ -84,6 +87,25 @@ class TestTestEndpoints:
         result_user = Test.objects.get(pk=test.id).assignee
         assert result_user == user, f'Test user does not match. Expected user "{user}", ' \
                                     f'actual: "{result_user}"'
+
+    def test_create(self, superuser_client, test_case, project, test_plan, user):
+        payload = {
+            'project': project.id,
+            'case': test_case.id,
+            'plan': test_plan.id,
+            'assignee': user.id,
+        }
+        superuser_client.send_request(
+            self.view_name_list,
+            request_type=RequestType.POST,
+            expected_status=HTTPStatus.CREATED,
+            data=payload,
+        )
+        test = Test.objects.last()
+        assert test, 'Test was not created.'
+        for field_name, field_value in payload.items():
+            field_id = getattr(test, f'{field_name}_id', None)
+            assert field_id == field_value, f'Field "{field_name}" is incorrect'
 
     @pytest.mark.parametrize('expected_status', [HTTPStatus.OK, HTTPStatus.BAD_REQUEST])
     def test_update(self, api_client, authorized_superuser, expected_status, test, user, test_case, test_plan):
@@ -310,8 +332,9 @@ class TestTestEndpoints:
         ).json()
         assert content.get('count') == number_of_items
 
+    @pytest.mark.parametrize('is_current_plan', [True, False])
     @pytest.mark.parametrize('payload_key', ['included_tests', 'excluded_tests'])
-    @pytest.mark.parametrize('update_key', ['plan', 'assignee'])
+    @pytest.mark.parametrize('update_key', ['plan_id', 'assignee_id', 'is_deleted'])
     @mock.patch('testy.root.celery.app.send_task', new=Mock())
     def test_bulk_update_tests(
         self,
@@ -320,25 +343,34 @@ class TestTestEndpoints:
         project,
         test_plan_factory,
         test_factory,
+        test_result_factory,
         user,
         update_key,
         payload_key,
+        is_current_plan,
     ):
-
         first_plan = test_plan_factory(project=project)
-        if update_key == 'plan':
+        if update_key == 'plan_id':
             update_value = test_plan_factory(project=project).pk
-        elif update_key == 'assignee':
+        elif update_key == 'assignee_id':
             update_value = user.pk
+        elif update_key == 'is_deleted':
+            update_value = True
         payload = {update_key: update_value}
         tests_pk = []
         for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
             test = test_factory(project=project, plan=first_plan)
+            test_result_factory(test=test, project=project)
             tests_pk.append(test.pk)
         tests_in_payload = tests_pk[:constants.NUMBER_OF_OBJECTS_TO_CREATE // 2]
         api_client.send_request(
             self.view_name_bulk_update,
-            {'current_plan': first_plan.pk, payload_key: tests_in_payload, **payload},
+            {
+                'project': project.id,
+                'current_plan': first_plan.pk if is_current_plan else None,
+                payload_key: tests_in_payload,
+                **payload,
+            },
             HTTPStatus.OK,
             RequestType.PUT,
         )
@@ -347,7 +379,10 @@ class TestTestEndpoints:
         else:
             affected_tests_pks = tests_pk[constants.NUMBER_OF_OBJECTS_TO_CREATE // 2:]
         expected_count = constants.NUMBER_OF_OBJECTS_TO_CREATE // 2
-        actual_count = Test.objects.filter(pk__in=affected_tests_pks, **payload).count()
+        manager = Test.deleted_objects if update_key == 'is_deleted' else Test.objects
+        actual_count = manager.filter(pk__in=affected_tests_pks, **payload).count()
+        if update_key == 'is_deleted':
+            assert not TestResult.objects.filter(test_id__in=affected_tests_pks).exists()
         assert actual_count == expected_count
 
     @mock.patch('testy.root.celery.app.send_task', new=Mock())
@@ -368,7 +403,12 @@ class TestTestEndpoints:
         assert test_plan.project != second_plan.project
         response = api_client.send_request(
             self.view_name_bulk_update,
-            {'plan': second_plan.pk, 'included_tests': tests_pk, 'current_plan': test_plan.pk},
+            {
+                'project': project.id,
+                'plan_id': second_plan.pk,
+                'included_tests': tests_pk,
+                'current_plan': test_plan.pk,
+            },
             HTTPStatus.BAD_REQUEST,
             RequestType.PUT,
         )
@@ -380,6 +420,7 @@ class TestTestEndpoints:
         api_client,
         authorized_superuser,
         test_plan,
+        project,
         test_factory,
     ):
         include = []
@@ -389,7 +430,12 @@ class TestTestEndpoints:
             exclude.append(test_factory(plan=test_plan, project=test_plan.project).pk)
         response = api_client.send_request(
             self.view_name_bulk_update,
-            {'included_tests': include, 'excluded_tests': exclude, 'current_plan': test_plan.pk},
+            {
+                'included_tests': include,
+                'excluded_tests': exclude,
+                'current_plan': test_plan.pk,
+                'project': project.id,
+            },
             HTTPStatus.BAD_REQUEST,
             RequestType.PUT,
         )
@@ -466,10 +512,11 @@ class TestTestEndpoints:
         response_body = api_client.send_request(
             self.view_name_bulk_update,
             {
+                'project': project.id,
                 'current_plan': first_plan.pk,
                 'filter_conditions': {filter_key: filter_parameters[filter_key] for filter_key in filter_keys},
-                'include_tests': tests_pk + negative_tests_pk,
-                'assignee': new_assignee_id,
+                'included_tests': tests_pk + negative_tests_pk,
+                'assignee_id': new_assignee_id,
             },
             HTTPStatus.OK,
             RequestType.PUT,
@@ -548,17 +595,332 @@ class TestTestEndpoints:
             tests_pk.append(test.pk)
         authorized_superuser_client.send_request(
             self.view_name_bulk_update,
-            data={'current_plan': plan.pk, 'assignee': user.pk},
+            data={'current_plan': plan.pk, 'assignee_id': user.pk, 'project': project.id},
             expected_status=HTTPStatus.BAD_REQUEST,
             request_type=RequestType.PUT,
         )
         with self._role(project, user, member):
             authorized_superuser_client.send_request(
                 self.view_name_bulk_update,
-                data={'current_plan': plan.pk, 'assignee': user.pk},
+                data={'current_plan': plan.pk, 'assignee': user.pk, 'project': project.id},
                 expected_status=HTTPStatus.OK,
                 request_type=RequestType.PUT,
             )
+
+    @mock.patch('testy.root.celery.app.send_task', new=Mock())
+    def test_bulk_add_result_to_tests(
+        self,
+        api_client,
+        authorized_superuser,
+        project,
+        test_plan_factory,
+        test_factory,
+        test_case_factory,
+        test_suite_factory,
+        attachment_factory,
+        result_status_factory,
+        custom_attribute_factory,
+    ):
+        test_suite = test_suite_factory(project=project)
+        test_case = test_case_factory(project=project, suite=test_suite)
+        non_ss_attribute_name = 'attr1'
+        non_ss_attribute_value = 'attr1_value'
+        ss_attribute_name = 'attr2'
+        ss_attribute_value = 'attr2_value'
+        result_status = result_status_factory(project=project)
+        custom_attribute_factory(
+            name=non_ss_attribute_name,
+            project=project,
+            applied_to={
+                'testresult': {
+                    'is_required': True,
+                    'status_specific': [result_status.id],
+                },
+            },
+        )
+        custom_attribute_factory(
+            name=ss_attribute_name,
+            project=project,
+            applied_to={
+                'testresult': {
+                    'is_required': True,
+                    'suite_ids': [test_suite.pk],
+                    'status_specific': [result_status.id],
+                },
+            },
+        )
+        first_plan = test_plan_factory(project=project)
+        attachment = attachment_factory(project=project, content_type=None, object_id=None)
+        test_result_bulk = {
+            'status': result_status.pk,
+            'comment': constants.TEST_COMMENT,
+            'attachments': [attachment.pk],
+            'attributes': {
+                'non_suite_specific': {
+                    non_ss_attribute_name: non_ss_attribute_value,
+                },
+                'suite_specific': [
+                    {
+                        'suite_id': test_suite.pk,
+                        'values': {
+                            ss_attribute_name: ss_attribute_value,
+                        },
+                    },
+                ],
+            },
+        }
+        non_ss_test = test_factory(project=project, plan=first_plan)
+        ss_test = test_factory(project=project, plan=first_plan, case=test_case)
+        tests_pk = [non_ss_test.pk, ss_test.pk]
+        api_client.send_request(
+            self.view_name_bulk_update,
+            {
+                'current_plan': first_plan.pk,
+                'included_tests': tests_pk,
+                'result': test_result_bulk,
+                'project': project.pk,
+            },
+            HTTPStatus.OK,
+            RequestType.PUT,
+        )
+        results = TestResult.objects.filter(test_id__in=tests_pk)
+        assert results.count() == len(tests_pk), 'Results was not created'
+        for result in results:
+            assert result.status_id == result_status.pk, 'Wrong status id'
+            assert result.comment == constants.TEST_COMMENT, 'Wrong comment'
+            assert result.attachments.exists(), 'Attachments was not added'
+            assert result.attributes.get(non_ss_attribute_name) == non_ss_attribute_value
+            if result.test.case.suite_id == test_suite.id:
+                assert result.attributes.get(ss_attribute_name) == ss_attribute_value
+        for test_id in tests_pk:
+            test = Test.objects.get(pk=test_id)
+            assert test.last_status_id == result_status.pk
+
+    @mock.patch('testy.root.celery.app.send_task', new=Mock())
+    def test_bulk_add_result_without_required_attribute(
+        self,
+        api_client,
+        authorized_superuser,
+        project,
+        test_plan_factory,
+        test_factory,
+        test_case_factory,
+        test_suite_factory,
+        result_status_factory,
+        custom_attribute_factory,
+    ):
+        test_suite = test_suite_factory(project=project)
+        test_case = test_case_factory(project=project, suite=test_suite)
+        result_status = result_status_factory(project=project)
+        custom_attribute = custom_attribute_factory(
+            project=project,
+            applied_to={
+                'testresult': {
+                    'is_required': True,
+                    'suite_ids': [test_suite.pk],
+                    'status_specific': [result_status.id],
+                },
+            },
+        )
+        first_plan = test_plan_factory(project=project)
+        test_result_bulk = {
+            'status': result_status.pk,
+            'comment': constants.TEST_COMMENT,
+            'attachments': [],
+            'attributes': {'suite_specific': [], 'non_suite_specific': {}},
+        }
+        test = test_factory(project=project, plan=first_plan, case=test_case)
+        response = api_client.send_request(
+            self.view_name_bulk_update,
+            {
+                'current_plan': first_plan.pk,
+                'included_tests': [test.pk],
+                'result': test_result_bulk,
+                'project': project.pk,
+            },
+            HTTPStatus.BAD_REQUEST,
+            RequestType.PUT,
+        ).json()
+        assert response[0] == MISSING_REQUIRED_CUSTOM_ATTRIBUTES_ERR_MSG.format([custom_attribute.name])
+
+    def test_assignee_is_inactive(self, api_client, authorized_superuser, test, user_factory):
+        user = user_factory(is_active=False)
+        result_dict = {
+            'id': test.id,
+            'assignee': user.id,
+        }
+        api_client.send_request(
+            self.view_name_detail,
+            result_dict,
+            request_type=RequestType.PATCH,
+            expected_status=HTTPStatus.BAD_REQUEST,
+            reverse_kwargs={'pk': test.pk},
+        )
+
+    @mock.patch('testy.root.celery.app.send_task', new=Mock())
+    def test_bulk_assignation_is_inactive_user(
+            self,
+            authorized_superuser_client,
+            project_factory,
+            test_plan_factory,
+            test_factory,
+            user_factory,
+    ):
+        project = project_factory()
+        plan = test_plan_factory(project=project)
+        tests_pk = []
+        for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
+            test = test_factory(project=project, plan=plan)
+            tests_pk.append(test.pk)
+        user = user_factory(is_active=False)
+        authorized_superuser_client.send_request(
+            self.view_name_bulk_update,
+            data={'current_plan': plan.pk, 'assignee': user.pk},
+            expected_status=HTTPStatus.BAD_REQUEST,
+            request_type=RequestType.PUT,
+        )
+
+    @mock.patch('testy.root.celery.app.send_task', new=Mock())
+    @pytest.mark.parametrize(
+        'filter_keys',
+        [
+            ('search',),
+            ('last_status',),
+            ('labels',),
+            ('not_labels',),
+            ('assignee',),
+            ('unassigned',),
+            ('test_created_after', 'test_created_before'),
+            ('test_plan_started_after', 'test_plan_started_before'),
+            ('test_plan_created_after', 'test_plan_created_before'),
+            ('suite', 'search'),
+            ('suite', 'labels'),
+            ('suite', 'last_status'),
+            ('suite', 'last_status', 'labels'),
+            ('suite', 'labels', 'assignee', 'last_status'),
+        ],
+    )
+    def test_list_with_filters(
+        self,
+        api_client,
+        authorized_superuser,
+        project,
+        test_plan_factory,
+        test_factory,
+        user_factory,
+        test_suite_factory,
+        test_case_factory,
+        labeled_item_factory,
+        filter_keys,
+        test_result_factory,
+        result_status_factory,
+    ):
+        case_name_for_search = 'case_name_for_search'
+        status_for_search = result_status_factory(project=project)
+        suite_for_search = test_suite_factory()
+        case = test_case_factory(suite=suite_for_search, name=case_name_for_search)
+        assignee = user_factory()
+        new_assignee_id = user_factory().id
+        labels_for_search = []
+        for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
+            labeled_item = labeled_item_factory(content_object=case)
+            labels_for_search.append(str(labeled_item.label.id))
+        after_time = timezone.datetime(2000, 1, 1).strftime('%Y-%m-%d')
+        before_time = timezone.datetime(2000, 1, 3).strftime('%Y-%m-%d')
+        filter_parameters = {
+            'unassigned': True,
+            'assignee': str(new_assignee_id),
+            'search': case_name_for_search,
+            'labels': ','.join(labels_for_search),
+            'not_labels': ','.join(labels_for_search),
+            'suite': str(suite_for_search.id),
+            'last_status': str(status_for_search.pk),
+            'test_created_after': after_time,
+            'test_created_before': before_time,
+            'test_plan_created_after': after_time,
+            'test_plan_created_before': before_time,
+            'test_plan_started_after': after_time,
+            'test_plan_started_before': before_time,
+        }
+        print(filter_parameters)
+        with mock.patch(
+            'django.utils.timezone.now',
+            return_value=timezone.make_aware(timezone.datetime(2000, 1, 2), timezone.utc),
+        ):
+            first_plan = test_plan_factory(
+                project=project,
+                started_at=timezone.make_aware(timezone.datetime(2000, 1, 2), timezone.utc),
+            )
+        tests_pk = []
+        negative_tests_pk = []
+        for idx in range(constants.NUMBER_OF_OBJECTS_TO_CREATE):
+            if idx % 2:
+                with mock.patch(
+                    'django.utils.timezone.now',
+                    return_value=timezone.make_aware(timezone.datetime(2000, 1, 2), timezone.utc),
+                ):
+                    test = test_factory(
+                        project=project,
+                        plan=first_plan,
+                        case=case,
+                        assignee=assignee,
+                    )
+                test_result_factory(test=test, status=status_for_search)
+                tests_pk.append(test.pk)
+            else:
+                negative_tests_pk.append(test_factory().pk)
+
+        response_body = api_client.send_request(
+            self.view_name_list,
+            expected_status=HTTPStatus.OK,
+            request_type=RequestType.GET,
+            query_params={
+                'project': project.id,
+                **{filter_key: filter_parameters[filter_key] for filter_key in filter_keys},
+            },
+        ).json()['results']
+        if 'not_labels' in filter_keys:
+            affected_tests_pks = negative_tests_pk
+        else:
+            affected_tests_pks = tests_pk
+        for actual_test in response_body:
+            assert actual_test['id'] in affected_tests_pks, f'Missing test {actual_test["id"]}'
+
+    @pytest.mark.parametrize('ordering', ['-created_at', 'created_at'])
+    def test_results_union(
+        self,
+        authorized_superuser_client,
+        test_factory,
+        project,
+        test_result_factory,
+        comment_test_factory,
+        ordering,
+    ):
+        test = test_factory(project=project)
+        with mock.patch(
+                'django.utils.timezone.now',
+                return_value=timezone.make_aware(timezone.datetime(2000, 1, 2), timezone.utc),
+        ):
+            result = test_result_factory(test=test, project=project)
+        with mock.patch(
+                'django.utils.timezone.now',
+                return_value=timezone.make_aware(timezone.datetime(2000, 2, 2), timezone.utc),
+        ):
+            comment = comment_test_factory(content_object=test)
+
+        expected_results = [
+            model_to_dict_via_serializer(result, TestResultUnionMockSerializer, fields_to_add={'latest': True}),
+            model_to_dict_via_serializer(comment, CommentUnionMockSerializer),
+        ]
+        if ordering == '-created_at':
+            expected_results = expected_results[::-1]
+        actual_results = authorized_superuser_client.send_request(
+            self.view_name_results_union,
+            reverse_kwargs={'pk': test.pk},
+            query_params={'ordering': ordering},
+        ).json()['results']
+        assert len(actual_results) == len(expected_results)
+        assert actual_results == expected_results
 
     @contextmanager
     def _role(self, project: Project, user: User, role: Role):

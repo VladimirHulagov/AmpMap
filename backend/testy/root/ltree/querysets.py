@@ -29,11 +29,12 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 from django.db import models
+from django_cte import CTEQuerySet
 
 _PATH = 'path'
 
 
-class LtreeQuerySet(models.QuerySet):
+class LtreeQuerySet(CTEQuerySet):
     def get_ancestors(self, include_self=False):
         return self.get_ancestors_for_qs(self, include_self).order_by(_PATH)
 
@@ -46,9 +47,10 @@ class LtreeQuerySet(models.QuerySet):
             lookup |= models.Q(path__descendant=node_path)
             if not include_self:
                 lookup &= ~models.Q(path=node_path)
-        if not len(lookup):
-            return qs
+
         manager = getattr(qs.model, manager_name)
+        if not len(lookup):
+            return manager.filter(pk__in=qs.values_list('pk', flat=True))
         return manager.filter(lookup).order_by(_PATH)
 
     def get_ancestors_for_qs(self, qs, include_self=False, manager_name: str = 'objects'):
@@ -57,7 +59,7 @@ class LtreeQuerySet(models.QuerySet):
             lookup |= models.Q(path__ancestor=node_path)
             if not include_self:
                 lookup &= ~models.Q(path=node_path)
-        if not len(lookup):
-            return qs
         manager = getattr(qs.model, manager_name)
+        if not len(lookup):
+            return manager.filter(pk__in=qs.values_list('pk', flat=True))
         return manager.filter(lookup).order_by(_PATH)

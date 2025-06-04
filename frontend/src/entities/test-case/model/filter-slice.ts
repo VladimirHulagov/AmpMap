@@ -69,6 +69,7 @@ const initialState: TestCaseStateFilters = {
     test_case_created_after: initFilter.test_case_created_after,
   },
   settings: {
+    filterProjectId: null,
     selected: null,
     editing: false,
     editingValue: "",
@@ -76,19 +77,19 @@ const initialState: TestCaseStateFilters = {
     hasUnsavedChanges: false,
   },
   ordering: initOrdering.ordering,
+  shouldResetForm: false,
 }
 
 export const updateFilter = createAction<Partial<TestCaseStateFilters["filter"]>>(
   "testCasesFilter/updateFilter"
 )
 
+export const clearFilter = createAction("testCasesFilter/clearFilter")
+
 export const testCasesfilterSlice = createSlice({
   name: "testCasesFilter",
   initialState,
   reducers: {
-    clearFilter: (state) => {
-      state.filter = testCasesEmptyFilter
-    },
     updateFilterSettings: (state, action: PayloadAction<Partial<FilterSettings>>) => {
       state.settings = {
         ...state.settings,
@@ -101,6 +102,9 @@ export const testCasesfilterSlice = createSlice({
     updateOrdering: (state, action: PayloadAction<Partial<TestCaseStateFilters["ordering"]>>) => {
       state.ordering = action.payload
     },
+    resetFormComplete: (state) => {
+      state.shouldResetForm = false
+    },
   },
   extraReducers: (builder) => {
     builder.addCase(updateFilter, (state, action) => {
@@ -109,10 +113,14 @@ export const testCasesfilterSlice = createSlice({
         ...action.payload,
       }
     })
+    builder.addCase(clearFilter, (state) => {
+      state.filter = testCasesEmptyFilter
+      state.shouldResetForm = true
+    })
   },
 })
 
-export const { clearFilter, updateFilterSettings, updateOrdering, resetFilterSettings } =
+export const { updateFilterSettings, updateOrdering, resetFilterSettings, resetFormComplete } =
   testCasesfilterSlice.actions
 
 export const selectFilter = (state: RootState) => state.testCasesFilter.filter
@@ -133,5 +141,6 @@ export const selectFilterCount = (state: RootState) => {
   }, 0)
 }
 export const selectOrdering = (state: RootState) => state.testCasesFilter.ordering
+export const selectShouldResetForm = (state: RootState) => state.testCasesFilter.shouldResetForm
 
 export const testCasesfilterReducer = testCasesfilterSlice.reducer

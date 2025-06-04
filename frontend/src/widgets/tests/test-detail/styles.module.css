@@ -5,3 +5,43 @@
   width: fit-content;
   line-height: 32px !important;
 }
+
+.sortIcon {
+  cursor: pointer;
+}
+
+.sortIcon.descend {
+  transform: scaleY(-1);
+}
+
+.testInfoTabs {
+}
+
+.testInfoTabs :global(.ant-tabs-nav-wrap) {
+  flex-grow: 0 !important;
+}
+
+.testInfoTabs :global(.ant-tabs-extra-content) {
+  flex-grow: 1;
+  margin-right: 24px;
+}
+
+.line {
+  flex-grow: 1;
+  height: 1px;
+  background-color: var(--y-secondary-color-divider);
+  margin: 0 20px;
+}
+
+.resultsAndComments {
+  font-weight: 600;
+  font-size: 16px;
+  margin-right: auto;
+}
+
+.versionLink {
+  color: var(--y-color-text-tertiary);
+  text-decoration: underline;
+  margin-top: 8px;
+  margin-right: auto;
+}

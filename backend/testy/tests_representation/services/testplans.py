@@ -32,10 +32,12 @@ from itertools import product
 from typing import Any, Iterable
 
 from django.db import transaction
+from tests_representation.selectors.tests import TestSelector
 
 from testy.core.services.attachments import AttachmentService
 from testy.tests_description.selectors.cases import TestCaseSelector
 from testy.tests_representation.models import Parameter, TestPlan
+from testy.tests_representation.selectors.results import TestResultSelector
 from testy.tests_representation.services.tests import TestService
 
 _TEST_CASES = 'test_cases'
@@ -95,8 +97,9 @@ class TestPlanService:
 
             # deleting tests
             if delete_test_case_ids := old_test_case_ids - new_test_case_ids:
-                TestService().test_delete_by_test_case_ids(test_plan, delete_test_case_ids)
-
+                tests = TestSelector.test_list_by_case_ids(test_plan, delete_test_case_ids)
+                TestResultSelector.result_list_by_tests(tests).delete()
+                tests.delete()
             # creating tests
             if create_test_case_ids := new_test_case_ids - old_test_case_ids:
                 cases = TestCaseSelector.cases_by_ids(create_test_case_ids, 'pk')

@@ -1,4 +1,4 @@
-import { PropsWithChildren, createContext, useMemo } from "react"
+import { PropsWithChildren, createContext, useContext, useMemo } from "react"
 
 import { useAppDispatch, useAppSelector } from "app/hooks"
 
@@ -66,4 +66,12 @@ export const MeProvider = ({ children }: PropsWithChildren) => {
   }
 
   return <MeContext.Provider value={value}>{children}</MeContext.Provider>
+}
+
+export const useMeContext = () => {
+  const context = useContext(MeContext)
+  if (!context) {
+    throw new Error("useMeContext must be used within MeProvider")
+  }
+  return context
 }

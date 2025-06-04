@@ -1,3 +1,2 @@
 export * from "./comment"
-export * from "./steps"
-export * from "./result-list/result-list"
+export * from "./result-list"

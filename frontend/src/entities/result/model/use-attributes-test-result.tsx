@@ -2,14 +2,14 @@ import { useGetCustomAttributesQuery } from "entities/custom-attribute/api"
 import { convertAttribute } from "entities/custom-attribute/lib"
 import { useAttributes } from "entities/custom-attribute/model"
 import { useStatuses } from "entities/status/model/use-statuses"
-import { useContext, useMemo } from "react"
+import { useMemo } from "react"
 import { UseFormSetValue } from "react-hook-form"
 
 import { useAppSelector } from "app/hooks"
 
 import { selectDrawerTest } from "entities/test/model"
 
-import { ProjectContext } from "pages/project"
+import { useProjectContext } from "pages/project"
 
 interface UseAttributesProps {
   mode: "create" | "edit"
@@ -17,7 +17,7 @@ interface UseAttributesProps {
 }
 
 export const useAttributesTestResult = ({ mode, setValue }: UseAttributesProps) => {
-  const { project } = useContext(ProjectContext)!
+  const project = useProjectContext()
   const { allStatusesId } = useStatuses({ project: project.id })
 
   const selectedDrawerTest = useAppSelector(selectDrawerTest)

@@ -30,14 +30,16 @@
 # <http://www.gnu.org/licenses/>.
 from functools import partial
 
+from core.selectors.projects import ProjectSelector
 from rest_framework.fields import BooleanField, CharField, DateTimeField, IntegerField, ListField, SerializerMethodField
 from rest_framework.relations import HyperlinkedIdentityField, PrimaryKeyRelatedField
 from rest_framework.reverse import reverse
 from rest_framework.serializers import JSONField, ModelSerializer, Serializer
+from tests_representation.validators import AssigneeExistsValidator, PlanExistsValidator
 
 from testy.core.api.v2.serializers import AttachmentSerializer, ParentMinSerializer
 from testy.core.selectors.attachments import AttachmentSelector
-from testy.core.validators import RecursionValidator
+from testy.core.validators import BulkUpdateExcludeIncludeValidator, RecursionValidator
 from testy.serializer_fields import EstimateField
 from testy.tests_description.api.v2.serializers import TestCaseLabelOutputSerializer
 from testy.tests_description.selectors.cases import TestCaseStepSelector
@@ -47,10 +49,10 @@ from testy.tests_representation.selectors.testplan import TestPlanSelector
 from testy.tests_representation.selectors.tests import TestSelector
 from testy.tests_representation.validators import (
     AssigneeValidator,
-    BulkUpdateExcludeIncludeValidator,
     DateRangeValidator,
     MoveTestsSameProjectValidator,
     ResultStatusValidator,
+    StatusExistsValidator,
     TestPlanCasesValidator,
     TestPlanCustomAttributeValuesValidator,
     TestPlanParentValidator,
@@ -135,6 +137,7 @@ class TestSerializer(ModelSerializer):
     test_suite_description = CharField(read_only=True)
     estimate = EstimateField(read_only=True, allow_null=True, allow_blank=True)
     plan_path = CharField(read_only=True)
+    assignee = PrimaryKeyRelatedField(queryset=UserSelector.list_active(), required=False, allow_null=True)
 
     class Meta:
         model = Test
@@ -168,6 +171,11 @@ class TestSerializer(ModelSerializer):
         return self.context['request'].build_absolute_uri(
             reverse('avatar-path', kwargs={'pk': instance.assignee.id}),
         )
+
+
+class TestInputSerializer(TestSerializer):
+    class Meta(TestSerializer.Meta):
+        read_only_fields = []
 
 
 class TestStepResultSerializer(ModelSerializer):
@@ -361,6 +369,8 @@ class TestPlanUnionSerializer(TestPlanOutputSerializer):
     url = None
     has_children = BooleanField(read_only=True)
     is_leaf = BooleanField(read_only=True)
+    total_tests = IntegerField(read_only=True)
+    tests_progress_total = IntegerField(read_only=True)
 
     class Meta:
         model = TestPlan
@@ -379,6 +389,8 @@ class TestPlanUnionSerializer(TestPlanOutputSerializer):
             'is_leaf',
             'has_children',
             'created_at',
+            'total_tests',
+            'tests_progress_total',
         )
 
 
@@ -478,12 +490,29 @@ class ResultStatusSerializer(ModelSerializer):
         validators = [ResultStatusValidator()]
 
 
+class BulkCreateTestResultAttributeSerializer(Serializer):
+    non_suite_specific = JSONField(allow_null=False, required=True)
+    suite_specific = ListField(
+        child=JSONField(allow_null=False, required=True),
+        allow_empty=True,
+        allow_null=False,
+        required=False,
+    )
+
+
+class BulkCreateResultSerializer(Serializer):
+    status = IntegerField(required=True, validators=[StatusExistsValidator()])
+    comment = CharField(required=False, allow_null=True, allow_blank=True)
+    attachments = ListField(child=IntegerField())
+    attributes = BulkCreateTestResultAttributeSerializer(allow_null=False, required=False)
+
+
 class BulkUpdateTestsSerializer(Serializer):
+    project = PrimaryKeyRelatedField(queryset=ProjectSelector().project_list_raw(), required=True, allow_null=False)
     current_plan = PrimaryKeyRelatedField(
         queryset=TestPlanSelector.testplan_list_raw(),
-        required=True,
-        allow_null=False,
-        allow_empty=False,
+        required=False,
+        allow_null=True,
     )
     included_tests = PrimaryKeyRelatedField(
         queryset=TestSelector.test_list(),
@@ -499,30 +528,34 @@ class BulkUpdateTestsSerializer(Serializer):
         allow_null=False,
         required=False,
     )
-    plan = PrimaryKeyRelatedField(
-        queryset=TestPlanSelector.testplan_list_raw(),
+    plan_id = IntegerField(
         required=False,
         allow_null=False,
-        allow_empty=False,
+        validators=[PlanExistsValidator()],
     )
-    assignee = PrimaryKeyRelatedField(
-        queryset=UserSelector().user_list(),
-        allow_empty=False,
+    assignee_id = IntegerField(
         allow_null=True,
         required=False,
+        validators=[AssigneeExistsValidator()],
     )
+    is_deleted = BooleanField(required=False, allow_null=False)
     filter_conditions = JSONField(required=False, allow_null=False, initial=dict, default=dict)
+    result = BulkCreateResultSerializer(required=False, allow_null=True)
+    is_async = BooleanField(required=False, allow_null=False, initial=False, default=False)
 
     class Meta:
         validators = [
             partial(
                 validator_launcher,
                 validator_instance=MoveTestsSameProjectValidator(),
-                fields_to_validate=['current_plan', 'plan'],
+                fields_to_validate=['current_plan', 'plan_id'],
             ),
             partial(
                 validator_launcher,
-                validator_instance=BulkUpdateExcludeIncludeValidator(),
+                validator_instance=BulkUpdateExcludeIncludeValidator(
+                    include_key='included_tests',
+                    exclude_key='excluded_tests',
+                ),
                 fields_to_validate=['included_tests', 'excluded_tests', 'filter_conditions'],
                 none_valid_fields=['included_tests', 'excluded_tests', 'filter_conditions'],
             ),
@@ -543,3 +576,10 @@ class TestPlanTreeBreadcrumbsSerializer(ModelSerializer):
     class Meta:
         model = TestPlan
         fields = ('id', 'title', 'has_children', 'parent', 'children')
+
+
+class TestResultUnionSerializer(TestResultSerializer):
+    type = CharField(read_only=True)
+
+    class Meta(TestResultSerializer.Meta):
+        fields = TestResultSerializer.Meta.fields + ('type',)

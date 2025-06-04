@@ -1,5 +1,5 @@
-import { ArrowDownOutlined } from "@ant-design/icons"
-import { Button, Flex, Tabs, Typography } from "antd"
+import { Flex, Tabs, Typography } from "antd"
+import classNames from "classnames"
 import { useContext, useEffect, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Link, useParams } from "react-router-dom"
@@ -8,21 +8,24 @@ import { Comments } from "widgets"
 import { ResultList } from "entities/result/ui"
 
 import { useTestDetail } from "entities/test/model"
+import { TestDetailInfo } from "entities/test/ui"
 
-import { TestCaseFields } from "entities/test-case/ui/test-case-fields"
+import { AddResult } from "features/test-result"
+import { AddResultView } from "features/test-result/add-result/add-result-view.tsx"
+import { TestResultEditCloneView } from "features/test-result/edit-clone-result/test-result-edit-clone-view"
 
-import { AddResult, AssignTo } from "features/test-result"
+import { useProjectContext } from "pages/project"
 
-import { ProjectContext } from "pages/project"
-
-import { ArchivedTag, Drawer, Toggle } from "shared/ui"
+import SortIcon from "shared/assets/yi-icons/sort.svg?react"
+import { ArchivedTag, Drawer } from "shared/ui"
 
 import { TestsTreeContext } from "../tests-tree"
+import { ResultsAndComments } from "./results-and-comments.tsx"
 import styles from "./styles.module.css"
 
 export const TestDetail = () => {
   const { t } = useTranslation()
-  const { project } = useContext(ProjectContext)!
+  const project = useProjectContext()
   const { testsTree } = useContext(TestsTreeContext)!
   const { testPlanId } = useParams<ParamTestPlanId>()
 
@@ -30,13 +33,21 @@ export const TestDetail = () => {
     drawerTest,
     testCase,
     isFetching,
-    showArchive,
-    commentOrdering,
+    ordering,
+    count,
+    drawerView,
+    all,
     tab,
-    handleShowArchived,
+    results,
+    isFetchingList,
+    selectedResult,
     handleCloseDetails,
-    handleCommentOrderingClick,
+    handleOrderingClick,
     handleTabChange,
+    handleCancelAction,
+    handleAddResultClick,
+    handleEditCloneClick,
+    setIsDirty,
   } = useTestDetail()
   const [commentsCount, setCommentsCount] = useState(0)
 
@@ -64,112 +75,152 @@ export const TestDetail = () => {
 
     return [
       {
-        label: t("Results"),
-        key: "results",
+        label: <span data-testid="all-tab">{t("All")}</span>,
+        key: "all",
+        children: (
+          <ResultsAndComments
+            testId={drawerTest.id}
+            testCase={testCase}
+            isProjectArchive={project.is_archive}
+            entities={all}
+            onActionClick={handleEditCloneClick}
+            isFetching={isFetchingList}
+            model="test"
+            object_id={String(drawerTest.id)}
+            ordering={ordering}
+          />
+        ),
+      },
+      {
+        label: <span data-testid="results-tab">{t("Results")}</span>,
+        key: "result",
         children: (
           <ResultList
             testId={drawerTest.id}
             testCase={testCase}
             isProjectArchive={project.is_archive}
+            results={results}
+            onActionClick={handleEditCloneClick}
+            isFetching={isFetchingList}
           />
         ),
       },
       {
-        label: `${t("Comments")} (${commentsCount})`,
-        key: "comments",
+        label: <span data-testid="comments-tab">{t("Comments")}</span>,
+        key: "comment",
         forceRender: true,
         children: (
           <Comments
             model="test"
             object_id={String(drawerTest.id)}
-            ordering={commentOrdering}
+            ordering={ordering}
             onUpdateCommentsCount={setCommentsCount}
           />
         ),
       },
     ]
-  }, [commentOrdering, drawerTest, testCase, commentsCount])
+  }, [ordering, drawerTest, testCase, commentsCount, isFetchingList, results, tab])
 
   const tabBarExtraContent = useMemo(() => {
-    if (tab === "comments") {
-      return (
-        <Button type="text" onClick={handleCommentOrderingClick}>
-          <ArrowDownOutlined style={{ rotate: commentOrdering === "asc" ? "180deg" : "0deg" }} />
-        </Button>
-      )
+    return {
+      left: (
+        <Flex align="center" style={{ flexGrow: 1 }}>
+          <div className={styles.resultsAndComments}>
+            {t("Results & Comments")} {!isFetching && count ? ` (${count})` : ""}
+          </div>
+          <div className={styles.line} />
+          <SortIcon
+            className={classNames(styles.sortIcon, {
+              [styles.descend]: ordering === "desc",
+            })}
+            onClick={handleOrderingClick}
+            data-testid="change-ordering-icon"
+            width={20}
+            height={20}
+          />
+        </Flex>
+      ),
     }
-
-    return (
-      <Toggle
-        id="result-show-archived-toggle"
-        checked={showArchive}
-        onChange={handleShowArchived}
-        label={t("Show Archived")}
-      />
-    )
-  }, [tab, commentOrdering, showArchive, handleShowArchived])
+  }, [tab, ordering, commentsCount, results])
 
   return (
-    <Drawer
-      id="drawer-test-detail"
-      isOpen={!!drawerTest}
-      isLoading={isLoadingDrawer}
-      onClose={handleCloseDetails}
-      minWidth={400}
-      extra={
-        testCase && (
-          <AddResult isDisabled={project.is_archive} testCase={testCase} onSubmit={handleRefetch} />
-        )
-      }
-      title={
-        testCase &&
-        drawerTest && (
-          <Flex align="flex-start" style={{ width: "fit-content", marginRight: "auto" }}>
-            <Flex vertical>
-              <Flex gap={8}>
-                {drawerTest.is_archive && (
-                  <Flex
-                    justify="center"
-                    align="center"
-                    style={{ height: 32 }}
-                    data-testid="test-detail-archive-tag"
-                  >
-                    <ArchivedTag />
-                  </Flex>
-                )}
-                <Typography.Title
-                  level={3}
-                  className={styles.title}
-                  data-testid="test-detail-title"
-                >
-                  {drawerTest.name}
-                </Typography.Title>
-              </Flex>
+    <div>
+      <Drawer
+        id="drawer-test-detail"
+        isOpen={!!drawerTest}
+        isLoading={isLoadingDrawer}
+        onClose={handleCloseDetails}
+        minWidth={510}
+        showSwipeElement={drawerView !== "test"}
+        swipeElement={
+          testCase && (
+            <>
+              {drawerView === "addResult" && (
+                <AddResultView
+                  testCase={testCase}
+                  onClose={handleCancelAction}
+                  onRefetch={handleRefetch}
+                  onDirtyChange={(dirty: boolean) => {
+                    setIsDirty(dirty)
+                  }}
+                />
+              )}
+              {selectedResult && (drawerView === "editResult" || drawerView === "cloneResult") && (
+                <TestResultEditCloneView
+                  onCancel={handleCancelAction}
+                  testResult={selectedResult}
+                  testCase={testCase}
+                  isClone={drawerView === "cloneResult"}
+                  onDirtyChange={(dirty: boolean) => {
+                    setIsDirty(dirty)
+                  }}
+                />
+              )}
+            </>
+          )
+        }
+        header={
+          testCase &&
+          drawerTest && (
+            <>
               <Link
-                style={{ color: "var(--y-grey-30)", fontSize: 14, textDecoration: "underline" }}
+                className={styles.versionLink}
                 to={`/projects/${drawerTest.project}/suites/${testCase.suite.id}/?test_case=${testCase.id}&version=${testCase.current_version}`}
                 data-testid="test-detail-version"
               >
                 {t("Actual ver.")} {testCase.current_version}
               </Link>
+              <AddResult isDisabled={project.is_archive} onClick={handleAddResultClick} />
+              <Flex align="center" gap={4} style={{ width: "100%" }}>
+                {drawerTest.is_archive && <ArchivedTag data-testid="test-detail-archive-tag" />}
+                <Typography.Title
+                  level={3}
+                  className={styles.title}
+                  data-testid="test-detail-title"
+                >
+                  {drawerTest?.name}
+                </Typography.Title>
+              </Flex>
+            </>
+          )
+        }
+      >
+        {testCase && drawerTest && (
+          <div>
+            <TestDetailInfo testCase={testCase} id="test-info" />
+            <Flex justify="space-between" vertical>
+              <Tabs
+                defaultActiveKey="result"
+                activeKey={tab}
+                onChange={handleTabChange}
+                tabBarExtraContent={tabBarExtraContent}
+                items={tabItems}
+                rootClassName={styles.testInfoTabs}
+              />
             </Flex>
-          </Flex>
-        )
-      }
-    >
-      {testCase && drawerTest && (
-        <>
-          <TestCaseFields testCase={testCase} />
-          <AssignTo onSuccess={handleRefetch} />
-          <Tabs
-            defaultActiveKey="results"
-            activeKey={tab}
-            onChange={handleTabChange}
-            tabBarExtraContent={tabBarExtraContent}
-            items={tabItems}
-          />
-        </>
-      )}
-    </Drawer>
+          </div>
+        )}
+      </Drawer>
+    </div>
   )
 }

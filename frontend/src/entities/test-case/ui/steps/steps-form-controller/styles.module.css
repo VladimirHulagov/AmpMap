@@ -1,0 +1,65 @@
+.ul {
+  padding-left: 0;
+  margin-top: 10px;
+}
+
+.ghostClass {
+  background-color: #e6f4ff;
+}
+
+.addButton {
+  min-height: 64px;
+  border-width: 2px;
+  border-color: var(--y-grey-25);
+  font-size: 14px;
+  line-height: 24px;
+  font-weight: 400;
+}
+
+.item {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  list-style: none;
+  position: relative;
+  margin-bottom: 16px;
+  user-select: none;
+}
+
+.item.expanded {
+  max-height: none;
+}
+
+.stepIndex {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  border-radius: 100%;
+  background-color: #468aa5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  color: var(--y-grey-0);
+  margin-right: 7px;
+  margin-left: 4px;
+}
+
+.arrow {
+  min-width: 24px;
+  height: 24px;
+  color: var(--y-pending-block);
+  transition: all 0.3s;
+  transform: rotate(-90deg);
+  cursor: pointer;
+}
+
+.arrow:hover {
+  color: var(--y-pending-hover);
+}
+
+.arrow.expanded {
+  transform: rotate(0deg);
+}

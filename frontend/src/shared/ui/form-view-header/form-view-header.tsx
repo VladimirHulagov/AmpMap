@@ -1,11 +1,10 @@
-import { Button, Flex, Space, Typography } from "antd"
+import { Flex, Space, Typography } from "antd"
 import { useTranslation } from "react-i18next"
 
-import { icons } from "shared/assets/inner-icons"
+import ArrowLeftIcon from "shared/assets/yi-icons/arrow-left.svg?react"
 
+import { Button } from "../button"
 import styles from "./styles.module.css"
-
-const { ArrowLeftIcon } = icons
 
 interface Props {
   model: "test-case" | "test-plan" | "test-suite" | "test-result"
@@ -31,7 +30,7 @@ export const FormViewHeader = ({
   const { t } = useTranslation()
   const submitTitle = type === "create" ? t("Create") : t("Save")
   return (
-    <Flex align="center" justify="space-between">
+    <Flex align="center" justify="space-between" className={styles.wrapper}>
       <Flex align="center">
         {onClose && (
           <button className={styles.backBtn} type="button" onClick={onClose}>
@@ -48,7 +47,13 @@ export const FormViewHeader = ({
       </Flex>
       <Space>
         {onClose && (
-          <Button id={`${type}-${model}-cancel-btn`} key="back" onClick={onClose} size="large">
+          <Button
+            id={`${type}-${model}-cancel-btn`}
+            key="back"
+            onClick={onClose}
+            size="l"
+            color="secondary-linear"
+          >
             {t("Cancel")}
           </Button>
         )}
@@ -58,10 +63,10 @@ export const FormViewHeader = ({
             key="submit"
             loading={isLoadingSubmit}
             onClick={onSubmit}
-            type="primary"
-            htmlType="submit"
+            color="accent"
+            type="submit"
             disabled={isDisabledSubmit}
-            size="large"
+            size="l"
           >
             {submitTitle}
           </Button>

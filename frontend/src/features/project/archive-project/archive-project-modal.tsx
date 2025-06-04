@@ -1,9 +1,9 @@
-import { notification } from "antd"
 import { useTranslation } from "react-i18next"
 
 import { useArchiveProjectMutation, useGetProjectArchivePreviewQuery } from "entities/project/api"
 
 import { initInternalError } from "shared/libs"
+import { antdNotification } from "shared/libs/antd-modals"
 import { AlertSuccessChange } from "shared/ui"
 
 import { ModalConfirmDeleteArchive } from "widgets/[ui]/modal-confirm-delete-archive"
@@ -29,12 +29,18 @@ export const ArchiveProjectModal = ({ isShow, setIsShow, project }: Props) => {
   const handleDelete = async () => {
     try {
       await archiveProject(Number(project.id))
-      notification.success({
-        message: t("Success"),
-        closable: true,
+      antdNotification.success("archive-project", {
         description: (
-          <AlertSuccessChange id={String(project.id)} action="archived" title="Project" />
+          <AlertSuccessChange
+            id={String(project.id)}
+            action="archived"
+            title="Project"
+            data-testid="archive-project-success-notification-description"
+          />
         ),
+        props: {
+          "data-testid": "archive-project-success-notification",
+        },
       })
     } catch (err: unknown) {
       initInternalError(err)

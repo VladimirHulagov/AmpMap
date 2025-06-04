@@ -1,5 +1,5 @@
 import { CopyOutlined } from "@ant-design/icons"
-import { Alert, Button, Checkbox, Form, Input, Modal } from "antd"
+import { Alert, Checkbox, Form, Input, Modal } from "antd"
 import dayjs from "dayjs"
 import { ReactNode, memo } from "react"
 import { Controller } from "react-hook-form"
@@ -8,7 +8,7 @@ import { useParams } from "react-router-dom"
 
 import { useLazyGetTestPlanAncestorsQuery, useLazyGetTestPlansQuery } from "entities/test-plan/api"
 
-import { DateFormItem } from "shared/ui"
+import { Button, DateFormItem } from "shared/ui"
 import { LazyTreeSearchFormItem } from "shared/ui/form-items"
 
 import styles from "./styles.module.css"
@@ -19,6 +19,8 @@ interface Props {
   testPlan: TestPlan
   onSubmit?: (plan: TestPlan) => void
 }
+
+const TEST_ID = "copy-test-plan"
 
 export const CopyTestPlan = memo(({ as, testPlan, onSubmit }: Props) => {
   const { t } = useTranslation()
@@ -51,25 +53,34 @@ export const CopyTestPlan = memo(({ as, testPlan, onSubmit }: Props) => {
           {as}
         </div>
       ) : (
-        <Button id="copy-test-plan" icon={<CopyOutlined />} onClick={handleShow}>
+        <Button
+          id="copy-test-plan"
+          icon={<CopyOutlined />}
+          onClick={handleShow}
+          color="secondary-linear"
+        >
           {t("Copy")}
         </Button>
       )}
       <Modal
-        className="copy-test-plan-modal"
-        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-        title={`${t("Copy Test Plan")} '${testPlan.name}'`}
+        bodyProps={{ "data-testid": `${TEST_ID}-modal-body` }}
+        wrapProps={{ "data-testid": `${TEST_ID}-modal-wrapper` }}
+        title={
+          <span
+            data-testid={`${TEST_ID}-modal-title`}
+          >{`${t("Copy Test Plan")} '${testPlan.name}'`}</span>
+        }
         open={isShow}
         onCancel={handleCancel}
         centered
         footer={[
-          <Button id="cancel-btn" key="back" onClick={handleCancel}>
+          <Button id="cancel-btn" key="back" onClick={handleCancel} color="secondary-linear">
             {t("Cancel")}
           </Button>,
           <Button
             id="save-btn"
             key="submit"
-            type="primary"
+            color="accent"
             loading={isLoading}
             onClick={handleSubmitForm}
             disabled={isDisabled}
@@ -111,6 +122,7 @@ export const CopyTestPlan = memo(({ as, testPlan, onSubmit }: Props) => {
             }}
             skipInit={!isShow}
             selected={selectedPlan}
+            valueKey="title"
             onSelect={handleSelectPlan}
           />
           <div className={styles.datesRow}>

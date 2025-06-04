@@ -29,8 +29,11 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 
+from functools import partial
+
 import humanize
 import timeago
+from core.selectors.projects import ProjectSelector
 from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 from django.utils import timezone
@@ -51,10 +54,19 @@ from rest_framework.serializers import HyperlinkedIdentityField, ModelSerializer
 from testy.core.models import Attachment, CustomAttribute, Label, NotificationSetting, Project, SystemMessage
 from testy.core.selectors.notifications import NotificationSelector
 from testy.core.selectors.project_settings import ProjectSettings
-from testy.core.validators import CustomAttributeCreateValidator, DefaultStatusValidator, ProjectStatusOrderValidator
+from testy.core.validators import (
+    BulkUpdateExcludeIncludeValidator,
+    CustomAttributeCreateValidator,
+    DefaultStatusValidator,
+    ProjectStatusOrderValidator,
+)
 from testy.serializer_fields import EstimateField
+from testy.tests_representation.selectors.status import ResultStatusSelector
+from testy.tests_representation.selectors.testplan import TestPlanSelector
+from testy.tests_representation.selectors.tests import TestSelector
 from testy.users.models import Membership
 from testy.users.selectors.roles import RoleSelector
+from testy.validators import validator_launcher
 
 
 class LabelSerializer(ModelSerializer):
@@ -73,7 +85,7 @@ class LabelSerializer(ModelSerializer):
 
 class AppliedToIsRequired(Serializer):
     is_required = BooleanField(required=True, allow_null=False)
-    is_active = BooleanField(allow_null=False, default=False, initial=False)
+    is_active = BooleanField(allow_null=False, default=True, initial=True)
 
 
 class AppliedToIsRequiredSuitesSerializer(AppliedToIsRequired):
@@ -132,6 +144,50 @@ class ContentTypeSerializer(ModelSerializer):
 
     def get_name(self, instance) -> str:
         return instance.name.title()
+
+
+class BulkUpdateTestsResultsSerializer(Serializer):
+    project = PrimaryKeyRelatedField(
+        queryset=ProjectSelector.project_list_raw(),
+        required=True,
+    )
+    current_plan = PrimaryKeyRelatedField(
+        queryset=TestPlanSelector.testplan_list_raw(),
+        required=True,
+        allow_null=True,
+        allow_empty=False,
+    )
+    status_id = PrimaryKeyRelatedField(
+        queryset=ResultStatusSelector.status_list_raw(),
+        required=True,
+    )
+    included_tests = PrimaryKeyRelatedField(
+        queryset=TestSelector.test_list(),
+        many=True,
+        allow_empty=True,
+        allow_null=False,
+        required=False,
+    )
+    excluded_tests = PrimaryKeyRelatedField(
+        queryset=TestSelector.test_list(),
+        many=True,
+        allow_empty=True,
+        allow_null=False,
+        required=False,
+    )
+
+    class Meta:
+        validators = [
+            partial(
+                validator_launcher,
+                validator_instance=BulkUpdateExcludeIncludeValidator(
+                    include_key='included_tests',
+                    exclude_key='excluded_tests',
+                ),
+                fields_to_validate=('included_tests', 'excluded_tests'),
+                none_valid_fields=('included_tests', 'excluded_tests'),
+            ),
+        ]
 
 
 class ProjectSettingsSerializer(Serializer):
@@ -357,3 +413,10 @@ class UnionSerializer(Serializer):
     parent_id = IntegerField()
     parent_name = CharField()
     ordering_id = IntegerField()
+
+
+class InputLabelSerializer(LabelSerializer):
+    id = IntegerField(required=False)
+
+    class Meta(LabelSerializer.Meta):
+        fields = ('id', 'name')

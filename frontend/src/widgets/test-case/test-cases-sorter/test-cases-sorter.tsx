@@ -1,13 +1,12 @@
-import { Button, Divider, Flex, Popover, Radio, Space, Tooltip, Typography } from "antd"
+import { Divider, Flex, Popover, Radio, Space, Tooltip, Typography } from "antd"
 import { useTranslation } from "react-i18next"
 
 import { useAppDispatch, useAppSelector } from "app/hooks"
 
 import { selectOrdering, updateOrdering } from "entities/test-case/model"
 
-import { icons } from "shared/assets/inner-icons"
-
-const { SorterIcon } = icons
+import SorterIcon from "shared/assets/yi-icons/sort.svg?react"
+import { Button } from "shared/ui"
 
 type OrderBy = "asc" | "desc"
 
@@ -89,8 +88,10 @@ export const TestCasesSorter = () => {
       >
         <Button
           style={{ minWidth: 32 }}
-          icon={<SorterIcon color="var(--y-sky-60)" />}
+          icon={<SorterIcon width={18} height={18} color="var(--y-color-secondary-inline)" />}
           data-testid="test-cases-sorter"
+          color="secondary-linear"
+          shape="square"
         />
       </Popover>
     </Tooltip>

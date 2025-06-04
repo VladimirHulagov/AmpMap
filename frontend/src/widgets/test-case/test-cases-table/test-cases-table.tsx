@@ -10,8 +10,10 @@ export const TestCasesTable = memo(() => {
     isLoading,
     selectedTestCase,
     paginationTable,
+    selectedRows,
     handleTableChange,
     handleRowClick,
+    handleSelectRows,
   } = useTestCasesTable()
 
   return (
@@ -30,6 +32,12 @@ export const TestCasesTable = memo(() => {
           onClick: () => handleRowClick(record),
         }
       }}
+      rowSelection={{
+        selectedRowKeys: selectedRows,
+        onChange: handleSelectRows,
+        preserveSelectedRowKeys: true,
+      }}
+      data-testid="test-cases-table"
     />
   )
 })

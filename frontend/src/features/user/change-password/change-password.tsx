@@ -1,12 +1,14 @@
 import { LockOutlined } from "@ant-design/icons"
-import { Button, Form, Input, Modal } from "antd"
+import { Form, Input, Modal } from "antd"
 import { Controller } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 
 import { ErrorObj } from "shared/hooks"
-import { AlertError } from "shared/ui"
+import { AlertError, Button } from "shared/ui"
 
 import { useChangePassword } from "./use-change-password"
+
+const TEST_ID = "change-password"
 
 export const ChangePassword = () => {
   const { t } = useTranslation()
@@ -29,23 +31,25 @@ export const ChangePassword = () => {
         icon={<LockOutlined />}
         onClick={handleShow}
         style={{ marginLeft: 8 }}
+        color="secondary-linear"
       >
         {t("Change password")}
       </Button>
       <Modal
-        className="change-password-modal"
-        title={t("Change password")}
+        bodyProps={{ "data-testid": `${TEST_ID}-modal-body` }}
+        wrapProps={{ "data-testid": `${TEST_ID}-modal-wrapper` }}
+        title={<span data-testid={`${TEST_ID}-modal-title`}>{t("Change password")}</span>}
         open={isShow}
         onCancel={handleCancel}
         centered
         footer={[
-          <Button id="cancel-btn" key="back" onClick={handleCancel}>
+          <Button id="cancel-btn" key="back" onClick={handleCancel} color="secondary-linear">
             {t("Cancel")}
           </Button>,
           <Button
             id="save-btn"
             key="submit"
-            type="primary"
+            color="accent"
             onClick={handleSubmit(handleSave)}
             disabled={saveDisabled}
           >
@@ -57,7 +61,13 @@ export const ChangePassword = () => {
           <Form.Item
             label={t("Password")}
             validateStatus={errors?.password ? "error" : ""}
-            help={errors?.password ? errors.password : ""}
+            help={
+              errors?.password ? (
+                <span data-testid="change-password-form-password-error">{errors.password}</span>
+              ) : (
+                ""
+              )
+            }
             required
           >
             <Controller
@@ -73,7 +83,13 @@ export const ChangePassword = () => {
             label={t("Confirm Password")}
             dependencies={["password"]}
             validateStatus={errors?.confirm ? "error" : ""}
-            help={errors?.confirm ? errors.confirm : ""}
+            help={
+              errors?.confirm ? (
+                <span data-testid="change-password-form-confirm-error">{errors.confirm}</span>
+              ) : (
+                ""
+              )
+            }
             required
           >
             <Controller

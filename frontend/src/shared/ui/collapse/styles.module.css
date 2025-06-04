@@ -1,11 +1,19 @@
 .collapseBlock {
-  color: var(--y-sky-80);
+  color: var(--y-color-text-primary);
 }
 
-.collapseBlockTitle {
+.collapseBlockHeader {
   display: flex;
   flex-direction: row;
   align-items: center;
   cursor: pointer;
-  width: fit-content;
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.collapseBlockTitle {
+  line-height: 24px;
+  font-weight: 600;
+  font-size: 18px;
+  color: var(--y-color-text-primary);
 }

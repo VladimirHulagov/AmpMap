@@ -1,7 +1,8 @@
 import { PlusOutlined } from "@ant-design/icons"
-import { Button } from "antd"
 import { useAdministrationStatusModal } from "entities/status/model"
 import { useTranslation } from "react-i18next"
+
+import { Button } from "shared/ui"
 
 import { StatusCreateEditModal } from "../status-create-edit-modal/status-create-edit-modal"
 
@@ -16,7 +17,7 @@ export const CreateStatusButton = () => {
     <>
       <Button
         id="create-status"
-        type="primary"
+        color="accent"
         icon={<PlusOutlined />}
         onClick={handleCreateClick}
         style={{ marginBottom: 16, float: "right" }}

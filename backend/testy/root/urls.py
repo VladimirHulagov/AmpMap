@@ -95,8 +95,6 @@ urlpatterns = [
 
     # Celery progress
     re_path('^celery-progress/', include('celery_progress.urls')),
-
-    # Sentry Debug
     # SQL Debug
     path('debug/sql-long-query/', sql_log_query),
 ]

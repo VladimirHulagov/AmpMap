@@ -40,12 +40,14 @@ interface UserUpdate {
   last_name: string
 }
 
+type GraphBaseType = "pie" | "bar" | "child"
+
 interface UserConfig {
   ui: {
     is_open_sidebar: boolean
     drawer_size_test_case_details: number
     drawer_size_test_result_details: number
-    graph_base_type: "pie" | "bar"
+    graph_base_type: GraphBaseType
     graph_base_bar_type: "by_time" | "by_attr"
     graph_base_bar_attribute_input: string
     test_plan: Record<string, { start_date: string; end_date: string }>

@@ -1,10 +1,10 @@
 export const colors = {
   primary: "var(--y-grey-50)",
-  accent: "var(--y-interactive-default)",
+  accent: "var(--y-color-accent)",
   error: "var(--y-error-block)",
   success: "var(--y-success-block)",
   warning: "var(--y-warning-block)",
-  untested: "var(--y-sky-20)",
+  untested: "var(--y-grey-20)",
   passed: "var(--y-graph-primary)",
   failed: "var(--y-graph-tertiary)",
   skipped: "var(--y-graph-sixth)",

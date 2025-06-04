@@ -1,14 +1,20 @@
 .actionBtn {
   width: 32px;
   height: 32px;
+  color: var(--y-color-link);
+  border: none;
+  background: none;
+  cursor: pointer;
+  outline: none;
 }
 
 .actionBtn svg {
-  color: var(--y-sky-50);
+  color: var(--y-color-secondary-inline);
+  cursor: pointer;
 }
 
 .actionBtn:hover svg {
-  color: var(--y-sky-70);
+  color: var(--y-color-secondary-inline-hover);
 }
 
 .filterMenuList {
@@ -30,7 +36,7 @@
 }
 
 .filterMenuListItem:hover {
-  background-color: var(--y-sky-0);
+  background-color: var(--y-color-background-alternative);
 }
 
 .btn {
@@ -41,7 +47,7 @@
   border: none;
   height: 24px;
   width: 24px;
-  color: var(--y-sky-80);
+  color: var(--y-color-text-primary);
 }
 
 .delete {
@@ -59,9 +65,9 @@
   align-items: center;
   justify-content: center;
   border-radius: 100%;
-  border: 1px solid var(--y-sky-30);
+  border: 1px solid var(--y-color-control-border);
   background: transparent;
-  color: var(--y-sky-80);
+  color: var(--y-color-text-primary);
   cursor: pointer;
 }
 
@@ -70,5 +76,5 @@
 }
 
 .renameBtn:hover {
-  border-color: var(--y-sky-80);
+  border-color: var(--y-color-control-border-hover);
 }

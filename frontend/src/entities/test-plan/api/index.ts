@@ -147,15 +147,23 @@ export const testPlanApi = createApi({
         redirect: "manual",
       }),
       async onQueryStarted({ id }, { dispatch, queryFulfilled }) {
-        await queryFulfilled
+        const { data } = await queryFulfilled
         dispatch(
           testPlanApi.util.invalidateTags([
             { type: "TestPlanTest", id },
             { type: "TestPlanTest", id: "LIST" },
           ])
         )
-        dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanStatistics", id }]))
-        dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanHistogram", id }]))
+        dispatch(
+          testPlanApi.util.invalidateTags([
+            { type: "TestPlanStatistics", id: `${data.project}-${id}` },
+          ])
+        )
+        dispatch(
+          testPlanApi.util.invalidateTags([
+            { type: "TestPlanHistogram", id: `${data.project}-${id}` },
+          ])
+        )
         dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanLabels", id: "LIST" }]))
         dispatch(testPlanApi.util.invalidateTags([{ type: "TestPlanCasesIds", id }]))
         dispatch(testApi.util.invalidateTags([{ type: "Test", id: "LIST" }]))
@@ -172,6 +180,15 @@ export const testPlanApi = createApi({
       providesTags: (result, error, { project, parent }) => [
         { type: "TestPlanStatistics", id: `${project}-${parent}` },
       ],
+    }),
+    getTestPlanChildStatistics: builder.query<
+      Record<string, TestPlanStatistics[]>,
+      TestPlanStatisticsParams & { plan_ids: number[] }
+    >({
+      query: (params) => ({
+        url: `${rootPath}/statistics/`,
+        params,
+      }),
     }),
     getTestPlanHistogram: builder.query<TestPlanHistogramData[], TestPlanHistogramParams>({
       query: (params) => ({
@@ -265,6 +282,15 @@ export const testPlanApi = createApi({
         url: `${rootPath}/${id}/breadcrumbs/`,
       }),
     }),
+    getTestPlanAssigneeProgress: builder.query<
+      PaginationResponse<TestPlan[] | Test[]>,
+      TestPlanAssigneeProgressQuery
+    >({
+      query: (params) => ({
+        url: `${rootPath}/assignee-progress/`,
+        params,
+      }),
+    }),
   }),
 })
 
@@ -291,6 +317,7 @@ export const {
   useCreateTestPlanMutation,
   useDeleteTestPlanMutation,
   useGetTestPlanStatisticsQuery,
+  useGetTestPlanChildStatisticsQuery,
   useUpdateTestPlanMutation,
   useLazyGetTestPlanSuitesQuery,
   useGetTestPlanLabelsQuery,
@@ -306,4 +333,6 @@ export const {
   useGetBreadcrumbsQuery,
   useGetTestPlanTestsQuery,
   useLazyGetDescendantsTreeQuery,
+  useGetTestPlanAssigneeProgressQuery,
+  useLazyGetTestPlanAssigneeProgressQuery,
 } = testPlanApi

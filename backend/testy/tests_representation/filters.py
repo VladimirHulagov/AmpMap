@@ -32,10 +32,11 @@ import warnings
 from copy import deepcopy
 from functools import partial
 
-from django.db.models import OuterRef, Q
-from django_filters import BaseCSVFilter, NumberFilter
+from django.db.models import Exists, OuterRef, Q
+from django_filters import BaseCSVFilter, NumberFilter, OrderingFilter
 from django_filters import rest_framework as filters
 from simple_history.utils import get_history_model_for_model
+from tests_representation.selectors.tests import TestSelector
 
 from testy.core.filters import ParentFilterMixin, SearchFilterMixin
 from testy.filters import (
@@ -248,6 +249,7 @@ class UnionTestFilter(ArchiveFilterMixin, IsFilteredMixin, SearchFilterMixin, me
         help_text=COMMA_SEPARATED_LIST_OR_NULL_MSG,
     )
     assignee = NumberInFilter(help_text=ID_FILTER_MSG)
+    unassigned = filters.BooleanFilter(field_name='assignee', lookup_expr='isnull')
     assignee_username = filters.CharFilter(
         'assignee__username',
         lookup_expr='icontains',
@@ -362,8 +364,12 @@ class TestFilter(ArchiveFilterMixin, SearchFilterMixin, metaclass=LabelsFilterMe
 
 class TestsByPlanFilter(TestFilter):
     project = NumberFilter()
-    created_at_after = filters.DateTimeFilter(field_name='created_at', lookup_expr='gte')
-    created_at_before = filters.DateTimeFilter(field_name='created_at', lookup_expr='lte')
+    test_created_after = filters.DateTimeFilter(field_name='created_at', lookup_expr='gte')
+    test_created_before = filters.DateTimeFilter(field_name='created_at', lookup_expr='lte')
+    test_plan_started_after = filters.DateTimeFilter(field_name='plan__started_at', lookup_expr='gte')
+    test_plan_started_before = filters.DateTimeFilter(field_name='plan__started_at', lookup_expr='lte')
+    test_plan_created_after = filters.DateTimeFilter(field_name='plan__created_at', lookup_expr='gte')
+    test_plan_created_before = filters.DateTimeFilter(field_name='plan__created_at', lookup_expr='lte')
 
     @classmethod
     def filter_by_last_status(cls, queryset, field_name: str, statuses):
@@ -390,8 +396,76 @@ class TestsByPlanFilter(TestFilter):
         )
 
 
+class TestResultByPlanFilter(ArchiveFilterMixin, SearchFilterMixin, metaclass=LabelsFilterMetaclass):
+    project = NumberFilter()
+    created_at_after = filters.DateTimeFilter(field_name='test__created_at', lookup_expr='gte')
+    created_at_before = filters.DateTimeFilter(field_name='test__created_at', lookup_expr='lte')
+    assignee = NumberInFilter(field_name='test__assignee_id', help_text=ID_FILTER_MSG)
+    unassigned = filters.BooleanFilter(field_name='test__assignee', lookup_expr='isnull')
+    suite = NumberInFilter(
+        'test__case__suite_id',
+        method='filter_by_suite',
+        help_text=COMMA_SEPARATED_LIST_OR_NULL_MSG,
+    )
+    plan = NumberInFilter(field_name='test__plan', help_text='Filter by comma separated list of plan ids')
+    last_status = filters.BaseCSVFilter(
+        field_name='status_id',
+        method='filter_by_last_status',
+        help_text=COMMA_SEPARATED_LIST_OR_NULL_MSG,
+    )
+    search = filters.CharFilter(
+        method='filter_by_search',
+        help_text=SEARCH_FILTER_MSG.format('title, id'),
+    )
+    case = NumberInFilter(field_name='test__case_id', help_text='Filter by comma separated list of case ids')
+    test_created_after = filters.DateTimeFilter(field_name='test__created_at', lookup_expr='gte')
+    test_created_before = filters.DateTimeFilter(field_name='test__created_at', lookup_expr='lte')
+    test_plan_started_after = filters.DateTimeFilter(field_name='test__plan__started_at', lookup_expr='gte')
+    test_plan_started_before = filters.DateTimeFilter(field_name='test__plan__started_at', lookup_expr='lte')
+    test_plan_created_after = filters.DateTimeFilter(field_name='test__plan__created_at', lookup_expr='gte')
+    test_plan_created_before = filters.DateTimeFilter(field_name='test__plan__created_at', lookup_expr='lte')
+
+    labels_outer_ref_prefix = 'test__case'
+    search_fields = ['test__case__name', 'test__id']
+
+    @classmethod
+    def filter_by_last_status(cls, queryset, field_name: str, statuses):
+        local_statuses = deepcopy(statuses)
+        filter_conditions = Q(**{f'{field_name}__in': local_statuses})
+        if 'null' in local_statuses:
+            local_statuses.remove('null')
+            filter_conditions |= Q(**{f'{field_name}__isnull': True})
+        return queryset.filter(filter_conditions)
+
+    def filter_by_suite(self, queryset, field_name, suite_ids):
+        filter_conditons = {f'{field_name}__in': suite_ids}
+        if get_boolean(self.request, 'nested_search'):
+            suites = TestSuiteSelector.suites_by_ids(suite_ids, 'pk')
+            suite_ids = suites.get_descendants(include_self=True).values_list('id', flat=True)
+            filter_conditons = {f'{field_name}__in': suite_ids}
+        return queryset.filter(**filter_conditons)
+
+    class Meta:
+        model = TestResult
+        fields = (
+            'project',
+            'plan',
+            'suite',
+            'case',
+            'assignee',
+            'unassigned',
+            'last_status',
+            'labels',
+            'not_labels',
+        )
+
+
 class TestFilterNested(TestFilter):
     project = filters.NumberFilter('project')
+
+
+class TestWithoutProjectFilter(TestFilter):
+    project = None
 
 
 class TestResultFilter(ArchiveFilterMixin):
@@ -509,3 +583,19 @@ class PlanFilterV1(filters.FilterSet):
     class Meta:
         model = TestPlan
         fields = ('project', 'parameters', 'parent', 'attributes', 'any_attributes', 'ordering')
+
+
+class ResultUnionOrderingFilter(filters.FilterSet):
+    ordering = OrderingFilter(
+        fields=(
+            ('created_at', 'created_at'),
+        ),
+    )
+
+
+class PlanAssigneeProgressFilter(PlanUnionFilter):
+    assignee = NumberFilter(method='filter_by_assignee', required=True)
+
+    def filter_by_assignee(self, queryset, field_name, assignee_id):
+        assigned_tests_sq = TestSelector.tests_by_parent_plan_subquery(assignee_id=assignee_id)
+        return queryset.alias(has_tests=Exists(assigned_tests_sq)).filter(has_tests=True)

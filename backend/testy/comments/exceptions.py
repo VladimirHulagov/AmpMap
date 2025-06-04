@@ -32,11 +32,6 @@
 from rest_framework.exceptions import APIException
 
 
-class WrongObjectId(APIException):
+class CommentParameterNotProvided(APIException):
     status_code = 400
-    default_detail = {'errors': ['Object Id must be non empty integer']}
-
-
-class ContentTypeDoesntExist(APIException):
-    status_code = 400
-    default_detail = {'errors': ['Model does not exist']}
+    default_detail = {'errors': ["'model' and 'object_id' filters must be used together."]}

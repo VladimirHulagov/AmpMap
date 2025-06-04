@@ -20,7 +20,12 @@ const ProgressItem = ({ percent, countStr, ...props }: ProgressItemProps) => {
   return (
     <div {...props}>
       <div style={{ display: "flex", alignItems: "center", flexDirection: "row" }}>
-        <Progress percent={percent} strokeColor={colors.accent} showInfo={false} />
+        <Progress
+          percent={percent}
+          strokeColor={colors.accent}
+          trailColor="var(--y-color-secondary)"
+          showInfo={false}
+        />
         <span style={{ marginLeft: 6, fontSize: 14 }}>{percent}%</span>
       </div>
       <div style={{ display: "flex", flexDirection: "column", fontSize: 12 }}>
@@ -85,7 +90,7 @@ export const useProjectOverviewProgress = () => {
       title: t("Total"),
       dataIndex: "tests_total",
       key: "tests_total",
-      width: "180px",
+      width: "280px",
       render: (_, record) => {
         const percent = Math.round(
           (Number(record.tests_progress_total) / Number(record.tests_total)) * 100
@@ -113,7 +118,7 @@ export const useProjectOverviewProgress = () => {
       ),
       dataIndex: "tests_progress_period",
       key: "tests_progress_period",
-      width: "250px",
+      width: "280px",
       render: (_, record) => {
         const percent = Math.round(
           (Number(record.tests_progress_period) / Number(record.tests_progress_total)) * 100

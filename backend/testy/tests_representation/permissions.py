@@ -30,12 +30,13 @@
 # <http://www.gnu.org/licenses/>.
 from typing import Protocol
 
+from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import ValidationError
-from rest_framework.permissions import SAFE_METHODS
-from rest_framework.request import Request
+from rest_framework.permissions import SAFE_METHODS, BasePermission
 
 from testy.core.models import Project
-from testy.core.permissions import MISSING_PROJECT_CODE, BaseProjectPermission, getter_to_method
+from testy.core.permissions import BaseCreatePermission, BaseUpdatePermission
+from testy.core.selectors.projects import ProjectSelector
 from testy.tests_representation.choices import ResultStatusType
 from testy.tests_representation.selectors.testplan import TestPlanSelector
 from testy.users.selectors.roles import RoleSelector
@@ -45,56 +46,94 @@ class ProjectAssignable(Protocol):
     project: Project
 
 
-class TestResultPermission(BaseProjectPermission):
+_PROJECT = 'project'
 
-    @classmethod
-    def _get_project_from_request(
-        cls,
-        request: Request,
-        instance: ProjectAssignable | None = None,
-    ) -> Project:
-        if instance is not None:
-            return cls._get_project_from_instance(instance)
-        test_pk = getter_to_method[request.method](request).get('test', None)
-        if not test_pk:
-            raise ValidationError('Could not get project id from request', code=MISSING_PROJECT_CODE)
-        project = Project.objects.filter(tests__pk=test_pk).first()
+
+class TestResultCreatePermission(BaseCreatePermission):
+    def has_permission(self, request, view):
+        if request.user.is_superuser:
+            return True
+        if view.action != 'create':
+            return True
+        project = ProjectSelector.project_by_test_id(request.data.get('test'))
+        if not project:
+            raise ValidationError('Could not retrieve project from test')
+        if RoleSelector.public_access(request.user, project):
+            return True
+        return RoleSelector.create_action_allowed(
+            user=request.user,
+            project=project,
+            model_name='testresult',
+        )
+
+
+class TestResultUpdatePermission(BaseUpdatePermission):
+    def has_object_permission(self, request, view, obj):
+        if request.user.is_superuser:
+            return True
+        if view.action not in {'update', 'partial_update'}:
+            return True
+        new_project = ProjectSelector.project_by_test_id(request.data.get('test'))
+        current_project = getattr(obj, _PROJECT, None)
+        project = new_project or current_project
         if project is None:
-            raise ValidationError('Could not get project to validate permissions', code=MISSING_PROJECT_CODE)
-        return project
-
-
-class TestPlanPermission(BaseProjectPermission):
-    def has_permission(self, request, view):  # noqa: WPS212
-        if any([request.method in self.safe_non_read_methods, request.user.is_superuser, view.detail]):
+            raise ValidationError('No project found to validate permissions')
+        if RoleSelector.public_access(request.user, project):
             return True
-        if view.action == 'copy_plans':
-            return self._validate_plans_copy_permissions(request, view)
-        project = self._get_project_from_request(request)
-        if not project.is_private and not RoleSelector.restricted_project_access(request.user):
-            return True
-        if view.action == 'create':
-            return RoleSelector.create_action_allowed(
-                user=request.user,
-                project=project,
-                model_name=view.queryset.model._meta.model_name,
-            )
-        if request.method in SAFE_METHODS and not view.detail:
-            return RoleSelector.project_view_allowed(
-                user=request.user,
-                project=project,
-            )
-        return True
+        return RoleSelector.action_allowed_for_instance(
+            user=request.user,
+            project=project,
+            permission_code='change_testresult',
+        )
 
-    def _validate_plans_copy_permissions(self, request, view):
+
+class TestPlanCopyPermission(BasePermission):
+    def has_permission(self, request, view):
+        if request.user.is_superuser:
+            return True
+        if view.action != 'copy_plans':
+            return True
         plan_ids = [plan.get('plan') for plan in request.data.get('plans', [])]
         if dst_plan_id := request.data.get('dst_plan'):
             plan_ids.append(dst_plan_id)
         plans = TestPlanSelector.plans_by_ids(plan_ids)
-        return all(self.has_object_permission(request, view, plan) for plan in plans)
+        return all(self.has_add_permission(request, plan) for plan in plans)
+
+    def has_add_permission(self, request, obj):
+        if RoleSelector.public_access(request.user, obj.project):
+            return True
+        return RoleSelector.create_action_allowed(
+            user=request.user,
+            project=obj.project,
+            model_name='testplan',
+        )
 
 
-class ResultStatusPermission(BaseProjectPermission):
+class TestPlanDetailReadPermission(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        if request.user.is_superuser:
+            return True
+        valid_actions = {
+            'plan_progress',
+            'cases_by_plan',
+            'suites_by_plan',
+            'labeles_view',
+            'activity',
+            'descendants_tree',
+            'labels_view',
+            'get_activity_statuses',
+        }
+        if view.action not in valid_actions:
+            return True
+        if RoleSelector.public_access(request.user, obj.project):
+            return True
+        return RoleSelector.project_view_allowed(
+            user=request.user,
+            project=obj.project,
+        )
+
+
+class ResultStatusPermission(BasePermission):
 
     def has_permission(self, request, view):
         conditions = [
@@ -109,3 +148,30 @@ class ResultStatusPermission(BaseProjectPermission):
         if instance.type == ResultStatusType.SYSTEM:
             return request.user.is_superuser or request.method in SAFE_METHODS
         return super().has_object_permission(request, view, instance)
+
+
+class BulkUpdateTestsPermission(BasePermission):
+    def has_permission(self, request, view):
+        if request.user.is_superuser:
+            return True
+        if view.action != 'bulk_update_tests':
+            return True
+        project = get_object_or_404(Project, pk=request.data.get(_PROJECT))
+        if RoleSelector.public_access(request.user, project):
+            return True
+        return RoleSelector.action_allowed_for_instance(
+            user=request.user,
+            project=project,
+            permission_code='change_test',
+        )
+
+
+class ResultUnionByTestPermission(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        if request.user.is_superuser:
+            return True
+        if view.action != 'get_results_and_comments':
+            return True
+        if RoleSelector.public_access(request.user, obj.project):
+            return True
+        return RoleSelector.project_view_allowed(request.user, obj.project)

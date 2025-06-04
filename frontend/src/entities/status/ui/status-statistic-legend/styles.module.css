@@ -1,0 +1,29 @@
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  line-height: 16px;
+  text-wrap: nowrap;
+}
+
+.statusIcon {
+  width: 8px;
+  height: 8px;
+  border-radius: 100%;
+}
+
+.value {
+  font-size: 14px;
+  line-height: 16px;
+  color: var(--y-color-text-primary);
+  justify-self: flex-end;
+  text-wrap: nowrap;
+}

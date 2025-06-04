@@ -1,5 +1,5 @@
 import { DeleteOutlined, EditOutlined } from "@ant-design/icons"
-import { Button, Modal, Space, Table, TableProps, notification } from "antd"
+import { Space, Table, TableProps } from "antd"
 import { ColumnsType } from "antd/es/table"
 import type { FilterValue, TablePaginationConfig } from "antd/es/table/interface"
 import { useState } from "react"
@@ -12,6 +12,8 @@ import { setParameter, showEditParameterModal } from "entities/parameter/model"
 
 import { useTableSearch } from "shared/hooks"
 import { initInternalError } from "shared/libs"
+import { antdModalConfirm, antdNotification } from "shared/libs/antd-modals"
+import { Button } from "shared/ui"
 
 export const ParametersTable = () => {
   const { t } = useTranslation()
@@ -73,31 +75,28 @@ export const ParametersTable = () => {
             icon={<EditOutlined />}
             shape="circle"
             onClick={() => showParameterDetail(record)}
+            color="secondary-linear"
           />
           <Button
             id={`${record.data}-delete`}
             icon={<DeleteOutlined />}
             shape="circle"
             danger
+            color="secondary-linear"
             onClick={() => {
-              Modal.confirm({
+              antdModalConfirm("delete-parameter", {
                 title: t("Do you want to delete these parameter?"),
                 okText: t("Delete"),
-                cancelText: t("Cancel"),
                 onOk: async () => {
                   try {
                     await deleteParameter(record.id).unwrap()
-                    notification.success({
-                      message: t("Success"),
-                      closable: true,
+                    antdNotification.success("delete-parameter", {
                       description: t("Parameter deleted successfully"),
                     })
                   } catch (err: unknown) {
                     initInternalError(err)
                   }
                 },
-                okButtonProps: { "data-testid": "delete-parameter-button-confirm" },
-                cancelButtonProps: { "data-testid": "delete-parameter-button-cancel" },
               })
             }}
           />
@@ -109,7 +108,7 @@ export const ParametersTable = () => {
   return (
     <>
       <Space style={{ marginBottom: 16, display: "flex", justifyContent: "right" }}>
-        <Button id="clear-filters-and-sorters" onClick={clearAll}>
+        <Button id="clear-filters-and-sorters" onClick={clearAll} color="secondary-linear">
           {t("Clear filters and sorters")}
         </Button>
       </Space>
@@ -122,6 +121,7 @@ export const ParametersTable = () => {
         onChange={handleChange}
         id="administration-projects-parameters"
         rowClassName="administration-projects-parameters-row"
+        data-testid="parameters-table"
       />
     </>
   )

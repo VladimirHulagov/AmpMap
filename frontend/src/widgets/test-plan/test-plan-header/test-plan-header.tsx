@@ -66,7 +66,12 @@ export const TestPlanHeader = () => {
     <>
       <Flex gap={8}>
         {testPlan.is_archive && <ArchivedTag size="lg" />}
-        <Typography.Title id="test-plan-title" level={2} className={styles.title}>
+        <Typography.Title
+          id="test-plan-title"
+          level={2}
+          className={styles.title}
+          data-testid="test-plan-title"
+        >
           {testPlan.title}
         </Typography.Title>
       </Flex>

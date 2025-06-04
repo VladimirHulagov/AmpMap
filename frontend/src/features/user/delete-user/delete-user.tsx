@@ -1,10 +1,11 @@
 import { DeleteOutlined } from "@ant-design/icons"
-import { Button, Modal, notification } from "antd"
 import { useTranslation } from "react-i18next"
 
 import { useDeleteUserMutation } from "entities/user/api"
 
 import { initInternalError } from "shared/libs"
+import { antdModalConfirm, antdNotification } from "shared/libs/antd-modals"
+import { Button } from "shared/ui"
 
 export const DeleteUser = ({ user }: { user: User }) => {
   const { t } = useTranslation()
@@ -12,9 +13,7 @@ export const DeleteUser = ({ user }: { user: User }) => {
   const handleModalConfirm = async () => {
     try {
       await deleteUser(user.id).unwrap()
-      notification.success({
-        message: t("Success"),
-        closable: true,
+      antdNotification.success("delete-user", {
         description: t("User deleted successfully"),
       })
     } catch (err: unknown) {
@@ -29,14 +28,12 @@ export const DeleteUser = ({ user }: { user: User }) => {
       icon={<DeleteOutlined />}
       shape="circle"
       danger
+      color="secondary-linear"
       onClick={() => {
-        Modal.confirm({
+        antdModalConfirm("delete-user", {
           title: t("Do you want to delete these user?"),
           okText: t("Delete"),
-          cancelText: t("Cancel"),
           onOk: handleModalConfirm,
-          okButtonProps: { "data-testid": "delete-user-button-confirm" },
-          cancelButtonProps: { "data-testid": "delete-user-button-cancel" },
         })
       }}
     />

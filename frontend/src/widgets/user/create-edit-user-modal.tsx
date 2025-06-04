@@ -1,11 +1,11 @@
-import { Button, Form, Input, Modal, Switch } from "antd"
+import { Form, Input, Modal, Switch } from "antd"
 import { Controller } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 
 import { useUserModal } from "entities/user/model"
 
 import { ErrorObj } from "shared/hooks"
-import { AlertError } from "shared/ui"
+import { AlertError, Button } from "shared/ui"
 
 export const CreateEditUserModal = () => {
   const { t } = useTranslation()
@@ -26,14 +26,20 @@ export const CreateEditUserModal = () => {
 
   return (
     <Modal
-      className={`${formType}-user-modal`}
-      title={title}
+      bodyProps={{ "data-testid": `${formType}-user-modal-body` }}
+      wrapProps={{ "data-testid": `${formType}-user-modal-wrapper` }}
+      title={<span data-testid={`${formType}-user-modal-title`}>{title}</span>}
       open={isShow}
       onCancel={handleCancel}
       width="600px"
       centered
       footer={[
-        <Button id={`close-${formType}-user`} key="back" onClick={handleCancel}>
+        <Button
+          id={`close-${formType}-user`}
+          key="back"
+          onClick={handleCancel}
+          color="secondary-linear"
+        >
           {t("Close")}
         </Button>,
         <Button
@@ -41,7 +47,7 @@ export const CreateEditUserModal = () => {
           loading={isLoading}
           key="submit"
           onClick={handleSubmitForm}
-          type="primary"
+          color="accent"
           disabled={!isDirty}
         >
           {isEditMode ? t("Update") : t("Create")}

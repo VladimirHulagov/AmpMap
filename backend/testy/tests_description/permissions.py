@@ -28,45 +28,72 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
-from rest_framework.permissions import SAFE_METHODS
-from users.choices import UserAllowedPermissionCodenames
+from rest_framework.generics import get_object_or_404
+from rest_framework.permissions import BasePermission
 
-from testy.core.permissions import BaseProjectPermission
+from testy.core.models import Project
 from testy.tests_description.api.v2.serializers import TestCaseCopySerializer, TestSuiteCopySerializer
 from testy.tests_description.selectors.cases import TestCaseSelector
 from testy.tests_description.selectors.suites import TestSuiteSelector
+from testy.users.choices import UserAllowedPermissionCodenames
 from testy.users.selectors.roles import RoleSelector
 
 _PROJECT = 'project'
 
 
-class TestCaseCopyPermission(BaseProjectPermission):
-    def has_permission(self, request, view):  # noqa: WPS212
-        if any([request.method in self.safe_non_read_methods, request.user.is_superuser, view.detail]):
+class TestCaseSearchPermission(BasePermission):
+    def has_permission(self, request, view):
+        if request.user.is_superuser:
             return True
-        if view.action == 'copy_cases':
-            return self._validate_cases_copy_permissions(request, view)
-        project = self._get_project_from_request(request)
-        if not project.is_private and not RoleSelector.restricted_project_access(request.user):
+        if view.action != 'cases_search':
             return True
-        if view.action == 'create':
-            return RoleSelector.create_action_allowed(
-                user=request.user,
-                project=project,
-                model_name=view.queryset.model._meta.model_name,
-            )
-        if request.method in SAFE_METHODS and not view.detail:
-            return RoleSelector.project_view_allowed(
-                user=request.user,
-                project=project,
-            )
-        return True
+        project = get_object_or_404(Project, pk=request.query_params.get(_PROJECT))
+        if RoleSelector.public_access(request.user, project):
+            return True
+        return RoleSelector.project_view_allowed(request.user, project)
 
-    def _validate_cases_copy_permissions(self, request, view):
+
+class TestCaseDetailReadPermission(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        if request.user.is_superuser:
+            return True
+        valid_actions = {'get_tests', 'get_history'}
+        if view.action not in valid_actions:
+            return True
+        if RoleSelector.public_access(request.user, obj.project):
+            return True
+        return RoleSelector.project_view_allowed(
+            user=request.user,
+            project=obj.project,
+        )
+
+
+class TestCaseDetailChangePermission(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        if request.user.is_superuser:
+            return True
+        valid_actions = {'restore_case_version'}
+        if view.action not in valid_actions:
+            return True
+        if RoleSelector.public_access(request.user, obj.project):
+            return True
+        return RoleSelector.action_allowed_for_instance(
+            user=request.user,
+            project=obj.project,
+            permission_code='change_testplan',
+        )
+
+
+class TestCaseCopyPermission(BasePermission):
+    def has_permission(self, request, view):
+        if request.user.is_superuser:
+            return True
+        if view.action != 'copy_cases':
+            return True
         serializer = TestCaseCopySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         is_allowed_list: list[bool] = []
-        for case in serializer.validated_data.get('cases'):
+        for case in serializer.validated_data.get('cases', []):
             is_allowed_list.append(
                 self.has_object_permission(request, view, TestCaseSelector.case_by_id(case.get('id'))),
             )
@@ -77,29 +104,12 @@ class TestCaseCopyPermission(BaseProjectPermission):
         return all(is_allowed_list)
 
 
-class TestSuiteCopyPermission(BaseProjectPermission):
-    def has_permission(self, request, view):  # noqa: WPS212
-        if any([request.method in self.safe_non_read_methods, request.user.is_superuser, view.detail]):
+class TestSuiteCopyPermission(BasePermission):
+    def has_permission(self, request, view):
+        if request.user.is_superuser:
             return True
-        if view.action == 'copy_suites':
-            return self._validate_suites_copy_permissions(request, view)
-        project = self._get_project_from_request(request)
-        if not project.is_private and not RoleSelector.restricted_project_access(request.user):
+        if view.action != 'copy_suites':
             return True
-        if view.action == 'create':
-            return RoleSelector.create_action_allowed(
-                user=request.user,
-                project=project,
-                model_name=view.queryset.model._meta.model_name,
-            )
-        if request.method in SAFE_METHODS and not view.detail:
-            return RoleSelector.project_view_allowed(
-                user=request.user,
-                project=project,
-            )
-        return True
-
-    def _validate_suites_copy_permissions(self, request, view):
         serializer = TestSuiteCopySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         is_allowed_list: list[bool] = []
@@ -118,3 +128,19 @@ class TestSuiteCopyPermission(BaseProjectPermission):
                 ),
             )
         return all(is_allowed_list)
+
+
+class TestCaseBulkUpdatePermission(BasePermission):
+    def has_permission(self, request, view):
+        if request.user.is_superuser:
+            return True
+        if view.action != 'bulk_update_cases':
+            return True
+        project = get_object_or_404(Project, pk=request.data.get(_PROJECT))
+        if RoleSelector.public_access(request.user, project):
+            return True
+        return RoleSelector.action_allowed_for_instance(
+            user=request.user,
+            project=project,
+            permission_code='change_testcase',
+        )

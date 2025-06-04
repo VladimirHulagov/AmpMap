@@ -78,6 +78,7 @@ class CustomAttributeService:
         for ct_name in ct_names:
             for field in cls.applied_to_fields:
                 applied_to[ct_name][field] = data.get(field)
+            applied_to[ct_name]['is_active'] = True
         create_dict['applied_to'] = applied_to
         custom_attribute = CustomAttribute.model_create(
             fields=cls.non_side_effect_fields,

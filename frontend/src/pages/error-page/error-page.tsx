@@ -1,6 +1,8 @@
-import { Button, Result } from "antd"
+import { Result } from "antd"
 import { ResultStatusType } from "antd/es/result"
 import { Link } from "react-router-dom"
+
+import { Button } from "shared/ui"
 
 import styles from "./styles.module.css"
 
@@ -14,10 +16,10 @@ export const ErrorPage = ({ code, message }: Props) => {
     <div className={styles.wrapper}>
       <Result
         status={code}
-        title={code}
-        subTitle={message}
+        title={<span data-testid="error-page-code">{code}</span>}
+        subTitle={<span data-testid="error-page-message">{message}</span>}
         extra={
-          <Button type="primary">
+          <Button color="secondary-linear" data-testid="error-page-button">
             <Link to="/">Back to Home</Link>
           </Button>
         }

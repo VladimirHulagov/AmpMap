@@ -18,7 +18,7 @@ interface Props<T extends FieldValues> {
   control: Control<T>
   name: Path<T>
   setDate: (value: React.SetStateAction<Dayjs | null>) => void
-  disabledDate: (current: Dayjs) => boolean
+  disabledDate?: (current: Dayjs) => boolean
   defaultDate?: PathValue<T, Path<T>>
   label?: string
   formErrors?: FieldErrors<T>

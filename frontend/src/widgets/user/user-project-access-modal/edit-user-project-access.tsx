@@ -1,8 +1,9 @@
 import { EditOutlined } from "@ant-design/icons"
-import { Button } from "antd"
 import { openRoleModal } from "entities/roles/model"
 
 import { useAppDispatch } from "app/hooks"
+
+import { Button } from "shared/ui"
 
 interface Props {
   user: UserWithRoles
@@ -18,6 +19,7 @@ export const EditUserProjectAccess = ({ user }: Props) => {
       data-testid={`${user.username}-edit-user-project-access`}
       icon={<EditOutlined />}
       shape="circle"
+      color="secondary-linear"
       onClick={handleClick}
     />
   )

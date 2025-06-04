@@ -28,6 +28,8 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
+import logging
+import uuid
 import warnings
 from typing import TYPE_CHECKING, Any, Iterable, Mapping, TypeVar
 
@@ -46,7 +48,9 @@ from django.db.models import (
     Value,
     When,
 )
+from django.db.models.sql.constants import LOUTER
 from django.shortcuts import get_object_or_404
+from django_cte import With
 from mptt.querysets import TreeQuerySet
 
 from testy.tests_description.models import TestCase, TestSuite
@@ -74,13 +78,23 @@ _MT = TypeVar('_MT', bound=Model)
 _SUITE = 'suite'
 _TYPE = 'type'
 _IS_LEAF = 'is_leaf'
+_PATH = 'path'
+
+logger = logging.getLogger(__name__)
 
 
 class TestSuiteSelector:  # noqa: WPS214
 
     @classmethod
     def suite_list_raw(cls) -> QuerySet[TestSuite]:
-        return TestSuite.objects.all().order_by(_NAME)
+        return (
+            TestSuite
+            .objects
+            .select_related('project', _PARENT)
+            .prefetch_related('attachments')
+            .all()
+            .order_by(_NAME)
+        )
 
     @classmethod
     def suite_by_id(cls, suite_id: int) -> TestSuite:
@@ -97,7 +111,7 @@ class TestSuiteSelector:  # noqa: WPS214
                 queryset_class=TestSuite,
                 manager_name='deleted_objects',
             ),
-        )
+        ).order_by(_NAME)
 
     @classmethod
     def list_qs(cls, qs: QuerySet[TestSuite], search: str | None = None) -> QuerySet[TestSuite]:
@@ -111,7 +125,7 @@ class TestSuiteSelector:  # noqa: WPS214
             annotation_methods.append(cls.annotate_has_children_with_cases)
         for method in annotation_methods:
             qs = method(qs)
-        return qs.select_related(_PARENT)
+        return qs.select_related(_PARENT).order_by(_NAME)
 
     @classmethod
     def suite_list_union(cls, qs):
@@ -185,7 +199,7 @@ class TestSuiteSelector:  # noqa: WPS214
             suites = suites.get_descendants(include_self=True)
         qs = cls.annotate_has_children_with_cases(suites, Subquery(suites.filter(parent_id=_OUTER_REF_PK)))
         return build_tree(
-            qs.values('id', 'name', 'has_children', 'parent'),
+            qs.values(_ID, 'name', 'has_children', 'parent'),
             omitted_ids={parent_id} if parent_id else None,
         )
 
@@ -204,10 +218,33 @@ class TestSuiteSelector:  # noqa: WPS214
         ).order_by(_NAME)
 
     @classmethod
-    def annotate_suite_path(cls, qs: QuerySet[_MT], outer_ref_key: str = 'path') -> QuerySet[_MT]:
+    def annotate_suite_path(cls, qs: QuerySet[_MT], outer_ref_key: str = _ID) -> QuerySet[_MT]:
+        ancestor_paths = TestSuite.objects.filter(
+            Q(path__ancestor=OuterRef(_PATH)),
+        ).order_by(_PATH).values(_NAME)
+
+        suite_path_cte = With(
+            TestSuite.objects.all()
+            .annotate(suite_path=ConcatSubquery(ancestor_paths, separator='/'))
+            .values('suite_path', _ID),
+            name=uuid.uuid4().hex,
+        )
+        return (
+            suite_path_cte.join(
+                qs,
+                **{outer_ref_key: suite_path_cte.col.id},
+                _join_type=LOUTER,
+            )
+            .with_cte(suite_path_cte)
+            .annotate(suite_path=suite_path_cte.col.suite_path)
+        )
+
+    @classmethod
+    def annotate_suite_path_v1(cls, qs: QuerySet[_MT], outer_ref_key: str = _PATH) -> QuerySet[_MT]:
+        warnings.warn('Deprecated in 2.0', DeprecationWarning, stacklevel=2)
         ancestor_paths = TestSuite.objects.filter(
             Q(path__ancestor=OuterRef(outer_ref_key)),
-        ).order_by('path').values(_NAME)
+        ).order_by(_PATH).values(_NAME)
         return qs.annotate(suite_path=ConcatSubquery(ancestor_paths, separator='/'))
 
     @classmethod
@@ -312,7 +349,7 @@ class TestSuiteSelector:  # noqa: WPS214
                 case_ids.append(elem[_ID])
 
         db_cases = TestCaseSelector.cases_for_union_data(case_ids)
-        db_cases = TestSuiteSelector.annotate_suite_path(db_cases, 'suite__path').select_related(_SUITE)
+        db_cases = TestSuiteSelector.annotate_suite_path(db_cases, 'suite').select_related(_SUITE)
 
         db_suites = self.suites_by_ids(suite_ids, _PK)
         db_suites = self.suite_list_union(db_suites)
@@ -389,8 +426,7 @@ class TestSuiteSelector:  # noqa: WPS214
         )
         qs = self.annotate_estimates(qs)
         qs = self.annotate_cases_count(qs)
-        qs = self.annotate_suite_path(qs)
-        qs = self.annotate_suite_path(qs)
+        qs = self.annotate_suite_path_v1(qs)
         return self.annotate_descendants_count(qs)
 
     def suite_list(self) -> QuerySet[TestSuite]:
@@ -420,7 +456,7 @@ class TestSuiteSelector:  # noqa: WPS214
         warnings.warn('Function deprecated in 2.0', DeprecationWarning, stacklevel=2)
         return form_tree_prefetch_objects(
             nested_prefetch_field=_CHILD_TEST_SUITES,
-            prefetch_field='test_cases',
+            prefetch_field=_TEST_CASES,
             tree_depth=max_level,
             queryset=TestCaseSelector().case_list(filter_condition={'is_archive': False}),
         )
@@ -428,6 +464,35 @@ class TestSuiteSelector:  # noqa: WPS214
     @classmethod
     def suite_list_by_ids(cls, suite_ids: Iterable[int]) -> QuerySet[TestSuite]:
         return TestSuite.objects.filter(id__in=suite_ids)
+
+    @classmethod
+    def build_cases_search_tree(  # noqa: WPS231
+        cls,
+        suites: QuerySet[dict[str, Any]],
+        cases: QuerySet[dict[str, Any]],
+    ) -> dict[str, Any]:
+        suite_map = {}
+        tree = {}
+        for suite in suites:
+            suite['children'] = []
+            suite[_TEST_CASES] = []
+            suite_map[suite[_ID]] = suite
+            if suite['parent_id'] is None:
+                tree[suite[_ID]] = suite
+        for suite in suites:
+            if parent_id := suite['parent_id']:
+                parent = suite_map.get(parent_id)
+                if parent is None:
+                    logger.error(f'Parent suite {parent_id} was not found, probably suite was deleted')
+                    continue
+                parent['children'].append(suite)
+        for case in cases:
+            suite_id = case['suite_id']
+            if suite_id not in suite_map:
+                logger.error(f'Suite {suite_id} from case {case[_ID]} was not found, probably suite was deleted')
+                continue
+            suite_map[suite_id][_TEST_CASES].append(case)
+        return tree
 
     @classmethod
     def _get_estimate_sum_subquery(cls, sum_descendants: bool = False):

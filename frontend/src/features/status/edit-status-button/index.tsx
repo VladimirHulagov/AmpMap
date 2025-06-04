@@ -1,7 +1,8 @@
 import { EditOutlined } from "@ant-design/icons"
-import { Button } from "antd"
 import { useAdministrationStatusModal } from "entities/status/model"
 import { useEffect } from "react"
+
+import { Button } from "shared/ui"
 
 import { StatusCreateEditModal } from "../status-create-edit-modal/status-create-edit-modal"
 
@@ -23,6 +24,7 @@ export const EditStatusButton = ({ record, onDisableTable }: Props) => {
         id={`${record.name}-edit`}
         icon={<EditOutlined />}
         shape="circle"
+        color="secondary-linear"
         onClick={() => statusModal.handleModalOpen({ status: record, mode: "edit" })}
       />
       {statusModal.isShow && <StatusCreateEditModal data={statusModal} />}

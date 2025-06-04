@@ -1,17 +1,17 @@
 import classNames from "classnames"
 import { useEffect, useState } from "react"
+import { useSearchParams } from "react-router-dom"
 
-import { icons } from "shared/assets/inner-icons"
+import ArrowDown from "shared/assets/yi-icons/arrow.svg?react"
 
 import styles from "./styles.module.css"
 
-const { ArrowIcon } = icons
-
 export const BtnToTop = () => {
   const [isShow, setIsShow] = useState(false)
+  const [searchParams] = useSearchParams()
 
   const handleVisibleButton = () => {
-    setIsShow(window.pageYOffset > 500)
+    setIsShow(window.pageYOffset > 500 && !searchParams?.has("test"))
   }
 
   const handleScrollUp = () => {
@@ -19,12 +19,14 @@ export const BtnToTop = () => {
   }
 
   useEffect(() => {
+    handleVisibleButton()
+
     window.addEventListener("scroll", handleVisibleButton)
 
     return () => {
       window.removeEventListener("scroll", handleVisibleButton)
     }
-  }, [])
+  }, [handleVisibleButton])
 
   return (
     <button
@@ -32,7 +34,7 @@ export const BtnToTop = () => {
       className={classNames(styles.btn, { [styles.hide]: !isShow })}
       onClick={handleScrollUp}
     >
-      <ArrowIcon style={{ transform: "rotate(180deg)" }} />
+      <ArrowDown style={{ transform: "rotate(180deg)" }} />
     </button>
   )
 }

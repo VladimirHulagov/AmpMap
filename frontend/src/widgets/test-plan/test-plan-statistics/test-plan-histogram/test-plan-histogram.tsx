@@ -1,8 +1,8 @@
 import { Flex, Spin } from "antd"
 import { SegmentedValue } from "antd/es/segmented"
 import dayjs from "dayjs"
-import { MeContext } from "processes"
-import { useContext, useState } from "react"
+import { useMeContext } from "processes"
+import { useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useParams } from "react-router-dom"
 import {
@@ -21,6 +21,8 @@ import { useAppSelector } from "app/hooks"
 import { selectFilter } from "entities/test/model"
 
 import { useGetTestPlanHistogramQuery } from "entities/test-plan/api"
+
+import { NOT_ASSIGNED_FILTER_VALUE } from "shared/constants"
 
 import styles from "../styles.module.css"
 import { TestPlanHistogramFilters } from "./test-plan-histogram-filters"
@@ -81,7 +83,7 @@ export const TestPlanHistogram = ({ testPlanId }: Props) => {
   const { t } = useTranslation()
   const { projectId } = useParams<ParamProjectId>()
   const testsFilter = useAppSelector(selectFilter)
-  const { userConfig } = useContext(MeContext)
+  const { userConfig } = useMeContext()
 
   const [barType, setBarType] = useState<SegmentedValue>(
     userConfig?.ui?.graph_base_bar_type ?? "by_time"
@@ -106,6 +108,18 @@ export const TestPlanHistogram = ({ testPlanId }: Props) => {
     not_labels: testsFilter.not_labels?.length ? testsFilter.not_labels : undefined,
     labels_condition: testsFilter.labels_condition ?? undefined,
     is_archive: testsFilter.is_archive,
+    plan: testsFilter.plans,
+    suite: testsFilter.suites,
+    assignee: testsFilter.assignee.filter((assignee) => assignee !== NOT_ASSIGNED_FILTER_VALUE),
+    unassigned: testsFilter.assignee.includes(NOT_ASSIGNED_FILTER_VALUE) ? true : undefined,
+    last_status: testsFilter.statuses,
+    search: testsFilter.name_or_id,
+    test_plan_started_after: testsFilter.test_plan_started_after,
+    test_plan_started_before: testsFilter.test_plan_started_before,
+    test_plan_created_after: testsFilter.test_plan_created_after,
+    test_plan_created_before: testsFilter.test_plan_created_before,
+    test_created_after: testsFilter.test_created_after,
+    test_created_before: testsFilter.test_created_before,
   })
 
   const legendFormatter = (
@@ -116,7 +130,7 @@ export const TestPlanHistogram = ({ testPlanId }: Props) => {
   ) => {
     return (
       <span
-        style={{ color: "var(--y-sky-80)" }}
+        style={{ color: "var(--y-color-text-secondary)" }}
         key={index}
         data-testid={`test-plan-histogram-legend-${value}`}
       >
@@ -154,7 +168,7 @@ export const TestPlanHistogram = ({ testPlanId }: Props) => {
         </Flex>
       )}
       {!isFetching && (
-        <ResponsiveContainer width="100%">
+        <ResponsiveContainer width="100%" id="test-plan-histogram-container">
           <BarChart
             width={800}
             height={280}
@@ -167,9 +181,17 @@ export const TestPlanHistogram = ({ testPlanId }: Props) => {
             }}
           >
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="point" type="category" interval={interval} />
-            <YAxis />
-            <Tooltip />
+            <XAxis
+              dataKey="point"
+              type="category"
+              interval={interval}
+              stroke="var(--y-color-text-secondary)"
+            />
+            <YAxis stroke="var(--y-color-text-secondary)" />
+            <Tooltip
+              wrapperClassName="recharts-tooltip"
+              cursor={{ fill: "var(--y-color-control-background-hover)" }}
+            />
             {statuses.map((status) => (
               <Bar
                 dataKey={status.name}
@@ -181,7 +203,7 @@ export const TestPlanHistogram = ({ testPlanId }: Props) => {
                 key={status.name}
               />
             ))}
-            <Legend formatter={legendFormatter} />
+            <Legend formatter={legendFormatter} iconType="square" />
           </BarChart>
         </ResponsiveContainer>
       )}

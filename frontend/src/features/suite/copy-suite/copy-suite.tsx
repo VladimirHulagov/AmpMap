@@ -1,11 +1,12 @@
 import { CopyOutlined } from "@ant-design/icons"
-import { Alert, Button, Form, Input, Modal, Select } from "antd"
+import { Alert, Form, Input, Modal, Select } from "antd"
 import { ReactNode, memo } from "react"
 import { Controller } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 
 import { useLazyGetTestSuiteAncestorsQuery, useLazyGetTestSuitesQuery } from "entities/suite/api"
 
+import { Button } from "shared/ui"
 import { LazyTreeSearchFormItem } from "shared/ui/form-items"
 
 import { useSuiteCopyModal } from "./use-suite-copy-modal"
@@ -15,6 +16,8 @@ interface Props {
   suite: Suite
   onSubmit?: (newSuite: CopySuiteResponse) => void
 }
+
+const TEST_ID = "copy-suite"
 
 export const CopySuite = memo(({ as, suite, onSubmit }: Props) => {
   const { t } = useTranslation()
@@ -44,24 +47,34 @@ export const CopySuite = memo(({ as, suite, onSubmit }: Props) => {
           {as}
         </div>
       ) : (
-        <Button id="copy-test-suite" icon={<CopyOutlined />} onClick={handleShow}>
+        <Button
+          id="copy-test-suite"
+          color="secondary-linear"
+          icon={<CopyOutlined />}
+          onClick={handleShow}
+        >
           {t("Copy").toUpperCase()}
         </Button>
       )}
       <Modal
-        className="copy-test-suite-modal"
-        title={`${t("Copy Test Suite")} '${suite.name}'`}
+        bodyProps={{ "data-testid": `${TEST_ID}-modal-body` }}
+        wrapProps={{ "data-testid": `${TEST_ID}-modal-wrapper` }}
+        title={
+          <span
+            data-testid={`${TEST_ID}-modal-title`}
+          >{`${t("Copy Test Suite")} '${suite.name}'`}</span>
+        }
         open={isShow}
         onCancel={handleCancel}
         centered
         footer={[
-          <Button id="cancel-btn" key="back" onClick={handleCancel}>
+          <Button id="cancel-btn" key="back" onClick={handleCancel} color="secondary-linear">
             {t("Cancel")}
           </Button>,
           <Button
             id="save-btn"
             key="submit"
-            type="primary"
+            color="accent"
             loading={isLoading}
             onClick={handleSubmitForm}
             disabled={isDisabled}
@@ -95,7 +108,11 @@ export const CopySuite = memo(({ as, suite, onSubmit }: Props) => {
                   id="copy-test-suite-select-project"
                   showSearch
                   placeholder={t("Please select project")}
-                  notFoundContent="No matches"
+                  notFoundContent={
+                    <span style={{ color: "var(--y-color-control-placeholder)" }}>
+                      {t("No matches")}
+                    </span>
+                  }
                   defaultActiveFirstOption={false}
                   labelInValue
                   style={{ width: "100%" }}

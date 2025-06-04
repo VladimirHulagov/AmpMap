@@ -4,11 +4,12 @@ import { useAppSelector } from "app/hooks"
 
 import { selectFilter, selectOrdering, selectSettings } from "entities/test/model"
 
+import { useTestPlanStatisticsContext } from "entities/test-plan/model"
 import { TestPlanTreeNodeView } from "entities/test-plan/ui"
 
-import { ProjectContext } from "pages/project"
+import { useProjectContext } from "pages/project"
 
-import { LazyNodeProps, LazyTreeNodeApi, LazyTreeView } from "shared/libs/tree"
+import { LazyNodeProps, LazyTreeNodeApi, LazyTreeView, TreeNodeUpdate } from "shared/libs/tree"
 import { TreeTable, TreeTableLoadMore } from "shared/ui"
 
 import { TestsTreeContext } from "./tests-tree-provider"
@@ -20,8 +21,9 @@ interface Props {
 export const TREE_KEY = "tests-tree"
 
 export const TestsTree = ({ testPlanId = null }: Props) => {
-  const { project } = useContext(ProjectContext)!
+  const project = useProjectContext()
   const { testsTree, skipInit, fetcher, fetcherAncestors } = useContext(TestsTreeContext)!
+  const { onUpdate } = useTestPlanStatisticsContext()
 
   const testsFilter = useAppSelector(selectFilter)
   const testsOrdering = useAppSelector(selectOrdering)
@@ -50,6 +52,7 @@ export const TestsTree = ({ testPlanId = null }: Props) => {
         renderLoadMore={({ isLoading, onMore }) => (
           <TreeTableLoadMore isLast isRoot isLoading={isLoading} onMore={onMore} />
         )}
+        onUpdate={onUpdate as (data: TreeNodeUpdate<unknown, LazyNodeProps>[]) => void}
       />
     </TreeTable>
   )

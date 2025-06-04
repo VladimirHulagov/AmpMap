@@ -1,0 +1,10 @@
+.select {
+  width: 115px;
+  border: none;
+}
+
+.label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

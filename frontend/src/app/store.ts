@@ -1,5 +1,6 @@
 import { Action, ThunkAction, combineReducers, configureStore } from "@reduxjs/toolkit"
 import { commentsApi } from "entities/comments/api"
+import { commentsReducer } from "entities/comments/model/slice"
 import { customAttributeApi } from "entities/custom-attribute/api"
 import { notificationApi } from "entities/notifications/api"
 import { notificationWSReducer } from "entities/notifications/model/notification-ws-slice"
@@ -33,11 +34,13 @@ import { projectApi } from "entities/project/api"
 import { projectReducer } from "entities/project/model/slice"
 
 import { resultApi } from "entities/result/api"
+import { resultsReducer } from "entities/result/model/slice"
 
 import { suiteApi } from "entities/suite/api"
 
 import { systemApi } from "entities/system/api"
 import { systemReducer } from "entities/system/model/slice"
+import { themeReducer } from "entities/system/model/slice-theme"
 
 import { testApi } from "entities/test/api"
 import { testReducer, testsfilterReducer } from "entities/test/model"
@@ -56,7 +59,7 @@ import { appReducer } from "./slice"
 const persistConfig = {
   key: "root",
   storage,
-  whitelist: ["user", "auth", "system"],
+  whitelist: ["user", "auth", "system", "results", "comments", "theme"],
 }
 
 const rootReducer = combineReducers({
@@ -72,6 +75,9 @@ const rootReducer = combineReducers({
   system: systemReducer,
   testsFilter: testsfilterReducer,
   testCasesFilter: testCasesfilterReducer,
+  results: resultsReducer,
+  comments: commentsReducer,
+  theme: themeReducer,
   [systemApi.reducerPath]: systemApi.reducer,
   [authApi.reducerPath]: authApi.reducer,
   [usersApi.reducerPath]: usersApi.reducer,

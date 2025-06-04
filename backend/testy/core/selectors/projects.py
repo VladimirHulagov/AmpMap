@@ -30,12 +30,12 @@
 # <http://www.gnu.org/licenses/>.
 
 from django.db.models import Case, Count, Exists, F, IntegerField, OuterRef, Q, QuerySet, Value, When
-from rest_framework.generics import get_object_or_404
+from django.shortcuts import get_object_or_404
 
 from testy.core.exceptions import UserMissingError
 from testy.core.models import Project
 from testy.tests_description.models import TestCase, TestSuite
-from testy.tests_representation.models import Test, TestPlan
+from testy.tests_representation.models import Test, TestPlan, TestResult
 from testy.tests_representation.selectors.testplan import TestPlanSelector
 from testy.users.choices import UserAllowedPermissionCodenames
 from testy.users.models import Membership, User
@@ -63,8 +63,10 @@ class ProjectSelector:
         return Project.deleted_objects.all()
 
     @classmethod
-    def project_by_id(cls, project_id: int) -> Project:
-        return get_object_or_404(Project, pk=project_id)
+    def project_by_id(cls, project_id: int, raise_not_found: bool = False) -> Project | None:
+        if raise_not_found:
+            return get_object_or_404(Project, pk=project_id)
+        return Project.objects.filter(pk=project_id).first()
 
     def project_list_statistics(self):
         membership_exists = Exists(
@@ -113,16 +115,23 @@ class ProjectSelector:
         root_plans = TestPlanSelector.annotate_title(root_plans).order_by('-id')
         tests_count_filter_mapping = {
             'tests_total': None,
-            'tests_progress_period': [
-                Q(results__created_at__range=(period.start, period.end)),
-                Q(last_status_id__isnull=False),
-            ],
             'tests_progress_total': [Q(last_status_id__isnull=False)],
+        }
+        results_count_filter_mapping = {
+            'tests_progress_period': [Q(created_at__range=(period.start, period.end)), Q(test__is_deleted=False)],
         }
         for plan in root_plans:
             for test_field, test_filter in tests_count_filter_mapping.items():
                 setattr(plan, test_field, self._test_count(plan, test_filter))
+            for result_field, result_filter in results_count_filter_mapping.items():
+                setattr(plan, result_field, self._test_result_count(plan, result_filter))
         return root_plans
+
+    @classmethod
+    def project_by_test_id(cls, test_id: int | None) -> Project | None:
+        if test_id is None:
+            return None
+        return Project.objects.filter(tests__pk=test_id).first()
 
     @classmethod
     def favorites_annotation(cls, favorite_conditions: Q) -> Case:
@@ -145,12 +154,22 @@ class ProjectSelector:
             filter_conditions = []
         return (
             Test.objects
-            .filter(*filter_conditions, plan__tree_id=plan.tree_id)
-            .values('plan__tree_id')
-            .annotate(count=Count('id', distinct=True))
-            .values_list('count', flat=True)
-            .order_by('count')
-            .first() or 0
+            .filter(*filter_conditions, plan__path__descendant=plan.path)
+            .aggregate(count=Count('id', distinct=True))['count']
+        )
+
+    @classmethod
+    def _test_result_count(cls, plan: TestPlan, filter_conditions: list[Q] | None = None):
+        if not filter_conditions:
+            filter_conditions = []
+        return (
+            TestResult
+            .objects
+            .filter(
+                *filter_conditions,
+                test__plan__path__descendant=plan.path,
+            )
+            .aggregate(count=Count('test_id', distinct=True))['count']
         )
 
     def _user_project_qs(self, manager_name: str = 'objects') -> QuerySet[Project]:

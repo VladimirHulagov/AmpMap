@@ -33,23 +33,32 @@ from typing import Any
 from django.db.models import QuerySet
 
 from testy.core.models import CustomAttribute
+from testy.core.services.attachments import AttachmentService
 from testy.tests_description.models import TestSuite
+
+_ATTACHMENTS = 'attachments'
 
 
 class TestSuiteService:
     non_side_effect_fields = ['parent', 'project', 'name', 'description', 'attributes']
 
     def suite_create(self, data: dict[str, Any]) -> TestSuite:
-        return TestSuite.model_create(
+        suite = TestSuite.model_create(
             fields=self.non_side_effect_fields,
             data=data,
         )
+        for attachment in data.get(_ATTACHMENTS, []):
+            AttachmentService().attachment_set_content_object(attachment, suite)
+        return suite
 
     def suite_update(self, suite: TestSuite, data: dict[str, Any]) -> TestSuite:
         suite, _ = suite.model_update(
             fields=self.non_side_effect_fields,
             data=data,
         )
+        attachments = data.get(_ATTACHMENTS, [])
+        AttachmentService().attachments_update_content_object(attachments, suite)
+        suite.refresh_from_db(fields=[_ATTACHMENTS])
         return suite
 
     @classmethod

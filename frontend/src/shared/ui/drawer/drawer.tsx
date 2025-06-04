@@ -1,9 +1,9 @@
-import { Col, Flex } from "antd"
+import { Flex } from "antd"
 import classNames from "classnames"
-import { ReactNode, useRef } from "react"
+import { ReactNode, useLayoutEffect, useRef, useState } from "react"
 
-import SquareHalfIcon from "shared/assets/icons/square-half.svg?react"
-import { icons } from "shared/assets/inner-icons"
+import PinIcon from "shared/assets/icons/pin.svg?react"
+import CloseIcon from "shared/assets/yi-icons/close.svg?react"
 import { useCacheState, useOnClickOutside, useResizebleBlock } from "shared/hooks"
 import { toBool } from "shared/libs"
 
@@ -13,18 +13,19 @@ import { ContainerLoader } from "../container-loader"
 import { ResizeLine } from "../resize-line/resize-line"
 import styles from "./styles.module.css"
 
-const { CloseIcon } = icons
-
 interface Props {
   id: string
   isOpen: boolean
   onClose: () => void
   isLoading?: boolean
-  title?: ReactNode
-  extra?: ReactNode
+  header?: React.ReactNode
+  cls?: string
   children?: ReactNode
   baseWidth?: number
   minWidth?: number
+  swipeElement?: ReactNode
+  showSwipeElement?: boolean
+  resizeLineColor?: string
 }
 
 const MAX_WITH_PERCENT = 70
@@ -45,14 +46,30 @@ export const Drawer = ({
   minWidth = 500,
   baseWidth = minWidth,
   onClose,
-  title,
-  extra,
+  header,
   children,
+  resizeLineColor,
+  swipeElement,
+  showSwipeElement,
 }: Props) => {
-  const [isRightFixed, setIsRightFixed] = useCacheState(`isDrawerRightFixed`, false, toBool)
+  const [isPinned, setIsPinned] = useCacheState(`isDrawerPinned`, false, toBool)
+  const [secondaryElement, setSecondaryElement] = useState<ReactNode>()
 
-  const handleRightSide = () => {
-    setIsRightFixed(!isRightFixed)
+  useLayoutEffect(() => {
+    if (showSwipeElement) {
+      setSecondaryElement(swipeElement)
+      return
+    }
+
+    const timerId = setTimeout(() => {
+      setSecondaryElement(undefined)
+    }, 200)
+
+    return () => clearTimeout(timerId)
+  }, [showSwipeElement, swipeElement])
+
+  const handlePin = () => {
+    setIsPinned(!isPinned)
   }
 
   const drawerRef = useRef<HTMLDivElement>(null)
@@ -65,7 +82,7 @@ export const Drawer = ({
     maxAsPercent: true,
     direction: "left",
   })
-  useOnClickOutside(drawerRef, onClose, isOpen && !isRightFixed, INGNORED_LIST_OUTSIDE_CLICK)
+  useOnClickOutside(drawerRef, onClose, isOpen && !isPinned, INGNORED_LIST_OUTSIDE_CLICK)
 
   return (
     <Portal id="portal-root">
@@ -75,41 +92,46 @@ export const Drawer = ({
         style={{ width }}
         className={classNames(styles.wrapper, {
           [styles.isOpen]: isOpen,
-          [styles.fixedRight]: isRightFixed,
         })}
       >
-        <ResizeLine onMouseDown={handleMouseDown} direction="left" />
+        <ResizeLine
+          onMouseDown={handleMouseDown}
+          direction="left"
+          resizeLineColor={resizeLineColor}
+        />
         {isLoading && (
           <div className={styles.loaderBlock}>
             <ContainerLoader />
           </div>
         )}
         {!isLoading && (
-          <>
-            <Flex gap={16} justify="space-between" className={styles.header}>
-              <Flex gap={4} style={{ minWidth: 68 }}>
-                <Col flex="32px" style={{ padding: 0, height: 32 }}>
+          <Flex
+            className={classNames(styles.drawerContent, {
+              [styles.showSecondary]: showSwipeElement,
+            })}
+          >
+            <div className={styles.primaryElement}>
+              <Flex className={styles.header}>
+                <div className={styles.headerIcons}>
                   <CloseIcon
-                    className={styles.closeIcon}
+                    data-testid="drawer-close-icon"
+                    className={styles.icon}
                     onClick={onClose}
-                    id="drawer-close-icon"
                   />
-                </Col>
-                <Col flex="32px" style={{ padding: 0, height: 32 }}>
-                  <SquareHalfIcon
-                    className={classNames(styles.closeIcon, { [styles.iconActive]: isRightFixed })}
-                    onClick={handleRightSide}
-                    id="drawer-square-half-icon"
+                  <PinIcon
+                    data-testid="drawer-pin-icon"
+                    className={classNames(styles.icon, { [styles.iconActive]: isPinned })}
+                    onClick={handlePin}
                   />
-                </Col>
+                </div>
+                {header}
               </Flex>
-              <Flex align="flex-start" style={{ width: "fit-content", marginRight: "auto" }}>
-                {title}
-              </Flex>
-              {extra}
+              <div className={styles.body}>{children}</div>
+            </div>
+            <Flex vertical className={styles.secondaryElement}>
+              {secondaryElement}
             </Flex>
-            <div className={styles.body}>{children}</div>
-          </>
+          </Flex>
         )}
       </div>
     </Portal>

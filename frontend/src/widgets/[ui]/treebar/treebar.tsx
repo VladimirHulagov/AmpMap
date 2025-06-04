@@ -1,21 +1,28 @@
-import { Button, Flex, Input, Popover, Tooltip, Typography } from "antd"
+import { Flex, Input, Popover, Tooltip, Typography } from "antd"
 import classNames from "classnames"
-import { TreebarContext } from "processes"
-import { ChangeEvent, useContext, useRef } from "react"
+import {
+  DEFAULT_WITH_TREE,
+  MAX_SMALLEST_SIZE,
+  MAX_WITH_TREE_PERCENT,
+  MIN_WITH_TREE,
+  TreebarContext,
+} from "processes"
+import { ChangeEvent, useContext, useEffect, useRef } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate, useParams, useSearchParams } from "react-router-dom"
 
 import { ChangeTestSuite } from "features/suite"
 import { ChangeTestPlan } from "features/test-plan"
 
-import { ProjectContext } from "pages/project/project-layout"
+import { useProjectContext } from "pages/project/project-provider"
 
 import CollapseIcon from "shared/assets/icons/arrows-in-simple.svg?react"
-import { icons } from "shared/assets/inner-icons"
+import BackIcon from "shared/assets/yi-icons/back-icon.svg?react"
+import FilterIcon from "shared/assets/yi-icons/filter.svg?react"
 import { useResizebleBlock } from "shared/hooks"
 import { LazyTreeView } from "shared/libs/tree"
 import { LazyNodeProps, LazyTreeNodeApi, NodeId } from "shared/libs/tree/api"
-import { ArchivedTag, ResizeLine } from "shared/ui"
+import { ArchivedTag, Button, ResizeLine } from "shared/ui"
 
 import styles from "./styles.module.css"
 import { TreebarBreadcrumbs } from "./treebar-breadcrumbs"
@@ -23,16 +30,9 @@ import { TreebarFilter } from "./treebar-filter"
 import { TreebarNodeView } from "./treebar-node-view"
 import { saveUrlParamByKeys } from "./utils"
 
-const { BackIcon, FilterIcon } = icons
-
-const MIN_WITH_TREE = 72
-const DEFAULT_WITH_TREE = 374
-const MAX_WITH_TREE_PERCENT = 70
-const MAX_SMALLEST_SIZE = 172
-
 export const Treebar = () => {
   const { t } = useTranslation()
-  const { project } = useContext(ProjectContext)!
+  const project = useProjectContext()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { testSuiteId, testPlanId } = useParams<ParamTestSuiteId & ParamTestPlanId>()
@@ -41,6 +41,7 @@ export const Treebar = () => {
     treebar,
     searchText,
     treeSettings,
+    treebarWidth,
     fetcher,
     fetcherAncestors,
     initParent,
@@ -49,6 +50,7 @@ export const Treebar = () => {
     skipInit,
     activeTab,
     updateTreeSettings,
+    updateTreebarWidth,
     setSearchText,
   } = useContext(TreebarContext)!
 
@@ -67,6 +69,7 @@ export const Treebar = () => {
     maxAsPercent: true,
     updater: (newWidth: number) => {
       updateTreeSettings({ collapsed: newWidth < 200 })
+      updateTreebarWidth(newWidth)
     },
   })
 
@@ -74,7 +77,9 @@ export const Treebar = () => {
 
   const handleCollapsedTreeBar = () => {
     updateTreeSettings({ collapsed: !treeSettings.collapsed })
-    setWidth(!treeSettings.collapsed ? MIN_WITH_TREE : DEFAULT_WITH_TREE)
+    const newWidth = !treeSettings.collapsed ? MIN_WITH_TREE : DEFAULT_WITH_TREE
+    setWidth(newWidth)
+    updateTreebarWidth(newWidth)
   }
 
   const handleSearch = (e: ChangeEvent<HTMLInputElement>) => {
@@ -92,7 +97,7 @@ export const Treebar = () => {
   const handleSelectNode = (nodeId: NodeId) => {
     const urlParams = saveUrlParamByKeys(["rootId", "ordering", "is_archive"], searchParams)
 
-    if (localStorage.getItem("isDrawerRightFixed") && searchParams.get("test_case")) {
+    if (localStorage.getItem("isDrawerPinned") && searchParams.get("test_case")) {
       urlParams.append("test_case", searchParams.get("test_case") ?? "")
     }
 
@@ -115,6 +120,12 @@ export const Treebar = () => {
     treebar.current?.closeAll()
   }
 
+  useEffect(() => {
+    if (width !== treebarWidth) {
+      updateTreebarWidth(width)
+    }
+  }, [width, treebarWidth])
+
   const IS_MINIFY = width < MAX_SMALLEST_SIZE || treeSettings.collapsed
 
   return (
@@ -133,7 +144,11 @@ export const Treebar = () => {
             >
               <Flex gap={8}>
                 {project.is_archive && <ArchivedTag size="lg" />}
-                <Typography.Title level={1} className={styles.headerTitle}>
+                <Typography.Title
+                  level={1}
+                  className={styles.headerTitle}
+                  data-testid="treebar-header-title"
+                >
                   {project.name}
                 </Typography.Title>
               </Flex>
@@ -150,7 +165,11 @@ export const Treebar = () => {
             </div>
             <span className={styles.activeTab}>{activeTab ? TREE_TITLES[activeTab] : ""}</span>
             {!IS_MINIFY && (
-              <TreebarBreadcrumbs activeTab={activeTab} entityId={testSuiteId ?? testPlanId} />
+              <TreebarBreadcrumbs
+                activeTab={activeTab}
+                entityId={testSuiteId ?? testPlanId}
+                rootId={initParent}
+              />
             )}
             <div
               className={classNames(styles.actionBlock, {
@@ -161,13 +180,13 @@ export const Treebar = () => {
                 <ChangeTestSuite
                   type="create"
                   size={IS_MINIFY ? "small" : "default"}
-                  colorType="primary"
+                  colorType="accent"
                 />
               ) : (
                 <ChangeTestPlan
                   type="create"
                   size={IS_MINIFY ? "small" : "default"}
-                  colorType="primary"
+                  colorType="accent"
                 />
               )}
             </div>
@@ -191,8 +210,12 @@ export const Treebar = () => {
                 >
                   <Button
                     style={{ minWidth: 32 }}
-                    icon={<FilterIcon width={24} height={24} color="var(--y-sky-60)" />}
+                    icon={
+                      <FilterIcon width={24} height={24} color="var(--y-color-secondary-inline)" />
+                    }
                     data-testid="treebar-filter-button"
+                    color="secondary-linear"
+                    shape="square"
                   />
                 </Popover>
               </Tooltip>
@@ -200,9 +223,13 @@ export const Treebar = () => {
             <Tooltip title={t("Collapse All")}>
               <Button
                 style={{ minWidth: 32 }}
-                icon={<CollapseIcon width={18} height={18} color="var(--y-sky-60)" />}
+                icon={
+                  <CollapseIcon width={18} height={18} color="var(--y-color-secondary-inline)" />
+                }
                 onClick={handleCloseAll}
                 data-testid="treebar-collapse-all-button"
+                color="secondary-linear"
+                shape="square"
               />
             </Tooltip>
           </div>

@@ -29,6 +29,7 @@
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
 import os
+import secrets
 import shutil
 from http import HTTPStatus
 from pathlib import Path
@@ -43,6 +44,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import connection
 from django.utils import timezone
 from pytest_factoryboy import register
 
@@ -52,6 +54,7 @@ from tests.factories import (
     AttachmentFactory,
     AttachmentTestCaseFactory,
     AttachmentTestResultFactory,
+    AttachmentTestSuiteFactory,
     CommentTestCaseFactory,
     CommentTestFactory,
     CommentTestPlanFactory,
@@ -100,6 +103,7 @@ register(GroupFactory)
 register(LabelFactory)
 register(AttachmentTestCaseFactory, _name='attachment_test_case')
 register(AttachmentTestResultFactory, _name='attachment_test_result')
+register(AttachmentTestSuiteFactory, _name='attachment_test_suite')
 register(AttachmentFactory)
 register(LabeledItemFactory)
 register(CommentTestFactory)
@@ -118,6 +122,14 @@ register(NotificationSettingFactory)
 register(NotificationFactory)
 
 UserModel = get_user_model()
+
+
+@pytest.fixture(scope='session', autouse=True)
+def cleanup_after_migrations(django_db_setup, django_db_blocker):
+    with django_db_blocker.unblock():
+        with connection.cursor() as cursor:
+            cursor.execute('TRUNCATE TABLE tests_representation_resultstatus CASCADE;')
+    yield
 
 
 @pytest.fixture
@@ -229,7 +241,7 @@ def create_file(extension, media_directory):
         png_bin = file.read()
     with open(media_path / 'media_for_tests' / 'test.jpeg', 'rb') as file:
         jpeg_bin = file.read()
-    with open('tests/media_for_tests/broken_image.jpg', 'rb') as file:
+    with open(media_path / 'media_for_tests' / 'broken_image.jpg', 'rb') as file:
         broken_image = file.read()
     extension_to_content_type = {
         '.txt': ('text/plain', b'Test content'),
@@ -250,7 +262,7 @@ def create_file(extension, media_directory):
 
 @pytest.fixture
 def media_directory(settings):
-    tmp_dir = 'tmp_test_media/'
+    tmp_dir = f'tmp_test_media_{secrets.token_hex(8)}/'
     settings.MEDIA_ROOT = tmp_dir
     yield tmp_dir
     if os.path.exists(tmp_dir):

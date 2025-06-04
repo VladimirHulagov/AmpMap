@@ -1,9 +1,10 @@
 import { PlusOutlined } from "@ant-design/icons"
-import { Button } from "antd"
 import { openRoleModal } from "entities/roles/model"
 import { useTranslation } from "react-i18next"
 
 import { useAppDispatch } from "app/hooks"
+
+import { Button } from "shared/ui"
 
 export const AddUserProjectAccess = () => {
   const { t } = useTranslation()
@@ -15,7 +16,7 @@ export const AddUserProjectAccess = () => {
   return (
     <Button
       id="add-user-to-project"
-      type="primary"
+      color="accent"
       icon={<PlusOutlined />}
       onClick={handleClick}
       style={{ marginBottom: 16, float: "right" }}

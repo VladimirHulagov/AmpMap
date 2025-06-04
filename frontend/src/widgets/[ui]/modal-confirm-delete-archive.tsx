@@ -1,8 +1,10 @@
 import { QueryStatus } from "@reduxjs/toolkit/dist/query"
-import { Button, Modal, Table, Typography } from "antd"
+import { Modal, Table, Typography } from "antd"
 import { ColumnsType } from "antd/lib/table"
 import { useMemo } from "react"
 import { useTranslation } from "react-i18next"
+
+import { Button } from "shared/ui"
 
 interface Props<T> {
   status: QueryStatus
@@ -62,22 +64,29 @@ export const ModalConfirmDeleteArchive = <T extends DataType>({
 
   return (
     <Modal
-      className={`${type}-${action}-modal`}
+      data-testid={`${type}-${action}-modal`}
+      bodyProps={{ "data-testid": `${type}-${action}-modal-body` }}
+      wrapProps={{ "data-testid": `${type}-${action}-modal-wrapper` }}
       open={isShow}
       title={`${action === "archive" ? t("Archive") : t("Delete")} ${typeTitle} '${name}'`}
       onCancel={handleClose}
       width="530px"
       footer={[
-        <Button id={`cancel-${type}-${action}`} key="back" onClick={handleClose}>
+        <Button
+          id={`cancel-${type}-${action}`}
+          key="back"
+          onClick={handleClose}
+          color="secondary-linear"
+        >
           {t("Cancel")}
         </Button>,
         <Button
           id={`update-${type}-edit`}
           key="submit"
-          type="primary"
           danger
           onClick={handleDelete}
           loading={isLoadingButton || isLoading}
+          color="secondary-linear"
         >
           {action === "archive" ? t("Archive") : t("Delete")}
         </Button>,
@@ -94,6 +103,7 @@ export const ModalConfirmDeleteArchive = <T extends DataType>({
         size="small"
         pagination={false}
         loading={status === "pending"}
+        data-testid={`${type}-${action}-modal-table`}
       />
     </Modal>
   )

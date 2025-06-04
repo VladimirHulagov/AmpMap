@@ -1,7 +1,9 @@
-import { Button, Space, Table, Typography } from "antd"
+import { Space, Table, Typography } from "antd"
 import { useTranslation } from "react-i18next"
 
 import { useTestPlanActivity, useTestPlanActivityFilters } from "entities/test-plan/model"
+
+import { Button } from "shared/ui"
 
 export const TestPlanActivityFilers = ({
   testPlanActivity,
@@ -30,7 +32,11 @@ export const TestPlanActivityFilers = ({
         </Typography.Paragraph>
 
         <Space style={{ display: "flex", justifyContent: "right" }}>
-          <Button id="clear-filters-and-sorters" onClick={testPlanActivity.clearFilters}>
+          <Button
+            id="clear-filters-and-sorters"
+            onClick={testPlanActivity.clearFilters}
+            color="secondary-linear"
+          >
             {t("Clear filters and sorters")}
           </Button>
         </Space>
@@ -43,6 +49,7 @@ export const TestPlanActivityFilers = ({
         loading={false}
         className="test-plan-activity-filters"
         onChange={handleChange}
+        data-testid="test-plan-activity-filters-table"
       />
     </div>
   )

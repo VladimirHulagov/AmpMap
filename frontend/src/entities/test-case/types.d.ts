@@ -1,18 +1,49 @@
 interface TestCaseState {
   drawerTestCase: TestCase | null
   editingTestCase: TestCase | null
+  test: Test | null
   settings: {
     table: TestCaseTableParams
     tree: TestCaseTreeParams
   }
 }
 
+type TestCaseStateSettings = TestCaseState["settings"][keyof TestState["settings"]]
+
+interface SetCaseSettings {
+  key: keyof TestCaseState["settings"]
+  settings: TestCaseStateSettings
+}
+
+interface UpdateTestCaseSettings extends SetCaseSettings {
+  settings: Partial<TestCaseStateSettings>
+}
+
+type ChangeLabelBulkOperationType = "add" | "update" | "delete"
+
+interface TestCaseBulkUpdate {
+  included_cases: number[]
+  excluded_cases: number[]
+  current_suite: number
+  project: number
+  filter_conditions?: Partial<TestCaseGetFilters>
+  labels?: LabelInForm[]
+  labels_action?: ChangeLabelBulkOperationType
+  suite?: number
+}
+
 interface TestCaseTableParams {
   page: number
   page_size: number
+  testSuiteId: number | null
   visibleColumns: ColumnParam[]
   columns: ColumnParam[]
   sorter?: SorterResult<string>
+  hasBulk: boolean
+  isAllSelectedTableBulk: boolean
+  selectedRows: number[]
+  excludedRows: number[]
+  count: number
   _n?: number
 }
 
@@ -37,7 +68,7 @@ interface TestCase {
   teardown: string
   estimate?: string | null
   description: string
-  current_version: string
+  current_version: number
   versions: number[]
   attachments: IAttachment[]
   url: string
@@ -68,34 +99,28 @@ interface TestCaseCreate {
 interface TestCaseUpdate extends TestCase {
   suite: number
   attachments?: number[]
-  steps: StepUpload[] | StepAttachNumber[]
+  steps: NewStepAttachNumber[]
   skip_history?: boolean
 }
 
 interface Step {
-  id: string
+  id: number
   name: string
   scenario: string
   sort_order: number
   attachments: IAttachment[]
   expected?: string
+  isNew?: boolean
 }
 
-interface StepAttachNumber {
-  id: string
-  name: string
-  scenario: string
-  scenario: string
-  expected: string
-  sort_order: number
+type NewStep = Omit<Step, "id">
+
+type StepAttachNumber = Omit<Step, "attachments"> & {
   attachments: number[]
 }
 
-interface StepUpload {
-  name: string
-  scenario: string
-  sort_order: number
-  attachments?: number[]
+type NewStepAttachNumber = Omit<NewStep, "attachments"> & {
+  attachments: number[]
 }
 
 interface GetTestCasesQuery {
@@ -160,4 +185,17 @@ interface TestCaseTestsList {
 interface GetTestCaseByIdParams {
   testCaseId: string
   version?: string
+}
+
+interface TestCaseGetFilters {
+  search?: string
+  suites?: number[]
+  labels?: number[]
+  labels_condition?: string
+  test_suite_created_before?: string
+  test_suite_created_after?: string
+  test_case_created_before?: string
+  test_case_created_after?: string
+  is_archive?: boolean
+  _n?: string | number
 }

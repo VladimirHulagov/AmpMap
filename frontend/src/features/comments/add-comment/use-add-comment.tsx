@@ -1,14 +1,13 @@
-import { notification } from "antd"
 import { useAddCommentMutation } from "entities/comments/api"
-import { useContext, useState } from "react"
+import { useState } from "react"
 import { useForm } from "react-hook-form"
-import { useTranslation } from "react-i18next"
 
 import { useAttachments } from "entities/attachment/model"
 
-import { ProjectContext } from "pages/project"
+import { useProjectContext } from "pages/project"
 
 import { useErrors } from "shared/hooks"
+import { antdNotification } from "shared/libs/antd-modals"
 
 interface Props {
   model: Models
@@ -17,8 +16,7 @@ interface Props {
 }
 
 export const useAddComment = ({ setIsShowAdd, model, object_id }: Props) => {
-  const { t } = useTranslation()
-  const { project } = useContext(ProjectContext)!
+  const project = useProjectContext()
   const [comment, setComment] = useState("")
   const [errors, setErrors] = useState<{ errors: string[] } | null>(null)
   const { onHandleError } = useErrors<{ errors: string[] }>(setErrors)
@@ -36,9 +34,8 @@ export const useAddComment = ({ setIsShowAdd, model, object_id }: Props) => {
     const attachmentsIds = attachments.map((attach) => String(attach.id))
     try {
       await addComment({ model, object_id, content: comment, attachments: attachmentsIds }).unwrap()
-      notification.success({
-        message: t("Success"),
-        closable: true,
+      antdNotification.success("add-comment", {
+        description: "Success",
       })
       setComment("")
       setIsShowAdd(false)

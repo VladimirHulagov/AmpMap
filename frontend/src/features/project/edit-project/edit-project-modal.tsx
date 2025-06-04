@@ -1,18 +1,17 @@
-import { Button, Form, Input, Modal, Switch, Upload, notification } from "antd"
+import { Form, Input, Modal, Switch, Upload } from "antd"
 import { RcFile, UploadChangeParam, UploadFile } from "antd/lib/upload"
-import { MeContext } from "processes"
-import { useContext, useEffect, useState } from "react"
+import { useMeContext } from "processes"
+import { useEffect, useState } from "react"
 import { Controller, SubmitHandler, useForm } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 
 import { useUpdateProjectMutation } from "entities/project/api"
 import { ProjectIcon } from "entities/project/ui"
 
-import { ErrorObj, useErrors, useShowModalCloseConfirm } from "shared/hooks"
+import { ErrorObj, useErrors } from "shared/hooks"
 import { fileReader } from "shared/libs"
-import { AlertError, AlertSuccessChange } from "shared/ui"
-
-const { TextArea } = Input
+import { antdModalCloseConfirm, antdNotification } from "shared/libs/antd-modals"
+import { AlertError, AlertSuccessChange, Button, TextArea } from "shared/ui"
 
 interface ErrorData {
   name?: string
@@ -27,10 +26,11 @@ interface Props {
   setIsShow: (isShow: boolean) => void
 }
 
+const TEST_ID = "edit-project"
+
 export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
   const { t } = useTranslation()
-  const { me } = useContext(MeContext)
-  const { showModal } = useShowModalCloseConfirm()
+  const { me } = useMeContext()
   const [errors, setErrors] = useState<ErrorData | null>(null)
   const {
     handleSubmit,
@@ -79,15 +79,14 @@ export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
       const newProject = await updateProject({ id: project.id, body: fmData }).unwrap()
 
       onCloseModal()
-      notification.success({
-        message: t("Success"),
-        closable: true,
+      antdNotification.success("edit-project", {
         description: (
           <AlertSuccessChange
             action="updated"
             title={t("Project")}
-            link={`/administration/projects/${newProject.id}/overview/`}
+            link={`/projects/${newProject.id}/overview/`}
             id={String(newProject.id)}
+            data-testid="edit-project-success-notification-description"
           />
         ),
       })
@@ -107,7 +106,7 @@ export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
     if (isLoading) return
 
     if (isDirty) {
-      showModal(onCloseModal)
+      antdModalCloseConfirm(onCloseModal)
       return
     }
 
@@ -127,9 +126,8 @@ export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
   const beforeUpload = (file: RcFile) => {
     const isCorrectType = file.type === "image/png" || file.type === "image/jpeg"
     if (!isCorrectType) {
-      notification.error({
-        message: "Error!",
-        description: `${file.name} is not a png or jpg file`,
+      antdNotification.error("edit-project", {
+        description: `${file.name} ${t("is not a png or jpg file")}`,
       })
     }
 
@@ -143,14 +141,24 @@ export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
 
   return (
     <Modal
-      className="edit-project-modal"
-      title={`${t("Edit Project")} '${project.name}'`}
+      bodyProps={{ "data-testid": `${TEST_ID}-modal-body` }}
+      wrapProps={{ "data-testid": `${TEST_ID}-modal-wrapper` }}
+      title={
+        <span
+          data-testid={`${TEST_ID}-modal-title`}
+        >{`${t("Edit Project")} '${project.name}'`}</span>
+      }
       open={isShow}
       onCancel={handleCancel}
       width="600px"
       centered
       footer={[
-        <Button id="close-update-project" key="back" onClick={handleCancel}>
+        <Button
+          id="close-update-project"
+          key="back"
+          onClick={handleCancel}
+          color="secondary-linear"
+        >
           {t("Close")}
         </Button>,
         <Button
@@ -158,7 +166,7 @@ export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
           loading={isLoading}
           key="submit"
           onClick={handleSubmit(onSubmit)}
-          type="primary"
+          color="accent"
           disabled={!isDirty}
         >
           {t("Update")}
@@ -193,14 +201,17 @@ export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
                       beforeUpload={beforeUpload}
                       data-testid="edit-project-upload-icon-input"
                     >
-                      <Button size="middle" data-testid="edit-project-upload-icon-button">
+                      <Button
+                        color="secondary-linear"
+                        data-testid="edit-project-upload-icon-button"
+                      >
                         {t("Upload icon")}
                       </Button>
                     </Upload>
                     {localIcon && (
                       <Button
-                        size="middle"
                         danger
+                        color="secondary-linear"
                         onClick={handleDeleteIconClick}
                         data-testid="edit-project-delete-icon-button"
                       >
@@ -232,7 +243,7 @@ export const EditProjectModal = ({ isShow, setIsShow, project }: Props) => {
               name="description"
               control={control}
               render={({ field }) => (
-                <TextArea rows={4} {...field} data-testid="edit-project-description" />
+                <TextArea rows={4} data-testid="edit-project-description" {...field} />
               )}
             />
           </Form.Item>

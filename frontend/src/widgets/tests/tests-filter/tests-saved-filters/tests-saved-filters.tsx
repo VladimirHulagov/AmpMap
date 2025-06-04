@@ -1,6 +1,6 @@
 import { Flex } from "antd"
-import { MeContext } from "processes"
-import { useContext, useMemo } from "react"
+import { useMeContext } from "processes"
+import { useMemo } from "react"
 
 import { useAppDispatch, useAppSelector } from "app/hooks"
 
@@ -13,13 +13,17 @@ import {
 
 import { SavedFilters } from "features/filter"
 
-import { ProjectContext } from "pages/project"
+import { useProjectContext } from "pages/project"
 
 import { queryParamsBySchema } from "shared/libs/query-params"
 
-export const TestsSavedFilters = () => {
-  const { project } = useContext(ProjectContext)!
-  const { userConfig } = useContext(MeContext)
+interface Props {
+  resetSelectedRows: () => void
+}
+
+export const TestsSavedFilters = ({ resetSelectedRows }: Props) => {
+  const project = useProjectContext()
+  const { userConfig } = useMeContext()
   const dispatch = useAppDispatch()
   const testsSelectedFilter = useAppSelector(selectFilterSettings)
 
@@ -29,6 +33,7 @@ export const TestsSavedFilters = () => {
     const valueFilter = configFilters?.[value]
 
     const filterParse = queryParamsBySchema(testFilterSchema, { url: valueFilter })
+    resetSelectedRows()
     dispatch(updateFilterSettings({ selected: value }))
     dispatch(updateFilter(filterParse as Record<string, unknown>))
   }

@@ -59,6 +59,7 @@ class TestSuite(LtreeBaseModel):
     description = models.TextField('description', default='', blank=True)
     comments = GenericRelation(Comment)
     attributes = models.JSONField(default=dict, blank=True)
+    attachments = GenericRelation(Attachment)
     objects: LtreeManager
 
     class Meta:
@@ -67,6 +68,7 @@ class TestSuite(LtreeBaseModel):
             'suites_count',
             pgtrigger.Q(new__is_deleted=True, old__is_deleted=False),
             pgtrigger.Q(new__is_deleted=False, old__is_deleted=True),
+            pgtrigger.Q(old__is_deleted=False),
         )
         indexes = get_indexes('suite')
 

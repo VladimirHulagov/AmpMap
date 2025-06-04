@@ -1,17 +1,15 @@
-import { Tooltip, notification } from "antd"
-import { MeContext } from "processes"
-import { useContext } from "react"
+import { Tooltip } from "antd"
+import { useMeContext } from "processes"
 import { useTranslation } from "react-i18next"
 
-import { icons } from "shared/assets/inner-icons"
-
-import styles from "./styles.module.css"
-
-const { BookmarkIcon, BookmarkFillIcon } = icons
+import BookmarkIcon from "shared/assets/yi-icons/bookmark.svg?react"
+import BookmarkFillIcon from "shared/assets/yi-icons/bookmark_fill.svg?react"
+import { antdNotification } from "shared/libs/antd-modals"
+import { Button } from "shared/ui"
 
 export const FolowProject = ({ project }: { project: Project }) => {
   const { t } = useTranslation()
-  const { userConfig, updateConfig } = useContext(MeContext)
+  const { userConfig, updateConfig } = useMeContext()
 
   const handleFavoriteClick = async (e: React.MouseEvent) => {
     e.preventDefault()
@@ -35,16 +33,11 @@ export const FolowProject = ({ project }: { project: Project }) => {
 
     try {
       await updateConfig(newConfig)
-
-      notification.success({
-        message: t("Success"),
-        closable: true,
+      antdNotification.success("follow-project", {
         description: `${project.name} ${isNew ? t("has been added to favorites") : t("has been removed to favorites")}`,
       })
     } catch (error) {
-      notification.error({
-        message: t("Error!"),
-        closable: true,
+      antdNotification.error("follow-project", {
         description: t("Error when try to change follow project"),
       })
       console.error(error)
@@ -55,14 +48,16 @@ export const FolowProject = ({ project }: { project: Project }) => {
 
   return (
     <Tooltip title={t("Add to favorites")}>
-      <div
+      <Button
         id={`${project.name}-project-favorite-btn`}
-        data-test-active={isFavoriteActive}
-        className={styles.icon}
+        style={{ color: "var(--y-grey-30)" }}
+        icon={!isFavoriteActive ? <BookmarkIcon /> : <BookmarkFillIcon />}
+        type="button"
+        color="ghost"
+        shape="square"
         onClick={handleFavoriteClick}
-      >
-        {!isFavoriteActive ? <BookmarkIcon /> : <BookmarkFillIcon />}
-      </div>
+        data-test-active={isFavoriteActive}
+      />
     </Tooltip>
   )
 }

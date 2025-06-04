@@ -2,6 +2,7 @@ interface TestStateFilters {
   filter: TestDataFilters
   settings: FilterSettings
   ordering: string
+  shouldResetForm: boolean
 }
 
 interface TestDataFilters {
@@ -24,6 +25,7 @@ interface TestDataFilters {
 }
 
 interface FilterSettings {
+  filterProjectId: number | null
   selected: string | null
   editing: boolean
   editingValue: string

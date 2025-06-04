@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react"
-import { useSearchParams } from "react-router-dom"
+import { useLocation, useSearchParams } from "react-router-dom"
 
 import { useAppDispatch, useAppSelector } from "app/hooks"
 
+import { useGetRelatedEntitiesQuery } from "entities/test/api"
 import { useGetTestQuery } from "entities/test/api"
 
 import { useGetTestCaseByIdQuery } from "entities/test-case/api"
@@ -13,20 +14,48 @@ import {
   showArchivedResults,
 } from "entities/test-plan/model"
 
-import { selectDrawerTest, setDrawerTest } from "./slice"
+import { useCacheState } from "shared/hooks"
+import { antdModalCloseConfirm } from "shared/libs/antd-modals"
 
-type TabTypes = "results" | "comments"
+import { selectDrawerData, selectDrawerTest, setDrawerTest, setDrawerView } from "./slice"
+
+type TabTypes = "result" | "comment" | "all"
 
 export const useTestDetail = () => {
   const dispatch = useAppDispatch()
-  const [tab, setTab] = useState<TabTypes>("results")
-  const [commentOrdering, setCommentOrdering] = useState<"asc" | "desc">("desc")
+  const [tab, setTab] = useCacheState<TabTypes>("test-detail-tab", "all")
+  const [ordering, setOrdering] = useCacheState<Ordering>("test-detail-entities-ordering", "desc")
   const tests = useAppSelector(selectTests)
+  const drawerData = useAppSelector(selectDrawerData)
   const drawerTest = useAppSelector(selectDrawerTest)
+  const showArchive = useAppSelector(selectArchivedResultsIsShow)
+  const [selectedResult, setSelectedResult] = useState<Result>()
+  const [isDirty, setIsDirty] = useState(false)
 
   const [testCaseData, setTestCaseData] = useState<TestCase | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
   const testId = searchParams.get("test")
+
+  const location = useLocation()
+
+  const {
+    data,
+    isSuccess: isSuccessList,
+    isFetching: isFetchingList,
+  } = useGetRelatedEntitiesQuery(
+    {
+      test_id: Number(drawerTest?.id),
+      ordering: ordering === "asc" ? "created_at" : "-created_at",
+    },
+    { skip: !drawerTest?.id }
+  )
+
+  useEffect(() => {
+    if (location.hash && isSuccessList) {
+      const element = document.getElementById(location.hash.substring(1))
+      element?.scrollIntoView({ behavior: "smooth" })
+    }
+  }, [location, isSuccessList])
 
   const { data: testCase, isFetching: isFetchingTestCase } = useGetTestCaseByIdQuery(
     { testCaseId: String(drawerTest?.case) },
@@ -39,24 +68,50 @@ export const useTestDetail = () => {
     skip: !testId || !!drawerTest,
   })
 
-  const showArchive = useAppSelector(selectArchivedResultsIsShow)
-
   const handleShowArchived = () => {
     dispatch(showArchivedResults())
   }
 
-  const handleCloseDetails = () => {
+  const closeDetails = () => {
     searchParams.delete("test")
     setSearchParams(searchParams)
     dispatch(setDrawerTest(null))
+    dispatch(setDrawerView({ view: "test", shouldClose: false }))
+  }
+
+  const handleCloseDetails = () => {
+    if (isDirty) {
+      antdModalCloseConfirm(closeDetails)
+      return
+    }
+
+    closeDetails()
   }
 
   const handleTabChange = (activeKey: string) => {
     setTab(activeKey as TabTypes)
   }
 
-  const handleCommentOrderingClick = () => {
-    setCommentOrdering(commentOrdering === "asc" ? "desc" : "asc")
+  const handleOrderingClick = () => {
+    setOrdering(ordering === "asc" ? "desc" : "asc")
+  }
+
+  const handleEditCloneClick = (result: Result, isClone: boolean) => {
+    setSelectedResult(result)
+    dispatch(setDrawerView({ view: isClone ? "cloneResult" : "editResult" }))
+  }
+
+  const handleAddResultClick = () => {
+    dispatch(setDrawerView({ view: "addResult" }))
+  }
+
+  const handleCancelAction = () => {
+    if (drawerData.shouldClose) {
+      closeDetails()
+      return
+    }
+
+    dispatch(setDrawerView({ view: "test" }))
   }
 
   useEffect(() => {
@@ -87,16 +142,28 @@ export const useTestDetail = () => {
     }
   }, [])
 
+  const results = data?.results.filter(({ type }) => type === "result") ?? []
+
   return {
     drawerTest,
     testCase: testCaseData,
     isFetching: isFetchingTestCase || isFetchingTest,
     showArchive,
-    commentOrdering,
+    ordering,
     tab,
+    results: results as Result[],
+    all: data?.results ?? [],
+    count: data?.count ?? 0,
+    isFetchingList,
+    drawerView: drawerData.view,
     handleShowArchived,
     handleCloseDetails,
     handleTabChange,
-    handleCommentOrderingClick,
+    handleOrderingClick,
+    handleCancelAction,
+    handleAddResultClick,
+    handleEditCloneClick,
+    selectedResult,
+    setIsDirty,
   }
 }

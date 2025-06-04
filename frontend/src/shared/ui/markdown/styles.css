@@ -13,12 +13,10 @@
   width: 100%;
   min-width: 0;
   padding: 4px 11px;
-  color: rgba(44, 44, 44, 0.85);
-  background-color: #fff;
+  color: var(--y-color-text-primary);
+  background-color: var(--y-color-background);
   background-image: none;
-  border: 1px solid var(--y-sky-30);
-  border-radius: 4px;
-  border-bottom-left-radius: 0;
+  border: 1px solid var(--y-color-border);
   user-select: none;
 }
 
@@ -56,8 +54,8 @@
 
 .markdown tr,
 .mdViewer tr {
-  border-top: 1px solid #f0f0f0;
-  background: #fff;
+  border-top: 1px solid var(--y-color-border);
+  background: var(--y-color-background);
 }
 
 .markdown th,
@@ -65,25 +63,36 @@
 .markdown td,
 .mdViewer td {
   padding: 6px 13px;
-  border: 1px solid #f0f0f0;
+  border: 1px solid var(--y-color-border);
 }
 
 .markdown table tr:nth-child(2n),
 .mdViewer table tr:nth-child(2n) {
-  background: var(--y-grey-10);
+  background: var(--y-color-background-alternative);
 }
 
 .markdown blockquote,
 .mdViewer blockquote {
-  color: #666;
+  color: var(--y-color-text-secondary);
   margin: 0;
   padding-left: 14px;
-  border-left: 0.5em var(--y-grey-20) solid;
-  background-color: rgba(240, 240, 240, 0.4);
+  border-left: 0.5em var(--y-color-border) solid;
+  background-color: var(--y-color-datatable-header-background);
   padding-top: 14px;
   padding-bottom: 14px;
 }
 
 .markdown blockquote p {
   margin-bottom: 0;
+}
+
+.content img,
+.mdViewer img {
+  width: 100%;
+}
+
+.markdown .contains-task-list,
+.mdViewer .contains-task-list {
+  list-style: none;
+  padding-left: 0;
 }

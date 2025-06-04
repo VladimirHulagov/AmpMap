@@ -46,30 +46,32 @@ class TestCommentEndpoints:
     view_name_detail = 'api:v2:comment-detail'
 
     @pytest.mark.parametrize(
-        'factory_name, content_type', [
-            ('comment_test_factory', 'test'),
-            ('comment_test_case_factory', 'testcase'),
-            ('comment_test_result_factory', 'testresult'),
-            ('comment_test_suite_factory', 'testsuite'),
-            ('comment_test_plan_factory', 'testplan'),
+        'factory_name, wrong_factory_name, content_type', [
+            ('comment_test_factory', 'comment_test_case_factory', 'test'),
+            ('comment_test_case_factory', 'comment_test_factory', 'testcase'),
+            ('comment_test_result_factory', 'comment_test_factory', 'testresult'),
+            ('comment_test_suite_factory', 'comment_test_factory', 'testsuite'),
+            ('comment_test_plan_factory', 'comment_test_factory', 'testplan'),
         ],
     )
-    def test_list(self, api_client, authorized_superuser, factory_name, content_type, request):
+    def test_list(self, api_client, authorized_superuser, factory_name, content_type, request, wrong_factory_name):
         factory = request.getfixturevalue(factory_name)
+        wrong_factory = request.getfixturevalue(wrong_factory_name)
         instances = [factory() for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE)]
-        object_id = instances[0].object_id
-        expected_instances = model_to_dict_via_serializer(instances, CommentSerializer, many=True)
+        [wrong_factory() for _ in range(constants.NUMBER_OF_OBJECTS_TO_CREATE)]  # noqa: WPS428
+        comment = instances[0]
+        expected_comment = model_to_dict_via_serializer(comment, CommentSerializer)
 
-        content = api_client.send_request(
+        actual_instances = api_client.send_request(
             self.view_name_list,
             query_params={
                 'model': content_type,
-                'object_id': object_id,
+                'object_id': comment.object_id,
             },
-        ).json()
-
-        for instance in content['results']:
-            assert instance in expected_instances
+        ).json()['results']
+        assert len(actual_instances) == 1
+        actual_comment = actual_instances[0]
+        assert actual_comment == expected_comment
 
     @pytest.mark.parametrize(
         'factory_name', [

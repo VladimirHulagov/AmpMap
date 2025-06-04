@@ -1,6 +1,8 @@
-import { Button, Flex } from "antd"
+import { Flex } from "antd"
 import classNames from "classnames"
 import { useTranslation } from "react-i18next"
+
+import { Button } from "shared/ui"
 
 import styles from "./styles.module.css"
 
@@ -16,10 +18,9 @@ export const LabelFilterCondition = ({ value, onChange, disabled = false }: Prop
   return (
     <Flex>
       <Button
-        htmlType="button"
-        className={classNames(styles.btn, {
-          [styles.btnInActive]: value !== "and",
-        })}
+        type="button"
+        color={value != "and" ? "ghost" : "secondary-linear"}
+        className={classNames(styles.btn)}
         onClick={() => onChange("and")}
         disabled={disabled}
         data-testid="label-filter-condition-and"
@@ -27,10 +28,9 @@ export const LabelFilterCondition = ({ value, onChange, disabled = false }: Prop
         {t("and").toUpperCase()}
       </Button>
       <Button
-        htmlType="button"
-        className={classNames(styles.btn, {
-          [styles.btnInActive]: value !== "or",
-        })}
+        type="button"
+        color={value != "or" ? "ghost" : "secondary-linear"}
+        className={classNames(styles.btn)}
         onClick={() => onChange("or")}
         disabled={disabled}
         data-testid="label-filter-condition-or"

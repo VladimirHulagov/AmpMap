@@ -30,7 +30,7 @@
 }
 
 .item:hover {
-  background-color: var(--y-sky-0);
+  background-color: var(--y-color-background-alternative);
 }
 
 .itemEditing {
@@ -41,7 +41,7 @@
 }
 
 .active {
-  background-color: var(--y-sky-0);
+  background-color: var(--y-color-background-alternative);
 }
 
 .btns {
@@ -62,11 +62,11 @@
   height: 24px;
   width: 24px;
   border-radius: 100%;
-  color: var(--y-sky-80);
+  color: var(--y-color-text-primary);
 }
 
 .btn:hover {
-  background-color: var(--y-sky-20);
+  background-color: var(--y-grey-20);
 }
 
 .deleteBtn {
@@ -89,7 +89,7 @@
 }
 
 .unsaved {
-  color: var(--y-interactive-default);
+  color: var(--y-color-accent);
   font-size: 14px;
   position: absolute;
 }

@@ -1,4 +1,3 @@
-import { notification } from "antd"
 import { useTranslation } from "react-i18next"
 import { useSearchParams } from "react-router-dom"
 
@@ -11,6 +10,7 @@ import {
 import { clearDrawerTestCase } from "entities/test-case/model"
 
 import { initInternalError } from "shared/libs"
+import { antdNotification } from "shared/libs/antd-modals"
 import { AlertSuccessChange } from "shared/ui"
 
 import { ModalConfirmDeleteArchive } from "widgets/[ui]"
@@ -38,11 +38,14 @@ export const ArchiveTestCaseModal = ({ isShow, setIsShow, testCase, onSubmit }: 
   const handleArchive = async () => {
     try {
       await archiveTestCase(testCase.id).unwrap()
-      notification.success({
-        message: t("Success"),
-        closable: true,
+      antdNotification.success("archive-test-case", {
         description: (
-          <AlertSuccessChange id={String(testCase.id)} action="archived" title={t("Test Case")} />
+          <AlertSuccessChange
+            id={String(testCase.id)}
+            action="archived"
+            title={t("Test Case")}
+            data-testid="archive-test-case-success-notification-description"
+          />
         ),
       })
       searchParams.delete("test_case")

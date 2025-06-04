@@ -8,6 +8,30 @@
     <meta name="description" content="TestY TMS" />
     <link rel="manifest" href="/manifest.json" />
     <title>TestY TMS</title>
+    <style>
+      html[data-theme="light"] {
+        --y-color-background: #fff;
+      }
+
+      html[data-theme="dark"] {
+        --y-color-background: #262626;
+      }
+
+      body {
+        background-color: var(--y-color-background);
+      }
+    </style>
+    <script>
+      ;(() => {
+        const theme = localStorage.getItem("theme") ?? "light"
+        const isDarkSystem = window.matchMedia("(prefers-color-scheme: dark)").matches
+        if (theme === "system") {
+          document.documentElement.setAttribute("data-theme", isDarkSystem ? "dark" : "light")
+        } else {
+          document.documentElement.setAttribute("data-theme", theme)
+        }
+      })()
+    </script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>

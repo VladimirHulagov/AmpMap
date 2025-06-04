@@ -1,18 +1,14 @@
-import { Fragment, memo, useContext, useMemo } from "react"
-import { useNavigate } from "react-router-dom"
+import cn from "classnames"
+import { Fragment, memo, useMemo } from "react"
 import { Link } from "react-router-dom"
 
 import { useGetBreadcrumbsQuery as useGetSuitesBreadcrumbsQuery } from "entities/suite/api"
 
 import { useGetBreadcrumbsQuery as useGetPlansBreadcrumbsQuery } from "entities/test-plan/api"
 
-import { ProjectContext } from "pages/project/project-layout"
-
-import { icons } from "shared/assets/inner-icons"
+import { useProjectContext } from "pages/project/project-provider"
 
 import styles from "./styles.module.css"
-
-const { ArrowIcon } = icons
 
 const formatToArray = (
   breadcrumbs: EntityBreadcrumbs,
@@ -28,11 +24,11 @@ const formatToArray = (
 interface Props {
   activeTab: "suites" | "plans"
   entityId?: number | string
+  rootId: string | null
 }
 
-export const TreebarBreadcrumbs = memo(({ activeTab, entityId }: Props) => {
-  const { project } = useContext(ProjectContext)!
-  const navigate = useNavigate()
+export const TreebarBreadcrumbs = memo(({ activeTab, entityId, rootId }: Props) => {
+  const project = useProjectContext()
 
   const { data: dataSuites } = useGetSuitesBreadcrumbsQuery(Number(entityId), {
     skip: activeTab !== "suites" || !entityId,
@@ -50,28 +46,8 @@ export const TreebarBreadcrumbs = memo(({ activeTab, entityId }: Props) => {
     return data ? formatToArray(data, []).reverse() : []
   }, [data, entityId])
 
-  const activeBreadcrumb = breadcrumbs.find((i) => String(i.id) === entityId)
-
   return (
     <div className={styles.breadcrumbsBlock} data-testid="treebar-breadcrumbs-block">
-      <div className={styles.breadcrumbsIcons}>
-        {!!breadcrumbs.length && (
-          <ArrowIcon
-            className={styles.breadCrumbsArrowIcon}
-            onClick={(e) => {
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-              e.stopPropagation()
-
-              const link = activeBreadcrumb?.parent
-                ? `${activeBreadcrumb?.parent?.id}?rootId=${activeBreadcrumb?.parent?.id}`
-                : ""
-
-              navigate(`/projects/${project.id}/${activeTab}/${link}`)
-            }}
-            data-testid="treebar-breadcrumbs-back"
-          />
-        )}
-      </div>
       <Link
         to={`/projects/${project.id}/${activeTab}/`}
         className={styles.breadcrumbsTitle}
@@ -79,17 +55,25 @@ export const TreebarBreadcrumbs = memo(({ activeTab, entityId }: Props) => {
       >
         HOME
       </Link>
-      {breadcrumbs.map((breadcrumb) => (
+      {breadcrumbs.map((breadcrumb, index) => (
         <Fragment key={breadcrumb.id}>
           <span className={styles.breadcrumbsDiv}>/</span>
-          <Link
-            to={`/projects/${project.id}/${activeTab}/${breadcrumb.id}?rootId=${breadcrumb.id}`}
-            key={breadcrumb.id}
-            className={styles.breadcrumbsTitle}
-            data-testid={`treebar-breadcrumbs-title-${breadcrumb.title}`}
-          >
-            {breadcrumb.title}
-          </Link>
+          {index === breadcrumbs.length - 1 ? (
+            <span
+              className={cn(styles.breadcrumbsSimpleText, styles.breadcrumbsTitle)}
+              data-testid={`treebar-breadcrumbs-title-${breadcrumb.title}`}
+            >
+              {breadcrumb.title}
+            </span>
+          ) : (
+            <Link
+              to={`/projects/${project.id}/${activeTab}/${breadcrumb.id}${rootId ? `?rootId=${breadcrumb.id}` : ""}`}
+              className={cn(styles.breadcrumbsLink, styles.breadcrumbsTitle)}
+              data-testid={`treebar-breadcrumbs-title-${breadcrumb.title}`}
+            >
+              {breadcrumb.title}
+            </Link>
+          )}
         </Fragment>
       ))}
     </div>

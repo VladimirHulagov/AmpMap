@@ -1,3 +1,3 @@
 export { CommentList } from "./comment-list"
-export { CommentMessage } from "./comment-message/comment-message"
+export { Comment } from "./comment"
 export { Comments } from "./comments/comments"

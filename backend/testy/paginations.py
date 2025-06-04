@@ -28,6 +28,7 @@
 # if any, to sign a "copyright disclaimer" for the program, if necessary.
 # For more information on this, and how to apply and follow the GNU AGPL, see
 # <http://www.gnu.org/licenses/>.
+from rest_framework.exceptions import NotFound
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.utils.urls import replace_query_param
@@ -37,6 +38,10 @@ class StandardSetPagination(PageNumberPagination):
     page_size = 100
     page_size_query_param = 'page_size'
     max_page_size = 1000
+
+    @property
+    def count(self):
+        return self.object_list.values('id').count()
 
     def get_paginated_response(self, data):
         return Response({
@@ -60,3 +65,10 @@ class StandardSetPagination(PageNumberPagination):
         url = self.request.build_absolute_uri()
         page_number = self.page.previous_page_number()
         return replace_query_param(url, self.page_query_param, page_number)
+
+    def get_page_size(self, request):
+        if self.page_size_query_param:
+            page_size_str = request.query_params.get(self.page_size_query_param)
+            if page_size_str and not page_size_str.isdigit():
+                raise NotFound('Invalid page size')
+        return super().get_page_size(request)

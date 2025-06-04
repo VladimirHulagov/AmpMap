@@ -1,6 +1,5 @@
 export * from "./filter-slice"
 export * from "./slice"
-export * from "./use-test-case-steps-block"
 export * from "./use-test-case-steps-modal"
 export * from "./use-test-cases-search"
 export * from "./use-attributes-test-case"

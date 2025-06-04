@@ -24,6 +24,7 @@ interface Props<T extends FieldValues> {
     "valueAsNumber" | "valueAsDate" | "setValueAs" | "disabled"
   >
   maxLength?: number
+  rows?: number
 }
 
 export const TextAreaFormItem = <T extends FieldValues>({
@@ -36,6 +37,7 @@ export const TextAreaFormItem = <T extends FieldValues>({
   rules,
   required = false,
   maxLength,
+  rows,
 }: Props<T>) => {
   const { t } = useTranslation()
   const errors = (
@@ -59,7 +61,19 @@ export const TextAreaFormItem = <T extends FieldValues>({
             : undefined,
           ...rules,
         }}
-        render={({ field }) => <Input.TextArea id={id} rows={4} {...field} />}
+        render={({ field }) => (
+          <Input.TextArea
+            id={id}
+            rows={rows ?? 4}
+            {...field}
+            onKeyDown={(e) => {
+              const arrowKeys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"]
+              if (arrowKeys.includes(e.key)) {
+                e.stopPropagation()
+              }
+            }}
+          />
+        )}
       />
     </Form.Item>
   )

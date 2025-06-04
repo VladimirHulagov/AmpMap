@@ -25,6 +25,7 @@ export const ProjectTestsProgressBlock = () => {
         }}
         id="projects-overview-table"
         loading={isLoading}
+        data-testid="projects-overview-table"
       />
     </div>
   )

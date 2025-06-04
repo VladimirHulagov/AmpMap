@@ -1,8 +1,7 @@
 import { EditOutlined } from "@ant-design/icons"
 import { PageHeader } from "@ant-design/pro-layout"
-import { Button, Card, Col, Divider, Layout, Row } from "antd"
-import { MeContext } from "processes"
-import { useContext } from "react"
+import { Card, Col, Divider, Layout, Row } from "antd"
+import { useMeContext } from "processes"
 import { useTranslation } from "react-i18next"
 import { useDispatch } from "react-redux"
 import { ProfileAvatar } from "widgets"
@@ -11,7 +10,7 @@ import { showEditProfileModal } from "entities/user/model"
 
 import { ChangePassword } from "features/user/change-password/change-password"
 
-import { Field } from "shared/ui"
+import { Button, Field } from "shared/ui"
 
 import { EditProfileModal } from "widgets/user"
 
@@ -34,7 +33,7 @@ export const ProfileFields = ({ profile }: { profile: User }) => {
 export const ProfilePage = () => {
   const { t } = useTranslation()
   const dispatch = useDispatch()
-  const { me } = useContext(MeContext)
+  const { me } = useMeContext()
 
   const handleClickEdit = () => {
     dispatch(showEditProfileModal())
@@ -57,7 +56,12 @@ export const ProfilePage = () => {
                   <p style={{ margin: 0, fontSize: 18 }}>{t("General Details")}</p>
                 </Col>
                 <Col flex={"none"}>
-                  <Button id="edit-profile" onClick={handleClickEdit} icon={<EditOutlined />}>
+                  <Button
+                    id="edit-profile"
+                    onClick={handleClickEdit}
+                    icon={<EditOutlined />}
+                    color="secondary-linear"
+                  >
                     {t("Edit")}
                   </Button>
                   {me && <ChangePassword />}

@@ -1,10 +1,10 @@
-import { notification } from "antd"
-import { MeContext } from "processes"
-import { useContext, useState } from "react"
+import { useMeContext } from "processes"
+import { useState } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 
 import { useErrors } from "shared/hooks"
+import { antdNotification } from "shared/libs/antd-modals"
 
 interface Props {
   onSubmit: (id: string) => Promise<void>
@@ -16,11 +16,11 @@ export interface UpdateData {
 
 export const useAssignToCommon = ({ onSubmit }: Props) => {
   const { t } = useTranslation()
-  const { me } = useContext(MeContext)
+  const { me } = useMeContext()
 
   const [selectedUser, setSelectedUser] = useState<SelectData | null>(null)
 
-  const [isOpenModal, setIsOpenModal] = useState(false)
+  const [isOpen, setIsOpen] = useState(false)
   const {
     handleSubmit,
     reset,
@@ -31,12 +31,12 @@ export const useAssignToCommon = ({ onSubmit }: Props) => {
   const { onHandleError } = useErrors<Partial<UpdateData>>(setErrors)
 
   const handleClose = () => {
-    setIsOpenModal(false)
+    setIsOpen(false)
     reset()
   }
 
   const handleOpenAssignModal = () => {
-    setIsOpenModal(true)
+    setIsOpen(true)
   }
 
   const performRequest = async (id: string) => {
@@ -45,9 +45,7 @@ export const useAssignToCommon = ({ onSubmit }: Props) => {
       await onSubmit(id)
       handleClose()
 
-      notification.success({
-        message: t("Success"),
-        closable: true,
+      antdNotification.success("assign-to-common", {
         description: t("User assigned successfully"),
       })
     } catch (err) {
@@ -77,7 +75,7 @@ export const useAssignToCommon = ({ onSubmit }: Props) => {
   }
 
   return {
-    isOpenModal,
+    isOpen,
     errors,
     isDirty,
     me,

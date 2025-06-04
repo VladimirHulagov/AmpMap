@@ -1,4 +1,4 @@
-import { Button, Space, Table, TableProps } from "antd"
+import { Space, Table, TableProps } from "antd"
 import { ColumnsType } from "antd/es/table"
 import type { FilterValue, TablePaginationConfig } from "antd/es/table/interface"
 import { useGetCustomAttributesQuery } from "entities/custom-attribute/api"
@@ -10,6 +10,7 @@ import { ChangeCustomAttribute, DeleteCustomAttribute } from "features/custom-at
 
 import { customAttributeTypes, customAttributesObject } from "shared/config/custom-attribute-types"
 import { useTableSearch } from "shared/hooks"
+import { Button } from "shared/ui"
 
 export const CustomAttributesTable = () => {
   const { t } = useTranslation()
@@ -75,7 +76,7 @@ export const CustomAttributesTable = () => {
   return (
     <>
       <Space style={{ marginBottom: 16, display: "flex", justifyContent: "right" }}>
-        <Button id="clear-filters-and-sorters" onClick={clearAll}>
+        <Button id="clear-filters-and-sorters" onClick={clearAll} color="secondary-linear">
           {t("Clear filters and sorters")}
         </Button>
       </Space>
@@ -88,6 +89,7 @@ export const CustomAttributesTable = () => {
         onChange={handleChange}
         id="administration-projects-attributes"
         rowClassName="administration-projects-attributes-row"
+        data-testid="custom-attributes-table"
       />
     </>
   )

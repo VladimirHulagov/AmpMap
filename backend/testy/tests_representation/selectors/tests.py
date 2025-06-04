@@ -30,16 +30,18 @@
 # <http://www.gnu.org/licenses/>.
 from typing import TYPE_CHECKING, Any, Iterable
 
-from django.db.models import F, Q, QuerySet
+from django.db.models import F, OuterRef, Q, QuerySet, Subquery
 
+from testy.core.models import Project
 from testy.root.ltree.querysets import LtreeQuerySet
+from testy.root.selectors import BulkUpdateSelector
 from testy.tests_representation.models import Test, TestPlan
 
 if TYPE_CHECKING:
     from testy.tests_description.selectors.suites import TestSuiteSelector
 
 
-class TestSelector:
+class TestSelector(BulkUpdateSelector):
     @classmethod
     def test_list(cls) -> QuerySet[Test]:
         return Test.objects.select_related('case').prefetch_related('results').annotate(
@@ -55,6 +57,18 @@ class TestSelector:
         return Test.objects.filter(plan__in=plan_ids)
 
     @classmethod
+    def test_list_by_parent_plan_and_project(
+        cls,
+        project: Project,
+        parent_plan: TestPlan | None = None,
+    ) -> QuerySet[Test]:
+        queryset = Test.objects.filter(project=project)
+        if parent_plan:
+            plan_ids = parent_plan.get_descendants(include_self=True).values_list('id', flat=True)
+            queryset = queryset.filter(plan__in=plan_ids)
+        return queryset
+
+    @classmethod
     def test_list_union(
         cls,
         plans: LtreeQuerySet[TestPlan],
@@ -68,7 +82,7 @@ class TestSelector:
             lookup |= Q(plan=parent_id)
         if not has_common_filters:
             tests = tests.filter(lookup)
-        tests = suite_selector.annotate_suite_path(tests, 'case__suite__path')
+        tests = suite_selector.annotate_suite_path(tests, 'case__suite')
         return tests.annotate(assignee_username=F('assignee__username'))
 
     def test_list_with_last_status(
@@ -93,18 +107,13 @@ class TestSelector:
         )
 
     @classmethod
-    def test_list_for_bulk_operation(
-        cls,
-        queryset: QuerySet[Test],
-        included_tests: list[Test] | None,
-        excluded_tests: list[Test] | None,
-    ) -> QuerySet[Test]:
-        if included_tests:
-            queryset = queryset.filter(pk__in=[test.pk for test in included_tests])
-        if excluded_tests:
-            queryset = queryset.exclude(pk__in=[test.pk for test in excluded_tests])
-        return queryset
-
-    @classmethod
     def test_list_by_ids(cls, ids: Iterable[int]) -> QuerySet[Test]:
         return Test.objects.filter(pk__in=ids)
+
+    @classmethod
+    def test_list_by_case_ids(cls, test_plan: TestPlan, test_case_ids: Iterable[int]) -> QuerySet[Test]:
+        return Test.objects.filter(plan=test_plan).filter(case__in=test_case_ids)
+
+    @classmethod
+    def tests_by_parent_plan_subquery(cls, **kwargs) -> Subquery:
+        return Test.objects.filter(plan__path__descendant=OuterRef('path'), **kwargs)

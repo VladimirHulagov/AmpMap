@@ -4,7 +4,7 @@ import { ColumnsType } from "antd/lib/table"
 import { FilterValue } from "antd/lib/table/interface"
 import dayjs from "dayjs"
 import { useStatuses } from "entities/status/model/use-statuses"
-import { useContext, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Link, useParams } from "react-router-dom"
 
@@ -13,10 +13,10 @@ import { filterActionFormat } from "entities/test-plan/lib"
 
 import { UserAvatar } from "entities/user/ui"
 
-import { ProjectContext } from "pages/project"
+import { useProjectContext } from "pages/project"
 
 import { useTableSearch } from "shared/hooks"
-import { antdSorterToTestySort } from "shared/libs"
+import { antdSorterToTestySort, initInternalError } from "shared/libs"
 import { HighLighterTesty, Status } from "shared/ui"
 import { UntestedStatus } from "shared/ui/status"
 
@@ -40,7 +40,7 @@ const initialTableParams: TableParams = {
 
 export const useTestPlanActivity = () => {
   const { t } = useTranslation()
-  const { project } = useContext(ProjectContext)!
+  const project = useProjectContext()
   const { testPlanId } = useParams<ParamTestPlanId>()
   const { statusesFilters } = useStatuses({
     project: project.id,
@@ -178,6 +178,10 @@ export const useTestPlanActivity = () => {
     }
 
     getActivity(requestData)
+      .unwrap()
+      .catch((error) => {
+        initInternalError(error)
+      })
   }, [testPlanId, searchText, JSON.stringify(tableParams)])
 
   const handlePaginationChange = (page: number, pageSize: number) => {

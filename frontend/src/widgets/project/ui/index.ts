@@ -1,4 +1,6 @@
 export * from "./progress-tests-block/progress-tests-block"
 export * from "./projects-dashboard-cards/projects-dashboard-cards"
 export * from "./projects-dashboard-table/projects-dashboard-table"
-export * from "./projects-table/projects-table"
+export * from "./project-settings-overview/project-settings-overview"
+export * from "./project-statuses-overview/project-statuses-overview"
+export * from "./project-assigned-to-me-overview/project-assigned-to-me-overview"

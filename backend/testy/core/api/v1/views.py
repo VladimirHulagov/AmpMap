@@ -41,7 +41,6 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.viewsets import GenericViewSet
 
-from testy import permissions
 from testy.core.api.v1.serializers import (
     AccessRequestSerializer,
     AllProjectsStatisticSerializer,
@@ -71,10 +70,10 @@ from testy.core.filters import (
 from testy.core.mixins import MediaViewMixin
 from testy.core.models import Project, SystemMessage
 from testy.core.permissions import (
-    AttachmentPermission,
-    BaseProjectPermission,
-    ProjectIsPrivatePermission,
-    ProjectPermission,
+    BASE_PERMISSIONS,
+    ProjectDetailReadPermission,
+    ProjectRetrievePermission,
+    ProjectUpdatePermission,
 )
 from testy.core.selectors.attachments import AttachmentSelector
 from testy.core.selectors.custom_attribute import CustomAttributeSelector
@@ -87,6 +86,7 @@ from testy.core.services.labels import LabelService
 from testy.core.services.notifications import NotificationService
 from testy.core.services.projects import ProjectService
 from testy.paginations import StandardSetPagination
+from testy.permissions import IsAdminOrForbidArchiveUpdate
 from testy.root.mixins import TestyArchiveMixin, TestyDestroyModelMixin, TestyModelViewSet, TestyRestoreModelMixin
 from testy.swagger.v1.custom_attributes import (
     custom_attributes_allowed_content_types,
@@ -132,7 +132,13 @@ class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin, MediaViewMixin):
     queryset = ProjectSelector.project_list_raw()
     serializer_class = ProjectSerializer
     filter_backends = [DjangoFilterBackend, ProjectOrderingFilter]
-    permission_classes = [permissions.IsAdminOrForbidArchiveUpdate, ProjectPermission, ProjectIsPrivatePermission]
+    permission_classes = [
+        IsAuthenticated,
+        IsAdminOrForbidArchiveUpdate,
+        ProjectUpdatePermission,
+        ProjectRetrievePermission,
+        ProjectDetailReadPermission,
+    ]
     ordering_fields = ['name', 'is_archive']
     pagination_class = StandardSetPagination
     lookup_value_regex = r'\d+'
@@ -184,8 +190,9 @@ class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin, MediaViewMixin):
 
     @action(methods=[_GET], url_path='testplans', url_name='testplans', detail=True)
     def testplans_by_project(self, request, pk):
-        qs = TestPlanSelector().testplan_project_root_list(project_id=pk)
-        serializer = self.get_serializer(qs, many=True, context=self.get_serializer_context())
+        project = self.get_object()
+        qs = TestPlanSelector().testplan_project_root_list(project_id=project.pk)
+        serializer = TestPlanTreeSerializer(qs, many=True, context=self.get_serializer_context())
         return Response(serializer.data)
 
     @project_access_schema
@@ -203,13 +210,14 @@ class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin, MediaViewMixin):
 
     @action(methods=[_GET], url_path='parameters', url_name='parameters', detail=True)
     def parameters_by_project(self, request, pk):
-        qs = ParameterSelector().parameter_project_list(project_id=pk)
+        project = self.get_object()
+        qs = ParameterSelector().parameter_project_list(project_id=project.pk)
         serializer = self.get_serializer(qs, many=True, context=self.get_serializer_context())
         return Response(serializer.data)
 
     @action(methods=[_GET], url_path='icon', url_name='icon', detail=True)
     def icon(self, request, pk, *args, **kwargs):
-        project = get_object_or_404(Project, pk=pk)
+        project = self.get_object()
         if not project.icon or not project.icon.storage.exists(project.icon.path):
             return Response(status=status.HTTP_404_NOT_FOUND)
         return self.format_response(project.icon, request)
@@ -217,10 +225,9 @@ class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin, MediaViewMixin):
     @project_progress_schema
     @action(methods=[_GET], url_path='progress', url_name='progress', detail=True)
     def project_progress(self, request, pk):
+        project = self.get_object()
         period = PeriodDateTime(request, 'start_date', 'end_date')
-        plans = ProjectSelector().project_progress(
-            pk, period=period,
-        )
+        plans = ProjectSelector().project_progress(project.pk, period=period)
         return Response(TestPlanProgressSerializer(plans, many=True).data)
 
     @project_list_schema
@@ -254,9 +261,9 @@ class ProjectViewSet(TestyModelViewSet, TestyArchiveMixin, MediaViewMixin):
         return self.update(request, *args, **kwargs)
 
     def destroy(self, request, pk, *args, **kwargs):
-        instance = self.get_object()
-        if instance.icon:
-            ProjectService().remove_media(Path(instance.icon.path))
+        project = self.get_object()
+        if project.icon:
+            ProjectService().remove_media(Path(project.icon.path))
         return super().destroy(request, pk, *args, **kwargs)
 
 
@@ -269,7 +276,7 @@ class AttachmentViewSet(
 ):
     queryset = AttachmentSelector().attachment_list()
     serializer_class = AttachmentSerializer
-    permission_classes = [IsAuthenticated, AttachmentPermission]
+    permission_classes = [IsAuthenticated, *BASE_PERMISSIONS]
     filter_backends = [DjangoFilterBackend]
     schema_tags = ['Attachments']
 
@@ -295,7 +302,7 @@ class LabelViewSet(TestyModelViewSet):
     queryset = LabelSelector().label_list()
     serializer_class = LabelSerializer
     filter_backends = [DjangoFilterBackend]
-    permission_classes = [IsAuthenticated, BaseProjectPermission]
+    permission_classes = [IsAuthenticated, *BASE_PERMISSIONS]
     schema_tags = ['Labels']
 
     @property
@@ -333,6 +340,7 @@ class CustomAttributeViewSet(TestyModelViewSet):
     queryset = CustomAttributeSelector().custom_attribute_list()
     serializer_class = CustomAttributeInputSerializer
     filter_backends = [DjangoFilterBackend]
+    permission_classes = [IsAuthenticated, *BASE_PERMISSIONS]
     schema_tags = ['Custom attributes']
 
     @property

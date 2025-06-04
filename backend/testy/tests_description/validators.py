@@ -103,3 +103,11 @@ class TestSuiteCustomAttributeValuesValidator(BaseCustomAttributeValuesValidator
             project = instance.project
         attr_getter = partial(CustomAttributeSelector.required_attribute_names_by_project, project=project)
         self._validate(attributes, attr_getter)
+
+
+class MoveCasesSameProjectValidator:
+    err_msg = 'Moving cases to another project is not allowed'
+
+    def __call__(self, attrs: dict[str, Any]):
+        if attrs.get('current_suite').project != attrs.get('suite').project:
+            raise ValidationError(self.err_msg)

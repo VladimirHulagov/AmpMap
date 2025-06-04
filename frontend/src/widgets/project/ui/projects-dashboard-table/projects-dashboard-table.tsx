@@ -19,6 +19,7 @@ export const ProjectsDashboardTable = ({ searchName }: Props) => {
       rowKey="id"
       onChange={handleChange}
       pagination={paginationTable}
+      data-testid="projects-dashboard-table"
     />
   )
 }

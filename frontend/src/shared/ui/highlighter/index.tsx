@@ -7,13 +7,15 @@ interface HighLighterTestyProps {
   textToHighlight: string
   backgroundColor?: string
   color?: string
+  id?: string
 }
 
 export const HighLighterTesty = ({
   searchWords,
   textToHighlight,
-  backgroundColor = "#d9d9d9",
+  backgroundColor = "var(--y-grey-20)",
   color = colors.accent,
+  id,
 }: HighLighterTestyProps) => {
   return (
     <Highlighter
@@ -25,6 +27,7 @@ export const HighLighterTesty = ({
       }}
       searchWords={[searchWords]}
       textToHighlight={textToHighlight ?? ""}
+      data-testid={id}
     />
   )
 }

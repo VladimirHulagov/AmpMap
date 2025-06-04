@@ -1,4 +1,3 @@
-import { notification } from "antd"
 import { TreebarContext } from "processes"
 import { useContext, useEffect, useState } from "react"
 import { SubmitHandler, useForm } from "react-hook-form"
@@ -17,10 +16,11 @@ import {
 } from "entities/suite/api"
 import { useAttributesTestSuite } from "entities/suite/model"
 
-import { ProjectContext } from "pages/project"
+import { useProjectContext } from "pages/project"
 
-import { useDatepicker, useErrors, useShowModalCloseConfirm } from "shared/hooks"
+import { useConfirmBeforeRedirect, useErrors } from "shared/hooks"
 import { makeAttributesJson, makeParametersForTreeView } from "shared/libs"
+import { antdModalCloseConfirm, antdNotification } from "shared/libs/antd-modals"
 import { AlertSuccessChange } from "shared/ui"
 
 import { refetchNodeAfterCreateOrCopy, refetchNodeAfterEdit } from "widgets/[ui]/treebar/utils"
@@ -61,8 +61,7 @@ export const useChangeTestSuite = ({ type }: Props) => {
   const { t } = useTranslation()
   const location = useLocation()
   const [searchParams] = useSearchParams()
-  const { project } = useContext(ProjectContext)!
-  const { showModal } = useShowModalCloseConfirm()
+  const project = useProjectContext()
   const navigate = useNavigate()
   const state = location.state as LocationState | null
   const { treebar } = useContext(TreebarContext)!
@@ -78,7 +77,6 @@ export const useChangeTestSuite = ({ type }: Props) => {
     defaultValues: formDefaultValues,
   })
 
-  const { setDateFrom, setDateTo, disabledDateFrom, disabledDateTo } = useDatepicker()
   const {
     attachments,
     attachmentsIds,
@@ -100,6 +98,11 @@ export const useChangeTestSuite = ({ type }: Props) => {
     getAttributeJson,
     setAttributes,
   } = useAttributesTestSuite({ mode: type, setValue })
+
+  const { setIsRedirectByUser } = useConfirmBeforeRedirect({
+    isDirty,
+    pathname: type === "create" ? "new-test-suite" : "edit-test-suite",
+  })
 
   const [stateTestSuite, setStateTestSuite] = useState<Suite | null>(state?.suite ?? null)
   const [parametersTreeView, setParametersTreeView] = useState<IParameterTreeView[]>([])
@@ -153,6 +156,7 @@ export const useChangeTestSuite = ({ type }: Props) => {
   }
 
   const redirectToPrev = () => {
+    setIsRedirectByUser()
     clear()
     const prevUrl = searchParams.get("prevUrl")
     navigate(prevUrl ?? `/projects/${project.id}/suites/${stateTestSuite?.id ?? ""}`)
@@ -160,14 +164,14 @@ export const useChangeTestSuite = ({ type }: Props) => {
 
   const handleCancel = () => {
     if (isDirty) {
-      showModal(redirectToPrev)
+      antdModalCloseConfirm(redirectToPrev)
       return
     }
-
     redirectToPrev()
   }
 
   const redirectToSuite = (suiteId?: number) => {
+    setIsRedirectByUser()
     const prevUrl = searchParams.get("prevUrl")
     if (prevUrl && type === "edit") {
       navigate(prevUrl)
@@ -195,15 +199,14 @@ export const useChangeTestSuite = ({ type }: Props) => {
           attributes: attributesJson,
         },
       }).unwrap()
-      notification.success({
-        message: t("Success"),
-        closable: true,
+      antdNotification.success("edit-test-suite", {
         description: (
           <AlertSuccessChange
             id={String(stateTestSuite.id)}
             action="updated"
             title={t("Test Suite")}
             link={`/projects/${project.id}/suites/${stateTestSuite.id}`}
+            data-testid="edit-test-suite-success-notification-description"
           />
         ),
       })
@@ -230,15 +233,14 @@ export const useChangeTestSuite = ({ type }: Props) => {
         attributes: attributesJson,
       }).unwrap()
 
-      notification.success({
-        message: t("Success"),
-        closable: true,
+      antdNotification.success("create-test-suite", {
         description: (
           <AlertSuccessChange
             action="created"
             title={t("Test Suite")}
             link={`/projects/${project.id}/suites/${newSuite.id}`}
             id={String(newSuite.id)}
+            data-testid="create-test-suite-success-notification-description"
           />
         ),
       })
@@ -277,6 +279,8 @@ export const useChangeTestSuite = ({ type }: Props) => {
       const suite = await getTestSuite({
         suiteId: parentTestSuiteId,
       }).unwrap()
+      setStateTestSuite(suite)
+      setValue("parent", suite.id)
       setSelectedParent({ value: suite.id, label: suite.name })
     }
 
@@ -337,10 +341,6 @@ export const useChangeTestSuite = ({ type }: Props) => {
     attachmentsIds,
     parametersTreeView,
     stateTestSuite,
-    setDateFrom,
-    disabledDateFrom,
-    setDateTo,
-    disabledDateTo,
     handleSelectTestSuite,
     setAttachments,
     handleAttachmentLoad,

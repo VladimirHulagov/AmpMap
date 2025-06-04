@@ -4,5 +4,11 @@ import { useTestPlanContext } from "../test-plan-layout/test-plan-layout"
 
 export const TestPlansAttachmentsTab = () => {
   const { testPlan } = useTestPlanContext()
-  return <Attachment.List attachments={testPlan?.attachments ?? []} />
+  return (
+    <Attachment.Field
+      attachments={testPlan?.attachments ?? []}
+      isDivider={false}
+      isShowNoAttachment
+    />
+  )
 }

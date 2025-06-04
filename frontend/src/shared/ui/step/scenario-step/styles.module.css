@@ -1,0 +1,133 @@
+.item {
+  list-style: none;
+  position: relative;
+  border: 1px solid var(--y-grey-20);
+  border-radius: 4px;
+  padding: 8px;
+  margin-bottom: 8px;
+  min-height: 58px;
+  overflow: hidden;
+  max-height: 220px;
+}
+
+.item.expanded {
+  max-height: none;
+  padding-bottom: 18px;
+}
+
+.stepInfo {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.stepBlock {
+  flex: 1;
+}
+
+.status {
+  position: absolute;
+  top: 8px;
+  right: 0;
+  padding-left: 8px;
+  background: linear-gradient(to right, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 1) 8px);
+}
+
+.stepIndex {
+  width: 16px;
+  height: 16px;
+  font-weight: 600;
+  border-radius: 100%;
+  background-color: #468aa5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--y-grey-0);
+  float: left;
+  margin-right: 4px;
+  margin-top: 4px;
+}
+
+.actions {
+  float: right;
+  display: flex;
+  flex-direction: row;
+  height: 24px;
+}
+
+.actionButton {
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  background: transparent !important;
+  color: var(--y-pending-block);
+}
+
+.actionButton:hover {
+  color: var(--y-grey-50) !important;
+}
+
+.actionIcon path {
+  fill: var(--y-pending-block);
+  transition: fill 0.3s;
+}
+
+.actionIcon:hover path {
+  fill: var(--y-grey-50);
+}
+
+.deleteActionIcon:hover path {
+  fill: var(--y-raspberry-3);
+}
+
+.resultSelect {
+  min-width: 160px;
+  display: flex;
+  justify-content: end;
+  margin-top: -6px;
+  float: right;
+  flex-direction: row;
+  height: 24px;
+}
+
+.resultSelect :global(.status) {
+  padding-right: 20px;
+}
+
+.statusSelect {
+  min-width: 120px;
+}
+
+.statusSelect:global(.ant-select-open) .statusArrow {
+  transform: scaleY(-1);
+}
+
+.statusSelect div {
+  border: none !important;
+  padding: 0 !important;
+}
+
+.statusWrapper {
+  display: flex;
+  justify-content: end;
+  margin-right: 12px;
+  align-items: center;
+}
+
+.statusArrow {
+  width: 16px;
+  height: 16px;
+  margin-left: -28px;
+  color: var(--y-color-secondary-inline);
+  transition: transform 0.3s;
+  z-index: 2;
+}
+
+.expectedLabel {
+  font-weight: 600;
+  margin-bottom: 8px;
+  margin-top: 16px;
+}

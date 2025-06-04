@@ -140,6 +140,7 @@ export const TestCaseTestsList = ({ testCase, isShowArchive }: Props) => {
         onChange={handleChange}
         rowKey="id"
         loading={isFetching}
+        data-testid="test-case-tests-list"
       />
     </>
   )

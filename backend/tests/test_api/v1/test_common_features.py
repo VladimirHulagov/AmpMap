@@ -222,3 +222,30 @@ class TestCommonFeatures:
                                                                                              'not match at depth 1'
                 for plan_lvl_1 in plan_lvl_0['children']:
                     assert len(plan_lvl_1['children']) == 2, 'Numbers of plan did not match at depth 2'
+
+    @pytest.mark.parametrize(
+        'factory_name, view_name', [
+            ('test_case_factory', 'api:v2:testcase-list'),
+            ('test_suite_factory', 'api:v2:testsuite-list'),
+            ('test_plan_factory', 'api:v2:testplan-list'),
+            ('test_factory', 'api:v2:test-list'),
+        ], ids=['Test case', 'Test suite', 'Test plan', 'Test'],
+    )
+    def test_pagination_incorrect_page_size(
+        self,
+        api_client,
+        authorized_superuser,
+        factory_name,
+        project,
+        view_name,
+        request,
+    ):
+        factory = request.getfixturevalue(factory_name)
+        factory(project=project)
+        query_params = {'project': project.id, 'page_size': 'incorrect'}
+        response = api_client.send_request(
+            view_name,
+            expected_status=HTTPStatus.NOT_FOUND,
+            query_params=query_params,
+        ).json()
+        assert response['detail'] == 'Invalid page size'

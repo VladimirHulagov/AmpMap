@@ -1,9 +1,10 @@
 import { DeleteOutlined } from "@ant-design/icons"
-import { Button, Modal, notification } from "antd"
 import { useDeleteCustomAttributeMutation } from "entities/custom-attribute/api"
 import { useTranslation } from "react-i18next"
 
 import { initInternalError } from "shared/libs"
+import { antdModalConfirm, antdNotification } from "shared/libs/antd-modals"
+import { Button } from "shared/ui"
 
 interface Props {
   attributeId: Id
@@ -14,24 +15,19 @@ export const DeleteCustomAttribute = ({ attributeId }: Props) => {
   const [deleteAttribute] = useDeleteCustomAttributeMutation()
 
   const handleDeleteAttribute = (AttributeId: Id) => {
-    Modal.confirm({
+    antdModalConfirm("delete-attribute", {
       title: t("Do you want to delete these attribute?"),
       okText: t("Delete"),
-      cancelText: t("Cancel"),
       onOk: async () => {
         try {
           await deleteAttribute(AttributeId).unwrap()
-          notification.success({
-            message: t("Success"),
-            closable: true,
+          antdNotification.success("delete-custom-attribute", {
             description: t("Attribute deleted successfully"),
           })
         } catch (err: unknown) {
           initInternalError(err)
         }
       },
-      okButtonProps: { "data-testid": "delete-attribute-button-confirm" },
-      cancelButtonProps: { "data-testid": "delete-attribute-button-cancel" },
     })
   }
 
@@ -41,6 +37,7 @@ export const DeleteCustomAttribute = ({ attributeId }: Props) => {
       icon={<DeleteOutlined />}
       shape="circle"
       danger
+      color="secondary-linear"
       onClick={() => handleDeleteAttribute(Number(attributeId))}
     />
   )

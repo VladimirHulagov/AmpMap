@@ -36,20 +36,34 @@ from channels.layers import get_channel_layer
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.db.models import QuerySet
+from django.utils import timezone
 from simple_history.utils import bulk_update_with_history
+from tests_representation.services.results import TestResultService
 
+from testy.core.models import Project
 from testy.root.celery import app
 from testy.tests_description.models import TestCase
-from testy.tests_description.selectors.suites import TestSuiteSelector
-from testy.tests_representation.models import Test, TestPlan
+from testy.tests_representation.models import Test, TestPlan, TestResult
 from testy.tests_representation.selectors.tests import TestSelector
 from testy.users.models import User
 
 channel_layer = get_channel_layer()
 
+_PLAN_ID = 'plan_id'
+
 
 class TestService:
-    non_side_effect_fields = ['case', 'plan', 'assignee', 'is_archive', 'project']
+    non_side_effect_fields = [
+        'case',
+        'plan',
+        'assignee',
+        'is_archive',
+        'project',
+        'assignee_id',
+        _PLAN_ID,
+        'is_deleted',
+        'deleted_at',
+    ]
 
     def test_create(self, data: dict[str, Any]) -> Test:
         test = Test.model_create(
@@ -61,10 +75,6 @@ class TestService:
         test.full_clean()
         test.save()
         return test
-
-    @transaction.atomic
-    def test_delete_by_test_case_ids(self, test_plan: TestPlan, test_case_ids: list[int]) -> None:
-        Test.objects.filter(plan=test_plan).filter(case__in=test_case_ids).delete()
 
     @transaction.atomic
     def bulk_test_create(self, test_plans: list[TestPlan], cases: QuerySet[TestCase]):
@@ -96,39 +106,53 @@ class TestService:
         self.notify_assignee(test, old_assignee_id, assignee, user.pk, ct_id)
         return test
 
-    def bulk_update_tests(self, queryset: QuerySet[Test], payload: dict[str, Any], user: User):
-        tests = TestSelector.test_list_for_bulk_operation(
-            queryset=queryset,
-            included_tests=payload.pop('included_tests', None),
-            excluded_tests=payload.pop('excluded_tests', None),
-        )
+    @transaction.atomic
+    def bulk_update_tests(
+        self,
+        test_ids: list[int],
+        payload: dict[str, Any],
+        user_id: int,
+        is_async: bool = False,
+    ):
+        tests = TestSelector.test_list_by_ids(test_ids)
+        user = User.objects.get(pk=user_id)
         updated_tests = []
-
         test_to_old_assignee = {}
         for test in tests:
             test_to_old_assignee[test.pk] = test.assignee_id
             updated_tests.append(self.test_update(test, payload, commit=False, user=user, notify_user=False))
 
-        if assignee := payload.get('assignee'):
-            assignee = assignee.pk
+        if result := payload.pop('result', {}):
+            task_kwargs = {
+                'payload': result,
+                'test_ids': test_ids,
+                'user_id': user.pk,
+            }
+            TestResultService.result_bulk_create_from_api(**task_kwargs)
+        if payload.get('is_deleted'):
+            TestResult.objects.select_related('test').filter(test_id__in=tests).delete()
+            payload['deleted_at'] = timezone.now()
 
         app.send_task(
             'testy.tests_representation.tasks.notify_bulk_assign',
             args=[
                 test_to_old_assignee,
-                assignee,
+                payload.get('assignee_id', None),
                 user.pk,
             ],
         )
-        bulk_update_with_history(
-            updated_tests,
-            Test,
-            fields=payload.keys(),
-            default_user=user,
-            default_change_reason='Bulk update tests',
-        )
-        qs = TestSelector().test_list_with_last_status(filter_condition={'pk__in': tests})
-        return TestSuiteSelector.annotate_suite_path(qs, 'case__suite__path')
+        if payload.keys():
+            bulk_update_with_history(
+                updated_tests,
+                Test,
+                fields=payload.keys(),
+                default_user=user,
+                default_change_reason='Bulk update tests',
+            )
+        if is_async:
+            self.produce_bulk_action(tests, user_id, user_id, 'bulk.tests')
+        qs = TestSelector.test_list_by_ids(test_ids)
+        return TestSelector().test_list_with_last_status(qs=qs)
 
     def get_testcase_ids_by_testplan(self, test_plan: TestPlan) -> QuerySet[int]:
         return test_plan.tests.values_list('case', flat=True)
@@ -165,8 +189,46 @@ class TestService:
                 'receiver_id': receiver_id,
                 'actor_id': actor_id,
                 'project_id': test.project.pk,
-                'plan_id': test.plan.pk,
+                _PLAN_ID: test.plan.pk,
                 'name': test.case.name,
+            },
+        )
+
+    @classmethod
+    def produce_bulk_action(
+        cls,
+        tests: QuerySet[Test],
+        receiver_id: int,
+        actor_id: int,
+        action_type: str,
+    ) -> None:
+        additional_data = {}
+        plans_count = (
+            tests
+            .values_list(_PLAN_ID, flat=True)
+            .distinct(_PLAN_ID)
+            .order_by(_PLAN_ID)
+            .count()
+        )
+        if plans_count > 1:
+            notify_object = tests.first().project
+            content_type_id = ContentType.objects.get_for_model(Project).pk
+            additional_data['placeholder_text'] = f'in project {notify_object.name}'
+            additional_data['placeholder_link'] = f'/projects/{notify_object.id}/plans'
+        else:
+            notify_object = tests.first().plan
+            content_type_id = ContentType.objects.get_for_model(TestPlan).pk
+            additional_data['placeholder_text'] = f'in test plan {notify_object.name}'
+            additional_data['placeholder_link'] = f'/projects/{notify_object.project_id}/plans/{notify_object.id}'
+        async_to_sync(channel_layer.send)(
+            'notifications',
+            {
+                'type': action_type,
+                'object_id': notify_object.id,
+                'content_type_id': content_type_id,
+                'receiver_id': receiver_id,
+                'actor_id': actor_id,
+                **additional_data,
             },
         )
 

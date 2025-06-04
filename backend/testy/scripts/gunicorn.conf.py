@@ -42,14 +42,3 @@ timeout = 60 * 2
 capture_output = True
 accesslog = '-'
 enable_stdio_inheritance = True
-
-
-def child_exit(server: Arbiter, worker: Worker):
-    worker.log.info(f'[child exit] Worker with pid {worker.pid} has exited. Deleting db files')
-    multiproc_dir = os.environ['prometheus_multiproc_dir']
-    for filename in ('counter_{}.db', 'histogram_{}.db'):
-        try:
-            os.unlink(os.path.join(multiproc_dir, filename.format(worker.pid)))
-            worker.log.info(f'{filename} was deleted')
-        except Exception as ex:
-            worker.log.error(f'Error when unlinking {filename}: {ex}')
