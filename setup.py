@@ -36,8 +36,10 @@ setup(
     python_requires='==3.11.9',
     description='Test management system',
     packages=find_packages(
+        where='backend',
         exclude=['tests*'],
     ),
+    package_dir={'': 'backend'},
     install_requires=[
         'django==4.2.13',
         'python-dotenv==0.21.0',
