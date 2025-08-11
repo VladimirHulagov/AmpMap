@@ -575,7 +575,7 @@ const App: React.FC = () => {
                 ) : (
                   <>
                     <span style={{ 
-                      color: bmcVersionState.showActions ? '#425cd7' : 'var(--y-color-text-primary)', 
+                      color: bmcVersionState.showActions ? 'var(--y-color-accent)' : 'var(--y-color-text-primary)', 
                       fontSize: '14px',
                       fontWeight: bmcVersionState.showActions ? '500' : 'normal'
                     }}>
@@ -586,7 +586,7 @@ const App: React.FC = () => {
                         onClick={() => handleVersionChange('bmc')}
                         style={{
                           padding: '4px 12px',
-                          backgroundColor: '#425cd7',
+                          backgroundColor: 'var(--y-color-accent)',
                           color: 'white',
                           border: 'none',
                           borderRadius: '4px',
@@ -607,7 +607,7 @@ const App: React.FC = () => {
                           onClick={() => handleVersionFlash('bmc')}
                           style={{
                             padding: '4px 12px',
-                            backgroundColor: '#c9454f',
+                            backgroundColor: 'var(--y-color-error)',
                             color: 'white',
                             border: 'none',
                             borderRadius: '4px',
@@ -622,7 +622,7 @@ const App: React.FC = () => {
                           onClick={() => handleVersionCancel('bmc')}
                           style={{
                             padding: '4px 12px',
-                            backgroundColor: '#f5b40a',
+                            backgroundColor: 'var(--y-color-warning)',
                             color: 'white',
                             border: 'none',
                             borderRadius: '4px',
@@ -702,7 +702,7 @@ const App: React.FC = () => {
                 ) : (
                   <>
                     <span style={{ 
-                      color: biosVersionState.showActions ? '#425cd7' : 'var(--y-color-text-primary)', 
+                      color: biosVersionState.showActions ? 'var(--y-color-accent)' : 'var(--y-color-text-primary)', 
                       fontSize: '14px',
                       fontWeight: biosVersionState.showActions ? '500' : 'normal'
                     }}>
@@ -713,7 +713,7 @@ const App: React.FC = () => {
                         onClick={() => handleVersionChange('bios')}
                         style={{
                           padding: '4px 12px',
-                          backgroundColor: '#425cd7',
+                          backgroundColor: 'var(--y-color-accent)',
                           color: 'white',
                           border: 'none',
                           borderRadius: '4px',
@@ -734,7 +734,7 @@ const App: React.FC = () => {
                           onClick={() => handleVersionFlash('bios')}
                           style={{
                             padding: '4px 12px',
-                            backgroundColor: '#c9454f',
+                            backgroundColor: 'var(--y-color-error)',
                             color: 'white',
                             border: 'none',
                             borderRadius: '4px',
@@ -749,7 +749,7 @@ const App: React.FC = () => {
                           onClick={() => handleVersionCancel('bios')}
                           style={{
                             padding: '4px 12px',
-                            backgroundColor: '#f5b40a',
+                            backgroundColor: 'var(--y-color-warning)',
                             color: 'white',
                             border: 'none',
                             borderRadius: '4px',
