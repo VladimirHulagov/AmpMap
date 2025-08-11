@@ -24,6 +24,42 @@ const App: React.FC = () => {
   const [isNoteEditing, setIsNoteEditing] = useState(false);
   const [savedNote, setSavedNote] = useState('');
   const [noteEditedBy, setNoteEditedBy] = useState('');
+  
+  // Version management states
+  const [bmcVersionState, setBmcVersionState] = useState({
+    isEditing: false,
+    searchValue: '',
+    selectedVersion: 'bmc-1.0.0',
+    originalVersion: 'bmc-1.0.0',
+    showActions: false
+  });
+  
+  const [biosVersionState, setBiosVersionState] = useState({
+    isEditing: false,
+    searchValue: '',
+    selectedVersion: 'uefi-1.0.0',
+    originalVersion: 'uefi-1.0.0',
+    showActions: false
+  });
+  
+  // Mock version data
+  const availableVersions = {
+    bmc: [
+      'bmc-1.0.0',
+      'bmc-1.1.0',
+      'bmc-1.2.0',
+      'bmc-2.0.0',
+      'bmc-2.1.0'
+    ],
+    bios: [
+      'uefi-1.0.0',
+      'uefi-1.1.0',
+      'uefi-1.2.0',
+      'uefi-2.0.0',
+      'uefi-2.1.0'
+    ]
+  };
+  
   const [iconStates, setIconStates] = useState({
     warning: false,
     lock: false,
@@ -86,6 +122,111 @@ const App: React.FC = () => {
       ...prev,
       [iconKey]: !prev[iconKey]
     }));
+  };
+
+  const handleVersionChange = (type: 'bmc' | 'bios') => {
+    if (type === 'bmc') {
+      setBmcVersionState(prev => ({
+        ...prev,
+        isEditing: true,
+        searchValue: ''
+      }));
+    } else {
+      setBiosVersionState(prev => ({
+        ...prev,
+        isEditing: true,
+        searchValue: ''
+      }));
+    }
+  };
+
+  const handleVersionSearch = (type: 'bmc' | 'bios', value: string) => {
+    if (type === 'bmc') {
+      setBmcVersionState(prev => ({ ...prev, searchValue: value }));
+    } else {
+      setBiosVersionState(prev => ({ ...prev, searchValue: value }));
+    }
+  };
+
+  const handleVersionSelect = (type: 'bmc' | 'bios', version: string) => {
+    if (type === 'bmc') {
+      setBmcVersionState(prev => ({
+        ...prev,
+        selectedVersion: version,
+        isEditing: false,
+        searchValue: '',
+        showActions: prev.originalVersion !== version
+      }));
+    } else {
+      setBiosVersionState(prev => ({
+        ...prev,
+        selectedVersion: version,
+        isEditing: false,
+        searchValue: '',
+        showActions: prev.originalVersion !== version
+      }));
+    }
+  };
+
+  const handleVersionKeyPress = (e: React.KeyboardEvent, type: 'bmc' | 'bios') => {
+    if (e.key === 'Enter') {
+      const state = type === 'bmc' ? bmcVersionState : biosVersionState;
+      const versions = availableVersions[type];
+      const filteredVersions = versions.filter(v => 
+        v.toLowerCase().includes(state.searchValue.toLowerCase())
+      );
+      
+      if (filteredVersions.length > 0) {
+        handleVersionSelect(type, filteredVersions[0]);
+      }
+    }
+  };
+
+  const handleVersionCancel = (type: 'bmc' | 'bios') => {
+    if (type === 'bmc') {
+      setBmcVersionState(prev => ({
+        ...prev,
+        selectedVersion: prev.originalVersion,
+        isEditing: false,
+        searchValue: '',
+        showActions: false
+      }));
+    } else {
+      setBiosVersionState(prev => ({
+        ...prev,
+        selectedVersion: prev.originalVersion,
+        isEditing: false,
+        searchValue: '',
+        showActions: false
+      }));
+    }
+  };
+
+  const handleVersionFlash = (type: 'bmc' | 'bios') => {
+    // Flash logic would go here
+    console.log(`Flashing ${type} version:`, type === 'bmc' ? bmcVersionState.selectedVersion : biosVersionState.selectedVersion);
+    
+    if (type === 'bmc') {
+      setBmcVersionState(prev => ({
+        ...prev,
+        originalVersion: prev.selectedVersion,
+        showActions: false
+      }));
+    } else {
+      setBiosVersionState(prev => ({
+        ...prev,
+        originalVersion: prev.selectedVersion,
+        showActions: false
+      }));
+    }
+  };
+
+  const getFilteredVersions = (type: 'bmc' | 'bios') => {
+    const state = type === 'bmc' ? bmcVersionState : biosVersionState;
+    const versions = availableVersions[type];
+    return versions.filter(v => 
+      v.toLowerCase().includes(state.searchValue.toLowerCase())
+    );
   };
 
   const getIconColor = (iconKey: string, isHealthOrPower = false) => {
@@ -375,46 +516,254 @@ const App: React.FC = () => {
             <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '12px', alignItems: 'center' }}>
               <span style={{ color: 'var(--y-color-text-secondary)', fontSize: '14px' }}>BMC version</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ color: 'var(--y-color-text-primary)', fontSize: '14px' }}>bmc-1.0.0</span>
-                <button style={{
-                  padding: '4px 12px',
-                  backgroundColor: 'var(--y-color-accent)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  fontSize: '12px',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}>
-                  <SaveOutlined style={{ fontSize: '10px' }} />
-                  CHANGE
-                </button>
+                {bmcVersionState.isEditing ? (
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type="text"
+                        placeholder="Search versions..."
+                        value={bmcVersionState.searchValue}
+                        onChange={(e) => handleVersionSearch('bmc', e.target.value)}
+                        onKeyPress={(e) => handleVersionKeyPress(e, 'bmc')}
+                        autoFocus
+                        style={{
+                          padding: '6px 12px',
+                          backgroundColor: 'var(--y-color-control-background)',
+                          border: '1px solid var(--y-color-control-border-focus)',
+                          borderRadius: '4px',
+                          color: 'var(--y-color-control-text)',
+                          fontSize: '14px',
+                          width: '200px',
+                          outline: 'none'
+                        }}
+                      />
+                      {bmcVersionState.searchValue && (
+                        <div style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: '0',
+                          right: '0',
+                          backgroundColor: 'var(--y-color-control-background)',
+                          border: '1px solid var(--y-color-control-border)',
+                          borderTop: 'none',
+                          borderRadius: '0 0 4px 4px',
+                          maxHeight: '150px',
+                          overflowY: 'auto',
+                          zIndex: 1000
+                        }}>
+                          {getFilteredVersions('bmc').map((version, index) => (
+                            <div
+                              key={version}
+                              onClick={() => handleVersionSelect('bmc', version)}
+                              style={{
+                                padding: '8px 12px',
+                                cursor: 'pointer',
+                                fontSize: '14px',
+                                color: 'var(--y-color-control-text)',
+                                backgroundColor: index === 0 ? 'var(--y-color-background-alternative)' : 'transparent'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--y-color-background-alternative)'}
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = index === 0 ? 'var(--y-color-background-alternative)' : 'transparent'}
+                            >
+                              {version}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <span style={{ 
+                      color: bmcVersionState.showActions ? '#425cd7' : 'var(--y-color-text-primary)', 
+                      fontSize: '14px',
+                      fontWeight: bmcVersionState.showActions ? '500' : 'normal'
+                    }}>
+                      {bmcVersionState.selectedVersion}
+                    </span>
+                    {!bmcVersionState.showActions ? (
+                      <button 
+                        onClick={() => handleVersionChange('bmc')}
+                        style={{
+                          padding: '4px 12px',
+                          backgroundColor: '#425cd7',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          fontWeight: '500',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <SaveOutlined style={{ fontSize: '10px' }} />
+                        CHANGE
+                      </button>
+                    ) : (
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button 
+                          onClick={() => handleVersionFlash('bmc')}
+                          style={{
+                            padding: '4px 12px',
+                            backgroundColor: '#c9454f',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            fontWeight: '500',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          FLASH
+                        </button>
+                        <button 
+                          onClick={() => handleVersionCancel('bmc')}
+                          style={{
+                            padding: '4px 12px',
+                            backgroundColor: '#f5b40a',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            fontWeight: '500',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          CANCEL
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '12px', alignItems: 'center' }}>
               <span style={{ color: 'var(--y-color-text-secondary)', fontSize: '14px' }}>BIOS version</span>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ color: 'var(--y-color-text-primary)', fontSize: '14px' }}>uefi-1.0.0</span>
-                <button style={{
-                  padding: '4px 12px',
-                  backgroundColor: 'var(--y-color-accent)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  fontSize: '12px',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}>
-                  <SaveOutlined style={{ fontSize: '10px' }} />
-                  CHANGE
-                </button>
+                {biosVersionState.isEditing ? (
+                  <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type="text"
+                        placeholder="Search versions..."
+                        value={biosVersionState.searchValue}
+                        onChange={(e) => handleVersionSearch('bios', e.target.value)}
+                        onKeyPress={(e) => handleVersionKeyPress(e, 'bios')}
+                        autoFocus
+                        style={{
+                          padding: '6px 12px',
+                          backgroundColor: 'var(--y-color-control-background)',
+                          border: '1px solid var(--y-color-control-border-focus)',
+                          borderRadius: '4px',
+                          color: 'var(--y-color-control-text)',
+                          fontSize: '14px',
+                          width: '200px',
+                          outline: 'none'
+                        }}
+                      />
+                      {biosVersionState.searchValue && (
+                        <div style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: '0',
+                          right: '0',
+                          backgroundColor: 'var(--y-color-control-background)',
+                          border: '1px solid var(--y-color-control-border)',
+                          borderTop: 'none',
+                          borderRadius: '0 0 4px 4px',
+                          maxHeight: '150px',
+                          overflowY: 'auto',
+                          zIndex: 1000
+                        }}>
+                          {getFilteredVersions('bios').map((version, index) => (
+                            <div
+                              key={version}
+                              onClick={() => handleVersionSelect('bios', version)}
+                              style={{
+                                padding: '8px 12px',
+                                cursor: 'pointer',
+                                fontSize: '14px',
+                                color: 'var(--y-color-control-text)',
+                                backgroundColor: index === 0 ? 'var(--y-color-background-alternative)' : 'transparent'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--y-color-background-alternative)'}
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = index === 0 ? 'var(--y-color-background-alternative)' : 'transparent'}
+                            >
+                              {version}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <span style={{ 
+                      color: biosVersionState.showActions ? '#425cd7' : 'var(--y-color-text-primary)', 
+                      fontSize: '14px',
+                      fontWeight: biosVersionState.showActions ? '500' : 'normal'
+                    }}>
+                      {biosVersionState.selectedVersion}
+                    </span>
+                    {!biosVersionState.showActions ? (
+                      <button 
+                        onClick={() => handleVersionChange('bios')}
+                        style={{
+                          padding: '4px 12px',
+                          backgroundColor: '#425cd7',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          fontWeight: '500',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <SaveOutlined style={{ fontSize: '10px' }} />
+                        CHANGE
+                      </button>
+                    ) : (
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button 
+                          onClick={() => handleVersionFlash('bios')}
+                          style={{
+                            padding: '4px 12px',
+                            backgroundColor: '#c9454f',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            fontWeight: '500',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          FLASH
+                        </button>
+                        <button 
+                          onClick={() => handleVersionCancel('bios')}
+                          style={{
+                            padding: '4px 12px',
+                            backgroundColor: '#f5b40a',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            fontWeight: '500',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          CANCEL
+                        </button>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             </div>
 
