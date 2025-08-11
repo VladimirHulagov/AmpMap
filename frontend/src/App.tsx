@@ -20,6 +20,12 @@ import {
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('INFO');
   const [isDark, setIsDark] = useState(false);
+  const [noteValue, setNoteValue] = useState('');
+  const [isNoteEditing, setIsNoteEditing] = useState(false);
+  const [savedNote, setSavedNote] = useState('');
+  const [noteEditedBy, setNoteEditedBy] = useState('');
+  
+  const username = 'DEMO'; // Получаем из контекста пользователя
 
   const toggleTheme = () => {
     setIsDark(!isDark);
@@ -29,6 +35,42 @@ const App: React.FC = () => {
   React.useEffect(() => {
     document.documentElement.setAttribute('data-theme', 'light');
   }, []);
+
+  const handleNoteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setNoteValue(value);
+    
+    if (value.length > 0 && !isNoteEditing) {
+      setIsNoteEditing(true);
+      setNoteEditedBy(`edited by ${username}`);
+    } else if (value.length === 0) {
+      setIsNoteEditing(false);
+      setNoteEditedBy('');
+    }
+  };
+
+  const handleNoteKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      setSavedNote(noteValue);
+      setIsNoteEditing(false);
+      setNoteEditedBy('');
+      e.currentTarget.blur();
+    }
+  };
+
+  const handleNoteFocus = () => {
+    if (noteValue.length > 0) {
+      setIsNoteEditing(true);
+      setNoteEditedBy(`edited by ${username}`);
+    }
+  };
+
+  const handleNoteBlur = () => {
+    if (noteValue.length === 0) {
+      setIsNoteEditing(false);
+      setNoteEditedBy('');
+    }
+  };
 
   const tabs = [
     'INFO',
@@ -195,9 +237,48 @@ const App: React.FC = () => {
             <p style={{
               color: 'var(--y-color-text-secondary)',
               margin: '0 0 16px 0',
-              fontSize: '14px'
+              fontSize: '14px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px'
             }}>
-              Add a note...
+              <input
+                type="text"
+                placeholder="Add a note..."
+                value={noteValue}
+                onChange={handleNoteChange}
+                onKeyPress={handleNoteKeyPress}
+                onFocus={handleNoteFocus}
+                onBlur={handleNoteBlur}
+                style={{
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  outline: 'none',
+                  color: 'var(--y-color-text-primary)',
+                  fontSize: '14px',
+                  fontFamily: 'inherit',
+                  padding: '0',
+                  width: '100%'
+                }}
+              />
+              {isNoteEditing && (
+                <span style={{
+                  color: 'var(--y-color-text-tertiary)',
+                  fontSize: '12px',
+                  fontStyle: 'italic'
+                }}>
+                  {noteEditedBy}
+                </span>
+              )}
+              {savedNote && !isNoteEditing && (
+                <span style={{
+                  color: 'var(--y-color-success)',
+                  fontSize: '12px',
+                  fontStyle: 'italic'
+                }}>
+                  Note saved
+                </span>
+              )}
             </p>
             
             {/* Action Buttons */}
