@@ -24,6 +24,15 @@ const App: React.FC = () => {
   const [isNoteEditing, setIsNoteEditing] = useState(false);
   const [savedNote, setSavedNote] = useState('');
   const [noteEditedBy, setNoteEditedBy] = useState('');
+  const [iconStates, setIconStates] = useState({
+    warning: false,
+    lock: false,
+    document: false,
+    tool: false,
+    bulb: false,
+    chart: true,
+    thunder: true
+  });
   
   const username = 'DEMO'; // Получаем из контекста пользователя
 
@@ -70,6 +79,21 @@ const App: React.FC = () => {
       setIsNoteEditing(false);
       setNoteEditedBy('');
     }
+  };
+
+  const toggleIconState = (iconKey: string) => {
+    setIconStates(prev => ({
+      ...prev,
+      [iconKey]: !prev[iconKey]
+    }));
+  };
+
+  const getIconColor = (iconKey: string, isHealthOrPower = false) => {
+    const isActive = iconStates[iconKey as keyof typeof iconStates];
+    if (isActive) {
+      return isHealthOrPower ? 'var(--y-color-success)' : 'var(--y-color-accent)';
+    }
+    return 'var(--y-color-icon)';
   };
 
   const tabs = [
@@ -284,21 +308,23 @@ const App: React.FC = () => {
             {/* Action Buttons */}
             <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
               {[
-                { icon: <WarningOutlined />, active: false },
-                { icon: <LockOutlined />, active: false },
-                { icon: <FileTextOutlined />, active: false },
-                { icon: <ToolOutlined />, active: false },
-                { icon: <BulbOutlined />, active: false },
-                { icon: <BarChartOutlined />, active: true },
-                { icon: <ThunderboltOutlined />, active: true }
+                { icon: <WarningOutlined />, key: 'warning', isHealthOrPower: false },
+                { icon: <LockOutlined />, key: 'lock', isHealthOrPower: false },
+                { icon: <FileTextOutlined />, key: 'document', isHealthOrPower: false },
+                { icon: <ToolOutlined />, key: 'tool', isHealthOrPower: false },
+                { icon: <BulbOutlined />, key: 'bulb', isHealthOrPower: false },
+                { icon: <BarChartOutlined />, key: 'chart', isHealthOrPower: true },
+                { icon: <ThunderboltOutlined />, key: 'thunder', isHealthOrPower: true }
               ].map((item, index) => (
                 <button
                   key={index}
+                  onClick={() => toggleIconState(item.key)}
                   style={{
                     width: '40px',
                     height: '40px',
-                    backgroundColor: item.active ? 'var(--y-color-success)' : 
-                                   'var(--y-color-control-background)',
+                    backgroundColor: iconStates[item.key as keyof typeof iconStates] 
+                      ? (item.isHealthOrPower ? 'var(--y-color-success)' : 'var(--y-color-accent)')
+                      : 'var(--y-color-control-background)',
                     border: '1px solid var(--y-color-control-border)',
                     borderRadius: '4px',
                     display: 'flex',
@@ -306,8 +332,13 @@ const App: React.FC = () => {
                     justifyContent: 'center',
                     cursor: 'pointer',
                     fontSize: '16px',
-                    color: item.active ? 'white' : 'var(--y-color-icon)'
+                    color: iconStates[item.key as keyof typeof iconStates] 
+                      ? 'white' 
+                      : 'var(--y-color-icon)',
+                    transition: 'all 0.2s ease',
                   }}
+                  onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+                  onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
                 >
                   {item.icon}
                 </button>
