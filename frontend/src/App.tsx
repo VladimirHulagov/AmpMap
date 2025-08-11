@@ -1,4 +1,21 @@
 import React, { useState } from 'react';
+import {
+  SearchOutlined,
+  UserOutlined,
+  WarningOutlined,
+  LockOutlined,
+  FileTextOutlined,
+  ToolOutlined,
+  BulbOutlined,
+  BellOutlined,
+  MessageOutlined,
+  PoweroffOutlined,
+  BarChartOutlined,
+  ThunderboltOutlined,
+  DownOutlined,
+  SaveOutlined,
+  RocketOutlined
+} from '@ant-design/icons';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('INFO');
@@ -78,7 +95,7 @@ const App: React.FC = () => {
               color: 'var(--y-color-control-placeholder)',
               fontSize: '14px'
             }}>
-              🔍
+              <SearchOutlined />
             </span>
           </div>
           
@@ -95,7 +112,7 @@ const App: React.FC = () => {
           </button>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span style={{ fontSize: '16px' }}>👤</span>
+            <UserOutlined style={{ fontSize: '16px', color: 'var(--y-color-icon)' }} />
             <span style={{ 
               color: 'var(--y-color-text-primary)', 
               fontSize: '14px',
@@ -185,14 +202,21 @@ const App: React.FC = () => {
             
             {/* Action Buttons */}
             <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
-              {['⚠️', '🔒', '📋', '🔧', '💡', '🔔', '💬'].map((icon, index) => (
+              {[
+                { icon: <WarningOutlined />, active: false },
+                { icon: <LockOutlined />, active: false },
+                { icon: <FileTextOutlined />, active: false },
+                { icon: <ToolOutlined />, active: false },
+                { icon: <BulbOutlined />, active: false },
+                { icon: <BarChartOutlined />, active: true },
+                { icon: <ThunderboltOutlined />, active: true }
+              ].map((item, index) => (
                 <button
                   key={index}
                   style={{
                     width: '40px',
                     height: '40px',
-                    backgroundColor: index === 5 ? 'var(--y-color-success)' : 
-                                   index === 6 ? 'var(--y-color-success)' : 
+                    backgroundColor: item.active ? 'var(--y-color-success)' : 
                                    'var(--y-color-control-background)',
                     border: '1px solid var(--y-color-control-border)',
                     borderRadius: '4px',
@@ -200,10 +224,11 @@ const App: React.FC = () => {
                     alignItems: 'center',
                     justifyContent: 'center',
                     cursor: 'pointer',
-                    fontSize: '16px'
+                    fontSize: '16px',
+                    color: item.active ? 'white' : 'var(--y-color-icon)'
                   }}
                 >
-                  {index === 5 ? '📊' : index === 6 ? '⚡' : icon}
+                  {item.icon}
                 </button>
               ))}
             </div>
@@ -247,8 +272,12 @@ const App: React.FC = () => {
                   borderRadius: '4px',
                   fontSize: '12px',
                   fontWeight: '500',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
                 }}>
+                  <SaveOutlined style={{ fontSize: '10px' }} />
                   CHANGE
                 </button>
               </div>
@@ -266,8 +295,12 @@ const App: React.FC = () => {
                   borderRadius: '4px',
                   fontSize: '12px',
                   fontWeight: '500',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
                 }}>
+                  <SaveOutlined style={{ fontSize: '10px' }} />
                   CHANGE
                 </button>
               </div>
@@ -526,7 +559,8 @@ const App: React.FC = () => {
                   alignItems: 'center',
                   gap: '4px'
                 }}>
-                  💾 BOOT
+                  <PoweroffOutlined style={{ fontSize: '12px' }} />
+                  BOOT
                 </button>
               </div>
             </div>
@@ -541,7 +575,12 @@ const App: React.FC = () => {
                   borderRadius: '4px',
                   color: 'var(--y-color-text-secondary)',
                   fontSize: '14px',
-                  minWidth: '150px'
+                  minWidth: '150px',
+                  appearance: 'none',
+                  backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e")`,
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'right 8px center',
+                  backgroundSize: '16px'
                 }}>
                   <option>CHOOSE AVAILABLE OS</option>
                 </select>
@@ -552,7 +591,12 @@ const App: React.FC = () => {
                   borderRadius: '4px',
                   color: 'var(--y-color-text-secondary)',
                   fontSize: '14px',
-                  minWidth: '150px'
+                  minWidth: '150px',
+                  appearance: 'none',
+                  backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e")`,
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'right 8px center',
+                  backgroundSize: '16px'
                 }}>
                   <option>SELECT TARGET DEVICE</option>
                 </select>
@@ -569,7 +613,8 @@ const App: React.FC = () => {
                   alignItems: 'center',
                   gap: '4px'
                 }}>
-                  🚀 DEPLOY
+                  <RocketOutlined style={{ fontSize: '12px' }} />
+                  DEPLOY
                 </button>
               </div>
             </div>
