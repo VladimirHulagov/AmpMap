@@ -1,8 +1,0 @@
-export { ArchiveProject } from "./archive-project/archive-project"
-export { CreateProject } from "./create-project/create-project"
-export { DeleteProject } from "./delete-project/delete-project"
-export { EditProject } from "./edit-project/edit-project"
-export { FolowProject } from "./folow-project/folow-project"
-export { RequestProjectAccess } from "./request-access/request-access"
-export { CreateEditParameterModal } from "./create-edit-parameter-modal"
-export { EditProjectTestResultsSettings } from "./edit-project-test-results-settings"

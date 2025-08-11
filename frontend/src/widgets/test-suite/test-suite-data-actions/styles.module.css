@@ -1,8 +1,0 @@
-.actionMenuButton .actionMenuArrow {
-  transform: rotate(180deg);
-}
-
-.actionMenuButton {
-  transform: rotate(0);
-  transition: 0.3s;
-}

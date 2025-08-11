@@ -1,6 +1,0 @@
-export * from "./label"
-export * from "./label-wrapper"
-export * from "./label-field"
-export * from "./label-filter/label-filter"
-export * from "./label-filter-condition/label-filter-condition"
-export * from "./label-list"
