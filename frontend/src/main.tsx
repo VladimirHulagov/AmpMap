@@ -6,8 +6,6 @@ import './shared/styles/colors.css';
 import './shared/styles/variables.css';
 import './shared/styles/variables-dark.css';
 import './shared/styles/antd-override.css';
-import './shared/styles/debug.css';
-import './shared/styles/view-form.module.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

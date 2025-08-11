@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 
 const App: React.FC = () => {
+  const [activeTab, setActiveTab] = useState('INFO');
   const [isDark, setIsDark] = useState(false);
 
   const toggleTheme = () => {
@@ -12,493 +13,568 @@ const App: React.FC = () => {
     document.documentElement.setAttribute('data-theme', 'light');
   }, []);
 
+  const tabs = [
+    'INFO',
+    'BOOKING',
+    'SW CONFIGURATION', 
+    'HW AUTOMATION',
+    'INVENTORY',
+    'USER ACTION HISTORY'
+  ];
+
   return (
-    <div className={`app ${isDark ? 'dark' : 'light'}`}>
-      <header style={{ 
-        padding: '20px', 
-        backgroundColor: 'var(--color-bg)', 
-        borderBottom: '1px solid var(--color-border)',
+    <div style={{ 
+      minHeight: '100vh',
+      backgroundColor: 'var(--y-color-background)',
+      fontFamily: 'Inter, sans-serif'
+    }}>
+      {/* Header */}
+      <header style={{
         display: 'flex',
         justifyContent: 'space-between',
-        alignItems: 'center'
+        alignItems: 'center',
+        padding: '12px 24px',
+        backgroundColor: 'var(--y-color-background)',
+        borderBottom: '1px solid var(--y-color-border)'
       }}>
-        <h1 style={{ color: 'var(--color-text-primary)', margin: 0 }}>
-          TestY Style Showcase
-        </h1>
-        <button 
-          onClick={toggleTheme}
-          style={{
-            padding: '8px 16px',
-            backgroundColor: 'var(--color-accent)',
-            color: 'white',
-            border: 'none',
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ 
+            color: 'var(--y-color-accent)', 
+            fontSize: '14px',
+            textDecoration: 'none'
+          }}>
+            Devices
+          </span>
+          <span style={{ color: 'var(--y-color-text-secondary)' }}>›</span>
+          <span style={{ 
+            color: 'var(--y-color-text-primary)', 
+            fontSize: '14px',
+            fontWeight: '500'
+          }}>
+            Q123456789
+          </span>
+        </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ position: 'relative' }}>
+            <input
+              type="text"
+              placeholder="Search device"
+              style={{
+                padding: '6px 12px 6px 32px',
+                backgroundColor: 'var(--y-color-control-background)',
+                border: '1px solid var(--y-color-control-border)',
+                borderRadius: '4px',
+                color: 'var(--y-color-control-text)',
+                fontSize: '14px',
+                width: '200px'
+              }}
+            />
+            <span style={{
+              position: 'absolute',
+              left: '10px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: 'var(--y-color-control-placeholder)',
+              fontSize: '14px'
+            }}>
+              🔍
+            </span>
+          </div>
+          
+          <button style={{
+            padding: '6px 12px',
+            backgroundColor: 'var(--y-color-control-background)',
+            border: '1px solid var(--y-color-control-border)',
             borderRadius: '4px',
-            cursor: 'pointer'
-          }}
-        >
-          {isDark ? '☀️ Light' : '🌙 Dark'}
-        </button>
+            color: 'var(--y-color-control-text)',
+            fontSize: '12px',
+            fontWeight: '500'
+          }}>
+            CTRL
+          </button>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={{ fontSize: '16px' }}>👤</span>
+            <span style={{ 
+              color: 'var(--y-color-text-primary)', 
+              fontSize: '14px',
+              fontWeight: '500'
+            }}>
+              DEMO
+            </span>
+          </div>
+
+          <button 
+            onClick={toggleTheme}
+            style={{
+              padding: '6px 12px',
+              backgroundColor: 'var(--y-color-accent)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '12px'
+            }}
+          >
+            {isDark ? '☀️' : '🌙'}
+          </button>
+        </div>
       </header>
 
-      <main style={{ padding: '20px', backgroundColor: 'var(--color-bg)' }}>
-        {/* Цветовая палитра */}
-        <section style={{ marginBottom: '40px' }}>
-          <h2 style={{ color: 'var(--color-text-primary)', marginBottom: '20px' }}>
-            🎨 Цветовая палитра
-          </h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-            <div style={{ padding: '20px', backgroundColor: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: '8px' }}>
-              <div style={{ width: '100%', height: '40px', backgroundColor: 'var(--color-bg)', marginBottom: '8px', border: '1px solid var(--color-border)' }}></div>
-              <p style={{ color: 'var(--color-text-secondary)', margin: 0, fontSize: '14px' }}>Background</p>
-            </div>
-            <div style={{ padding: '20px', backgroundColor: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: '8px' }}>
-              <div style={{ width: '100%', height: '40px', backgroundColor: 'var(--color-bg-alt)', marginBottom: '8px' }}></div>
-              <p style={{ color: 'var(--color-text-secondary)', margin: 0, fontSize: '14px' }}>Alt Background</p>
-            </div>
-            <div style={{ padding: '20px', backgroundColor: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: '8px' }}>
-              <div style={{ width: '100%', height: '40px', backgroundColor: 'var(--color-accent)', marginBottom: '8px' }}></div>
-              <p style={{ color: 'var(--color-text-secondary)', margin: 0, fontSize: '14px' }}>Accent</p>
-            </div>
-            <div style={{ padding: '20px', backgroundColor: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: '8px' }}>
-              <div style={{ width: '100%', height: '40px', backgroundColor: 'var(--color-success)', marginBottom: '8px' }}></div>
-              <p style={{ color: 'var(--color-text-secondary)', margin: 0, fontSize: '14px' }}>Success</p>
-            </div>
-            <div style={{ padding: '20px', backgroundColor: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: '8px' }}>
-              <div style={{ width: '100%', height: '40px', backgroundColor: 'var(--color-error)', marginBottom: '8px' }}></div>
-              <p style={{ color: 'var(--color-text-secondary)', margin: 0, fontSize: '14px' }}>Error</p>
-            </div>
-            <div style={{ padding: '20px', backgroundColor: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: '8px' }}>
-              <div style={{ width: '100%', height: '40px', backgroundColor: 'var(--color-warning)', marginBottom: '8px' }}></div>
-              <p style={{ color: 'var(--color-text-secondary)', margin: 0, fontSize: '14px' }}>Warning</p>
+      {/* Tabs */}
+      <nav style={{
+        display: 'flex',
+        backgroundColor: 'var(--y-color-background-alternative)',
+        borderBottom: '1px solid var(--y-color-border)',
+        padding: '0 24px'
+      }}>
+        {tabs.map((tab, index) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            style={{
+              padding: '12px 16px',
+              backgroundColor: 'transparent',
+              border: 'none',
+              borderBottom: activeTab === tab ? '2px solid var(--y-color-accent)' : '2px solid transparent',
+              color: activeTab === tab ? 'var(--y-color-accent)' : 'var(--y-color-text-secondary)',
+              fontSize: '13px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              textTransform: 'uppercase',
+              position: 'relative'
+            }}
+          >
+            {tab}
+            {index === 1 && (
+              <span style={{
+                position: 'absolute',
+                top: '8px',
+                right: '8px',
+                width: '6px',
+                height: '6px',
+                backgroundColor: 'var(--y-color-error)',
+                borderRadius: '50%'
+              }}></span>
+            )}
+          </button>
+        ))}
+      </nav>
+
+      {/* Main Content */}
+      <main style={{ padding: '24px' }}>
+        <div style={{ maxWidth: '800px' }}>
+          {/* Device Header */}
+          <div style={{ marginBottom: '24px' }}>
+            <h1 style={{
+              fontSize: '32px',
+              fontWeight: '600',
+              color: 'var(--y-color-text-primary)',
+              margin: '0 0 8px 0'
+            }}>
+              Q123456789
+            </h1>
+            <p style={{
+              color: 'var(--y-color-text-secondary)',
+              margin: '0 0 16px 0',
+              fontSize: '14px'
+            }}>
+              Add a note...
+            </p>
+            
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '24px' }}>
+              {['⚠️', '🔒', '📋', '🔧', '💡', '🔔', '💬'].map((icon, index) => (
+                <button
+                  key={index}
+                  style={{
+                    width: '40px',
+                    height: '40px',
+                    backgroundColor: index === 5 ? 'var(--y-color-success)' : 
+                                   index === 6 ? 'var(--y-color-success)' : 
+                                   'var(--y-color-control-background)',
+                    border: '1px solid var(--y-color-control-border)',
+                    borderRadius: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    fontSize: '16px'
+                  }}
+                >
+                  {index === 5 ? '📊' : index === 6 ? '⚡' : icon}
+                </button>
+              ))}
             </div>
           </div>
-        </section>
 
-        {/* Типографика */}
-        <section style={{ marginBottom: '40px' }}>
-          <h2 style={{ color: 'var(--color-text-primary)', marginBottom: '20px' }}>
-            📝 Типографика
-          </h2>
-          <div style={{ backgroundColor: 'var(--color-bg-alt)', padding: '20px', borderRadius: '8px' }}>
-            <h1 style={{ color: 'var(--color-text-primary)' }}>Заголовок H1</h1>
-            <h2 style={{ color: 'var(--color-text-primary)' }}>Заголовок H2</h2>
-            <h3 style={{ color: 'var(--color-text-primary)' }}>Заголовок H3</h3>
-            <h4 style={{ color: 'var(--color-text-primary)' }}>Заголовок H4</h4>
-            <p style={{ color: 'var(--color-text-primary)' }}>Основной текст с цветом text-primary</p>
-            <p style={{ color: 'var(--color-text-secondary)' }}>Вторичный текст с цветом text-secondary</p>
-            <p style={{ color: 'var(--color-text-tertiary)' }}>Третичный текст с цветом text-tertiary</p>
-            <a href="#" style={{ color: 'var(--color-accent)' }}>Ссылка с accent цветом</a>
-          </div>
-        </section>
+          {/* Device Information */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {/* Basic Info */}
+            <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '12px', alignItems: 'center' }}>
+              <span style={{ color: 'var(--y-color-text-secondary)', fontSize: '14px' }}>Device Type</span>
+              <span style={{ color: 'var(--y-color-text-primary)', fontSize: '14px', fontWeight: '500' }}>
+                SUPERSERVER_Q2220_G10
+              </span>
+            </div>
 
-        {/* Элементы управления */}
-        <section style={{ marginBottom: '40px' }}>
-          <h2 style={{ color: 'var(--color-text-primary)', marginBottom: '20px' }}>
-            🎛️ Элементы управления
-          </h2>
-          <div style={{ backgroundColor: 'var(--color-bg-alt)', padding: '20px', borderRadius: '8px' }}>
-            <div style={{ marginBottom: '20px' }}>
-              <h4 style={{ color: 'var(--color-text-primary)', marginBottom: '10px' }}>Кнопки</h4>
-              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '12px', alignItems: 'center' }}>
+              <span style={{ color: 'var(--y-color-text-secondary)', fontSize: '14px' }}>Parent</span>
+              <span style={{ color: 'var(--y-color-text-tertiary)', fontSize: '14px' }}>null</span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '12px', alignItems: 'center' }}>
+              <span style={{ color: 'var(--y-color-text-secondary)', fontSize: '14px' }}>Location</span>
+              <span style={{ color: 'var(--y-color-accent)', fontSize: '14px' }}>R1234.5 / U01F</span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '12px', alignItems: 'center' }}>
+              <span style={{ color: 'var(--y-color-text-secondary)', fontSize: '14px' }}>WMS cell</span>
+              <span style={{ color: 'var(--y-color-text-primary)', fontSize: '14px' }}>S-SEL-1-234</span>
+            </div>
+
+            {/* Version Info with Buttons */}
+            <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '12px', alignItems: 'center' }}>
+              <span style={{ color: 'var(--y-color-text-secondary)', fontSize: '14px' }}>BMC version</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ color: 'var(--y-color-text-primary)', fontSize: '14px' }}>bmc-1.0.0</span>
                 <button style={{
-                  padding: '10px 20px',
-                  backgroundColor: 'var(--color-accent)',
+                  padding: '4px 12px',
+                  backgroundColor: 'var(--y-color-accent)',
                   color: 'white',
                   border: 'none',
                   borderRadius: '4px',
+                  fontSize: '12px',
+                  fontWeight: '500',
                   cursor: 'pointer'
                 }}>
-                  Основная кнопка
-                </button>
-                <button style={{
-                  padding: '10px 20px',
-                  backgroundColor: 'var(--color-bg)',
-                  color: 'var(--color-text-primary)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}>
-                  Вторичная кнопка
-                </button>
-                <button style={{
-                  padding: '10px 20px',
-                  backgroundColor: 'transparent',
-                  color: 'var(--color-accent)',
-                  border: '1px solid var(--color-accent)',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}>
-                  Контурная кнопка
+                  CHANGE
                 </button>
               </div>
             </div>
 
-            <div style={{ marginBottom: '20px' }}>
-              <h4 style={{ color: 'var(--color-text-primary)', marginBottom: '10px' }}>Поля ввода</h4>
-              <div style={{ display: 'grid', gap: '10px', maxWidth: '400px' }}>
-                <input 
-                  type="text" 
-                  placeholder="Текстовое поле"
-                  style={{
-                    padding: '10px',
-                    backgroundColor: 'var(--color-bg)',
-                    color: 'var(--color-text-primary)',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: '4px'
-                  }}
-                />
-                <textarea 
-                  placeholder="Многострочное поле"
-                  rows={3}
-                  style={{
-                    padding: '10px',
-                    backgroundColor: 'var(--color-bg)',
-                    color: 'var(--color-text-primary)',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: '4px',
-                    resize: 'vertical'
-                  }}
-                />
+            <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '12px', alignItems: 'center' }}>
+              <span style={{ color: 'var(--y-color-text-secondary)', fontSize: '14px' }}>BIOS version</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ color: 'var(--y-color-text-primary)', fontSize: '14px' }}>uefi-1.0.0</span>
+                <button style={{
+                  padding: '4px 12px',
+                  backgroundColor: 'var(--y-color-accent)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}>
+                  CHANGE
+                </button>
+              </div>
+            </div>
+
+            {/* Network Info */}
+            <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '12px', alignItems: 'center' }}>
+              <span style={{ color: 'var(--y-color-text-secondary)', fontSize: '14px' }}>BMC dedicated</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ color: 'var(--y-color-text-tertiary)', fontSize: '12px' }}>AA:BB:CC:DD:EE:01</span>
+                <span style={{ color: 'var(--y-color-accent)', fontSize: '14px' }}>192.168.0.1</span>
+                <span style={{
+                  padding: '2px 8px',
+                  backgroundColor: 'var(--y-color-success)',
+                  color: 'white',
+                  borderRadius: '12px',
+                  fontSize: '10px',
+                  fontWeight: '500'
+                }}>
+                  T-SW-R0123-01: 1/1/1
+                </span>
+                <span style={{
+                  padding: '2px 8px',
+                  backgroundColor: 'var(--y-color-control-background)',
+                  color: 'var(--y-color-text-secondary)',
+                  borderRadius: '12px',
+                  fontSize: '10px',
+                  border: '1px solid var(--y-color-control-border)'
+                }}>
+                  VLAN_1010
+                </span>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '12px', alignItems: 'center' }}>
+              <span style={{ color: 'var(--y-color-text-secondary)', fontSize: '14px' }}>BMC shared</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ color: 'var(--y-color-text-tertiary)', fontSize: '12px' }}>AA:BB:CC:DD:EE:02</span>
+                <span style={{ color: 'var(--y-color-accent)', fontSize: '14px' }}>192.168.0.2</span>
+                <span style={{
+                  padding: '2px 8px',
+                  backgroundColor: 'var(--y-color-text-secondary)',
+                  color: 'white',
+                  borderRadius: '12px',
+                  fontSize: '10px',
+                  fontWeight: '500'
+                }}>
+                  T-SW-R0123-01: 1/1/2
+                </span>
+                <span style={{
+                  padding: '2px 8px',
+                  backgroundColor: 'var(--y-color-control-background)',
+                  color: 'var(--y-color-text-secondary)',
+                  borderRadius: '12px',
+                  fontSize: '10px',
+                  border: '1px solid var(--y-color-control-border)'
+                }}>
+                  VLAN_1010
+                </span>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '12px', alignItems: 'center' }}>
+              <span style={{ color: 'var(--y-color-text-secondary)', fontSize: '14px' }}>Host dedicated</span>
+              <span style={{ color: 'var(--y-color-text-tertiary)', fontSize: '14px' }}>None</span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '12px', alignItems: 'center' }}>
+              <span style={{ color: 'var(--y-color-text-secondary)', fontSize: '14px' }}>Host shared</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ color: 'var(--y-color-text-tertiary)', fontSize: '12px' }}>AA:BB:CC:DD:EE:03</span>
+                <span style={{ color: 'var(--y-color-accent)', fontSize: '14px' }}>192.168.0.3</span>
+                <span style={{
+                  padding: '2px 8px',
+                  backgroundColor: 'var(--y-color-text-secondary)',
+                  color: 'white',
+                  borderRadius: '12px',
+                  fontSize: '10px',
+                  fontWeight: '500'
+                }}>
+                  T-SW-R0123-01: 1/1/3
+                </span>
+                <span style={{
+                  padding: '2px 8px',
+                  backgroundColor: 'var(--y-color-control-background)',
+                  color: 'var(--y-color-text-secondary)',
+                  borderRadius: '12px',
+                  fontSize: '10px',
+                  border: '1px solid var(--y-color-control-border)'
+                }}>
+                  VLAN_1010
+                </span>
+              </div>
+            </div>
+
+            {/* PSU Status */}
+            <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '12px', alignItems: 'center' }}>
+              <span style={{ color: 'var(--y-color-text-secondary)', fontSize: '14px' }}>PSU0</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{
+                  padding: '4px 12px',
+                  backgroundColor: 'var(--y-color-success)',
+                  color: 'white',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  fontWeight: '500'
+                }}>
+                  ONLINE
+                </span>
+                <span style={{
+                  padding: '4px 12px',
+                  backgroundColor: 'var(--y-color-control-background)',
+                  color: 'var(--y-color-text-secondary)',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  border: '1px solid var(--y-color-control-border)'
+                }}>
+                  PDU2 OUTLET2
+                </span>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '12px', alignItems: 'center' }}>
+              <span style={{ color: 'var(--y-color-text-secondary)', fontSize: '14px' }}>PSU1</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{
+                  padding: '4px 12px',
+                  backgroundColor: 'var(--y-color-success)',
+                  color: 'white',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  fontWeight: '500'
+                }}>
+                  ONLINE
+                </span>
+                <span style={{
+                  padding: '4px 12px',
+                  backgroundColor: 'var(--y-color-control-background)',
+                  color: 'var(--y-color-text-secondary)',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  border: '1px solid var(--y-color-control-border)'
+                }}>
+                  PDU2 OUTLET3
+                </span>
+              </div>
+            </div>
+
+            {/* Automation Section */}
+            <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '12px', alignItems: 'center', marginTop: '24px' }}>
+              <span style={{ color: 'var(--y-color-text-secondary)', fontSize: '14px' }}>Automation</span>
+              <span></span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '12px', alignItems: 'center' }}>
+              <span style={{ color: 'var(--y-color-text-secondary)', fontSize: '14px' }}>Status</span>
+              <span style={{ color: 'var(--y-color-accent)', fontSize: '14px' }}>
+                Kiwi Test Run 123 [ lavajob-123 ]
+              </span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '12px', alignItems: 'center' }}>
+              <span style={{ color: 'var(--y-color-text-secondary)', fontSize: '14px' }}>Autotests</span>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button style={{
+                  padding: '6px 12px',
+                  backgroundColor: 'var(--y-color-control-background)',
+                  color: 'var(--y-color-text-secondary)',
+                  border: '1px solid var(--y-color-control-border)',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  cursor: 'pointer'
+                }}>
+                  ANY
+                </button>
+                <button style={{
+                  padding: '6px 12px',
+                  backgroundColor: 'var(--y-color-control-background)',
+                  color: 'var(--y-color-text-secondary)',
+                  border: '1px solid var(--y-color-control-border)',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  cursor: 'pointer'
+                }}>
+                  NIGHTLY
+                </button>
+                <button style={{
+                  padding: '6px 12px',
+                  backgroundColor: 'var(--y-color-control-background)',
+                  color: 'var(--y-color-text-secondary)',
+                  border: '1px solid var(--y-color-control-border)',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  cursor: 'pointer'
+                }}>
+                  TARGETED
+                </button>
+                <button style={{
+                  padding: '6px 12px',
+                  backgroundColor: 'var(--y-color-accent)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}>
+                  OFF
+                </button>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '12px', alignItems: 'center' }}>
+              <span style={{ color: 'var(--y-color-text-secondary)', fontSize: '14px' }}>Health Check</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button style={{
+                  padding: '6px 16px',
+                  backgroundColor: 'var(--y-color-accent)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  fontWeight: '500',
+                  cursor: 'pointer'
+                }}>
+                  RUN
+                </button>
+                <span style={{ color: 'var(--y-color-text-secondary)', fontSize: '14px' }}>
+                  successfully finished 4h ago
+                </span>
+              </div>
+            </div>
+
+            {/* Device Control Section */}
+            <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '12px', alignItems: 'center', marginTop: '24px' }}>
+              <span style={{ color: 'var(--y-color-text-secondary)', fontSize: '14px' }}>Device Control</span>
+              <span></span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '12px', alignItems: 'center' }}>
+              <span style={{ color: 'var(--y-color-text-secondary)', fontSize: '14px' }}>Boot From</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ color: 'var(--y-color-text-tertiary)', fontSize: '14px' }}>
+                  SELECT BOOT DEVICE
+                </span>
+                <button style={{
+                  padding: '6px 16px',
+                  backgroundColor: 'var(--y-color-accent)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}>
+                  💾 BOOT
+                </button>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '12px', alignItems: 'center' }}>
+              <span style={{ color: 'var(--y-color-text-secondary)', fontSize: '14px' }}>Deploy OS</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <select style={{
-                  padding: '10px',
-                  backgroundColor: 'var(--color-bg)',
-                  color: 'var(--color-text-primary)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '4px'
+                  padding: '6px 12px',
+                  backgroundColor: 'var(--y-color-control-background)',
+                  border: '1px solid var(--y-color-control-border)',
+                  borderRadius: '4px',
+                  color: 'var(--y-color-text-secondary)',
+                  fontSize: '14px',
+                  minWidth: '150px'
                 }}>
-                  <option>Выберите опцию</option>
-                  <option>Опция 1</option>
-                  <option>Опция 2</option>
+                  <option>CHOOSE AVAILABLE OS</option>
                 </select>
-              </div>
-            </div>
-
-            <div>
-              <h4 style={{ color: 'var(--color-text-primary)', marginBottom: '10px' }}>Теги</h4>
-              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                <span style={{
-                  padding: '4px 8px',
-                  backgroundColor: 'var(--color-chart-primary)',
-                  color: 'white',
-                  borderRadius: '12px',
-                  fontSize: '12px'
+                <select style={{
+                  padding: '6px 12px',
+                  backgroundColor: 'var(--y-color-control-background)',
+                  border: '1px solid var(--y-color-control-border)',
+                  borderRadius: '4px',
+                  color: 'var(--y-color-text-secondary)',
+                  fontSize: '14px',
+                  minWidth: '150px'
                 }}>
-                  Первичный
-                </span>
-                <span style={{
-                  padding: '4px 8px',
-                  backgroundColor: 'var(--color-chart-secondary)',
+                  <option>SELECT TARGET DEVICE</option>
+                </select>
+                <button style={{
+                  padding: '6px 16px',
+                  backgroundColor: 'var(--y-color-accent)',
                   color: 'white',
-                  borderRadius: '12px',
-                  fontSize: '12px'
+                  border: 'none',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
                 }}>
-                  Вторичный
-                </span>
-                <span style={{
-                  padding: '4px 8px',
-                  backgroundColor: 'var(--color-chart-tertiary)',
-                  color: 'white',
-                  borderRadius: '12px',
-                  fontSize: '12px'
-                }}>
-                  Третичный
-                </span>
-                <span style={{
-                  padding: '4px 8px',
-                  backgroundColor: 'var(--color-chart-quaternary)',
-                  color: 'white',
-                  borderRadius: '12px',
-                  fontSize: '12px'
-                }}>
-                  Четвертичный
-                </span>
+                  🚀 DEPLOY
+                </button>
               </div>
             </div>
           </div>
-        </section>
-
-        {/* Отображение данных */}
-        <section style={{ marginBottom: '40px' }}>
-          <h2 style={{ color: 'var(--color-text-primary)', marginBottom: '20px' }}>
-            📊 Отображение данных
-          </h2>
-          
-          <div style={{ marginBottom: '20px' }}>
-            <h4 style={{ color: 'var(--color-text-primary)', marginBottom: '10px' }}>Таблица</h4>
-            <table style={{ 
-              width: '100%', 
-              borderCollapse: 'collapse',
-              backgroundColor: 'var(--color-bg)',
-              border: '1px solid var(--color-border)'
-            }}>
-              <thead>
-                <tr style={{ backgroundColor: 'var(--color-bg-alt)' }}>
-                  <th style={{ 
-                    padding: '12px', 
-                    textAlign: 'left', 
-                    color: 'var(--color-text-primary)',
-                    borderBottom: '1px solid var(--color-border)'
-                  }}>
-                    Название
-                  </th>
-                  <th style={{ 
-                    padding: '12px', 
-                    textAlign: 'left', 
-                    color: 'var(--color-text-primary)',
-                    borderBottom: '1px solid var(--color-border)'
-                  }}>
-                    Статус
-                  </th>
-                  <th style={{ 
-                    padding: '12px', 
-                    textAlign: 'left', 
-                    color: 'var(--color-text-primary)',
-                    borderBottom: '1px solid var(--color-border)'
-                  }}>
-                    Значение
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td style={{ 
-                    padding: '12px', 
-                    color: 'var(--color-text-primary)',
-                    borderBottom: '1px solid var(--color-border)'
-                  }}>
-                    Элемент 1
-                  </td>
-                  <td style={{ 
-                    padding: '12px', 
-                    color: 'var(--color-success)',
-                    borderBottom: '1px solid var(--color-border)'
-                  }}>
-                    Активен
-                  </td>
-                  <td style={{ 
-                    padding: '12px', 
-                    color: 'var(--color-text-secondary)',
-                    borderBottom: '1px solid var(--color-border)'
-                  }}>
-                    100
-                  </td>
-                </tr>
-                <tr style={{ backgroundColor: 'var(--color-bg-alt)' }}>
-                  <td style={{ 
-                    padding: '12px', 
-                    color: 'var(--color-text-primary)',
-                    borderBottom: '1px solid var(--color-border)'
-                  }}>
-                    Элемент 2
-                  </td>
-                  <td style={{ 
-                    padding: '12px', 
-                    color: 'var(--color-warning)',
-                    borderBottom: '1px solid var(--color-border)'
-                  }}>
-                    Ожидание
-                  </td>
-                  <td style={{ 
-                    padding: '12px', 
-                    color: 'var(--color-text-secondary)',
-                    borderBottom: '1px solid var(--color-border)'
-                  }}>
-                    75
-                  </td>
-                </tr>
-                <tr>
-                  <td style={{ 
-                    padding: '12px', 
-                    color: 'var(--color-text-primary)',
-                    borderBottom: '1px solid var(--color-border)'
-                  }}>
-                    Элемент 3
-                  </td>
-                  <td style={{ 
-                    padding: '12px', 
-                    color: 'var(--color-error)',
-                    borderBottom: '1px solid var(--color-border)'
-                  }}>
-                    Ошибка
-                  </td>
-                  <td style={{ 
-                    padding: '12px', 
-                    color: 'var(--color-text-secondary)',
-                    borderBottom: '1px solid var(--color-border)'
-                  }}>
-                    0
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div>
-            <h4 style={{ color: 'var(--color-text-primary)', marginBottom: '10px' }}>Карточки</h4>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
-              <div style={{ 
-                padding: '20px', 
-                backgroundColor: 'var(--color-bg)', 
-                border: '1px solid var(--color-border)', 
-                borderRadius: '8px' 
-              }}>
-                <h5 style={{ color: 'var(--color-text-primary)', margin: '0 0 10px 0' }}>Основная карточка</h5>
-                <p style={{ color: 'var(--color-text-secondary)', margin: 0 }}>
-                  Карточка с основным фоном и стандартными цветами текста.
-                </p>
-              </div>
-              <div style={{ 
-                padding: '20px', 
-                backgroundColor: 'var(--color-bg-alt)', 
-                border: '1px solid var(--color-border)', 
-                borderRadius: '8px' 
-              }}>
-                <h5 style={{ color: 'var(--color-text-primary)', margin: '0 0 10px 0' }}>Альтернативная карточка</h5>
-                <p style={{ color: 'var(--color-text-secondary)', margin: 0 }}>
-                  Карточка с альтернативным фоном для выделения контента.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Индикаторы прогресса */}
-        <section style={{ marginBottom: '40px' }}>
-          <h2 style={{ color: 'var(--color-text-primary)', marginBottom: '20px' }}>
-            📈 Индикаторы прогресса
-          </h2>
-          <div style={{ backgroundColor: 'var(--color-bg-alt)', padding: '20px', borderRadius: '8px' }}>
-            <div style={{ marginBottom: '15px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                <span style={{ color: 'var(--color-text-primary)', fontSize: '14px' }}>Успех</span>
-                <span style={{ color: 'var(--color-text-secondary)', fontSize: '14px' }}>85%</span>
-              </div>
-              <div style={{ 
-                width: '100%', 
-                height: '8px', 
-                backgroundColor: 'var(--color-border)', 
-                borderRadius: '4px',
-                overflow: 'hidden'
-              }}>
-                <div style={{ 
-                  width: '85%', 
-                  height: '100%', 
-                  backgroundColor: 'var(--color-success)',
-                  borderRadius: '4px'
-                }}></div>
-              </div>
-            </div>
-            
-            <div style={{ marginBottom: '15px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                <span style={{ color: 'var(--color-text-primary)', fontSize: '14px' }}>Предупреждение</span>
-                <span style={{ color: 'var(--color-text-secondary)', fontSize: '14px' }}>60%</span>
-              </div>
-              <div style={{ 
-                width: '100%', 
-                height: '8px', 
-                backgroundColor: 'var(--color-border)', 
-                borderRadius: '4px',
-                overflow: 'hidden'
-              }}>
-                <div style={{ 
-                  width: '60%', 
-                  height: '100%', 
-                  backgroundColor: 'var(--color-warning)',
-                  borderRadius: '4px'
-                }}></div>
-              </div>
-            </div>
-            
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                <span style={{ color: 'var(--color-text-primary)', fontSize: '14px' }}>Ошибка</span>
-                <span style={{ color: 'var(--color-text-secondary)', fontSize: '14px' }}>25%</span>
-              </div>
-              <div style={{ 
-                width: '100%', 
-                height: '8px', 
-                backgroundColor: 'var(--color-border)', 
-                borderRadius: '4px',
-                overflow: 'hidden'
-              }}>
-                <div style={{ 
-                  width: '25%', 
-                  height: '100%', 
-                  backgroundColor: 'var(--color-error)',
-                  borderRadius: '4px'
-                }}></div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Дополнительные элементы */}
-        <section>
-          <h2 style={{ color: 'var(--color-text-primary)', marginBottom: '20px' }}>
-            🎯 Дополнительные элементы
-          </h2>
-          <div style={{ backgroundColor: 'var(--color-bg-alt)', padding: '20px', borderRadius: '8px' }}>
-            <div style={{ marginBottom: '20px' }}>
-              <h4 style={{ color: 'var(--color-text-primary)', marginBottom: '10px' }}>Разделители</h4>
-              <hr style={{ border: 'none', height: '1px', backgroundColor: 'var(--color-border)', margin: '10px 0' }} />
-              <div style={{ height: '2px', backgroundColor: 'var(--color-accent)', margin: '10px 0' }}></div>
-            </div>
-            
-            <div style={{ marginBottom: '20px' }}>
-              <h4 style={{ color: 'var(--color-text-primary)', marginBottom: '10px' }}>Область с прокруткой</h4>
-              <div style={{
-                height: '100px',
-                backgroundColor: 'var(--color-bg)',
-                border: '1px solid var(--color-border)',
-                borderRadius: '4px',
-                padding: '10px',
-                overflow: 'auto'
-              }}>
-                <p style={{ color: 'var(--color-text-primary)' }}>
-                  Это область с кастомной прокруткой. Здесь много текста, который не помещается в контейнер.
-                  Прокрутите вниз, чтобы увидеть больше содержимого. Стили прокрутки определены в CSS файлах.
-                  Еще больше текста для демонстрации прокрутки. И еще немного текста для полноты картины.
-                  Последняя строка для демонстрации прокрутки.
-                </p>
-              </div>
-            </div>
-            
-            <div>
-              <h4 style={{ color: 'var(--color-text-primary)', marginBottom: '10px' }}>Цвета для графиков</h4>
-              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                <div style={{ 
-                  width: '40px', 
-                  height: '40px', 
-                  backgroundColor: 'var(--color-chart-primary)', 
-                  borderRadius: '50%',
-                  border: '2px solid var(--color-border)'
-                }}></div>
-                <div style={{ 
-                  width: '40px', 
-                  height: '40px', 
-                  backgroundColor: 'var(--color-chart-secondary)', 
-                  borderRadius: '50%',
-                  border: '2px solid var(--color-border)'
-                }}></div>
-                <div style={{ 
-                  width: '40px', 
-                  height: '40px', 
-                  backgroundColor: 'var(--color-chart-tertiary)', 
-                  borderRadius: '50%',
-                  border: '2px solid var(--color-border)'
-                }}></div>
-                <div style={{ 
-                  width: '40px', 
-                  height: '40px', 
-                  backgroundColor: 'var(--color-chart-quaternary)', 
-                  borderRadius: '50%',
-                  border: '2px solid var(--color-border)'
-                }}></div>
-              </div>
-            </div>
-          </div>
-        </section>
+        </div>
       </main>
     </div>
   );
