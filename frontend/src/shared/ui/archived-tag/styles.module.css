@@ -1,9 +1,0 @@
-.tag {
-  background-color: var(--y-error-block);
-  color: var(--y-grey-0);
-  font-size: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  user-select: none;
-}
