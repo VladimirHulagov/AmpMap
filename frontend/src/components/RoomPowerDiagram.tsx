@@ -14,6 +14,10 @@ const RoomPowerDiagram: React.FC<RoomPowerDiagramProps> = ({ room: initialRoom }
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
   useEffect(() => {
+    setRoom(initialRoom);
+  }, [initialRoom]);
+
+  useEffect(() => {
     const updatePowerData = async () => {
       try {
         const powerData = await influxService.getPowerData(room.id);
@@ -77,7 +81,8 @@ const RoomPowerDiagram: React.FC<RoomPowerDiagramProps> = ({ room: initialRoom }
       height: '100%', 
       display: 'flex', 
       flexDirection: 'column',
-      backgroundColor: 'var(--y-color-background)'
+      backgroundColor: 'var(--y-color-background)',
+      overflow: 'hidden'
     }}>
       {/* Заголовок с информацией об обновлении */}
       <div style={{
@@ -85,7 +90,8 @@ const RoomPowerDiagram: React.FC<RoomPowerDiagramProps> = ({ room: initialRoom }
         borderBottom: '1px solid var(--y-color-border)',
         display: 'flex',
         justifyContent: 'space-between',
-        alignItems: 'center'
+        alignItems: 'center',
+        flexShrink: 0
       }}>
         <h2 style={{
           margin: 0,
@@ -107,30 +113,45 @@ const RoomPowerDiagram: React.FC<RoomPowerDiagramProps> = ({ room: initialRoom }
       <div style={{ 
         flex: 1, 
         padding: '24px',
-        overflow: 'auto'
+        overflow: 'auto',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
       }}>
-        <svg
-          width={room.width}
-          height={room.height}
-          viewBox={`0 0 ${room.width} ${room.height}`}
+        <div
           style={{
+            width: '100%',
+            height: '100%',
+            maxWidth: `${room.width}px`,
+            maxHeight: `${room.height}px`,
             border: '1px solid var(--y-color-border)',
             borderRadius: '4px',
-            backgroundColor: 'var(--y-color-background)'
+            backgroundColor: 'var(--y-color-background)',
+            overflow: 'hidden'
           }}
         >
-          {/* Базовая разметка помещения */}
-          <g dangerouslySetInnerHTML={{ __html: room.svgLayout }} />
-          
-          {/* Линии электропитания и розетки */}
-          {room.powerLines.map((powerLine) => (
-            <PowerLineComponent
-              key={powerLine.id}
-              powerLine={powerLine}
-              onOutletClick={handleOutletClick}
-            />
-          ))}
-        </svg>
+          <svg
+            width="100%"
+            height="100%"
+            viewBox={`0 0 ${room.width} ${room.height}`}
+            style={{
+              backgroundColor: 'var(--y-color-background)'
+            }}
+            preserveAspectRatio="xMidYMid meet"
+          >
+            {/* Базовая разметка помещения */}
+            <g dangerouslySetInnerHTML={{ __html: room.svgLayout.replace(/<svg[^>]*>|<\/svg>/g, '') }} />
+            
+            {/* Линии электропитания и розетки */}
+            {room.powerLines.map((powerLine) => (
+              <PowerLineComponent
+                key={powerLine.id}
+                powerLine={powerLine}
+                onOutletClick={handleOutletClick}
+              />
+            ))}
+          </svg>
+        </div>
       </div>
 
       {/* Модальное окно с деталями розетки */}
