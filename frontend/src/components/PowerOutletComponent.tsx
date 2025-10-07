@@ -23,53 +23,53 @@ const PowerOutletComponent: React.FC<PowerOutletComponentProps> = ({ outlet, onC
       <circle
         cx={outlet.x}
         cy={outlet.y}
-        r="12"
+        r="60"
         fill={outletColor}
         stroke="var(--y-color-border)"
-        strokeWidth="2"
+        strokeWidth="10"
       />
-      
+
       {/* Номер розетки */}
       <text
         x={outlet.x}
-        y={outlet.y + 4}
+        y={outlet.y + 20}
         textAnchor="middle"
-        fontSize="10"
+        fontSize="50"
         fontWeight="bold"
         fill="white"
       >
         {outlet.number}
       </text>
-      
+
       {/* Информация о нагрузке */}
       <g>
         <rect
-          x={outlet.x - 35}
-          y={outlet.y - 35}
-          width="70"
-          height="15"
+          x={outlet.x - 175}
+          y={outlet.y - 175}
+          width="350"
+          height="75"
           fill="var(--y-color-background)"
           stroke="var(--y-color-border)"
-          strokeWidth="1"
-          rx="2"
+          strokeWidth="5"
+          rx="10"
         />
         <text
           x={outlet.x}
-          y={outlet.y - 25}
+          y={outlet.y - 125}
           textAnchor="middle"
-          fontSize="9"
+          fontSize="45"
           fill={textColor}
         >
           {formatPower(outlet.currentLoad)}
         </text>
       </g>
-      
+
       {/* Индикатор активности */}
       {outlet.isActive && (
         <circle
-          cx={outlet.x + 15}
-          cy={outlet.y - 15}
-          r="3"
+          cx={outlet.x + 75}
+          cy={outlet.y - 75}
+          r="15"
           fill="var(--y-color-success)"
         />
       )}
